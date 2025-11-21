@@ -1,0 +1,220 @@
+Landing page (single page app entry)
+
+Purpose
+A concise, polished landing page that routes users to the right experience and sets expectations.
+
+Copy (headline + subhead + call to action)
+
+Headline: Korn Ferry Value Lifecycle
+
+Subhead: Rapid discovery, clear alignment and a measurable path to value. Work with your team in the meeting, then hold leaders to results.
+
+Primary CTA (for Korn Ferry users): Start Discovery
+
+Secondary CTA (for customers invited to align): View Alignment Portal
+
+Footer: Links to Docs, Responsible AI, Analytics SLA, Contact.
+
+Landing page elements
+
+Short explainer video or animated demo (30s) showing Discovery → Alignment → Realisation.
+
+Quick tour: three tiles summarising each phase and the expected outcomes.
+
+Legal snapshot: Responsible AI link and data policy.
+
+Login or single-use meeting link for customers to join Phase 2/3.
+
+Phase 1 — Discovery (seller-facing; public-data MVP)
+
+Goal
+Help the Korn Ferry user understand the customer quickly using public information and allow live note capture during discovery.
+
+Key features
+
+Organisation Card
+
+Name, sector, revenue, market signals, recent headlines, investor call excerpts and segment revenue candidates. Each datum has provenance and a confidence badge.
+
+Auto-suggest exposure
+
+Default option. Runs filings/IR slides/news parser and proposes exposure with editable assumptions. Shows snippet of source and confidence (green/amber/red). Seller edits as needed.
+
+Live note capture
+
+Freeform notes, structured fields (top challenges, stakeholders, timeline), and auto-transcribed call notes (transcription optional; no audio persisted). The seller can tag notes to metrics or evidence.
+
+Suggested jobs and KPIs
+
+Based on job-to-metric library, the app shows Korn Ferry jobs we do and recommended primary/supporting KPIs. Seller chooses or edits.
+
+Draft Value Hypothesis
+
+Quick creation flow: job, primary KPI, exposure, target, research design suggestion, and signed baseline placeholder (not locked until client confirms).
+
+Actions
+
+Accept suggested exposure, Edit assumptions, Ask client (send templated email), Save notes, Invite client to Phase 2.
+
+Evidence pane
+
+All public docs used and exact excerpts saved for audit.
+
+Deliverable
+
+Signed snapshot of discovery notes and suggested value hypothesis (not final until Phase 2 client confirmation).
+
+Phase 2 — Customer Alignment (customer-facing)
+
+Goal
+Let the customer clarify biggest challenges, decide what success looks like in 12 months, pick strategic KPIs (from Korn Ferry jobs or edit), and create a visual timeline of interventions and ownership.
+
+Key features
+
+Customer portal entry
+
+Invite link or portal login. Show organisation card and seller notes from Phase 1.
+
+Strategic challenge mapping
+
+Guided wizard: select top 3 business problems, map to Korn Ferry jobs we do, and explain why. Use plain language options.
+
+Define success
+
+For each problem the customer chooses a primary KPI and two supporting KPIs from the Job→Metric library. Customer can edit definitions and units. Defaults are Korn Ferry standard metrics and measurement methods.
+
+Exposure confirmation
+
+The app shows auto-suggested exposure and provenance. The customer must tick the I confirm checkbox and the portal sends a confirmation email. Only after that is the baseline locked. No audio is stored.
+
+Customer timeline and visual plan
+
+Drag-and-drop 12-month gantt with interventions, owners, milestones and leading indicators. The app validates required data owners and governance.
+
+Sign-off and governance
+
+Customer signs the Value Hypothesis; the app records the baseline, the governance cadence and the owners. If Tier 3 is needed, the app will auto-generate the Data Annex and queue Analytics.
+
+Export
+
+Customer receives an editable slide pack and the signed one-page Hypothesis.
+
+Deliverable
+
+A signed and live 12-month plan with baseline KPIs, governance and owners.
+
+Phase 3 — Value Realisation (customer-facing reporting)
+
+Goal
+Show baseline vs current measurements, compute financialised value, provide attribution and confidence, and generate a final board-grade report. Support looping back to Discovery to define next work.
+
+Key features
+
+Dashboard – Baseline vs Current
+
+Visualisation of primary and supporting KPIs: baseline, monthly trend, current value, delta, absolute/relative change and confidence. Each data point links to provenance.
+
+Financial appendix
+
+Year-by-year incremental cash flows, NPV, payback months, and sensitivity analysis for the core assumptions (exposure, unit value, realisation). Show full arithmetic steps.
+
+Attribution and model view
+
+Show the chosen attribution model and key parameters. Provide alternative attribution scenarios (low/medium/high) and display how NPV changes.
+
+Responsible AI & ethics
+
+If assessments/AI used, show Responsible AI checklist results and any remedial actions.
+
+Governance and next steps
+
+Progress on tracking plan, outstanding actions, interventions required. If results suggest a new problem or pivot, the app offers a “Loop to Discovery” button to restart Phase 1 with new context.
+
+Export final report
+
+One-click Word/PDF/PPTX final report with Executive Summary, Method, Results, Financial appendix, Evidence appendix and Analytics sign-off stamp for Tier 3.
+
+Archive and case library
+
+Store the final report and anonymised result for Korn Ferry case library.
+
+Deliverable
+
+Full audit trail and board-ready report with Analytics sign-off (for Tier 3).
+
+How — architecture, APIs, data model and workflows
+High level architecture
+
+Frontend: React single page app deployed on Replit (landing page + three functional portals).
+
+Backend: Python FastAPI or Flask (session handling, public data fetchers, RAG store, LLM/Codex agent orchestration, NPV engine, export generator).
+
+Vector index: FAISS or managed vector DB for RAG retrieval of session docs and public evidence.
+
+LLM: OpenAI or enterprise model for summarisation and narrative generation. Math and deterministic calculations done server-side.
+
+Storage: session store (temp), persistent DB for signed baselines, plans, evidence and archives. No audio storage.
+
+Analytics queue: internal queue system with tokenised signoff workflow and SLA enforcement.
+
+Key API endpoints (developer-ready)
+
+POST /api/discover {organisation, business_unit?} -> context_card + session_docs
+
+POST /api/auto_suggest_exposure {organisation, business_unit, parser_options?} -> suggested_exposure, provenance, confidence, assumptions
+
+POST /api/draft_hypothesis {job, primary_kpi, exposure, target, supporting_kpis} -> draft_hypothesis
+
+POST /api/send_confirmation_email {hypothesis_id, client_email} -> email_status
+
+POST /api/lock_baseline {hypothesis_id, confirmation_proof} -> locked_baseline
+
+GET /api/tracking_plan/{hypothesis_id} -> tracking_plan
+
+POST /api/update_tracking {hypothesis_id, month, owner, metric_values} -> status
+
+POST /api/build_report {hypothesis_id, mode: draft|final} -> report_payload (blocks if Tier3 with no Analytics signoff)
+
+POST /api/queue_analytics_review {hypothesis_id} -> analytics_ticket_id
+
+GET /api/analytics_status/{ticket_id} -> status
+
+POST /api/analytics_signoff {ticket_id, signoff_payload} -> signed_token
+
+GET /api/export/{hypothesis_id}?format=pptx|pdf|docx -> file stream (final only if signoff present)
+
+Data model (core entities)
+
+Organisation, BusinessUnit, SessionDoc, Hypothesis (id, job, primary_kpi, supporting_kpis, exposure, baseline_values, target_values, tier, status), TrackingPlan, Evidence, AnalyticsTicket, Report, User, Signature.
+
+Job→Metric library
+
+Structure: offering, job, primary_metric, primary_definition, unit, supporting_metrics[], preferred_research_design, translation_recipe, default_realisation_rate, sample_exposures. This feeds the Phase 2 KPI picklist.
+
+Analytics queue & sign-off workflow
+
+When queue_analytics_review is called, the backend packages Data Annex, evidence and calculation workbook and creates the ticket. The Analytics UI shows the ticket and required checks. Analytics sets signoff with confidence and signed token. Final exports require token verification.
+
+How — UX rules and guardrails
+
+Default Auto-suggest for exposure. Show provenance and confidence. Lock baseline only after client confirmation checkbox and email.
+
+No audio logging. Store transcriptions only if client explicitly consents in Phase 2 and sign baseline. But user asked no audio persisted; keep transcription ephemeral unless confirmed.
+
+Draft vs Final: treat all in-call numbers as draft until baseline locked and Analytics signoff for Tier 3. Label accordingly.
+
+Human-in-the-loop: the app must always surface the Responsible AI checklist when assessments/AI appear and require human confirmation for any Tier 3 final report.
+
+Transparency: always show calculation steps for financial numbers.
+
+Acceptance criteria (what success looks like)
+
+Phase 1 MVP: seller can discover organisation, auto-suggest exposure, edit assumptions, take notes and create a draft hypothesis in one call. Parser tests pass.
+
+Phase 2 MVP: customer portal accepts client edits, locks baseline only when client checks confirm and replies by email, timeline editor works and saves signed baseline.
+
+Phase 3 MVP: dashboard shows baseline vs current, computes NPV and payback with arithmetic, and exports final report that is blocked for Tier 3 until Analytics signoff.
+
+Governance: Analytics ticketing works and 48 working hour SLA enforced. Responsible AI checks block Tier 3 exports if incomplete.
+
+Security & Compliance: no audio stored; all evidence stored with provenance and accessible to Analytics.
