@@ -318,17 +318,14 @@ export class DbStorage implements IStorage {
 
   // Financial Projections
   async getFinancialProjections(projectId: number, scenario?: string): Promise<FinancialProjection[]> {
-    if (scenario) {
-      return await db.select().from(schema.financialProjections)
-        .where(and(
-          eq(schema.financialProjections.projectId, projectId),
-          eq(schema.financialProjections.scenario, scenario)
-        ))
-        .orderBy(schema.financialProjections.year);
-    }
-    return await db.select().from(schema.financialProjections)
+    const results = await db.select().from(schema.financialProjections)
       .where(eq(schema.financialProjections.projectId, projectId))
       .orderBy(schema.financialProjections.year);
+    
+    if (scenario) {
+      return results.filter(r => r.scenario === scenario);
+    }
+    return results;
   }
 
   async createFinancialProjection(projection: InsertFinancialProjection): Promise<FinancialProjection> {

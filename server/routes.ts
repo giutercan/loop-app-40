@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { storage } from "./storage";
+import { researchCompany } from "./ai";
 import { 
   insertProjectSchema,
   insertCompanyDataPointSchema,
@@ -69,6 +70,93 @@ export function registerRoutes(app: Express) {
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // AI Research
+  app.post("/api/projects/:projectId/research", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      let result;
+      try {
+        result = await researchCompany(project.companyName, project.sector || undefined);
+      } catch (aiError: any) {
+        return res.status(500).json({ 
+          error: "AI research failed",
+          details: aiError.message,
+          suggestion: "Please try again or add company data manually"
+        });
+      }
+
+      const existingDataPoints = await storage.getCompanyDataPoints(projectId);
+      const aiDataPoints = existingDataPoints.filter(
+        dp => dp.provenance && typeof dp.provenance === 'object' && 
+        'type' in dp.provenance && dp.provenance.type === 'ai_generated'
+      );
+      
+      for (const aiDp of aiDataPoints) {
+        await storage.deleteCompanyDataPoint(aiDp.id);
+      }
+
+      const existingHeadlines = await storage.getHeadlines(projectId);
+      const aiHeadlines = existingHeadlines.filter(
+        h => h.source === 'AI Research'
+      );
+      
+      for (const aiH of aiHeadlines) {
+        await storage.deleteHeadline(aiH.id);
+      }
+
+      const validatedDataPoints = [];
+      for (const dp of result.dataPoints) {
+        try {
+          const validated = insertCompanyDataPointSchema.parse({
+            projectId,
+            label: dp.label,
+            value: dp.value,
+            confidence: dp.confidence,
+            source: dp.source || "AI Research",
+            sourceUrl: null,
+            provenance: { type: "ai_generated", model: "gpt-5", timestamp: new Date().toISOString() }
+          });
+          validatedDataPoints.push(await storage.createCompanyDataPoint(validated));
+        } catch (validationError: any) {
+          console.error("Invalid data point from AI:", validationError.message, dp);
+        }
+      }
+
+      const validatedHeadlines = [];
+      for (const h of result.headlines) {
+        try {
+          const validated = insertHeadlineSchema.parse({
+            projectId,
+            title: h.title,
+            date: h.date,
+            source: h.source || "AI Research",
+            url: h.url || "",
+            excerpt: null
+          });
+          validatedHeadlines.push(await storage.createHeadline(validated));
+        } catch (validationError: any) {
+          console.error("Invalid headline from AI:", validationError.message, h);
+        }
+      }
+
+      res.json({
+        dataPoints: validatedDataPoints,
+        headlines: validatedHeadlines,
+        summary: `Successfully created ${validatedDataPoints.length} data points and ${validatedHeadlines.length} headlines`
+      });
+    } catch (error: any) {
+      res.status(500).json({ 
+        error: "An unexpected error occurred",
+        details: error.message 
+      });
     }
   });
 

@@ -11,7 +11,7 @@ import OrganisationCard from "@/components/OrganisationCard";
 import ValueHypothesisBuilder from "@/components/ValueHypothesisBuilder";
 import ProjectSelector from "@/components/ProjectSelector";
 import StatusBadge from "@/components/StatusBadge";
-import { ArrowLeft, Save, Send, FileText, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -43,6 +43,11 @@ export default function Discovery() {
 
   const { data: notes } = useQuery<DiscoveryNotes>({
     queryKey: ["/api/projects", selectedProjectId, "discovery-notes"],
+    enabled: !!selectedProjectId,
+  });
+
+  const { data: valueHypotheses = [] } = useQuery<any[]>({
+    queryKey: ["/api/projects", selectedProjectId, "value-hypotheses"],
     enabled: !!selectedProjectId,
   });
 
@@ -87,6 +92,36 @@ export default function Discovery() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId] });
+    },
+  });
+
+  const researchCompanyMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedProjectId) return;
+      const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/research`, {});
+      return await res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "data-points"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "headlines"] });
+      toast({
+        title: "Company research complete",
+        description: data?.summary || "AI has populated company data and headlines.",
+      });
+    },
+    onError: async (error: any) => {
+      let errorMessage = "An error occurred during research.";
+      try {
+        const errorData = JSON.parse(error.message);
+        errorMessage = errorData.details || errorData.error || errorMessage;
+      } catch {
+        errorMessage = error.message;
+      }
+      toast({
+        title: "Research failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
     },
   });
 
@@ -174,6 +209,25 @@ export default function Discovery() {
           </TabsList>
 
           <TabsContent value="organisation" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>AI-Powered Company Research</CardTitle>
+                <CardDescription>
+                  Automatically research and populate company data using AI
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  onClick={() => researchCompanyMutation.mutate()}
+                  disabled={researchCompanyMutation.isPending || !selectedProjectId}
+                  data-testid="button-ai-research"
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  {researchCompanyMutation.isPending ? "Researching..." : "AI Research Company"}
+                </Button>
+              </CardContent>
+            </Card>
+
             {dataPoints.length > 0 && (
               <OrganisationCard
                 name={project?.companyName || ""}
@@ -277,7 +331,44 @@ export default function Discovery() {
             </div>
           </TabsContent>
 
-          <TabsContent value="hypothesis">
+          <TabsContent value="hypothesis" className="space-y-6">
+            {valueHypotheses.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Saved Value Hypotheses</CardTitle>
+                  <CardDescription>
+                    {valueHypotheses.length} hypothesis{valueHypotheses.length !== 1 ? 'es' : ''} created
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {valueHypotheses.map((hyp: any, idx: number) => (
+                      <div
+                        key={hyp.id}
+                        className="p-4 border rounded-md space-y-2"
+                        data-testid={`hypothesis-${idx}`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="font-medium">Job: {hyp.job}</div>
+                            <div className="text-sm text-muted-foreground mt-1">
+                              KPI: {hyp.primaryKpi} | Exposure: {hyp.exposure} | Target: {hyp.target}
+                            </div>
+                            {hyp.researchDesign && (
+                              <div className="text-sm text-muted-foreground mt-2">
+                                Research Design: {hyp.researchDesign}
+                              </div>
+                            )}
+                          </div>
+                          <StatusBadge status={hyp.status || "draft"} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            
             {selectedProjectId && <ValueHypothesisBuilder projectId={selectedProjectId} />}
           </TabsContent>
         </Tabs>

@@ -69,7 +69,34 @@ export default function ValueHypothesisBuilder({ projectId }: ValueHypothesisBui
     },
   });
 
+  const validateCurrentStep = (): boolean => {
+    switch (currentStep) {
+      case 1:
+        return formData.job.trim() !== "";
+      case 2:
+        return formData.primaryKPI.trim() !== "";
+      case 3:
+        const exposure = parseFloat(formData.exposure);
+        return formData.exposure.trim() !== "" && !isNaN(exposure) && exposure > 0;
+      case 4:
+        return formData.target.trim() !== "";
+      case 5:
+        return true;
+      default:
+        return false;
+    }
+  };
+
   const handleNext = () => {
+    if (!validateCurrentStep()) {
+      toast({
+        title: "Validation error",
+        description: "Please complete all required fields before proceeding.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (currentStep < 5) {
       setCurrentStep(currentStep + 1);
     } else {
