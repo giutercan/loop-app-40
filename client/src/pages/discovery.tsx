@@ -99,7 +99,7 @@ export default function Discovery() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="border rounded-lg p-4 bg-amber-500/10 border-amber-500/20">
+                <div className="border rounded-lg p-4 bg-[#8DC63F]/10 border-[#8DC63F]/20">
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <p className="font-semibold mb-1">Estimated Annual Cost of Turnover</p>

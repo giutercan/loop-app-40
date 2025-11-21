@@ -45,13 +45,13 @@ export default function Realisation() {
       </header>
 
       {!analyticsSignedOff && (
-        <div className="bg-amber-500/10 border-b border-amber-500/20">
+        <div className="bg-[#8DC63F]/10 border-b border-[#8DC63F]/20">
           <div className="container mx-auto max-w-7xl px-4 lg:px-8 py-4">
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div className="flex items-start gap-3">
-                <Clock className="w-5 h-5 text-amber-600 mt-0.5" />
+                <Clock className="w-5 h-5 text-[#00634F] mt-0.5" />
                 <div>
-                  <p className="font-medium text-amber-600 dark:text-amber-400">
+                  <p className="font-medium text-[#00634F] dark:text-[#8DC63F]">
                     Analytics Review Pending
                   </p>
                   <p className="text-sm text-muted-foreground">
@@ -59,7 +59,7 @@ export default function Realisation() {
                   </p>
                 </div>
               </div>
-              <Badge className="bg-amber-500 hover:bg-amber-600 text-white">
+              <Badge className="bg-[#8DC63F] hover:bg-[#8DC63F]/90 text-white">
                 Reviewer: Sarah Chen
               </Badge>
             </div>
@@ -244,11 +244,11 @@ export default function Realisation() {
               </CardHeader>
               <CardContent className="space-y-6">
                 {analyticsSignedOff ? (
-                  <div className="p-6 bg-green-500/10 border border-green-500/20 rounded-lg">
+                  <div className="p-6 bg-[#05C690]/10 border border-[#05C690]/20 rounded-lg">
                     <div className="flex items-start gap-3 mb-4">
-                      <CheckCircle2 className="w-6 h-6 text-green-600" />
+                      <CheckCircle2 className="w-6 h-6 text-[#009B77]" />
                       <div>
-                        <p className="font-semibold text-green-600 dark:text-green-400 mb-1">
+                        <p className="font-semibold text-[#009B77] dark:text-[#05C690] mb-1">
                           Analytics Sign-off Complete
                         </p>
                         <p className="text-sm text-muted-foreground">
@@ -261,11 +261,11 @@ export default function Realisation() {
                     </div>
                   </div>
                 ) : (
-                  <div className="p-6 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                  <div className="p-6 bg-[#8DC63F]/10 border border-[#8DC63F]/20 rounded-lg">
                     <div className="flex items-start gap-3">
-                      <Clock className="w-6 h-6 text-amber-600" />
+                      <Clock className="w-6 h-6 text-[#00634F]" />
                       <div>
-                        <p className="font-semibold text-amber-600 dark:text-amber-400 mb-1">
+                        <p className="font-semibold text-[#00634F] dark:text-[#8DC63F] mb-1">
                           Awaiting Analytics Sign-off
                         </p>
                         <p className="text-sm text-muted-foreground mb-3">

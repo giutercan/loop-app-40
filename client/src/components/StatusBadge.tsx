@@ -11,17 +11,17 @@ const statusConfig = {
   draft: {
     icon: FileEdit,
     label: "DRAFT",
-    className: "bg-amber-500 hover:bg-amber-600 text-white border-amber-600"
+    className: "bg-[#8DC63F] hover:bg-[#8DC63F]/90 text-white border-[#8DC63F]"
   },
   locked: {
     icon: Lock,
     label: "LOCKED",
-    className: "bg-green-600 hover:bg-green-700 text-white border-green-700"
+    className: "bg-[#05C690] hover:bg-[#009B77] text-white border-[#009B77]"
   },
   pending: {
     icon: Clock,
     label: "PENDING REVIEW",
-    className: "bg-blue-600 hover:bg-blue-700 text-white border-blue-700"
+    className: "bg-[#00ADBB] hover:bg-[#00ADBB]/90 text-white border-[#00ADBB]"
   }
 };
 

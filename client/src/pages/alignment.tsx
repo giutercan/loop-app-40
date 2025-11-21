@@ -94,7 +94,7 @@ export default function Alignment() {
           </CardContent>
         </Card>
 
-        <Card className={baselineLocked ? "border-green-600 border-2" : "border-amber-500 border-2"}>
+        <Card className={baselineLocked ? "border-[#05C690] border-2" : "border-[#8DC63F] border-2"}>
           <CardHeader>
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -107,12 +107,12 @@ export default function Alignment() {
                 </CardDescription>
               </div>
               {baselineLocked ? (
-                <Badge className="bg-green-600 hover:bg-green-700 text-white">
+                <Badge className="bg-[#05C690] hover:bg-[#009B77] text-white">
                   <CheckCircle2 className="w-4 h-4 mr-1" />
                   Locked
                 </Badge>
               ) : (
-                <Badge className="bg-amber-500 hover:bg-amber-600 text-white">
+                <Badge className="bg-[#8DC63F] hover:bg-[#8DC63F]/90 text-white">
                   Pending Confirmation
                 </Badge>
               )}
@@ -179,8 +179,8 @@ export default function Alignment() {
                 </Button>
 
                 {emailSent && !baselineLocked && (
-                  <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                    <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-1">
+                  <div className="p-4 bg-[#00ADBB]/10 border border-[#00ADBB]/20 rounded-lg">
+                    <p className="text-sm font-medium text-[#005971] dark:text-[#00ADBB] mb-1">
                       Confirmation email sent
                     </p>
                     <p className="text-sm text-muted-foreground">
@@ -192,11 +192,11 @@ export default function Alignment() {
             )}
 
             {baselineLocked && (
-              <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+              <div className="p-4 bg-[#05C690]/10 border border-[#05C690]/20 rounded-lg">
                 <div className="flex items-start gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
+                  <CheckCircle2 className="w-5 h-5 text-[#009B77] mt-0.5" />
                   <div>
-                    <p className="font-medium text-green-600 dark:text-green-400 mb-1">
+                    <p className="font-medium text-[#009B77] dark:text-[#05C690] mb-1">
                       Baseline Locked
                     </p>
                     <p className="text-sm text-muted-foreground">
