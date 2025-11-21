@@ -6,22 +6,140 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import StatusBadge from "@/components/StatusBadge";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
+import ProjectSelector from "@/components/ProjectSelector";
 import { ArrowLeft, Lock, Mail, CheckCircle2, Calendar } from "lucide-react";
-import { Link } from "wouter";
-import { useState } from "react";
+import { Link, useLocation } from "wouter";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import type { Project, StrategicChallenge, Baseline } from "@shared/schema";
+
+const DEFAULT_CHALLENGES = [
+  { title: "Leadership Pipeline", description: "Building strong succession plans and developing future leaders" },
+  { title: "Employee Retention", description: "Reducing turnover and improving employee engagement" },
+  { title: "Talent Acquisition", description: "Finding and hiring top talent faster" },
+  { title: "Culture Transformation", description: "Shifting organizational culture to support growth" }
+];
 
 export default function Alignment() {
+  const [location] = useLocation();
+  const { toast } = useToast();
+  const urlParams = new URLSearchParams(location.split('?')[1]);
+  const projectIdParam = urlParams.get('project');
+  const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>(
+    projectIdParam ? parseInt(projectIdParam) : undefined
+  );
   const [confirmBaseline, setConfirmBaseline] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
-  const [baselineLocked, setBaselineLocked] = useState(false);
+
+  const { data: project } = useQuery<Project>({
+    queryKey: ["/api/projects", selectedProjectId],
+    enabled: !!selectedProjectId,
+  });
+
+  const { data: challenges = [], isSuccess: challengesLoaded } = useQuery<StrategicChallenge[]>({
+    queryKey: ["/api/projects", selectedProjectId, "strategic-challenges"],
+    enabled: !!selectedProjectId,
+  });
+
+  const { data: baselines = [] } = useQuery<Baseline[]>({
+    queryKey: ["/api/projects", selectedProjectId, "baselines"],
+    enabled: !!selectedProjectId,
+  });
+
+  const baseline = baselines[0];
+  const baselineLocked = baseline?.isLocked || false;
+
+  const [challengesInitialized, setChallengesInitialized] = useState(false);
+
+  useEffect(() => {
+    async function initializeChallenges() {
+      if (!selectedProjectId || !challengesLoaded || challengesInitialized) return;
+      if (challenges.length > 0) {
+        setChallengesInitialized(true);
+        return;
+      }
+      
+      for (let i = 0; i < DEFAULT_CHALLENGES.length; i++) {
+        const challenge = DEFAULT_CHALLENGES[i];
+        try {
+          await apiRequest("POST", `/api/projects/${selectedProjectId}/strategic-challenges`, {
+            title: challenge.title,
+            description: challenge.description,
+            selected: false,
+            sortOrder: i
+          });
+        } catch (error) {
+          console.error("Failed to create challenge:", error);
+        }
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "strategic-challenges"] });
+      setChallengesInitialized(true);
+    }
+    
+    initializeChallenges();
+  }, [selectedProjectId, challengesLoaded, challenges.length, challengesInitialized]);
+
+  useEffect(() => {
+    setChallengesInitialized(false);
+  }, [selectedProjectId]);
+
+  const toggleChallengeMutation = useMutation({
+    mutationFn: async ({ id, selected }: { id: number; selected: boolean }) => {
+      const res = await apiRequest("PATCH", `/api/strategic-challenges/${id}`, { selected });
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "strategic-challenges"] });
+    },
+  });
+
+  const lockBaselineMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedProjectId) throw new Error("No project selected");
+      
+      if (!baseline) {
+        const createRes = await apiRequest("POST", `/api/projects/${selectedProjectId}/baselines`, {
+          exposure: "0",
+          confidence: "medium",
+          sources: [],
+        });
+        const newBaseline = await createRes.json();
+        
+        const updateRes = await apiRequest("PATCH", `/api/baselines/${newBaseline.id}`, {
+          isLocked: true,
+          lockedAt: new Date().toISOString(),
+          confirmedByEmail: "customer@example.com",
+        });
+        return await updateRes.json();
+      }
+      
+      const res = await apiRequest("PATCH", `/api/baselines/${baseline.id}`, {
+        isLocked: true,
+        lockedAt: new Date().toISOString(),
+        confirmedByEmail: "customer@example.com",
+      });
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "baselines"] });
+      toast({
+        title: "Baseline locked",
+        description: "The baseline has been confirmed and locked successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to lock baseline",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleConfirmBaseline = () => {
     if (confirmBaseline) {
-      setEmailSent(true);
-      setTimeout(() => {
-        setBaselineLocked(true);
-        console.log('Baseline locked after email confirmation');
-      }, 2000);
+      lockBaselineMutation.mutate();
     }
   };
 
@@ -45,16 +163,19 @@ export default function Alignment() {
                     <StatusBadge status="draft" />
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground">Acme Corporation Portal</p>
+                <p className="text-sm text-muted-foreground">{project?.companyName || "No project selected"}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <Button variant="outline" data-testid="button-save-progress">
-                Save Progress
-              </Button>
-              <Button disabled={!baselineLocked} data-testid="button-finalize">
-                Finalize Plan
-              </Button>
+              <ProjectSelector
+                currentProjectId={selectedProjectId}
+                onProjectChange={(p) => setSelectedProjectId(p.id)}
+              />
+              <Link href={`/realisation?project=${selectedProjectId}`}>
+                <Button disabled={!baselineLocked} data-testid="button-finalize">
+                  Move to Realisation
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -70,19 +191,25 @@ export default function Alignment() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[
-                { title: "Leadership Pipeline", description: "Building strong succession plans and developing future leaders" },
-                { title: "Employee Retention", description: "Reducing turnover and improving employee engagement" },
-                { title: "Talent Acquisition", description: "Finding and hiring top talent faster" },
-                { title: "Culture Transformation", description: "Shifting organizational culture to support growth" }
-              ].map((challenge, idx) => (
+              {challenges.map((challenge, idx) => (
                 <Card 
-                  key={idx} 
-                  className="hover-elevate cursor-pointer border-2"
+                  key={challenge.id} 
+                  className={`hover-elevate cursor-pointer border-2 ${
+                    challenge.selected ? 'border-primary bg-primary/5' : ''
+                  }`}
+                  onClick={() => {
+                    toggleChallengeMutation.mutate({
+                      id: challenge.id,
+                      selected: !challenge.selected
+                    });
+                  }}
                   data-testid={`card-challenge-${idx}`}
                 >
                   <CardHeader>
-                    <CardTitle className="text-lg">{challenge.title}</CardTitle>
+                    <CardTitle className="text-lg flex items-center justify-between">
+                      {challenge.title}
+                      {challenge.selected && <CheckCircle2 className="w-5 h-5 text-primary" />}
+                    </CardTitle>
                     <CardDescription>{challenge.description}</CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -124,22 +251,28 @@ export default function Alignment() {
                 <h3 className="font-semibold">Exposure Data with Provenance</h3>
               </div>
               <div className="p-4 space-y-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Annual Cost of Turnover</p>
-                    <p className="text-3xl font-bold font-mono">$12.5M</p>
-                  </div>
-                  <ConfidenceBadge level="high" />
-                </div>
-                <Separator />
-                <div className="space-y-2 text-sm">
-                  <p className="font-medium">Sources:</p>
-                  <ul className="space-y-1 text-muted-foreground">
-                    <li>• Q3 2024 Earnings Call Transcript</li>
-                    <li>• SEC Form 10-K Annual Report</li>
-                    <li>• Internal HRIS data (provided by client)</li>
-                  </ul>
-                </div>
+                {baseline ? (
+                  <>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Exposure</p>
+                        <p className="text-3xl font-bold font-mono">${parseFloat(baseline.exposure).toLocaleString()}</p>
+                      </div>
+                      <ConfidenceBadge level={baseline.confidence as "high" | "medium" | "low"} />
+                    </div>
+                    <Separator />
+                    <div className="space-y-2 text-sm">
+                      <p className="font-medium">Sources:</p>
+                      <ul className="space-y-1 text-muted-foreground">
+                        {(baseline.sources as string[])?.map((source, idx) => (
+                          <li key={idx}>• {source}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-muted-foreground">No baseline data available</p>
+                )}
               </div>
             </div>
 
@@ -170,28 +303,17 @@ export default function Alignment() {
 
                 <Button
                   onClick={handleConfirmBaseline}
-                  disabled={!confirmBaseline || emailSent}
+                  disabled={!confirmBaseline || lockBaselineMutation.isPending}
                   className="w-full"
                   data-testid="button-confirm-and-send"
                 >
                   <Mail className="w-4 h-4 mr-2" />
-                  {emailSent ? "Confirmation Email Sent" : "Confirm & Send Email"}
+                  {lockBaselineMutation.isPending ? "Locking..." : "Confirm & Lock Baseline"}
                 </Button>
-
-                {emailSent && !baselineLocked && (
-                  <div className="p-4 bg-[#00ADBB]/10 border border-[#00ADBB]/20 rounded-lg">
-                    <p className="text-sm font-medium text-[#005971] dark:text-[#00ADBB] mb-1">
-                      Confirmation email sent
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Please check your email and click the confirmation link. The baseline will be locked once confirmed.
-                    </p>
-                  </div>
-                )}
               </div>
             )}
 
-            {baselineLocked && (
+            {baselineLocked && baseline && (
               <div className="p-4 bg-[#05C690]/10 border border-[#05C690]/20 rounded-lg">
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="w-5 h-5 text-[#009B77] mt-0.5" />
@@ -200,11 +322,13 @@ export default function Alignment() {
                       Baseline Locked
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Confirmed on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
+                      Confirmed on {baseline.lockedAt ? new Date(baseline.lockedAt).toLocaleDateString() : new Date().toLocaleDateString()}
                     </p>
-                    <p className="text-sm text-muted-foreground">
-                      Email confirmation received from customer
-                    </p>
+                    {baseline.confirmedByEmail && (
+                      <p className="text-sm text-muted-foreground">
+                        Email confirmation received from {baseline.confirmedByEmail}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
