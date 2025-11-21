@@ -4,12 +4,39 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import KPICard from "@/components/KPICard";
 import FinancialAppendix from "@/components/FinancialAppendix";
 import StatusBadge from "@/components/StatusBadge";
+import ProjectSelector from "@/components/ProjectSelector";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Download, FileText, Clock, CheckCircle2 } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import type { Project, AnalyticsReview, Kpi } from "@shared/schema";
 
 export default function Realisation() {
-  const analyticsSignedOff = false;
+  const [location] = useLocation();
+  const urlParams = new URLSearchParams(location.split('?')[1]);
+  const projectIdParam = urlParams.get('project');
+  const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>(
+    projectIdParam ? parseInt(projectIdParam) : undefined
+  );
+
+  const { data: project } = useQuery<Project>({
+    queryKey: ["/api/projects", selectedProjectId],
+    enabled: !!selectedProjectId,
+  });
+
+  const { data: analyticsReviews = [] } = useQuery<AnalyticsReview[]>({
+    queryKey: ["/api/projects", selectedProjectId, "analytics-reviews"],
+    enabled: !!selectedProjectId,
+  });
+
+  const { data: kpis = [] } = useQuery<Kpi[]>({
+    queryKey: ["/api/projects", selectedProjectId, "kpis"],
+    enabled: !!selectedProjectId,
+  });
+
+  const analyticsReview = analyticsReviews[0];
+  const analyticsSignedOff = analyticsReview?.status === "approved";
 
   return (
     <div className="min-h-screen bg-background">
@@ -27,10 +54,16 @@ export default function Realisation() {
                   <h1 className="text-xl font-bold">Phase 3: Value Realisation</h1>
                   <StatusBadge status={analyticsSignedOff ? "locked" : "pending"} />
                 </div>
-                <p className="text-sm text-muted-foreground">Acme Corporation - Month 7</p>
+                <p className="text-sm text-muted-foreground">
+                  {project?.companyName || "No project selected"} - {project?.currentPhase || "Discovery"}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <ProjectSelector
+                currentProjectId={selectedProjectId}
+                onProjectChange={(p) => setSelectedProjectId(p.id)}
+              />
               <Button variant="outline" data-testid="button-export-draft">
                 <Download className="w-4 h-4 mr-2" />
                 Export Draft
@@ -55,13 +88,15 @@ export default function Realisation() {
                     Analytics Review Pending
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Tier 3 review in progress • Ticket #A-2847 • SLA: 18 hours remaining
+                    Tier 3 review {analyticsReview ? `• ${analyticsReview.status}` : "pending"}
                   </p>
                 </div>
               </div>
-              <Badge className="bg-[#8DC63F] hover:bg-[#8DC63F]/90 text-white">
-                Reviewer: Sarah Chen
-              </Badge>
+              {analyticsReview && (
+                <Badge className="bg-[#8DC63F] hover:bg-[#8DC63F]/90 text-white">
+                  Reviewer: {analyticsReview.reviewer || "Pending assignment"}
+                </Badge>
+              )}
             </div>
           </div>
         </div>
