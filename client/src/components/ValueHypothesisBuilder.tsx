@@ -6,7 +6,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
-import { CheckCircle2, Circle } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { CheckCircle2 } from "lucide-react";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 
 const steps = [
   { id: 1, name: "Select Job" },
@@ -16,7 +19,12 @@ const steps = [
   { id: 5, name: "Review" }
 ];
 
-export default function ValueHypothesisBuilder() {
+interface ValueHypothesisBuilderProps {
+  projectId: number;
+}
+
+export default function ValueHypothesisBuilder({ projectId }: ValueHypothesisBuilderProps) {
+  const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     job: "",
@@ -26,17 +34,52 @@ export default function ValueHypothesisBuilder() {
     researchDesign: ""
   });
 
+  const createHypothesisMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/projects/${projectId}/value-hypotheses`, {
+        job: formData.job,
+        primaryKpi: formData.primaryKPI,
+        exposure: formData.exposure,
+        target: formData.target,
+        researchDesign: formData.researchDesign || null,
+      });
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "value-hypotheses"] });
+      toast({
+        title: "Value hypothesis created",
+        description: "Your hypothesis has been saved successfully.",
+      });
+      setFormData({
+        job: "",
+        primaryKPI: "",
+        exposure: "",
+        target: "",
+        researchDesign: ""
+      });
+      setCurrentStep(1);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleNext = () => {
     if (currentStep < 5) {
       setCurrentStep(currentStep + 1);
-      console.log('Next step:', currentStep + 1);
+    } else {
+      createHypothesisMutation.mutate();
     }
   };
 
   const handleBack = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
-      console.log('Previous step:', currentStep - 1);
     }
   };
 
@@ -245,9 +288,12 @@ export default function ValueHypothesisBuilder() {
               </Button>
               <Button 
                 onClick={handleNext}
+                disabled={createHypothesisMutation.isPending}
                 data-testid="button-next"
               >
-                {currentStep === 5 ? "Create Hypothesis" : "Next"}
+                {currentStep === 5 
+                  ? (createHypothesisMutation.isPending ? "Creating..." : "Create Hypothesis") 
+                  : "Next"}
               </Button>
             </div>
           </CardContent>

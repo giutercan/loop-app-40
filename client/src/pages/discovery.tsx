@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,20 +9,125 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import OrganisationCard from "@/components/OrganisationCard";
 import ValueHypothesisBuilder from "@/components/ValueHypothesisBuilder";
+import ProjectSelector from "@/components/ProjectSelector";
 import StatusBadge from "@/components/StatusBadge";
-import { ArrowLeft, Save, Send, FileText } from "lucide-react";
-import { Link } from "wouter";
-import { useState } from "react";
+import { ArrowLeft, Save, Send, FileText, Plus, Trash2 } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import type { Project, CompanyDataPoint, Headline, DiscoveryNotes } from "@shared/schema";
 
 export default function Discovery() {
-  const [notes, setNotes] = useState("");
-  const [stakeholder, setStakeholder] = useState("");
+  const [location] = useLocation();
+  const { toast } = useToast();
+  const urlParams = new URLSearchParams(location.split('?')[1]);
+  const projectIdParam = urlParams.get('project');
+  const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>(
+    projectIdParam ? parseInt(projectIdParam) : undefined
+  );
+
+  const { data: project } = useQuery<Project>({
+    queryKey: ["/api/projects", selectedProjectId],
+    enabled: !!selectedProjectId,
+  });
+
+  const { data: dataPoints = [] } = useQuery<CompanyDataPoint[]>({
+    queryKey: ["/api/projects", selectedProjectId, "data-points"],
+    enabled: !!selectedProjectId,
+  });
+
+  const { data: headlines = [] } = useQuery<Headline[]>({
+    queryKey: ["/api/projects", selectedProjectId, "headlines"],
+    enabled: !!selectedProjectId,
+  });
+
+  const { data: notes } = useQuery<DiscoveryNotes>({
+    queryKey: ["/api/projects", selectedProjectId, "discovery-notes"],
+    enabled: !!selectedProjectId,
+  });
+
+  const [localNotes, setLocalNotes] = useState({
+    freeformNotes: "",
+    keyStakeholder: "",
+    topChallenges: "",
+    timeline: "",
+  });
+
+  useEffect(() => {
+    if (notes) {
+      setLocalNotes({
+        freeformNotes: notes.freeformNotes || "",
+        keyStakeholder: notes.keyStakeholder || "",
+        topChallenges: notes.topChallenges || "",
+        timeline: notes.timeline || "",
+      });
+    }
+  }, [notes]);
+
+  const saveNotesMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedProjectId) return;
+      const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/discovery-notes`, localNotes);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "discovery-notes"] });
+      toast({
+        title: "Notes saved",
+        description: "Your discovery notes have been saved successfully.",
+      });
+    },
+  });
+
+  const updateProjectPhaseMutation = useMutation({
+    mutationFn: async (phase: string) => {
+      if (!selectedProjectId) return;
+      const res = await apiRequest("PATCH", `/api/projects/${selectedProjectId}`, { currentPhase: phase });
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId] });
+    },
+  });
+
+  const handleSaveDraft = () => {
+    saveNotesMutation.mutate();
+  };
+
+  const handleSendToClient = () => {
+    updateProjectPhaseMutation.mutate("alignment");
+    toast({
+      title: "Sent to client",
+      description: "Discovery phase completed. Moving to Alignment phase.",
+    });
+  };
+
+  if (!selectedProjectId) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <Card className="max-w-2xl w-full">
+          <CardHeader>
+            <CardTitle className="text-2xl">Welcome to Korn Ferry Value Lifecycle</CardTitle>
+            <CardDescription>
+              Select an existing project or create a new one to get started
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ProjectSelector
+              currentProjectId={selectedProjectId}
+              onProjectChange={(p) => setSelectedProjectId(p.id)}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto max-w-7xl px-4 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
+          <div className="flex h-16 items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-4">
               <Link href="/">
                 <Button variant="ghost" size="icon" data-testid="button-back">
@@ -32,15 +139,24 @@ export default function Discovery() {
                   <h1 className="text-xl font-bold">Phase 1: Discovery</h1>
                   <StatusBadge status="draft" />
                 </div>
-                <p className="text-sm text-muted-foreground">Acme Corporation Session</p>
+                <p className="text-sm text-muted-foreground">{project?.companyName}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <Button variant="outline" data-testid="button-save-draft">
+              <ProjectSelector
+                currentProjectId={selectedProjectId}
+                onProjectChange={(p) => setSelectedProjectId(p.id)}
+              />
+              <Button
+                variant="outline"
+                onClick={handleSaveDraft}
+                disabled={saveNotesMutation.isPending}
+                data-testid="button-save-draft"
+              >
                 <Save className="w-4 h-4 mr-2" />
-                Save Draft
+                {saveNotesMutation.isPending ? "Saving..." : "Save Draft"}
               </Button>
-              <Button data-testid="button-send-to-client">
+              <Button onClick={handleSendToClient} data-testid="button-send-to-client">
                 <Send className="w-4 h-4 mr-2" />
                 Send to Client
               </Button>
@@ -58,74 +174,44 @@ export default function Discovery() {
           </TabsList>
 
           <TabsContent value="organisation" className="space-y-6">
-            <OrganisationCard
-              name="Acme Corporation"
-              sector="Technology & Enterprise Software"
-              dataPoints={[
-                { label: "Annual Revenue", value: "$2.4B", confidence: "high", source: "Q3 2024 Earnings Report" },
-                { label: "Employee Count", value: "12,500", confidence: "high", source: "LinkedIn Data" },
-                { label: "Market Cap", value: "$18.7B", confidence: "medium", source: "NYSE Real-time" },
-                { label: "Revenue Growth", value: "+24% YoY", confidence: "high", source: "Investor Presentation" }
-              ]}
-              revenueData={[
-                { month: "Jan", revenue: 180 },
-                { month: "Feb", revenue: 195 },
-                { month: "Mar", revenue: 210 },
-                { month: "Apr", revenue: 205 },
-                { month: "May", revenue: 220 },
-                { month: "Jun", revenue: 240 }
-              ]}
-              headlines={[
-                {
-                  title: "Acme Corporation announces strategic partnership with major cloud provider",
-                  date: "2 days ago",
-                  source: "TechCrunch",
-                  url: "#"
-                },
-                {
-                  title: "Q3 earnings beat expectations, stock rises 12%",
-                  date: "1 week ago",
-                  source: "Reuters",
-                  url: "#"
-                }
-              ]}
-            />
+            {dataPoints.length > 0 && (
+              <OrganisationCard
+                name={project?.companyName || ""}
+                sector={project?.sector || ""}
+                dataPoints={dataPoints.map(dp => ({
+                  label: dp.label,
+                  value: dp.value,
+                  confidence: dp.confidence as "high" | "medium" | "low",
+                  source: dp.source || undefined,
+                }))}
+                headlines={headlines.map(h => ({
+                  title: h.title,
+                  date: h.date,
+                  source: h.source,
+                  url: h.url,
+                }))}
+              />
+            )}
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Auto-Suggested Exposure</CardTitle>
-                <CardDescription>
-                  Based on public filings and investor communications
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="border rounded-lg p-4 bg-[#8DC63F]/10 border-[#8DC63F]/20">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <p className="font-semibold mb-1">Estimated Annual Cost of Turnover</p>
-                      <p className="text-3xl font-bold font-mono">$12.5M</p>
-                    </div>
-                    <StatusBadge status="draft" />
-                  </div>
-                  <Separator className="my-3" />
-                  <div className="space-y-2 text-sm">
-                    <p className="font-medium">Key Assumptions:</p>
-                    <ul className="space-y-1 text-muted-foreground ml-4">
-                      <li>• Current turnover rate: 18.5% (from earnings call)</li>
-                      <li>• Average replacement cost: $85,000 per employee</li>
-                      <li>• Total affected headcount: 12,500 employees</li>
-                    </ul>
-                    <p className="text-xs text-muted-foreground pt-2">
-                      Source: Q3 2024 Earnings Call Transcript, SEC 10-K Filing
-                    </p>
-                  </div>
-                  <div className="flex gap-3 mt-4">
-                    <Button size="sm" data-testid="button-accept-exposure">Accept</Button>
-                    <Button size="sm" variant="outline" data-testid="button-edit-exposure">Edit Assumptions</Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            {dataPoints.length === 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Company Information</CardTitle>
+                  <CardDescription>
+                    Add data points about {project?.companyName}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    No data points yet. Use AI research or add manually.
+                  </p>
+                  <Button data-testid="button-add-data-point">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Data Point
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="notes" className="space-y-6">
@@ -139,11 +225,13 @@ export default function Discovery() {
                   <Textarea
                     placeholder="Start typing your notes here..."
                     className="min-h-[400px] resize-none"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
+                    value={localNotes.freeformNotes}
+                    onChange={(e) => setLocalNotes({ ...localNotes, freeformNotes: e.target.value })}
                     data-testid="textarea-notes"
                   />
-                  <p className="text-xs text-muted-foreground mt-2">Auto-saved • Last saved 2 minutes ago</p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Changes are saved when you click Save Draft
+                  </p>
                 </CardContent>
               </Card>
 
@@ -158,8 +246,8 @@ export default function Discovery() {
                     <Input
                       id="stakeholder"
                       placeholder="Name, Title"
-                      value={stakeholder}
-                      onChange={(e) => setStakeholder(e.target.value)}
+                      value={localNotes.keyStakeholder}
+                      onChange={(e) => setLocalNotes({ ...localNotes, keyStakeholder: e.target.value })}
                       data-testid="input-stakeholder"
                     />
                   </div>
@@ -169,6 +257,8 @@ export default function Discovery() {
                       id="challenges"
                       placeholder="List main challenges..."
                       className="resize-none"
+                      value={localNotes.topChallenges}
+                      onChange={(e) => setLocalNotes({ ...localNotes, topChallenges: e.target.value })}
                       data-testid="textarea-challenges"
                     />
                   </div>
@@ -177,46 +267,18 @@ export default function Discovery() {
                     <Input
                       id="timeline"
                       placeholder="Expected timeline"
+                      value={localNotes.timeline}
+                      onChange={(e) => setLocalNotes({ ...localNotes, timeline: e.target.value })}
                       data-testid="input-timeline"
                     />
                   </div>
                 </CardContent>
               </Card>
             </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="w-5 h-5" />
-                  Evidence & Provenance
-                </CardTitle>
-                <CardDescription>All public documents used in this analysis</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {[
-                    { title: "Q3 2024 Earnings Call Transcript", date: "Oct 15, 2024", excerpt: "...turnover has been a challenge, currently at 18.5%..." },
-                    { title: "SEC Form 10-K Annual Report", date: "Dec 31, 2023", excerpt: "...total workforce of approximately 12,500 employees..." },
-                    { title: "Investor Presentation Q3 2024", date: "Oct 20, 2024", excerpt: "...revenue growth of 24% year-over-year..." }
-                  ].map((doc, idx) => (
-                    <div key={idx} className="border rounded-lg p-4" data-testid={`evidence-${idx}`}>
-                      <div className="flex justify-between items-start mb-2">
-                        <p className="font-medium">{doc.title}</p>
-                        <p className="text-xs text-muted-foreground">{doc.date}</p>
-                      </div>
-                      <p className="text-sm text-muted-foreground italic">{doc.excerpt}</p>
-                      <Button size="sm" variant="ghost" className="px-0 mt-2" data-testid={`button-view-doc-${idx}`}>
-                        View Full Document →
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
 
           <TabsContent value="hypothesis">
-            <ValueHypothesisBuilder />
+            {selectedProjectId && <ValueHypothesisBuilder projectId={selectedProjectId} />}
           </TabsContent>
         </Tabs>
       </main>
