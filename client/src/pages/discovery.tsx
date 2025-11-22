@@ -273,6 +273,71 @@ export default function Discovery() {
 
             {dataPoints.length > 0 && (
               <>
+                <Card className="border-primary/20 bg-primary/5">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <MessageSquarePlus className="w-5 h-5 text-primary" />
+                          <h3 className="font-semibold text-lg">Need More Information?</h3>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Ask the AI for additional insights about {project?.companyName}
+                        </p>
+                        <Dialog open={isFollowUpDialogOpen} onOpenChange={setIsFollowUpDialogOpen}>
+                          <DialogTrigger asChild>
+                            <Button data-testid="button-ask-followup">
+                              <Sparkles className="w-4 h-4 mr-2" />
+                              Ask Follow-up Question
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-[600px]">
+                            <DialogHeader>
+                              <DialogTitle>Ask for Additional Research</DialogTitle>
+                              <DialogDescription>
+                                What specific information would you like to know about {project?.companyName}?
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="follow-up-question">Your Question</Label>
+                                <Textarea
+                                  id="follow-up-question"
+                                  placeholder="e.g., What are their recent technology investments? What challenges do they face in digital transformation? What are their main competitors doing?"
+                                  className="min-h-[120px]"
+                                  value={followUpQuestion}
+                                  onChange={(e) => setFollowUpQuestion(e.target.value)}
+                                  data-testid="textarea-followup-question"
+                                />
+                              </div>
+                              <div className="flex justify-end gap-3">
+                                <Button
+                                  variant="outline"
+                                  onClick={() => {
+                                    setIsFollowUpDialogOpen(false);
+                                    setFollowUpQuestion("");
+                                  }}
+                                  data-testid="button-cancel-followup"
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  onClick={() => followUpResearchMutation.mutate(followUpQuestion)}
+                                  disabled={followUpResearchMutation.isPending || !followUpQuestion.trim()}
+                                  data-testid="button-submit-followup"
+                                >
+                                  <Sparkles className="w-4 h-4 mr-2" />
+                                  {followUpResearchMutation.isPending ? "Researching..." : "Get Insights"}
+                                </Button>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 <OrganisationCard
                   name={project?.companyName || ""}
                   sector={project?.sector || ""}
@@ -281,74 +346,16 @@ export default function Discovery() {
                     value: dp.value,
                     confidence: dp.confidence as "high" | "medium" | "low",
                     source: dp.source || undefined,
+                    isFollowUp: Boolean(dp.provenance && typeof dp.provenance === 'object' && 'type' in dp.provenance && dp.provenance.type === 'ai_follow_up'),
                   }))}
                   headlines={headlines.map(h => ({
                     title: h.title,
                     date: h.date,
                     source: h.source,
                     url: h.url,
+                    isFollowUp: h.source === "AI Follow-up",
                   }))}
                 />
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Need More Information?</CardTitle>
-                    <CardDescription>
-                      Ask the AI for additional insights about {project?.companyName}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Dialog open={isFollowUpDialogOpen} onOpenChange={setIsFollowUpDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" data-testid="button-ask-followup">
-                          <MessageSquarePlus className="w-4 h-4 mr-2" />
-                          Ask Follow-up Question
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-[600px]">
-                        <DialogHeader>
-                          <DialogTitle>Ask for Additional Research</DialogTitle>
-                          <DialogDescription>
-                            What specific information would you like to know about {project?.companyName}?
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="follow-up-question">Your Question</Label>
-                            <Textarea
-                              id="follow-up-question"
-                              placeholder="e.g., What are their recent technology investments? What challenges do they face in digital transformation? What are their main competitors doing?"
-                              className="min-h-[120px]"
-                              value={followUpQuestion}
-                              onChange={(e) => setFollowUpQuestion(e.target.value)}
-                              data-testid="textarea-followup-question"
-                            />
-                          </div>
-                          <div className="flex justify-end gap-3">
-                            <Button
-                              variant="outline"
-                              onClick={() => {
-                                setIsFollowUpDialogOpen(false);
-                                setFollowUpQuestion("");
-                              }}
-                              data-testid="button-cancel-followup"
-                            >
-                              Cancel
-                            </Button>
-                            <Button
-                              onClick={() => followUpResearchMutation.mutate(followUpQuestion)}
-                              disabled={followUpResearchMutation.isPending || !followUpQuestion.trim()}
-                              data-testid="button-submit-followup"
-                            >
-                              <Sparkles className="w-4 h-4 mr-2" />
-                              {followUpResearchMutation.isPending ? "Researching..." : "Get Insights"}
-                            </Button>
-                          </div>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  </CardContent>
-                </Card>
               </>
             )}
 

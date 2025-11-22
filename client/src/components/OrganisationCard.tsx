@@ -11,6 +11,7 @@ interface DataPoint {
   value: string;
   confidence: "high" | "medium" | "low";
   source?: string;
+  isFollowUp?: boolean;
 }
 
 interface Headline {
@@ -18,6 +19,7 @@ interface Headline {
   date: string;
   source: string;
   url: string;
+  isFollowUp?: boolean;
 }
 
 interface OrganisationCardProps {
@@ -81,9 +83,22 @@ export default function OrganisationCard({
         </div>
         <div className="space-y-2.5 pl-11">
           {points.map((point, idx) => (
-            <div key={idx} className="bg-muted/30 rounded-md p-3 space-y-1.5 hover-elevate" data-testid={`datapoint-${idx}`}>
+            <div 
+              key={idx} 
+              className={`rounded-md p-3 space-y-1.5 hover-elevate ${
+                point.isFollowUp 
+                  ? 'bg-primary/10 border border-primary/20' 
+                  : 'bg-muted/30'
+              }`}
+              data-testid={`datapoint-${idx}`}
+            >
               <div className="flex items-start justify-between gap-2">
-                <p className="text-xs font-medium text-muted-foreground">{point.label}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-xs font-medium text-muted-foreground">{point.label}</p>
+                  {point.isFollowUp && (
+                    <Badge variant="default" className="text-xs px-1.5 py-0 h-5">New</Badge>
+                  )}
+                </div>
                 <ConfidenceBadge level={point.confidence} />
               </div>
               <p className="text-sm leading-relaxed">{point.value}</p>
@@ -196,17 +211,30 @@ export default function OrganisationCard({
                   </p>
                   <div className="space-y-2">
                     {headlines.map((headline, idx) => (
-                      <div key={idx} className="bg-muted/30 rounded-md p-3 hover-elevate" data-testid={`headline-${idx}`}>
-                        <a 
-                          href={headline.url} 
-                          className="text-sm font-medium hover:text-primary hover:underline block"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            console.log('Headline clicked:', headline.title);
-                          }}
-                        >
-                          {headline.title}
-                        </a>
+                      <div 
+                        key={idx} 
+                        className={`rounded-md p-3 hover-elevate ${
+                          headline.isFollowUp 
+                            ? 'bg-primary/10 border border-primary/20' 
+                            : 'bg-muted/30'
+                        }`}
+                        data-testid={`headline-${idx}`}
+                      >
+                        <div className="flex items-start gap-2">
+                          <a 
+                            href={headline.url} 
+                            className="text-sm font-medium hover:text-primary hover:underline flex-1"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              console.log('Headline clicked:', headline.title);
+                            }}
+                          >
+                            {headline.title}
+                          </a>
+                          {headline.isFollowUp && (
+                            <Badge variant="default" className="text-xs px-1.5 py-0 h-5 shrink-0">New</Badge>
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1.5">
                           <span>{headline.source}</span>
                           <span>•</span>

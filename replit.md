@@ -12,6 +12,15 @@ Enable Korn Ferry consultants to:
 
 ## Recent Changes
 
+### 2025-11-22: Enhanced Follow-up Research UI
+- Moved "Need More Information" prompt to top of results for better visibility
+- Added prominent card with primary-colored background above research results
+- New insights from follow-up questions are visually highlighted with:
+  - Subtle primary-colored background (bg-primary/10)
+  - Border accent (border-primary/20)
+  - "New" badge to easily identify fresh insights
+- Clean, easy-to-scan interface for distinguishing original vs follow-up research
+
 ### 2025-11-22: Follow-up Research Feature
 - Added ability for users to ask follow-up questions after initial AI research
 - New dialog allows consultants to request specific additional information
