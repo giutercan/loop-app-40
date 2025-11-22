@@ -16,6 +16,7 @@ interface CompanyResearchResult {
     kornFerryPillar: "leadership-development" | "talent-acquisition" | "succession-planning" | "culture-transformation" | "organizational-design" | "change-management";
     solutionArea: "ASSESS" | "DEVELOP" | "TRANSFORM" | "REWARD" | "COMMERCIAL" | "ANALYTICS";
     relatedKPIs: string[];
+    relevantCapability: string | null; // Auto-classified Korn Ferry capability
   }>;
   headlines: Array<{
     title: string;
@@ -57,10 +58,22 @@ KORN FERRY CONSULTING PILLARS (for tagging):
 5. organizational-design - Structure optimization, operating models
 6. change-management - Digital transformation, strategic change
 
+KORN FERRY CAPABILITIES (for auto-classification):
+1. Success Profiles & Role Design
+2. Standardised Assessments & Assessments at Scale
+3. Leadership & Development Journeys
+4. AI-Ready Leader (within L&D)
+5. Organisation Strategy & Transformation
+6. Total Rewards Optimisation (TRO)
+7. Sales & Service (KF Sell)
+8. People Analytics / KFI Analytics
+9. Value Management / Client Success & Talent Suite
+
 Provide 2-4 highly targeted insights that directly answer the question. Each insight must be:
 - Specifically addressing the consultant's question
 - Tied to a Korn Ferry Solution Area and relevant KPIs
 - Strategically actionable and outcome-focused
+- Auto-classified to the most relevant Korn Ferry capability (or null if no clear match)
 
 Return your response in JSON format with this exact structure:
 {
@@ -73,7 +86,8 @@ Return your response in JSON format with this exact structure:
       "priorityScore": 4,
       "kornFerryPillar": "leadership-development",
       "solutionArea": "DEVELOP",
-      "relatedKPIs": ["Business KPI Delta", "Competency Gain"]
+      "relatedKPIs": ["Business KPI Delta", "Competency Gain"],
+      "relevantCapability": "Leadership & Development Journeys"
     }
   ],
   "headlines": [
@@ -87,6 +101,7 @@ IMPORTANT:
 - Each data point MUST have kornFerryPillar matching one of the six pillars
 - Each data point MUST have solutionArea matching one of: ASSESS, DEVELOP, TRANSFORM, REWARD, COMMERCIAL, ANALYTICS
 - Each data point MUST have relatedKPIs array with 1-3 relevant KPI names from the knowledge base
+- Each data point MUST have relevantCapability: the EXACT capability name from the list above, or null if no clear match
 - Focus on answering the specific question, not general research
 - Build on existing context without repeating information`;
 
@@ -127,10 +142,22 @@ KORN FERRY CONSULTING PILLARS (for tagging):
 5. organizational-design - Structure optimization, operating models, workforce planning
 6. change-management - Digital transformation, merger integration, strategic change
 
+KORN FERRY CAPABILITIES (for auto-classification):
+1. Success Profiles & Role Design
+2. Standardised Assessments & Assessments at Scale
+3. Leadership & Development Journeys
+4. AI-Ready Leader (within L&D)
+5. Organisation Strategy & Transformation
+6. Total Rewards Optimisation (TRO)
+7. Sales & Service (KF Sell)
+8. People Analytics / KFI Analytics
+9. Value Management / Client Success & Talent Suite
+
 CRITICAL: Provide ONLY the 8 MOST STRATEGIC insights. Quality over quantity. Each insight must be:
 - Directly actionable for a Korn Ferry engagement
 - Tied to one of the 6 Solution Areas (ASSESS, DEVELOP, TRANSFORM, REWARD, COMMERCIAL, ANALYTICS)
 - Tagged with relevant KPIs from the knowledge base above
+- Auto-classified to the most relevant Korn Ferry capability (or null if no clear match)
 - Focused on measurable business outcomes that map to Korn Ferry's KPI frameworks
 
 Prioritize insights in this order:
@@ -149,7 +176,8 @@ Return your response in JSON format with this exact structure:
       "priorityScore": 5,
       "kornFerryPillar": "leadership-development",
       "solutionArea": "DEVELOP",
-      "relatedKPIs": ["Business KPI Delta", "Competency Gain"]
+      "relatedKPIs": ["Business KPI Delta", "Competency Gain"],
+      "relevantCapability": "Leadership & Development Journeys"
     }
   ],
   "headlines": [
@@ -163,6 +191,7 @@ IMPORTANT REQUIREMENTS:
 - Each data point MUST have kornFerryPillar matching one of the six pillars exactly
 - Each data point MUST have solutionArea matching one of: ASSESS, DEVELOP, TRANSFORM, REWARD, COMMERCIAL, ANALYTICS
 - Each data point MUST have relatedKPIs array with 1-3 relevant KPI names from the knowledge base
+- Each data point MUST have relevantCapability: the EXACT capability name from the list above, or null if no clear match
 - Focus on transformation initiatives, leadership changes, workforce challenges that map to measurable KPIs
 - Use "high" confidence only for verified facts from official sources
 - Omit low-value information - every insight must earn its place and connect to Korn Ferry's measurement framework`;

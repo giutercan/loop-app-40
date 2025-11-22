@@ -36,6 +36,7 @@ export const companyDataPoints = pgTable("company_data_points", {
   provenance: jsonb("provenance"),
   selectedForNotes: boolean("selected_for_notes").default(false).notNull(),
   relevantJob: text("relevant_job"),
+  relevantCapability: text("relevant_capability"), // Auto-classified by AI based on knowledge structure
   priorityScore: integer("priority_score").default(3).notNull(),
   kornFerryPillar: text("korn_ferry_pillar", { 
     enum: ["leadership-development", "talent-acquisition", "succession-planning", "culture-transformation", "organizational-design", "change-management"] 
