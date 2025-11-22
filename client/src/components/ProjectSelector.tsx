@@ -373,18 +373,15 @@ export default function ProjectSelector({ currentProjectId, onProjectChange }: P
               <p className="text-xs text-muted-foreground mt-1.5">
                 Or type manually if not found in search
               </p>
-              {!newProject.companyName && (
-                <Input
-                  placeholder="Or type company name manually"
-                  value={companySearchQuery}
-                  onChange={(e) => {
-                    setCompanySearchQuery(e.target.value);
-                    setNewProject({ ...newProject, companyName: e.target.value });
-                  }}
-                  className="mt-2"
-                  data-testid="input-company-manual"
-                />
-              )}
+              <Input
+                placeholder="Or type company name manually"
+                value={newProject.companyName}
+                onChange={(e) => {
+                  setNewProject({ ...newProject, companyName: e.target.value });
+                }}
+                className="mt-2"
+                data-testid="input-company-manual"
+              />
             </div>
             <div>
               <Label htmlFor="businessUnit">Business Unit (Optional)</Label>
