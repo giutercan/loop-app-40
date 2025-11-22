@@ -178,6 +178,8 @@ export function registerRoutes(app: Express) {
         "culture-transformation", "organizational-design", "change-management"
       ];
 
+      const validSolutionAreas = ["ASSESS", "DEVELOP", "TRANSFORM", "REWARD", "COMMERCIAL", "ANALYTICS"];
+
       const validatedDataPoints = [];
       for (const dp of result.dataPoints) {
         try {
@@ -202,6 +204,27 @@ export function registerRoutes(app: Express) {
               console.warn(`AI returned invalid kornFerryPillar "${dp.kornFerryPillar}", setting to null`);
             }
           }
+
+          // Validate and sanitize solution area
+          let solutionArea = null;
+          if (dp.solutionArea) {
+            if (typeof dp.solutionArea === 'string' && validSolutionAreas.includes(dp.solutionArea)) {
+              solutionArea = dp.solutionArea;
+            } else {
+              console.warn(`AI returned invalid solutionArea "${dp.solutionArea}", setting to null`);
+            }
+          }
+
+          // Validate and sanitize related KPIs
+          let relatedKPIs = null;
+          if (dp.relatedKPIs && Array.isArray(dp.relatedKPIs)) {
+            relatedKPIs = dp.relatedKPIs.filter((kpi: any) => typeof kpi === 'string' && kpi.trim().length > 0);
+            if (relatedKPIs.length === 0) {
+              relatedKPIs = null;
+            }
+          } else if (dp.relatedKPIs) {
+            console.warn(`AI returned invalid relatedKPIs (expected array), setting to null`);
+          }
           
           const validated = insertCompanyDataPointSchema.parse({
             projectId,
@@ -214,7 +237,9 @@ export function registerRoutes(app: Express) {
             selectedForNotes: false,
             relevantJob: null,
             priorityScore,
-            kornFerryPillar
+            kornFerryPillar,
+            solutionArea,
+            relatedKPIs
           });
           validatedDataPoints.push(await storage.createCompanyDataPoint(validated));
         } catch (validationError: any) {

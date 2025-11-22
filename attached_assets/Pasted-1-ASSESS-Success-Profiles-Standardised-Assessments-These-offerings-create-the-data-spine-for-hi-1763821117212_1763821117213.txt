@@ -1,0 +1,188 @@
+1. ASSESS (Success Profiles, Standardised Assessments)
+
+These offerings create the data spine for hiring, promotion and development.
+
+Success Profiles & Role Design
+
+Jobs we do
+Define what “good” looks like for each role, align roles to strategy, anchor selection/promotion, support workforce planning, feed digital profiles.
+
+Primary KPI
+Quality of Hire at 6 months (QoH6) — composite index (0–100) combining objective performance (50%), manager rating (30%) and retention (20%).
+
+Supporting KPIs
+Time to Productivity (days); Hiring Manager Satisfaction (1–5).
+
+Measurement & sources
+Baseline = previous cohort mean over prior 12 months if available; measure at 6 months; sources: HRIS, performance systems, manager surveys. Use matched cohort design if possible.
+
+Translation note
+Financial impact = (QoH6_delta) × (# hires per year) × (avg margin per role) × realisation rate. Show arithmetic in app.
+
+Standardised Assessments & Assessments at Scale
+
+Jobs we do
+Objectively measure capability, scale delivery, provide norms, integrate into workflows, ensure Responsible AI.
+
+Primary KPI
+Predictive Validity (AUC or correlation r) — the statistical link between assessment score and job performance/retention.
+
+Supporting KPIs
+Assessment Completion Rate (%); Time to Offer (days).
+
+Measurement & sources
+Historic or prospective validation with holdout sets; sources: assessment platform, HRIS, performance ratings; produce confidence intervals and bias checks.
+
+Translation note
+Model improvements reduce mis-hires: compute avoided replacement cost and incremental productivity minus assessment costs. Include fairness tests and Responsible AI result in appendix.
+
+2. DEVELOP (Leadership & Development including AI-Ready Leader)
+
+Builds leaders, embeds behaviour, links learning to business outcomes, prepares leaders for Human+AI.
+
+Leadership & Development Journeys
+
+Jobs we do
+Build leaders who deliver outcomes, change behaviour, link learning to business KPIs, develop succession, measure programmes.
+
+Primary KPI
+Business KPI Delta attributable to participants (e.g., revenue per team % change, productivity per FTE change).
+
+Supporting KPIs
+Competency Gain (assessment/360 delta); Behavioural Application Rate (% applying skill on job).
+
+Measurement & sources
+Kirkpatrick Level 4+ designs: matched cohorts or staged rollouts; baseline 12 months preferred; sources: finance systems, operational KPIs, 360 and coaching logs.
+
+Translation note
+Value = KPI_delta × coverage (teams/users) × unit financial value × realisation rate. Ensure attribution model documented.
+
+AI-Ready Leader (capability inside L&D)
+
+Jobs we do
+Prepare leaders for Human+AI decisions, build AI literacy, set governance, increase speed and quality of data-driven decisions.
+
+Primary KPI
+AI Readiness Index (0–100) or Decision Lead Time (hours) for representative decisions.
+
+Supporting KPIs
+AI Adoption Rate (% decisions aided); Ethical compliance score/incidents.
+
+Measurement & sources
+Pre/post assessments, system logs (decision aid usage), governance records; cohort comparison.
+
+Translation note
+Value from reduced Decision Lead Time = time saved × decisions per year × value per decision hour; for strategic decisions translate to avoided loss or faster revenue realisation.
+
+3. TRANSFORM (Organisation Strategy & Transformation)
+
+Redesigns operating models, unlocks structural savings and capability.
+
+Organisation Strategy & Transformation
+
+Jobs we do
+Redesign operating models, deliver capability for large transformation, align people/processes, unlock cost savings or revenue capacity.
+
+Primary KPI
+Productivity per FTE (or Process Cycle Time for process improvements).
+
+Supporting KPIs
+Cost per unit; Error / Rework Rate (%).
+
+Measurement & sources
+ERP/process logs, finance data; whole-unit comparison or DID across sites; baseline 12 months.
+
+Translation note
+Savings = productivity_gain × FTEs_affected × unit labour cost − transformation cost. Discount savings to NPV.
+
+4. REWARD (Total Rewards Optimisation — TRO)
+
+Design reward mix that maximises perceived employee value and retention.
+
+Total Rewards Optimisation (TRO)
+
+Jobs we do
+Maximise perceived employee value per employer £, rebalance spend, model cost vs perceived value, align rewards to EVP and segments.
+
+Primary KPI
+Perceived Employee Value per £ Spend (index/£) or Retention Rate for Priority Cohorts (%).
+
+Supporting KPIs
+Take-up Rate (%); Cost per Employee (£).
+
+Measurement & sources
+Conjoint/preference surveys pre/post, payroll and HRIS for costs and retention. Segment-level analysis.
+
+Translation note
+Value = retention_improvement × cohort_size × replacement_cost + value of rebalanced spend. Use TRO cases as exemplars.
+
+5. COMMERCIAL (Sales & Service / KF Sell)
+
+Improves commercial execution, pipeline and seller performance.
+
+Sales & Service (KF Sell)
+
+Jobs we do
+Raise win rates, deal size, pipeline velocity, seller productivity and embed methodology/tech.
+
+Primary KPI
+Win Rate (%) (ppt change).
+
+Supporting KPIs
+Average Deal Size (£); Pipeline Velocity (days or conversion rate).
+
+Measurement & sources
+CRM rolling 12 months baseline; staged rollouts by region or matched seller cohorts. Use S&S ROI calculator for translation.
+
+Translation note
+Incremental revenue = WinRate_delta × Pipeline_exposure × Margin × Realisation. Compute NPV and payback.
+
+6. ANALYTICS & GOVERNANCE (People Analytics / KFI Analytics and Value Management / Talent Suite)
+
+Provides insight, predictive models and the governance spine to measure and scale value.
+
+People Analytics / KFI Analytics
+
+Jobs we do
+Identify drivers of engagement/performance/turnover, build predictive models, validate assessment-to-outcome links, quantify savings.
+
+Primary KPI
+Turnover Risk Predictive Accuracy (AUC) and Realised Turnover Reduction (%).
+
+Supporting KPIs
+Feature importance list; Promotion velocity for key talent.
+
+Measurement & sources
+HRIS, engagement surveys, backtested model validation. Use holdout tests, cross-validation and post-implementation comparisons.
+
+Translation note
+Savings = Turnover_reduction × #employees × replacement_cost.
+
+Value Management / Client Success & Talent Suite
+
+Jobs we do
+Align solutions to business outcomes, track adoption and outcomes, govern re-measurement and case capture, deliver Talent Suite components.
+
+Primary KPI
+Value Realisation % (Actual vs Target) — governance headline.
+
+Supporting KPIs
+Adoption Rate (%); Time to First Value (months).
+
+Measurement & sources
+Aggregated from solution KPIs and financial translations; governance cadence with monthly reporting.
+
+Translation note
+Value Realisation % = realised_value ÷ target_value; used for scale decisions and case library.
+
+Measurement & implementation rules (standardised across groups)
+
+Baseline window: prefer 12 months. QoH uses 6 months for speed but remains defensible.
+
+Frequency: monthly leading indicators; primary KPI at 6 and 12 months; final financials at 12 months or multi-year horizon for big transformations.
+
+Research design: recommended hierarchy — randomised/staged rollout > matched cohort > difference-in-differences > pre/post with sensitivity analysis. Document attribution fraction and confidence.
+
+Confidence & provenance: every numeric claim must include source excerpt and confidence (green/amber/red). App must surface this.
+
+Translation template: Change × Exposure × Unit value × Realisation rate. Build year-by-year incremental cash flows and discount to NPV. Show arithmetic steps in the report.

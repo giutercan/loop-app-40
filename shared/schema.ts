@@ -40,6 +40,10 @@ export const companyDataPoints = pgTable("company_data_points", {
   kornFerryPillar: text("korn_ferry_pillar", { 
     enum: ["leadership-development", "talent-acquisition", "succession-planning", "culture-transformation", "organizational-design", "change-management"] 
   }),
+  solutionArea: text("solution_area", {
+    enum: ["ASSESS", "DEVELOP", "TRANSFORM", "REWARD", "COMMERCIAL", "ANALYTICS"]
+  }),
+  relatedKPIs: text("related_kpis").array(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
