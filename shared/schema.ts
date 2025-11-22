@@ -8,6 +8,8 @@ export const projects = pgTable("projects", {
   name: text("name").notNull(),
   companyName: text("company_name").notNull(),
   sector: text("sector"),
+  logoUrl: text("logo_url"),
+  companyConfirmed: boolean("company_confirmed").notNull().default(false),
   currentPhase: text("current_phase", { enum: ["discovery", "alignment", "realisation"] }).notNull().default("discovery"),
   status: text("status", { enum: ["active", "completed", "archived"] }).notNull().default("active"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
