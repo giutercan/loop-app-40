@@ -300,13 +300,16 @@ export function registerRoutes(app: Express) {
       const existingResearch = {
         dataPoints: existingDataPoints.map(dp => {
           const pillar = dp.kornFerryPillar as "leadership-development" | "talent-acquisition" | "succession-planning" | "culture-transformation" | "organizational-design" | "change-management" | null;
+          const solution = dp.solutionArea as "ASSESS" | "DEVELOP" | "TRANSFORM" | "REWARD" | "COMMERCIAL" | "ANALYTICS" | null;
           return {
             label: dp.label,
             value: dp.value,
             confidence: dp.confidence as "high" | "medium" | "low",
             source: dp.source || "",
             priorityScore: dp.priorityScore,
-            kornFerryPillar: pillar || "leadership-development" // Provide safe default for AI context
+            kornFerryPillar: pillar || "leadership-development", // Provide safe default for AI context
+            solutionArea: solution || "DEVELOP",
+            relatedKPIs: (dp.relatedKPIs as string[] | null) || []
           };
         }),
         headlines: existingHeadlines.map(h => ({
@@ -338,6 +341,8 @@ export function registerRoutes(app: Express) {
         "culture-transformation", "organizational-design", "change-management"
       ];
 
+      const validSolutionAreas = ["ASSESS", "DEVELOP", "TRANSFORM", "REWARD", "COMMERCIAL", "ANALYTICS"];
+
       const validatedDataPoints = [];
       for (const dp of result.dataPoints) {
         try {
@@ -362,6 +367,27 @@ export function registerRoutes(app: Express) {
               console.warn(`Follow-up AI returned invalid kornFerryPillar "${dp.kornFerryPillar}", setting to null`);
             }
           }
+
+          // Validate and sanitize solution area
+          let solutionArea = null;
+          if (dp.solutionArea) {
+            if (typeof dp.solutionArea === 'string' && validSolutionAreas.includes(dp.solutionArea)) {
+              solutionArea = dp.solutionArea;
+            } else {
+              console.warn(`Follow-up AI returned invalid solutionArea "${dp.solutionArea}", setting to null`);
+            }
+          }
+
+          // Validate and sanitize related KPIs
+          let relatedKPIs = null;
+          if (dp.relatedKPIs && Array.isArray(dp.relatedKPIs)) {
+            relatedKPIs = dp.relatedKPIs.filter((kpi: any) => typeof kpi === 'string' && kpi.trim().length > 0);
+            if (relatedKPIs.length === 0) {
+              relatedKPIs = null;
+            }
+          } else if (dp.relatedKPIs) {
+            console.warn(`Follow-up AI returned invalid relatedKPIs (expected array), setting to null`);
+          }
           
           const validated = insertCompanyDataPointSchema.parse({
             projectId,
@@ -379,7 +405,9 @@ export function registerRoutes(app: Express) {
             selectedForNotes: false,
             relevantJob: null,
             priorityScore,
-            kornFerryPillar
+            kornFerryPillar,
+            solutionArea,
+            relatedKPIs
           });
           validatedDataPoints.push(await storage.createCompanyDataPoint(validated));
         } catch (validationError: any) {
