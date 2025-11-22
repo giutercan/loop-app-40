@@ -265,6 +265,146 @@ interface GeneratedQuestion {
   relatedKPI: string | null;
 }
 
+interface NotesEnrichmentInput {
+  freeformNotes: string;
+  attachmentContents: Array<{
+    fileName: string;
+    content: string;
+    type: "file" | "voice";
+  }>;
+}
+
+export async function enrichFromNotes(
+  companyName: string,
+  notesInput: NotesEnrichmentInput,
+  existingResearch: CompanyResearchResult,
+  sector?: string
+): Promise<CompanyResearchResult> {
+  const knowledgeBase = getSolutionSummary();
+  const existingContext = `
+Existing Research Summary:
+${existingResearch.dataPoints.map(dp => `- [Priority ${dp.priorityScore}] [${dp.solutionArea}] ${dp.label}: ${dp.value}`).join('\n')}
+`;
+
+  const notesContext = `
+CONSULTANT'S NOTES:
+${notesInput.freeformNotes || "(No freeform notes)"}
+
+UPLOADED DOCUMENTS & VOICE NOTES:
+${notesInput.attachmentContents.length > 0 
+  ? notesInput.attachmentContents.map(att => `
+[${att.type === "voice" ? "Voice Note" : `File: ${att.fileName}`}]
+${att.content}
+`).join('\n---\n')
+  : "(No attachments)"}
+`;
+
+  const prompt = `You are helping a Korn Ferry consultant analyze notes and documents collected about ${companyName}${sector ? ` (${sector} sector)` : ''}.
+
+${existingContext}
+
+${notesContext}
+
+KORN FERRY SOLUTIONS & CAPABILITIES:
+${knowledgeBase}
+
+KORN FERRY CONSULTING PILLARS (for tagging):
+1. leadership-development - Executive development, leadership transitions
+2. talent-acquisition - Recruitment strategy, talent pipeline
+3. succession-planning - Leadership continuity, bench strength
+4. culture-transformation - Cultural change, employee engagement
+5. organizational-design - Structure optimization, operating models
+6. change-management - Digital transformation, strategic change
+
+KORN FERRY CAPABILITIES (for auto-classification):
+1. Success Profiles & Role Design - Job architecture, role clarity, competency frameworks
+2. Standardised Assessments & Assessments at Scale - Talent evaluation, assessment programs
+3. Leadership & Development Journeys - Executive development, learning programs, leadership pipelines
+4. AI-Ready Leader (within L&D) - AI adoption, digital leadership, tech-enabled learning
+5. Organisation Strategy & Transformation - Org redesign, operating models, M&A integration
+6. Total Rewards Optimisation (TRO) - Compensation strategy, pay equity, rewards programs
+7. Sales & Service (KF Sell) - Sales effectiveness, commercial transformation, go-to-market
+8. People Analytics / KFI Analytics - Workforce analytics, talent insights, data-driven HR
+9. Value Management / Client Success & Talent Suite - Technology platforms, talent systems
+
+TASK: Extract 3-6 NEW strategic insights from the consultant's notes and attachments that are NOT already captured in the existing research. Focus on:
+- Specific metrics, numbers, or data points mentioned
+- Client challenges, pain points, or opportunities discussed
+- Strategic initiatives or goals mentioned
+- Leadership changes or organizational developments
+- Any information that could strengthen a value hypothesis
+
+Each insight must be:
+- NEW information not already in the existing research
+- Tied to a Korn Ferry Solution Area and relevant KPIs
+- Strategically actionable and outcome-focused
+- Auto-classified to the MOST RELEVANT Korn Ferry capability
+
+CAPABILITY CLASSIFICATION GUIDANCE:
+- You MUST assign a capability to each insight whenever there is ANY reasonable connection
+- Only use null if the insight is purely about market conditions with NO people/talent dimension
+- When in doubt, choose the closest capability match
+- Most insights about leadership → "Leadership & Development Journeys"
+- Most insights about talent/hiring → "Standardised Assessments & Assessments at Scale"
+- Most insights about org structure → "Organisation Strategy & Transformation"
+- Most insights about compensation → "Total Rewards Optimisation (TRO)"
+- Most insights about sales/revenue → "Sales & Service (KF Sell)"
+- Most insights about data/analytics → "People Analytics / KFI Analytics"
+
+Return your response in JSON format with this exact structure:
+{
+  "dataPoints": [
+    {
+      "label": "Brief category",
+      "value": "Strategic insight extracted from notes, linked to KPIs",
+      "confidence": "high|medium|low",
+      "source": "Consultant Notes" or "Voice Note" or specific file name,
+      "priorityScore": 3-5,
+      "kornFerryPillar": "leadership-development",
+      "solutionArea": "DEVELOP",
+      "relatedKPIs": ["Business KPI Delta", "Competency Gain"],
+      "relevantCapability": "Leadership & Development Journeys"
+    }
+  ],
+  "headlines": []
+}
+
+IMPORTANT:
+- Maximum 6 data points - only extract truly valuable new information
+- Assign priorityScore based on strategic value (4-5 for critical insights with numbers, 3 for supporting context)
+- Each data point MUST have all required fields
+- Use "high" confidence only for specific facts/metrics mentioned
+- Use "medium" confidence for discussed plans or intentions
+- Use "low" confidence for vague mentions or assumptions
+- If no valuable new information is found, return empty dataPoints array
+- DO NOT repeat information already in the existing research
+- Focus on extracting concrete, measurable insights that could support value calculations`;
+
+  try {
+    console.log(`[AI Enrichment] Analyzing notes for ${companyName}...`);
+    
+    const response = await openai.chat.completions.create({
+      model: "gpt-5",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 6144,
+    });
+
+    const content = response.choices[0]?.message?.content || "{}";
+    const result = JSON.parse(content);
+    
+    console.log(`[AI Enrichment] Extracted ${result.dataPoints?.length || 0} new insights from notes`);
+    
+    return {
+      dataPoints: result.dataPoints || [],
+      headlines: [], // No headlines from notes enrichment
+    };
+  } catch (error) {
+    console.error("Error enriching from notes:", error);
+    throw new Error("Failed to enrich insights from notes");
+  }
+}
+
 export async function generateDiscoveryQuestions(
   companyName: string,
   capabilityQuestions: DiscoveryQuestionInput[]

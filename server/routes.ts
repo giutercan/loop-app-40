@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "./storage";
-import { researchCompany, followUpResearch, generateDiscoveryQuestions } from "./ai";
+import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes } from "./ai";
 import { z } from "zod";
 import { 
   insertProjectSchema,
@@ -463,6 +463,281 @@ export function registerRoutes(app: Express) {
         dataPoints: validatedDataPoints,
         headlines: validatedHeadlines,
         summary: `Added ${validatedDataPoints.length} new insights and ${validatedHeadlines.length} headlines based on your question`
+      });
+    } catch (error: any) {
+      res.status(500).json({ 
+        error: "An unexpected error occurred",
+        details: error.message 
+      });
+    }
+  });
+
+  // AI Notes Enrichment
+  app.post("/api/projects/:projectId/enrich-from-notes", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Get notes and attachments
+      const notes = await storage.getDiscoveryNotes(projectId);
+      const attachments = await storage.getAttachments(projectId);
+
+      // Get existing research to avoid duplicates
+      const existingDataPoints = await storage.getCompanyDataPoints(projectId);
+      const existingHeadlines = await storage.getHeadlines(projectId);
+
+      const existingResearch = {
+        dataPoints: existingDataPoints.map(dp => {
+          const pillar = dp.kornFerryPillar as "leadership-development" | "talent-acquisition" | "succession-planning" | "culture-transformation" | "organizational-design" | "change-management" | null;
+          const solution = dp.solutionArea as "ASSESS" | "DEVELOP" | "TRANSFORM" | "REWARD" | "COMMERCIAL" | "ANALYTICS" | null;
+          return {
+            label: dp.label,
+            value: dp.value,
+            confidence: dp.confidence as "high" | "medium" | "low",
+            source: dp.source || "",
+            priorityScore: dp.priorityScore,
+            kornFerryPillar: pillar || "leadership-development",
+            solutionArea: solution || "DEVELOP",
+            relatedKPIs: (dp.relatedKPIs as string[] | null) || [],
+            relevantCapability: dp.relevantCapability
+          };
+        }),
+        headlines: existingHeadlines.map(h => ({
+          title: h.title,
+          date: h.date,
+          source: h.source,
+          url: h.url
+        }))
+      };
+
+      // Prepare notes input with attachment contents
+      const MAX_TEXT_LENGTH = 50000; // Max characters per attachment to avoid token limits
+      const attachmentContents = [];
+      const fileProcessingErrors: string[] = [];
+      let supportedFilesCount = 0;
+      
+      for (const att of attachments) {
+        if (att.type === "voice") {
+          // Voice notes: content is already transcription text
+          let content = att.content || "";
+          if (content.length > MAX_TEXT_LENGTH) {
+            content = content.substring(0, MAX_TEXT_LENGTH) + "\n[... transcription truncated for length ...]";
+          }
+          attachmentContents.push({
+            fileName: att.fileName || "voice_note",
+            content,
+            type: "voice" as const
+          });
+        } else if (att.type === "file") {
+          // File attachments: extract text based on MIME type AND file extension
+          const mimeType = att.mimeType || "";
+          const fileName = att.fileName || "";
+          const fileExt = fileName.toLowerCase().split('.').pop() || "";
+          
+          const isTextFile = mimeType.includes("text/") || 
+                           mimeType.includes("csv") ||
+                           mimeType === "application/json" ||
+                           ["txt", "csv", "json"].includes(fileExt);
+                           
+          const isPDF = mimeType === "application/pdf" || 
+                       (mimeType === "application/octet-stream" && fileExt === "pdf") ||
+                       fileExt === "pdf";
+          
+          if ((isTextFile || isPDF) && att.content) {
+            supportedFilesCount++;
+            try {
+              // Extract base64 data after the data URL prefix
+              const base64Data = att.content.split(',')[1];
+              if (!base64Data) continue;
+              
+              let extractedText = "";
+              
+              if (isPDF) {
+                // Extract text from PDF using pdf-parse
+                try {
+                  const pdfBuffer = Buffer.from(base64Data, 'base64');
+                  // Dynamic import of pdf-parse - it exports a default function
+                  const pdf = (await import("pdf-parse")).default;
+                  
+                  if (!pdf || typeof pdf !== 'function') {
+                    const error = `PDF parser not available for ${att.fileName}`;
+                    console.error(error);
+                    fileProcessingErrors.push(error);
+                    continue;
+                  }
+                  
+                  // Call the function to parse PDF
+                  const result = await pdf(pdfBuffer);
+                  extractedText = result.text || "";
+                  
+                  if (extractedText.trim().length === 0) {
+                    const warning = `PDF ${att.fileName} contained no extractable text (might be image-based PDF)`;
+                    console.warn(warning);
+                    fileProcessingErrors.push(warning);
+                    continue;
+                  }
+                  
+                  console.log(`✓ Extracted ${extractedText.length} chars from PDF: ${att.fileName}`);
+                } catch (pdfError: any) {
+                  const error = `Failed to parse PDF ${att.fileName}: ${pdfError.message}`;
+                  console.error(`✗ ${error}`);
+                  fileProcessingErrors.push(error);
+                  // If PDF parsing fails, don't crash - just skip this attachment
+                  continue;
+                }
+              } else {
+                // Decode plain text files
+                extractedText = Buffer.from(base64Data, 'base64').toString('utf-8');
+              }
+              
+              // Truncate very long text to avoid token limits
+              if (extractedText.length > MAX_TEXT_LENGTH) {
+                extractedText = extractedText.substring(0, MAX_TEXT_LENGTH) + "\n[... file content truncated for length ...]";
+              }
+              
+              if (extractedText.trim().length > 0) {
+                attachmentContents.push({
+                  fileName: att.fileName || "file",
+                  content: extractedText,
+                  type: "file" as const
+                });
+              }
+            } catch (error) {
+              console.error(`Failed to process file ${att.fileName}:`, error);
+              // Skip files that can't be decoded
+            }
+          } else {
+            // For other binary files (images, Word, Excel, etc.), note they're not supported
+            console.log(`Skipping unsupported file format for enrichment: ${att.fileName} (${mimeType})`);
+          }
+        }
+      }
+
+      const notesInput = {
+        freeformNotes: notes?.freeformNotes || "",
+        attachmentContents
+      };
+
+      // Check if there's any content to analyze
+      if (!notesInput.freeformNotes && notesInput.attachmentContents.length === 0) {
+        return res.status(400).json({ 
+          error: "No notes or attachments to analyze",
+          suggestion: "Add notes or upload files before enriching insights"
+        });
+      }
+
+      let result;
+      try {
+        result = await enrichFromNotes(
+          project.companyName,
+          notesInput,
+          existingResearch,
+          project.sector || undefined
+        );
+      } catch (aiError: any) {
+        return res.status(500).json({ 
+          error: "AI enrichment failed",
+          details: aiError.message
+        });
+      }
+
+      // Validate and add new data points with enrichment provenance
+      const validKornFerryPillars = [
+        "leadership-development", "talent-acquisition", "succession-planning",
+        "culture-transformation", "organizational-design", "change-management"
+      ];
+
+      const validSolutionAreas = ["ASSESS", "DEVELOP", "TRANSFORM", "REWARD", "COMMERCIAL", "ANALYTICS"];
+
+      const validatedDataPoints = [];
+      for (const dp of result.dataPoints) {
+        try {
+          let priorityScore = 4;
+          if (typeof dp.priorityScore === 'number' && !isNaN(dp.priorityScore)) {
+            if (dp.priorityScore >= 1 && dp.priorityScore <= 5) {
+              priorityScore = Math.round(dp.priorityScore);
+            }
+          }
+          
+          let kornFerryPillar = null;
+          if (dp.kornFerryPillar && validKornFerryPillars.includes(dp.kornFerryPillar)) {
+            kornFerryPillar = dp.kornFerryPillar;
+          }
+
+          let solutionArea = null;
+          if (dp.solutionArea && validSolutionAreas.includes(dp.solutionArea)) {
+            solutionArea = dp.solutionArea;
+          }
+
+          let relatedKPIs = null;
+          if (dp.relatedKPIs && Array.isArray(dp.relatedKPIs)) {
+            relatedKPIs = dp.relatedKPIs.filter((kpi: any) => typeof kpi === 'string' && kpi.trim().length > 0);
+            if (relatedKPIs.length === 0) {
+              relatedKPIs = null;
+            }
+          }
+
+          let relevantCapability = null;
+          if (dp.relevantCapability && typeof dp.relevantCapability === 'string') {
+            relevantCapability = dp.relevantCapability.trim();
+          }
+          
+          const validated = insertCompanyDataPointSchema.parse({
+            projectId,
+            label: dp.label,
+            value: dp.value,
+            confidence: dp.confidence,
+            source: dp.source || "Notes Enrichment",
+            sourceUrl: null,
+            provenance: { 
+              type: "notes_enrichment", 
+              model: "gpt-5", 
+              timestamp: new Date().toISOString()
+            },
+            selectedForNotes: false,
+            relevantJob: null,
+            relevantCapability,
+            priorityScore,
+            kornFerryPillar,
+            solutionArea,
+            relatedKPIs
+          });
+          validatedDataPoints.push(await storage.createCompanyDataPoint(validated));
+        } catch (validationError: any) {
+          console.error("Invalid data point from enrichment AI:", validationError.message, dp);
+        }
+      }
+
+      // Check if all file processing failed
+      if (supportedFilesCount > 0 && fileProcessingErrors.length === supportedFilesCount && validatedDataPoints.length === 0) {
+        // All supported files failed to process and no insights extracted
+        return res.status(422).json({
+          error: "Failed to process uploaded files",
+          details: fileProcessingErrors.join("; "),
+          suggestion: "Check that PDFs contain extractable text (not just images). Text files (.txt, .csv, .json) work best."
+        });
+      }
+
+      // Return success with warnings if some files failed
+      const count = validatedDataPoints.length;
+      let summary = count === 0 
+        ? "No new insights found - your research may already be comprehensive!"
+        : `Extracted ${count} new insight${count !== 1 ? 's' : ''} from your notes and attachments`;
+
+      // Add warnings if some (but not all) files failed to process
+      const warnings = fileProcessingErrors.length > 0 ? fileProcessingErrors : undefined;
+      if (warnings && warnings.length > 0) {
+        summary += ` (Note: ${warnings.length} file${warnings.length !== 1 ? 's' : ''} could not be processed)`;
+      }
+
+      res.json({
+        dataPoints: validatedDataPoints,
+        summary,
+        warnings
       });
     } catch (error: any) {
       res.status(500).json({ 

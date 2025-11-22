@@ -293,6 +293,34 @@ export default function Discovery() {
     },
   });
 
+  const enrichFromNotesMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedProjectId) return;
+      const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/enrich-from-notes`, {});
+      return await res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "data-points"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "discovery-questions"] });
+      toast({
+        title: "Insights enriched",
+        description: data?.summary || "AI has extracted new insights from your notes and attachments.",
+      });
+    },
+    onError: async (error: any) => {
+      let errorMessage = "An error occurred during enrichment.";
+      try {
+        const errorData = error.response?.json ? await error.response.json() : null;
+        errorMessage = errorData?.error || errorMessage;
+      } catch {}
+      toast({
+        title: "Enrichment failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    },
+  });
+
   const updateQuestionAnswerMutation = useMutation({
     mutationFn: async ({ id, answer }: { id: number; answer: string }) => {
       const res = await apiRequest("PATCH", `/api/discovery-questions/${id}`, { answer });
@@ -749,6 +777,43 @@ export default function Discovery() {
           </TabsContent>
 
           <TabsContent value="notes" className="space-y-6">
+            <Card className="bg-primary/5 border-primary/20">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <CardTitle className="flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-primary" />
+                      AI-Powered Enrichment
+                    </CardTitle>
+                    <CardDescription>
+                      Extract strategic insights from your notes and attachments to enhance your research
+                    </CardDescription>
+                  </div>
+                  <Button
+                    onClick={() => enrichFromNotesMutation.mutate()}
+                    disabled={enrichFromNotesMutation.isPending || (!notes?.freeformNotes && attachments.length === 0)}
+                    data-testid="button-enrich-from-notes"
+                  >
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    {enrichFromNotesMutation.isPending ? "Analyzing..." : "Enrich Insights"}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  AI will analyze your notes and uploaded files to identify new strategic insights, metrics, and opportunities that aren't already captured in your research. These insights will be added to the Organization tab and used to generate better discovery questions.
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  <strong>Supported:</strong> Text files (.txt, .csv, .json), PDFs, and voice notes are analyzed for insights. Word, Excel, and image files are saved for reference but content cannot be extracted for AI analysis.
+                </p>
+                {(!notes?.freeformNotes && attachments.length === 0) && (
+                  <p className="text-sm text-muted-foreground mt-2 italic">
+                    Add notes or upload files below to enable enrichment.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
             {dataPoints.filter(dp => dp.selectedForNotes).length === 0 ? (
               <Card>
                 <CardHeader>
