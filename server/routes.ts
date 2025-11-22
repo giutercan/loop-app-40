@@ -73,6 +73,29 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // Company Logo Verification
+  app.post("/api/verify-company", async (req, res) => {
+    try {
+      const { companyName } = req.body;
+      if (!companyName) {
+        return res.status(400).json({ error: "Company name is required" });
+      }
+      
+      // Use web search to find the company's website and logo
+      // For now, we'll use a simple heuristic based on the company domain
+      const domainGuess = companyName.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const logoUrl = `https://logo.clearbit.com/${domainGuess}.com`;
+      
+      res.json({
+        companyName,
+        logoUrl,
+        verified: false
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // AI Research
   app.post("/api/projects/:projectId/research", async (req, res) => {
     try {

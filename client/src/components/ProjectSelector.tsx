@@ -39,14 +39,28 @@ export default function ProjectSelector({ currentProjectId, onProjectChange }: P
   const [_, setLocation] = useLocation();
   const { toast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [pendingProject, setPendingProject] = useState<any>(null);
+  const [companyLogo, setCompanyLogo] = useState<string>("");
   const [newProject, setNewProject] = useState({
     name: "",
     companyName: "",
+    businessUnit: "",
     sector: "",
   });
 
   const { data: projects = [] } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
+  });
+
+  const verifyCompanyMutation = useMutation({
+    mutationFn: async (companyName: string) => {
+      const res = await apiRequest("POST", "/api/verify-company", { companyName });
+      return await res.json();
+    },
+    onSuccess: (data: { logoUrl: string }) => {
+      setCompanyLogo(data.logoUrl);
+    },
   });
 
   const createProjectMutation = useMutation({
@@ -56,16 +70,12 @@ export default function ProjectSelector({ currentProjectId, onProjectChange }: P
     },
     onSuccess: (data: Project) => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      setPendingProject(data);
       setIsCreating(false);
-      setNewProject({ name: "", companyName: "", sector: "" });
-      toast({
-        title: "Project created",
-        description: `${data.name} has been created successfully.`,
-      });
-      if (onProjectChange) {
-        onProjectChange(data);
-      }
-      setLocation(`/discovery?project=${data.id}`);
+      
+      // Fetch company logo for verification
+      verifyCompanyMutation.mutate(data.companyName);
+      setIsVerifying(true);
     },
     onError: (error: Error) => {
       toast({
@@ -111,6 +121,16 @@ export default function ProjectSelector({ currentProjectId, onProjectChange }: P
     }
   };
 
+  const updateProjectMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      const res = await apiRequest("PATCH", `/api/projects/${id}`, data);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+    },
+  });
+
   const handleCreateProject = () => {
     if (!newProject.name || !newProject.companyName) {
       toast({
@@ -121,6 +141,42 @@ export default function ProjectSelector({ currentProjectId, onProjectChange }: P
       return;
     }
     createProjectMutation.mutate(newProject);
+  };
+
+  const handleConfirmCompany = () => {
+    if (pendingProject) {
+      // Update project with logo URL
+      updateProjectMutation.mutate({
+        id: pendingProject.id,
+        data: { companyLogoUrl: companyLogo }
+      });
+
+      setIsVerifying(false);
+      setNewProject({ name: "", companyName: "", businessUnit: "", sector: "" });
+      setPendingProject(null);
+      setCompanyLogo("");
+      
+      toast({
+        title: "Project created",
+        description: `${pendingProject.name} has been created successfully.`,
+      });
+      
+      if (onProjectChange) {
+        onProjectChange(pendingProject);
+      }
+      setLocation(`/discovery?project=${pendingProject.id}`);
+    }
+  };
+
+  const handleCorrectCompany = () => {
+    // Delete the pending project and go back to creation
+    if (pendingProject) {
+      deleteProjectMutation.mutate(pendingProject.id);
+      setIsVerifying(false);
+      setPendingProject(null);
+      setCompanyLogo("");
+      setIsCreating(true);
+    }
   };
 
   const currentProject = projects.find(p => p.id === currentProjectId);
@@ -213,6 +269,16 @@ export default function ProjectSelector({ currentProjectId, onProjectChange }: P
               />
             </div>
             <div>
+              <Label htmlFor="businessUnit">Business Unit (Optional)</Label>
+              <Input
+                id="businessUnit"
+                placeholder="e.g., Cloud Services Division"
+                value={newProject.businessUnit}
+                onChange={(e) => setNewProject({ ...newProject, businessUnit: e.target.value })}
+                data-testid="input-business-unit"
+              />
+            </div>
+            <div>
               <Label htmlFor="sector">Sector (Optional)</Label>
               <Input
                 id="sector"
@@ -236,6 +302,68 @@ export default function ProjectSelector({ currentProjectId, onProjectChange }: P
                 data-testid="button-create"
               >
                 {createProjectMutation.isPending ? "Creating..." : "Create Project"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Company Verification Dialog */}
+      <Dialog open={isVerifying} onOpenChange={setIsVerifying}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Verify Company</DialogTitle>
+            <DialogDescription>
+              Is this the correct company for {pendingProject?.companyName}?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="flex items-center justify-center p-6 bg-muted/30 rounded-lg">
+              {verifyCompanyMutation.isPending ? (
+                <div className="text-sm text-muted-foreground">Loading company logo...</div>
+              ) : companyLogo ? (
+                <img 
+                  src={companyLogo} 
+                  alt={`${pendingProject?.companyName} logo`}
+                  className="max-h-32 max-w-full object-contain"
+                  onError={(e) => {
+                    // Fallback if logo fails to load
+                    (e.target as HTMLImageElement).style.display = 'none';
+                    (e.target as HTMLImageElement).parentElement!.innerHTML = 
+                      '<div class="text-sm text-muted-foreground">No logo found</div>';
+                  }}
+                  data-testid="img-company-logo"
+                />
+              ) : (
+                <div className="text-sm text-muted-foreground">No logo found</div>
+              )}
+            </div>
+            
+            <div className="text-center">
+              <p className="font-medium">{pendingProject?.companyName}</p>
+              {pendingProject?.businessUnit && (
+                <p className="text-sm text-muted-foreground">{pendingProject.businessUnit}</p>
+              )}
+              {pendingProject?.sector && (
+                <p className="text-sm text-muted-foreground">{pendingProject.sector}</p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-3 pt-4">
+              <Button
+                onClick={handleConfirmCompany}
+                disabled={updateProjectMutation.isPending}
+                data-testid="button-confirm-company"
+              >
+                Yes, this is correct
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleCorrectCompany}
+                disabled={deleteProjectMutation.isPending}
+                data-testid="button-correct-company"
+              >
+                No, let me correct it
               </Button>
             </div>
           </div>
