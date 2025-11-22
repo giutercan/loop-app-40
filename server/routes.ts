@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { storage } from "./storage";
 import { researchCompany, followUpResearch, generateDiscoveryQuestions } from "./ai";
+import { z } from "zod";
 import { 
   insertProjectSchema,
   insertCompanyDataPointSchema,
@@ -17,7 +18,8 @@ import {
   insertAnalyticsReviewSchema,
   insertResponsibleAiChecklistSchema,
   insertDiscoveryQuestionSchema,
-  updateDiscoveryQuestionSchema
+  updateDiscoveryQuestionSchema,
+  insertAttachmentSchema
 } from "@shared/schema";
 
 export function registerRoutes(app: Express) {
@@ -590,6 +592,41 @@ export function registerRoutes(app: Express) {
   app.delete("/api/discovery-questions/:id", async (req, res) => {
     try {
       await storage.deleteDiscoveryQuestion(parseInt(req.params.id));
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Attachments (file uploads and voice notes)
+  app.get("/api/projects/:projectId/attachments", async (req, res) => {
+    try {
+      const attachments = await storage.getAttachments(parseInt(req.params.projectId));
+      res.json(attachments);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/projects/:projectId/attachments", async (req, res) => {
+    try {
+      const parsed = insertAttachmentSchema.parse({
+        ...req.body,
+        projectId: parseInt(req.params.projectId),
+      });
+      const attachment = await storage.createAttachment(parsed);
+      res.json(attachment);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/attachments/:id", async (req, res) => {
+    try {
+      await storage.deleteAttachment(parseInt(req.params.id));
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
