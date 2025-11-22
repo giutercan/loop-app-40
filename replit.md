@@ -12,6 +12,40 @@ Enable Korn Ferry consultants to:
 
 ## Recent Changes
 
+### 2025-11-22: Value Calculation Framework for Alignment Phase
+- Built comprehensive quantitative value hypothesis system with financial calculations
+- Extended `shared/knowledge.ts` with detailed KPI metadata:
+  - KPI definitions, units, and baseline guidance for all 9 capabilities
+  - Translation formulas mapping KPI improvements to financial value
+  - Default realisation rates (50-70%) based on typical engagement outcomes
+  - Measurement frequencies and data sources for each KPI
+  - Preferred research designs for validation
+- Created `shared/valueCalculations.ts` with calculation utilities for 6 capabilities:
+  - **Success Profiles & Role Design**: QoH improvement → hiring value
+  - **Sales & Service (KF Sell)**: Win rate → revenue impact
+  - **Organisation Strategy & Transformation**: Productivity gains → cost savings
+  - **Total Rewards Optimisation**: Retention improvement → replacement cost savings
+  - **People Analytics**: Turnover reduction → cost avoidance
+  - **Leadership Development**: KPI delta → business outcome value
+  - Each includes NPV calculation with discount rates, payback period analysis, and 3-year projections
+- Extended database schema with value hypothesis fields:
+  - `capabilityName`: Which Korn Ferry capability (e.g., "Success Profiles & Role Design")
+  - `solutionArea`: Solution area enum (ASSESS, DEVELOP, TRANSFORM, REWARD, COMMERCIAL, ANALYTICS)
+  - `calculationInputs`: JSON field storing capability-specific assumptions
+  - `calculationResults`: JSON field with NPV, payback, year-by-year breakdown
+  - `linkedInsights`: Array of data point IDs supporting the hypothesis
+  - `rationale`: Why this hypothesis is valuable for the client
+- Built ValueHypothesisBuilder component with 4-step workflow:
+  - Step 1: Basic info (title, rationale)
+  - Step 2: Capability selection (solution area → capability)
+  - Step 3: Input assumptions (capability-specific forms with validation)
+  - Step 4: Results display (Year 1 value, NPV, payback period, yearly breakdown)
+- Created ValueHypothesisCard to display saved hypotheses with financial metrics
+- Replaced Alignment page with value hypothesis-focused interface
+- Capability filtering: UI only shows the 6 capabilities with implemented calculations
+- End-to-end tests passed for Success Profiles (£54M Year 1, £139M NPV) and Sales & Service (£280k Year 1, £672k NPV)
+- **Note**: 3 capabilities pending implementation: Standardised Assessments, AI-Ready Leader, Value Management
+
 ### 2025-11-22: Korn Ferry Knowledge Structure Integration
 - Integrated comprehensive knowledge structure mapping Korn Ferry's solutions to specific KPIs
 - Created `shared/knowledge.ts` with structured data:
