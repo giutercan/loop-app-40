@@ -243,7 +243,7 @@ export default function OrganisationCard({
                     htmlFor={`select-${point.id}`}
                     className="text-xs text-muted-foreground font-medium cursor-pointer"
                   >
-                    Add to Notes & Evidence
+                    Add to Value Case
                   </label>
                 </div>
               )}

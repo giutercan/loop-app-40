@@ -412,7 +412,7 @@ export default function Discovery() {
         <Tabs defaultValue="organisation" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3 max-w-2xl" data-testid="tabs-discovery">
             <TabsTrigger value="organisation">Organisation</TabsTrigger>
-            <TabsTrigger value="notes">Notes & Evidence</TabsTrigger>
+            <TabsTrigger value="notes">Build Value Case</TabsTrigger>
             <TabsTrigger value="hypothesis">Value Hypothesis</TabsTrigger>
           </TabsList>
 
@@ -566,7 +566,7 @@ export default function Discovery() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Go to the Organization tab and check the insights you want to add to Notes & Evidence. 
+                    Go to the Organization tab and check the insights you want to add to your value case. 
                     They will be organized by their Korn Ferry capability classification.
                   </p>
                 </CardContent>
