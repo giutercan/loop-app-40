@@ -17,6 +17,7 @@ interface DataPoint {
   isFollowUp?: boolean;
   selectedForNotes?: boolean;
   relevantJob?: string;
+  relevantCapability?: string | null;
   priorityScore?: number;
   kornFerryPillar?: string;
   solutionArea?: string;
@@ -37,8 +38,20 @@ interface OrganisationCardProps {
   dataPoints: DataPoint[];
   revenueData?: { month: string; revenue: number }[];
   headlines?: Headline[];
-  onDataPointSelect?: (id: number, selected: boolean, job?: string) => void;
+  onCapabilityChange?: (id: number, capability: string | null) => void;
 }
+
+const KORN_FERRY_CAPABILITIES = [
+  "Success Profiles & Role Design",
+  "Standardised Assessments & Assessments at Scale",
+  "Leadership & Development Journeys",
+  "AI-Ready Leader (within L&D)",
+  "Organisation Strategy & Transformation",
+  "Total Rewards Optimisation (TRO)",
+  "Sales & Service (KF Sell)",
+  "People Analytics / KFI Analytics",
+  "Value Management / Client Success & Talent Suite",
+];
 
 const KORN_FERRY_JOBS = [
   { value: "leadership-development", label: "Leadership Development" },
@@ -108,35 +121,25 @@ export default function OrganisationCard({
   dataPoints,
   revenueData = [],
   headlines = [],
-  onDataPointSelect
+  onCapabilityChange
 }: OrganisationCardProps) {
-  // Categorize data points based on their labels
-  const strategicPoints = dataPoints.filter(dp => 
-    dp.label.toLowerCase().includes('strategic') || 
-    dp.label.toLowerCase().includes('initiative') ||
-    dp.label.toLowerCase().includes('transformation') ||
-    dp.label.toLowerCase().includes('market position') ||
-    dp.label.toLowerCase().includes('investment') ||
-    dp.label.toLowerCase().includes('leadership') ||
-    dp.label.toLowerCase().includes('m&a') ||
-    dp.label.toLowerCase().includes('acquisition') ||
-    dp.label.toLowerCase().includes('esg') ||
-    dp.label.toLowerCase().includes('sustainability')
-  );
+  // Group data points by capability
+  const groupedByCapability: Record<string, DataPoint[]> = {};
   
-  const industryPoints = dataPoints.filter(dp => 
-    dp.label.toLowerCase().includes('trend') ||
-    dp.label.toLowerCase().includes('industry') ||
-    dp.label.toLowerCase().includes('competitive') ||
-    dp.label.toLowerCase().includes('market') ||
-    dp.label.toLowerCase().includes('regulatory') ||
-    dp.label.toLowerCase().includes('supply chain') ||
-    dp.label.toLowerCase().includes('disruption')
-  );
+  dataPoints.forEach(dp => {
+    const key = dp.relevantCapability || "No Capability Identified";
+    if (!groupedByCapability[key]) {
+      groupedByCapability[key] = [];
+    }
+    groupedByCapability[key].push(dp);
+  });
   
-  const businessPoints = dataPoints.filter(dp => 
-    !strategicPoints.includes(dp) && !industryPoints.includes(dp)
-  );
+  // Sort capabilities: identified ones first (alphabetically), then "No Capability Identified"
+  const sortedCapabilities = Object.keys(groupedByCapability).sort((a, b) => {
+    if (a === "No Capability Identified") return 1;
+    if (b === "No Capability Identified") return -1;
+    return a.localeCompare(b);
+  });
 
   const renderDataPointSection = (title: string, points: DataPoint[], icon: any, description: string) => {
     if (points.length === 0) return null;
@@ -224,45 +227,29 @@ export default function OrganisationCard({
                   {point.source}
                 </a>
               )}
-              {onDataPointSelect && point.id && (
-                <div className="flex items-center gap-3 pt-2 border-t">
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id={`select-${point.id}`}
-                      checked={point.selectedForNotes}
-                      onCheckedChange={(checked) => {
-                        // When unchecking, clear the relevantJob to remove it from Notes & Evidence grouping
-                        onDataPointSelect(point.id!, checked as boolean, checked ? point.relevantJob : undefined);
-                      }}
-                      data-testid={`checkbox-select-${point.id}`}
-                    />
-                    <label 
-                      htmlFor={`select-${point.id}`} 
-                      className="text-xs font-medium cursor-pointer"
-                    >
-                      Add to Notes & Evidence
-                    </label>
-                  </div>
-                  {point.selectedForNotes && (
-                    <Select
-                      value={point.relevantJob || ""}
-                      onValueChange={(value) => {
-                        // Selecting a job implicitly selects the data point
-                        onDataPointSelect(point.id!, true, value);
-                      }}
-                    >
-                      <SelectTrigger className="h-7 w-[200px] text-xs" data-testid={`select-job-${point.id}`}>
-                        <SelectValue placeholder="Select job relevance..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {KORN_FERRY_JOBS.map(job => (
-                          <SelectItem key={job.value} value={job.value} className="text-xs">
-                            {job.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
+              {onCapabilityChange && point.id && (
+                <div className="flex items-center gap-2 pt-2 border-t">
+                  <span className="text-xs text-muted-foreground font-medium">Capability:</span>
+                  <Select
+                    value={point.relevantCapability || "none"}
+                    onValueChange={(value) => {
+                      onCapabilityChange(point.id!, value === "none" ? null : value);
+                    }}
+                  >
+                    <SelectTrigger className="h-7 w-[280px] text-xs" data-testid={`select-capability-${point.id}`}>
+                      <SelectValue placeholder="No capability identified" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none" className="text-xs">
+                        No capability identified
+                      </SelectItem>
+                      {KORN_FERRY_CAPABILITIES.map(capability => (
+                        <SelectItem key={capability} value={capability} className="text-xs">
+                          {capability}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
             </div>
@@ -293,30 +280,19 @@ export default function OrganisationCard({
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
-        {renderDataPointSection(
-          "Strategic Intelligence",
-          strategicPoints,
-          Briefcase,
-          "Key initiatives and organizational priorities relevant for transformation and leadership advisory"
-        )}
-
-        {strategicPoints.length > 0 && industryPoints.length > 0 && <Separator />}
-
-        {renderDataPointSection(
-          "Industry Context",
-          industryPoints,
-          BarChart3,
-          "Market dynamics and competitive landscape insights for strategy consulting"
-        )}
-
-        {(strategicPoints.length > 0 || industryPoints.length > 0) && businessPoints.length > 0 && <Separator />}
-
-        {renderDataPointSection(
-          "Business Performance",
-          businessPoints,
-          Users,
-          "Operational and financial indicators to understand organizational health"
-        )}
+        {sortedCapabilities.map((capability, idx) => (
+          <div key={capability}>
+            {idx > 0 && <Separator />}
+            {renderDataPointSection(
+              capability,
+              groupedByCapability[capability],
+              capability === "No Capability Identified" ? CheckSquare : Briefcase,
+              capability === "No Capability Identified" 
+                ? "Insights not yet classified to a Korn Ferry capability" 
+                : "AI-classified insights for this Korn Ferry capability"
+            )}
+          </div>
+        ))}
 
         {revenueData.length > 0 && (
           <>

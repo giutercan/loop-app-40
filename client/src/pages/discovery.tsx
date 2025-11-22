@@ -170,16 +170,14 @@ export default function Discovery() {
     },
   });
 
-  const updateDataPointSelectionMutation = useMutation({
-    mutationFn: async ({ id, selectedForNotes, relevantJob }: { id: number; selectedForNotes: boolean; relevantJob?: string }) => {
-      // Send relevantJob as null if undefined to clear it in the database
+  const updateCapabilityMutation = useMutation({
+    mutationFn: async ({ id, relevantCapability }: { id: number; relevantCapability: string | null }) => {
       const res = await apiRequest("PATCH", `/api/data-points/${id}`, { 
-        selectedForNotes, 
-        relevantJob: relevantJob !== undefined ? relevantJob : null 
+        relevantCapability 
       });
       return await res.json();
     },
-    onMutate: async ({ id, selectedForNotes, relevantJob }) => {
+    onMutate: async ({ id, relevantCapability }) => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ["/api/projects", selectedProjectId, "data-points"] });
       
@@ -191,12 +189,7 @@ export default function Discovery() {
         if (!old) return old;
         return old.map((dp: any) => 
           dp.id === id 
-            ? { 
-                ...dp, 
-                selectedForNotes, 
-                // If relevantJob is explicitly undefined, clear it; otherwise use the new value or keep existing
-                relevantJob: relevantJob !== undefined ? relevantJob : null 
-              }
+            ? { ...dp, relevantCapability }
             : dp
         );
       });
@@ -221,11 +214,10 @@ export default function Discovery() {
     },
   });
 
-  const handleDataPointSelect = (id: number, selected: boolean, job?: string) => {
-    updateDataPointSelectionMutation.mutate({ 
+  const handleCapabilityChange = (id: number, capability: string | null) => {
+    updateCapabilityMutation.mutate({ 
       id, 
-      selectedForNotes: selected, 
-      relevantJob: job 
+      relevantCapability: capability 
     });
   };
 
@@ -411,6 +403,7 @@ export default function Discovery() {
                     isFollowUp: Boolean(dp.provenance && typeof dp.provenance === 'object' && 'type' in dp.provenance && dp.provenance.type === 'ai_follow_up'),
                     selectedForNotes: dp.selectedForNotes,
                     relevantJob: dp.relevantJob || undefined,
+                    relevantCapability: dp.relevantCapability || null,
                     priorityScore: dp.priorityScore,
                     kornFerryPillar: dp.kornFerryPillar || undefined,
                     solutionArea: dp.solutionArea || undefined,
@@ -423,7 +416,7 @@ export default function Discovery() {
                     url: h.url,
                     isFollowUp: h.source === "AI Follow-up",
                   }))}
-                  onDataPointSelect={handleDataPointSelect}
+                  onCapabilityChange={handleCapabilityChange}
                 />
               </>
             )}

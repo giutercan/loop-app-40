@@ -225,6 +225,16 @@ export function registerRoutes(app: Express) {
           } else if (dp.relatedKPIs) {
             console.warn(`AI returned invalid relatedKPIs (expected array), setting to null`);
           }
+
+          // Validate and sanitize relevant capability
+          let relevantCapability = null;
+          if (dp.relevantCapability) {
+            if (typeof dp.relevantCapability === 'string' && dp.relevantCapability.trim().length > 0) {
+              relevantCapability = dp.relevantCapability.trim();
+            } else {
+              console.warn(`AI returned invalid relevantCapability, setting to null`);
+            }
+          }
           
           const validated = insertCompanyDataPointSchema.parse({
             projectId,
@@ -236,6 +246,7 @@ export function registerRoutes(app: Express) {
             provenance: { type: "ai_generated", model: "gpt-5", timestamp: new Date().toISOString() },
             selectedForNotes: false,
             relevantJob: null,
+            relevantCapability,
             priorityScore,
             kornFerryPillar,
             solutionArea,
@@ -388,6 +399,16 @@ export function registerRoutes(app: Express) {
           } else if (dp.relatedKPIs) {
             console.warn(`Follow-up AI returned invalid relatedKPIs (expected array), setting to null`);
           }
+
+          // Validate and sanitize relevant capability
+          let relevantCapability = null;
+          if (dp.relevantCapability) {
+            if (typeof dp.relevantCapability === 'string' && dp.relevantCapability.trim().length > 0) {
+              relevantCapability = dp.relevantCapability.trim();
+            } else {
+              console.warn(`Follow-up AI returned invalid relevantCapability, setting to null`);
+            }
+          }
           
           const validated = insertCompanyDataPointSchema.parse({
             projectId,
@@ -404,6 +425,7 @@ export function registerRoutes(app: Express) {
             },
             selectedForNotes: false,
             relevantJob: null,
+            relevantCapability,
             priorityScore,
             kornFerryPillar,
             solutionArea,
