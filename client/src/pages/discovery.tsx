@@ -777,16 +777,170 @@ export default function Discovery() {
           </TabsContent>
 
           <TabsContent value="notes" className="space-y-6">
+            {/* Step 1: Capture Information */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-semibold text-sm shrink-0">
+                    1
+                  </div>
+                  <div className="flex-1">
+                    <CardTitle>Capture Client Information</CardTitle>
+                    <CardDescription>Write notes, upload files, or record voice memos from client conversations</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="freeform">Notes</Label>
+                  <Textarea
+                    id="freeform"
+                    placeholder="Type or paste notes from meetings, conversations, or research... (e.g., 'Client has 50-75 sales reps, wants 40% revenue increase, current employee satisfaction at 65%')"
+                    className="min-h-[120px] resize-none"
+                    value={localNotes.freeformNotes}
+                    onChange={(e) => setLocalNotes({ ...localNotes, freeformNotes: e.target.value })}
+                    data-testid="textarea-notes"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Separator className="flex-1" />
+                  <span className="text-xs text-muted-foreground">OR</span>
+                  <Separator className="flex-1" />
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Input
+                    type="file"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    id="file-upload"
+                    data-testid="input-file-upload"
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => document.getElementById('file-upload')?.click()}
+                    disabled={uploadFileMutation.isPending}
+                    data-testid="button-upload-file"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    {uploadFileMutation.isPending ? "Uploading..." : "Upload File"}
+                  </Button>
+                  {!isRecording ? (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleStartRecording}
+                      data-testid="button-start-recording"
+                    >
+                      <Mic className="w-4 h-4 mr-2" />
+                      Record Voice Note
+                    </Button>
+                  ) : (
+                    <Button 
+                      variant="destructive" 
+                      size="sm"
+                      onClick={handleStopRecording}
+                      data-testid="button-stop-recording"
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Stop Recording
+                    </Button>
+                  )}
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => saveNotesMutation.mutate()}
+                    disabled={saveNotesMutation.isPending}
+                    data-testid="button-save-notes"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    {saveNotesMutation.isPending ? "Saving..." : "Save Notes"}
+                  </Button>
+                </div>
+
+                {isRecording && voiceTranscript && (
+                  <div className="bg-primary/5 border border-primary/20 rounded-md p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Mic className="w-4 h-4 text-primary animate-pulse" />
+                        <span className="text-sm font-medium">Recording in progress...</span>
+                      </div>
+                      <Button 
+                        size="sm"
+                        onClick={handleSaveVoiceNote}
+                        disabled={saveVoiceNoteMutation.isPending}
+                        data-testid="button-save-voice-note"
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        {saveVoiceNoteMutation.isPending ? "Saving..." : "Save Voice Note"}
+                      </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{voiceTranscript}</p>
+                  </div>
+                )}
+
+                {attachments.length > 0 && (
+                  <div className="space-y-2 pt-2">
+                    <Label className="text-xs text-muted-foreground">Attachments ({attachments.length})</Label>
+                    <div className="space-y-2">
+                      {attachments.map((attachment) => (
+                        <div 
+                          key={attachment.id} 
+                          className="flex items-start justify-between gap-3 bg-muted/30 rounded-md p-2"
+                          data-testid={`attachment-${attachment.id}`}
+                        >
+                          <div className="flex items-start gap-2 flex-1 min-w-0">
+                            {attachment.type === "file" ? (
+                              <File className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                            ) : (
+                              <Mic className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              {attachment.type === "file" ? (
+                                <>
+                                  <p className="text-sm font-medium truncate">{attachment.fileName}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {attachment.fileSize && `${(attachment.fileSize / 1024).toFixed(1)} KB`}
+                                  </p>
+                                </>
+                              ) : (
+                                <p className="text-sm line-clamp-2">{attachment.content}</p>
+                              )}
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteAttachmentMutation.mutate(attachment.id)}
+                            disabled={deleteAttachmentMutation.isPending}
+                            data-testid={`button-delete-attachment-${attachment.id}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Step 2: Extract Insights */}
             <Card className="bg-primary/5 border-primary/20">
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-semibold text-sm shrink-0">
+                    2
+                  </div>
                   <div className="flex-1">
                     <CardTitle className="flex items-center gap-2">
                       <Sparkles className="w-5 h-5 text-primary" />
-                      AI-Powered Enrichment
+                      Extract Strategic Insights
                     </CardTitle>
                     <CardDescription>
-                      Extract strategic insights from your notes and attachments to enhance your research
+                      AI analyzes your notes and files to identify metrics, challenges, and opportunities
                     </CardDescription>
                   </div>
                   <Button
@@ -795,51 +949,48 @@ export default function Discovery() {
                     data-testid="button-enrich-from-notes"
                   >
                     <Sparkles className="w-4 h-4 mr-2" />
-                    {enrichFromNotesMutation.isPending ? "Analyzing..." : "Enrich Insights"}
+                    {enrichFromNotesMutation.isPending ? "Analyzing..." : "Extract Insights"}
                   </Button>
                 </div>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  AI will analyze your notes and uploaded files to identify new strategic insights, metrics, and opportunities that aren't already captured in your research. These insights will be added to the Organization tab and used to generate better discovery questions.
+                  Click "Extract Insights" to have AI analyze your notes and files. New insights will appear in the Organization tab and can be selected as evidence below.
                 </p>
                 <p className="text-sm text-muted-foreground mt-2">
-                  <strong>Supported:</strong> Text files (.txt, .csv, .json) and voice notes are analyzed for insights. Other file types (PDFs, Word, Excel, images) are saved for reference but not analyzed.
+                  <strong>Supported for AI analysis:</strong> Text files (.txt, .csv, .json) and voice notes
                 </p>
-                {(!notes?.freeformNotes && attachments.length === 0) && (
-                  <p className="text-sm text-muted-foreground mt-2 italic">
-                    Add notes or upload files below to enable enrichment.
-                  </p>
-                )}
               </CardContent>
             </Card>
 
-            {dataPoints.filter(dp => dp.selectedForNotes).length === 0 ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle>No Evidence Selected Yet</CardTitle>
-                  <CardDescription>
-                    Select key insights from the Organization tab to build your evidence base
-                  </CardDescription>
-                </CardHeader>
+            {/* Step 3: Select Evidence */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-semibold text-sm shrink-0">
+                    3
+                  </div>
+                  <div className="flex-1">
+                    <CardTitle>Select Evidence</CardTitle>
+                    <CardDescription>
+                      {dataPoints.filter(dp => dp.selectedForNotes).length === 0 
+                        ? "Choose insights from the Organization tab to build your value case"
+                        : `${dataPoints.filter(dp => dp.selectedForNotes).length} insight${dataPoints.filter(dp => dp.selectedForNotes).length !== 1 ? 's' : ''} selected`
+                      }
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              {dataPoints.filter(dp => dp.selectedForNotes).length === 0 ? (
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Go to the Organization tab and check the insights you want to add to your value case. 
-                    They will be organized by their Korn Ferry capability classification.
+                    Go to the <strong>Organization tab</strong> and check the boxes next to insights you want to include as evidence. 
+                    Selected insights will be organized here by Korn Ferry capability.
                   </p>
                 </CardContent>
-              </Card>
-            ) : (
-              <>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Evidence Organized by Capability</CardTitle>
-                    <CardDescription>
-                      {dataPoints.filter(dp => dp.selectedForNotes).length} insight{dataPoints.filter(dp => dp.selectedForNotes).length !== 1 ? 's' : ''} selected from research
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {[
+              ) : (
+                <CardContent className="space-y-6">
+                  {[
                       'Success Profiles & Role Design',
                       'Standardised Assessments & Assessments at Scale',
                       'Leadership & Development Journeys',
@@ -890,16 +1041,22 @@ export default function Discovery() {
                         </div>
                       );
                     })}
-                  </CardContent>
-                </Card>
+                </CardContent>
+              )}
+            </Card>
 
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle>Discovery Questions</CardTitle>
-                        <CardDescription>AI-generated questions to investigate insights and capture data for KPI calculations</CardDescription>
-                      </div>
+            {/* Step 4: Discovery Questions - Only show if evidence is selected */}
+            {dataPoints.filter(dp => dp.selectedForNotes).length > 0 && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-semibold text-sm shrink-0">
+                      4
+                    </div>
+                    <div className="flex-1">
+                      <CardTitle>Discovery Questions</CardTitle>
+                      <CardDescription>AI-generated questions to investigate insights and capture data for KPI calculations</CardDescription>
+                    </div>
                       <Button 
                         onClick={() => generateDiscoveryQuestionsMutation.mutate()}
                         disabled={generateDiscoveryQuestionsMutation.isPending}
@@ -985,159 +1142,7 @@ export default function Discovery() {
                     )}
                   </CardContent>
                 </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Additional Notes</CardTitle>
-                    <CardDescription>Add context and observations to complement the evidence</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label htmlFor="stakeholder">Key Stakeholder</Label>
-                      <Input
-                        id="stakeholder"
-                        placeholder="Name, Title"
-                        value={localNotes.keyStakeholder}
-                        onChange={(e) => setLocalNotes({ ...localNotes, keyStakeholder: e.target.value })}
-                        data-testid="input-stakeholder"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="freeform">Freeform Notes</Label>
-                      <Textarea
-                        id="freeform"
-                        placeholder="Capture additional insights..."
-                        className="min-h-[200px] resize-none"
-                        value={localNotes.freeformNotes}
-                        onChange={(e) => setLocalNotes({ ...localNotes, freeformNotes: e.target.value })}
-                        data-testid="textarea-notes"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              </>
-            )}
-
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>File Uploads & Voice Notes</CardTitle>
-                    <CardDescription>Attach documents or record voice notes to support your value case</CardDescription>
-                  </div>
-                  <div className="flex gap-2">
-                    <Input
-                      type="file"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                      id="file-upload"
-                      data-testid="input-file-upload"
-                    />
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => document.getElementById('file-upload')?.click()}
-                      disabled={uploadFileMutation.isPending}
-                      data-testid="button-upload-file"
-                    >
-                      <Upload className="w-4 h-4 mr-2" />
-                      {uploadFileMutation.isPending ? "Uploading..." : "Upload File"}
-                    </Button>
-                    {!isRecording ? (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={handleStartRecording}
-                        data-testid="button-start-recording"
-                      >
-                        <Mic className="w-4 h-4 mr-2" />
-                        Record Voice
-                      </Button>
-                    ) : (
-                      <Button 
-                        variant="destructive" 
-                        size="sm"
-                        onClick={handleStopRecording}
-                        data-testid="button-stop-recording"
-                      >
-                        <X className="w-4 h-4 mr-2" />
-                        Stop Recording
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {isRecording && voiceTranscript && (
-                  <div className="bg-primary/5 border border-primary/20 rounded-md p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Mic className="w-4 h-4 text-primary animate-pulse" />
-                        <span className="text-sm font-medium">Recording in progress...</span>
-                      </div>
-                      <Button 
-                        size="sm"
-                        onClick={handleSaveVoiceNote}
-                        disabled={saveVoiceNoteMutation.isPending}
-                        data-testid="button-save-voice-note"
-                      >
-                        <Save className="w-4 h-4 mr-2" />
-                        {saveVoiceNoteMutation.isPending ? "Saving..." : "Save"}
-                      </Button>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{voiceTranscript}</p>
-                  </div>
-                )}
-
-                {attachments.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No attachments yet. Upload files or record voice notes to add supporting materials.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {attachments.map((attachment) => (
-                      <div 
-                        key={attachment.id} 
-                        className="flex items-start justify-between gap-3 bg-muted/30 rounded-md p-3"
-                        data-testid={`attachment-${attachment.id}`}
-                      >
-                        <div className="flex items-start gap-3 flex-1 min-w-0">
-                          {attachment.type === "file" ? (
-                            <File className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-                          ) : (
-                            <Mic className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            {attachment.type === "file" ? (
-                              <>
-                                <p className="text-sm font-medium truncate">{attachment.fileName}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {attachment.fileSize && `${(attachment.fileSize / 1024).toFixed(1)} KB`}
-                                </p>
-                              </>
-                            ) : (
-                              <p className="text-sm">{attachment.content}</p>
-                            )}
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {new Date(attachment.createdAt).toLocaleDateString()} at {new Date(attachment.createdAt).toLocaleTimeString()}
-                            </p>
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteAttachmentMutation.mutate(attachment.id)}
-                          disabled={deleteAttachmentMutation.isPending}
-                          data-testid={`button-delete-attachment-${attachment.id}`}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+              )}
           </TabsContent>
 
           <TabsContent value="hypothesis" className="space-y-6">
