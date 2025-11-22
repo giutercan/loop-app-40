@@ -12,6 +12,16 @@ Enable Korn Ferry consultants to:
 
 ## Recent Changes
 
+### 2025-11-22: Notes & Evidence with Korn Ferry Job Categories
+- Added data point selection system for organizing insights by Korn Ferry job relevance
+- Users can now:
+  - Select/deselect data points using checkboxes on Organization tab
+  - Tag selected insights with Korn Ferry job categories (Leadership Development, Talent Acquisition, etc.)
+  - View organized evidence in Notes & Evidence tab grouped by job category
+- Implemented optimistic UI updates for instant feedback on selection changes
+- Fixed critical deselection bug ensuring relevantJob is properly cleared when unchecking
+- All interactive elements use unique data-testid attributes based on data point IDs
+
 ### 2025-11-22: Enhanced Follow-up Research UI
 - Moved "Need More Information" prompt to top of results for better visibility
 - Added prominent card with primary-colored background above research results
