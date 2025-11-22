@@ -115,39 +115,35 @@ export function registerRoutes(app: Express) {
       const validatedDataPoints = [];
       for (const dp of result.dataPoints) {
         try {
-          const dataPointData = {
-            projectId: projectId,
+          const validated = insertCompanyDataPointSchema.parse({
+            projectId,
             label: dp.label,
             value: dp.value,
             confidence: dp.confidence,
             source: dp.source || "AI Research",
             sourceUrl: null,
             provenance: { type: "ai_generated", model: "gpt-5", timestamp: new Date().toISOString() }
-          };
-          const validated = insertCompanyDataPointSchema.parse(dataPointData);
-          const created = await storage.createCompanyDataPoint(validated);
-          validatedDataPoints.push(created);
+          });
+          validatedDataPoints.push(await storage.createCompanyDataPoint(validated));
         } catch (validationError: any) {
-          console.error("Failed to create data point:", validationError.message);
+          console.error("Invalid data point from AI:", validationError.message, dp);
         }
       }
 
       const validatedHeadlines = [];
       for (const h of result.headlines) {
         try {
-          const headlineData = {
-            projectId: projectId,
+          const validated = insertHeadlineSchema.parse({
+            projectId,
             title: h.title,
             date: h.date,
             source: h.source || "AI Research",
             url: h.url || "",
             excerpt: null
-          };
-          const validated = insertHeadlineSchema.parse(headlineData);
-          const created = await storage.createHeadline(validated);
-          validatedHeadlines.push(created);
+          });
+          validatedHeadlines.push(await storage.createHeadline(validated));
         } catch (validationError: any) {
-          console.error("Failed to create headline:", validationError.message);
+          console.error("Invalid headline from AI:", validationError.message, h);
         }
       }
 

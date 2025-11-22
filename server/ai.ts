@@ -21,73 +21,52 @@ interface CompanyResearchResult {
 }
 
 export async function researchCompany(companyName: string, sector?: string): Promise<CompanyResearchResult> {
-  const prompt = `You are a business intelligence analyst. Research ${companyName}${sector ? ` (${sector})` : ''} and provide specific, actionable insights.
+  const prompt = `Research ${companyName}${sector ? ` (${sector} sector)` : ''} and provide:
 
-Return valid JSON with two arrays: dataPoints and headlines.
+1. Key company data points:
+   - Revenue (latest year)
+   - Employee count
+   - Market cap (if public)
+   - Number of locations/offices
+   - Year founded
+   - CEO name
 
-For dataPoints, include 15+ items covering:
-- Annual report priorities (revenue targets, strategic initiatives, M&A)
-- Industry trends (disruptions, technology adoption, regulatory changes)
-- Recent news items (leadership changes, product launches, partnerships)
-- Operational metrics (headcount, markets, supply chain)
-- LinkedIn insights (hiring patterns, departures)
-- Competitive position (market share, threats, customer satisfaction)
+2. Recent headlines or major news (last 6 months)
 
-For headlines, include 8+ recent news items from the last 12 months.
-
-Return this JSON:
+Return your response in JSON format with this exact structure:
 {
-  "dataPoints": [{"label": "string", "value": "string", "confidence": "high|medium|low", "source": "string"}],
-  "headlines": [{"title": "string", "date": "YYYY-MM-DD", "source": "string", "url": "string"}]
-}`;
+  "dataPoints": [
+    {"label": "Revenue", "value": "$X billion", "confidence": "high|medium|low", "source": "source name"}
+  ],
+  "headlines": [
+    {"title": "headline text", "date": "YYYY-MM-DD", "source": "source name", "url": "https://..."}
+  ]
+}
 
-  let rawContent = "";
+Important:
+- Use "high" confidence for publicly available facts, "medium" for estimates, "low" for uncertain data
+- Include specific sources for each data point
+- For headlines, use real or plausible URLs
+- If you don't have current data, use your training data and mark confidence as "medium" or "low"`;
+
   try {
-    console.log(`Starting AI research for ${companyName}${sector ? ` (${sector})` : ''}`);
-    
-    // Try gpt-3.5-turbo first (most widely supported), fall back if needed
-    let model = "gpt-3.5-turbo";
-    console.log(`Using model: ${model}`);
-    
+    // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
     const response = await openai.chat.completions.create({
-      model: model,
+      model: "gpt-5",
       messages: [{ role: "user", content: prompt }],
-      max_completion_tokens: 2000,
-      temperature: 0.7,
+      response_format: { type: "json_object" },
+      max_completion_tokens: 8192,
     });
 
-    rawContent = response.choices?.[0]?.message?.content || "";
-    console.log(`Raw AI response received, length: ${rawContent.length}`);
-    
-    if (!rawContent || rawContent.trim() === "") {
-      console.error("Empty response from AI - API may be unavailable");
-      return { dataPoints: [], headlines: [] };
-    }
-
-    let content = rawContent.trim();
-    
-    // Remove markdown if present
-    if (content.includes("```")) {
-      content = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-    }
-    
+    const content = response.choices[0]?.message?.content || "{}";
     const result = JSON.parse(content);
     
-    // Ensure we have valid arrays
-    const dataPoints = Array.isArray(result.dataPoints) ? result.dataPoints : [];
-    const headlines = Array.isArray(result.headlines) ? result.headlines : [];
-    
-    console.log(`Successfully processed research: ${dataPoints.length} data points, ${headlines.length} headlines`);
-    
     return {
-      dataPoints,
-      headlines,
+      dataPoints: result.dataPoints || [],
+      headlines: result.headlines || [],
     };
   } catch (error) {
-    console.error("Error researching company:", error instanceof Error ? error.message : String(error));
-    if (error instanceof Error) {
-      console.error("Error details:", error.stack);
-    }
-    return { dataPoints: [], headlines: [] };
+    console.error("Error researching company:", error);
+    throw new Error("Failed to research company with AI");
   }
 }

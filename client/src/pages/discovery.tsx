@@ -7,16 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import OrganisationCard from "@/components/OrganisationCard";
 import ValueHypothesisBuilder from "@/components/ValueHypothesisBuilder";
 import ProjectSelector from "@/components/ProjectSelector";
 import StatusBadge from "@/components/StatusBadge";
-import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, Edit2, Check, X } from "lucide-react";
+import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Project, CompanyDataPoint, Headline, DiscoveryNotes, OrganizationalPriority, CompanyQuestion } from "@shared/schema";
+import type { Project, CompanyDataPoint, Headline, DiscoveryNotes } from "@shared/schema";
 
 export default function Discovery() {
   const [location] = useLocation();
@@ -57,24 +56,6 @@ export default function Discovery() {
     keyStakeholder: "",
     topChallenges: "",
     timeline: "",
-    annualReportSummary: "",
-    annualReportUrl: "",
-  });
-
-  const [newPriority, setNewPriority] = useState({ title: "", description: "", category: "priority", impact: "", alignmentNote: "" });
-  const [newQuestion, setNewQuestion] = useState({ question: "", answer: "" });
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const [editingName, setEditingName] = useState(false);
-  const [tempName, setTempName] = useState("");
-
-  const { data: priorities = [] } = useQuery<OrganizationalPriority[]>({
-    queryKey: ["/api/projects", selectedProjectId, "priorities"],
-    enabled: !!selectedProjectId,
-  });
-
-  const { data: questions = [] } = useQuery<CompanyQuestion[]>({
-    queryKey: ["/api/projects", selectedProjectId, "questions"],
-    enabled: !!selectedProjectId,
   });
 
   useEffect(() => {
@@ -84,66 +65,9 @@ export default function Discovery() {
         keyStakeholder: notes.keyStakeholder || "",
         topChallenges: notes.topChallenges || "",
         timeline: notes.timeline || "",
-        annualReportSummary: notes.annualReportSummary || "",
-        annualReportUrl: notes.annualReportUrl || "",
       });
     }
   }, [notes]);
-
-  const createPriorityMutation = useMutation({
-    mutationFn: async () => {
-      if (!selectedProjectId || !newPriority.title) return;
-      const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/priorities`, {
-        ...newPriority,
-        projectId: selectedProjectId,
-      });
-      return await res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "priorities"] });
-      setNewPriority({ title: "", description: "", category: "priority", impact: "", alignmentNote: "" });
-      toast({ title: "Priority saved", description: "New organizational priority added." });
-    },
-  });
-
-  const deletePriorityMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await apiRequest("DELETE", `/api/priorities/${id}`, {});
-      return await res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "priorities"] });
-      toast({ title: "Priority deleted", description: "Organizational priority removed." });
-    },
-  });
-
-  const createQuestionMutation = useMutation({
-    mutationFn: async () => {
-      if (!selectedProjectId || !newQuestion.question) return;
-      const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/questions`, {
-        ...newQuestion,
-        projectId: selectedProjectId,
-        status: "open",
-      });
-      return await res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "questions"] });
-      setNewQuestion({ question: "", answer: "" });
-      toast({ title: "Question saved", description: "Company research question added." });
-    },
-  });
-
-  const updateQuestionMutation = useMutation({
-    mutationFn: async ({ id, answer }: { id: number; answer: string }) => {
-      const res = await apiRequest("PATCH", `/api/questions/${id}`, { answer, status: answer ? "answered" : "open" });
-      return await res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "questions"] });
-      toast({ title: "Answer saved", description: "Question updated." });
-    },
-  });
 
   const saveNotesMutation = useMutation({
     mutationFn: async () => {
@@ -170,29 +94,6 @@ export default function Discovery() {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId] });
     },
   });
-
-  const updateCompanyConfirmationMutation = useMutation({
-    mutationFn: async ({ companyName, confirmed }: { companyName?: string; confirmed: boolean }) => {
-      if (!selectedProjectId) return;
-      const updateData: any = { companyConfirmed: confirmed };
-      if (companyName) updateData.companyName = companyName;
-      const res = await apiRequest("PATCH", `/api/projects/${selectedProjectId}`, updateData);
-      return await res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId] });
-      setShowConfirmation(false);
-      setEditingName(false);
-      toast({ title: "Company confirmed", description: "Company information updated." });
-    },
-  });
-
-  useEffect(() => {
-    if (project && !project.companyConfirmed && selectedProjectId) {
-      setShowConfirmation(true);
-      setTempName(project.companyName);
-    }
-  }, [project?.companyConfirmed, selectedProjectId]);
 
   const researchCompanyMutation = useMutation({
     mutationFn: async () => {
@@ -257,118 +158,8 @@ export default function Discovery() {
     );
   }
 
-  // Generate logo URL from company name
-  const logoUrl = project?.logoUrl || `https://logo.clearbit.com/${project?.companyName?.toLowerCase().replace(/\s+/g, '')}.com?size=200`;
-
   return (
     <div className="min-h-screen bg-background">
-      <Dialog open={showConfirmation} onOpenChange={setShowConfirmation}>
-        <DialogContent className="sm:max-w-md" data-testid="dialog-company-confirmation">
-          <DialogHeader>
-            <DialogTitle>Confirm Company Information</DialogTitle>
-            <DialogDescription>
-              Please verify the company details before proceeding
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-6">
-            {/* Company Logo */}
-            <div className="flex justify-center">
-              <div className="w-32 h-32 bg-muted rounded-lg flex items-center justify-center overflow-hidden border">
-                <img
-                  src={logoUrl}
-                  alt={project?.companyName}
-                  className="w-full h-full object-contain p-4"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Company Name with Edit */}
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-muted-foreground">Company Name</p>
-              {!editingName ? (
-                <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/50">
-                  <span className="text-lg font-semibold">{tempName}</span>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => setEditingName(true)}
-                    data-testid="button-edit-company-name"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  <Input
-                    value={tempName}
-                    onChange={(e) => setTempName(e.target.value)}
-                    placeholder="Enter company name"
-                    data-testid="input-company-name"
-                  />
-                  <Button
-                    size="icon"
-                    onClick={() => setEditingName(false)}
-                    variant="outline"
-                    data-testid="button-save-name"
-                  >
-                    <Check className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    onClick={() => {
-                      setEditingName(false);
-                      setTempName(project?.companyName || "");
-                    }}
-                    variant="outline"
-                    data-testid="button-cancel-edit"
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            {/* Sector */}
-            {project?.sector && (
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">Sector</p>
-                <p className="text-lg font-semibold">{project.sector}</p>
-              </div>
-            )}
-
-            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-              <p className="text-sm text-blue-900 dark:text-blue-200">
-                Is this the correct company? If not, please edit the name above.
-              </p>
-            </div>
-          </div>
-
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowConfirmation(false)}
-              data-testid="button-cancel-confirmation"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => updateCompanyConfirmationMutation.mutate({
-                companyName: tempName,
-                confirmed: true,
-              })}
-              disabled={updateCompanyConfirmationMutation.isPending || !tempName}
-              data-testid="button-confirm-company"
-            >
-              {updateCompanyConfirmationMutation.isPending ? "Confirming..." : "Confirm Company"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto max-w-7xl px-4 lg:px-8">
           <div className="flex h-16 items-center justify-between gap-4 flex-wrap">
@@ -383,17 +174,7 @@ export default function Discovery() {
                   <h1 className="text-xl font-bold">Phase 1: Discovery</h1>
                   <StatusBadge status="draft" />
                 </div>
-                <div className="flex items-center gap-3">
-                  <img
-                    src={logoUrl}
-                    alt={project?.companyName}
-                    className="w-8 h-8 object-contain rounded"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                  <p className="text-sm text-muted-foreground">{project?.companyName}</p>
-                </div>
+                <p className="text-sm text-muted-foreground">{project?.companyName}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
