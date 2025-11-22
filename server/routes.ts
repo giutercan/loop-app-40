@@ -178,7 +178,11 @@ export function registerRoutes(app: Express) {
             confidence: dp.confidence,
             source: dp.source || "AI Research",
             sourceUrl: null,
-            provenance: { type: "ai_generated", model: "gpt-5", timestamp: new Date().toISOString() }
+            provenance: { type: "ai_generated", model: "gpt-5", timestamp: new Date().toISOString() },
+            selectedForNotes: false,
+            relevantJob: null,
+            priorityScore: dp.priorityScore || 3,
+            kornFerryPillar: dp.kornFerryPillar || null
           });
           validatedDataPoints.push(await storage.createCompanyDataPoint(validated));
         } catch (validationError: any) {
@@ -240,7 +244,9 @@ export function registerRoutes(app: Express) {
           label: dp.label,
           value: dp.value,
           confidence: dp.confidence as "high" | "medium" | "low",
-          source: dp.source || ""
+          source: dp.source || "",
+          priorityScore: dp.priorityScore,
+          kornFerryPillar: dp.kornFerryPillar as "leadership-development" | "talent-acquisition" | "succession-planning" | "culture-transformation" | "organizational-design" | "change-management"
         })),
         headlines: existingHeadlines.map(h => ({
           title: h.title,
@@ -281,7 +287,11 @@ export function registerRoutes(app: Express) {
               model: "gpt-5", 
               timestamp: new Date().toISOString(),
               question 
-            }
+            },
+            selectedForNotes: false,
+            relevantJob: null,
+            priorityScore: dp.priorityScore || 3,
+            kornFerryPillar: dp.kornFerryPillar || null
           });
           validatedDataPoints.push(await storage.createCompanyDataPoint(validated));
         } catch (validationError: any) {

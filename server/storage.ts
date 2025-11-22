@@ -132,7 +132,8 @@ export class DbStorage implements IStorage {
   // Company Data Points
   async getCompanyDataPoints(projectId: number): Promise<CompanyDataPoint[]> {
     return await db.select().from(schema.companyDataPoints)
-      .where(eq(schema.companyDataPoints.projectId, projectId));
+      .where(eq(schema.companyDataPoints.projectId, projectId))
+      .orderBy(desc(schema.companyDataPoints.priorityScore), desc(schema.companyDataPoints.confidence));
   }
 
   async createCompanyDataPoint(dataPoint: InsertCompanyDataPoint): Promise<CompanyDataPoint> {
