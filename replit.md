@@ -31,6 +31,7 @@ A full-stack web application designed to empower Korn Ferry consultants in manag
 - **Engagement Management**: Structured three-phase (Discovery, Alignment, Realization) workflow.
 - **Project Management**: Creation, selection, and deletion of projects.
 - **Notes & Evidence System**: Users can select insights via checkbox, organizing them in a dedicated tab grouped by their AI-classified Korn Ferry capability.
+- **File Upload & Voice Notes**: Consultants can attach supporting documents (PDF, Word, Excel, images, text files up to 10MB) and record voice notes using browser speech recognition. Attachments are stored with base64 encoding and displayed in the Build Value Case tab. Backend validates file types, sizes, and prevents empty voice transcriptions. All mutations include comprehensive error handling with user-visible toasts.
 
 ### Feature Specifications
 - **Discovery Phase**: Focuses on company research, data collection, and initial note-taking.
