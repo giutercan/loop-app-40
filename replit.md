@@ -12,6 +12,21 @@ Enable Korn Ferry consultants to:
 
 ## Recent Changes
 
+### 2025-11-22: AI Research Prioritization System
+- Implemented priority scoring (1-5 scale) for all AI-generated insights
+- AI now returns maximum 8 high-quality insights instead of 15-20
+- Three priority tiers:
+  - **Critical (Score 5)**: Top 3 most strategic insights - displayed with flame icon
+  - **High (Score 4)**: Next 3 important insights - displayed with 4 stars
+  - **Supporting (Score 2-3)**: Context and background - displayed with muted stars
+- Each insight tagged with Korn Ferry consulting pillar (Leadership Development, Talent Acquisition, Succession Planning, Culture Transformation, Organizational Design, Change Management)
+- Server validates all AI responses:
+  - Priority scores must be 1-5 integers
+  - Korn Ferry pillars must be valid enum values
+  - Defaults to safe values with warning logs if AI misbehaves
+- Data automatically sorted by priority (descending), then confidence
+- Visual hierarchy helps consultants quickly identify most strategic opportunities
+
 ### 2025-11-22: Notes & Evidence with Korn Ferry Job Categories
 - Added data point selection system for organizing insights by Korn Ferry job relevance
 - Users can now:
@@ -60,14 +75,21 @@ Enable Korn Ferry consultants to:
 
 ### Key Features
 
-#### 1. AI-Powered Company Research
-- **Initial Research**: Comprehensive company analysis covering:
-  - Strategic initiatives and transformation programs
-  - Competitive advantages and market positioning
-  - Industry trends and disruptions
-  - Business performance and outlook
-- **Follow-up Questions**: Targeted additional research based on specific consultant questions
+#### 1. AI-Powered Company Research with Prioritization
+- **Initial Research**: Strategic analysis limited to 8 high-quality insights:
+  - Each insight assigned priority score (1-5) based on strategic importance
+  - All insights tagged with Korn Ferry consulting pillar
+  - 3 Critical (priority 5) + 3 High (priority 4) + 2 Supporting (priority 2-3)
+  - Focus areas: Strategic initiatives, competitive advantages, industry trends, business performance
+- **Follow-up Questions**: Targeted 2-4 additional insights based on specific consultant questions
+  - Follow-up insights default to priority 4 (high)
+  - Maintain same quality and tagging standards
+- **Prioritization Logic**:
+  - Critical insights: Immediate value drivers, major risks/opportunities, direct client pain points
+  - High insights: Strategic context, competitive dynamics, market trends
+  - Supporting insights: Background information, industry context
 - All research uses GPT-5 model with structured JSON responses
+- Server validates all responses for type safety and data quality
 
 #### 2. Company Search & Autocomplete
 - Real-time company name autocomplete with logos
@@ -94,15 +116,21 @@ Enable Korn Ferry consultants to:
 
 #### AI Research Strategy
 - Use GPT-5 for highest quality strategic insights
+- Quality over quantity: 8 strategic insights vs comprehensive coverage
 - Provide existing research as context for follow-up questions
 - Mark AI-generated data with provenance tracking
 - Replace old AI research on re-run to prevent duplication
+- Prioritization ensures consultants focus on most impactful opportunities
+- Korn Ferry pillar tagging aligns insights with service offerings
 
 #### Data Model
 - Simple schema focused on essential fields only
 - No unnecessary timestamp fields (createdAt/updatedAt)
 - JSON provenance field to track AI-generated vs manual data
 - Confidence levels (high/medium/low) for all data points
+- Priority scores (1-5 integer) with server-side validation
+- Korn Ferry pillar enum (6 consulting service categories)
+- Data sorted by priority DESC, then confidence DESC
 
 #### Storage Architecture
 - In-memory storage for rapid development
