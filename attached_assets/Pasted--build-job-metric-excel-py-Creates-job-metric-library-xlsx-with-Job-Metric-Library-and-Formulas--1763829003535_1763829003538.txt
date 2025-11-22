@@ -1,0 +1,234 @@
+# build_job_metric_excel.py
+# Creates job_metric_library.xlsx with Job_Metric_Library and Formulas & Examples sheets.
+
+import pandas as pd
+from openpyxl import load_workbook
+from openpyxl.utils import get_column_letter
+from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.worksheet.table import Table, TableStyleInfo
+
+rows = [
+    {
+        "Offering":"Success Profiles & Role Design",
+        "Jobs we do":"Define role success; align roles; anchor selection/promotion; workforce planning; feed digital profiles",
+        "Primary KPI":"Quality of Hire (QoH) at 6 months",
+        "Primary KPI Unit":"Index 0-100",
+        "Primary KPI Definition":"Composite index combining objective performance (50%), hiring manager rating (30%), retention at 6 months (20%)",
+        "Baseline guidance":"Prefer prior 12 months cohort mean; 6-month definitive measure for pilot",
+        "Measurement frequency":"6 months definitive (also 12 month check)",
+        "Preferred research design":"Matched cohort (or randomised hiring-source trials)",
+        "Supporting KPI 1":"Time to Productivity",
+        "Supporting KPI 1 Unit":"Days",
+        "Supporting KPI 2":"Hiring Manager Satisfaction",
+        "Supporting KPI 2 Unit":"1-5 scale",
+        "Primary data sources":"HRIS, performance systems, manager survey",
+        "Default realisation rate (decimal)":0.60,
+        "Example exposure (placeholder)":"# hires per year (e.g., 120)",
+        "Translation Formula (text)":"Financial impact = QoH_delta × Hires_per_year × Avg_margin_per_role × Realisation_rate",
+        "Notes":"Map QoH_index -> probability of success; store mapping table in library"
+    },
+    {
+        "Offering":"Standardised Assessments & Assessments at Scale",
+        "Jobs we do":"Measure capability; scale delivery; create norms; integrate into workflows; Responsible AI governance",
+        "Primary KPI":"Predictive Validity (AUC or correlation r)",
+        "Primary KPI Unit":"AUC (0.5-1.0) or r (-1 to 1)",
+        "Primary KPI Definition":"Statistical link between assessment score and later job performance or retention",
+        "Baseline guidance":"Validate on historic cohorts; cross-validation and holdout sets recommended",
+        "Measurement frequency":"12 months (validation)",
+        "Preferred research design":"Retrospective validation or prospective matched cohort",
+        "Supporting KPI 1":"Assessment Completion Rate",
+        "Supporting KPI 1 Unit":"Percent (%)",
+        "Supporting KPI 2":"Time to Offer",
+        "Supporting KPI 2 Unit":"Days",
+        "Primary data sources":"Assessment platform, HRIS, performance ratings",
+        "Default realisation rate (decimal)":0.60,
+        "Example exposure (placeholder)":"Annual hires (e.g., 100)",
+        "Translation Formula (text)":"Value = (Improved predictive validity → % more hires meeting success profile) × annual_hires × avg_contribution × Realisation − assessment_costs",
+        "Notes":"Include bias/fairness tests and confidence intervals"
+    },
+    {
+        "Offering":"Leadership & Development Journeys",
+        "Jobs we do":"Build leaders; change behaviour; link learning to business KPIs; develop succession; measure programmes",
+        "Primary KPI":"Business KPI Delta attributable to participants",
+        "Primary KPI Unit":"Depends on KPI (%, £)",
+        "Primary KPI Definition":"Change in sponsor-chosen business KPI (e.g., revenue per team %, productivity per FTE) attributable to participants",
+        "Baseline guidance":"Prefer 12 months baseline; 6 and 12 month checks",
+        "Measurement frequency":"6 months interim; 12 months final",
+        "Preferred research design":"Matched cohort or staged rollout; Kirkpatrick Level 4+",
+        "Supporting KPI 1":"Competency Gain (assessment/360 delta)",
+        "Supporting KPI 1 Unit":"Index or points",
+        "Supporting KPI 2":"Behavioural Application Rate",
+        "Supporting KPI 2 Unit":"Percent (%)",
+        "Primary data sources":"Finance systems; operational KPIs; 360/assessment data",
+        "Default realisation rate (decimal)":0.60,
+        "Example exposure (placeholder)":"Teams affected (e.g., 20)",
+        "Translation Formula (text)":"Value = KPI_delta × #_teams × unit_value_per_KPI_point × Realisation_rate",
+        "Notes":"Document attribution model and sensitivity"
+    },
+    {
+        "Offering":"AI-Ready Leader (within L&D)",
+        "Jobs we do":"Prepare leaders for Human+AI decisions; build AI literacy; embed governance; speed data-driven decisions",
+        "Primary KPI":"AI Readiness Index (0-100) OR Decision Lead Time (hours)",
+        "Primary KPI Unit":"Index 0-100 OR hours",
+        "Primary KPI Definition":"Composite of AI literacy, data fluency, ethical judgement and practical adoption OR mean time for representative decisions",
+        "Baseline guidance":"Pre/post assessment; cohort comparison",
+        "Measurement frequency":"6 and 12 months",
+        "Preferred research design":"Cohort comparison with matched leaders",
+        "Supporting KPI 1":"AI Adoption Rate",
+        "Supporting KPI 1 Unit":"% decisions aided",
+        "Supporting KPI 2":"Ethical/Compliance Score",
+        "Supporting KPI 2 Unit":"Index or count",
+        "Primary data sources":"Leader assessments; system logs; governance records",
+        "Default realisation rate (decimal)":0.50,
+        "Example exposure (placeholder)":"Decisions per year or leaders covered (placeholder)",
+        "Translation Formula (text)":"Value = Time_saved_per_decision × decisions_per_year × value_per_decision_hour × Realisation_rate (if using lead time)",
+        "Notes":"Include Responsible AI checklist and incident logs"
+    },
+    {
+        "Offering":"Organisation Strategy & Transformation",
+        "Jobs we do":"Redesign operating model; deliver capability; align people/process; unlock structural savings",
+        "Primary KPI":"Productivity per FTE (or Process Cycle Time)",
+        "Primary KPI Unit":"£ per FTE OR hours/days",
+        "Primary KPI Definition":"Output (revenue or units) per FTE, or average cycle time for key process",
+        "Baseline guidance":"12 months preferred baseline; continuous monitoring",
+        "Measurement frequency":"Quarterly (process) and 12 months (productivity)",
+        "Preferred research design":"Whole-unit comparison or difference-in-differences across sites",
+        "Supporting KPI 1":"Cost per unit",
+        "Supporting KPI 1 Unit":"£",
+        "Supporting KPI 2":"Error/Rework Rate",
+        "Supporting KPI 2 Unit":"%",
+        "Primary data sources":"ERP, process logs, finance systems",
+        "Default realisation rate (decimal)":0.70,
+        "Example exposure (placeholder)":"FTEs affected (e.g., 200)",
+        "Translation Formula (text)":"Savings = Productivity_gain_per_FTE × FTEs_affected × labour_cost_per_FTE − transformation_cost",
+        "Notes":"Use DID or staged rollout; include quality impacts"
+    },
+    {
+        "Offering":"Sales & Service (KF Sell)",
+        "Jobs we do":"Increase win rate, deal size and velocity; improve forecast; raise seller productivity",
+        "Primary KPI":"Win Rate (ppt change)",
+        "Primary KPI Unit":"Percentage points (%)",
+        "Primary KPI Definition":"% of opportunities closed won (closed won / total opportunities)",
+        "Baseline guidance":"Rolling 12 months baseline (CRM); segment by seller or region",
+        "Measurement frequency":"Monthly and 12 months",
+        "Preferred research design":"Staged rollout, matched seller cohorts",
+        "Supporting KPI 1":"Average Deal Size",
+        "Supporting KPI 1 Unit":"£",
+        "Supporting KPI 2":"Pipeline Velocity",
+        "Supporting KPI 2 Unit":"Days or % conversion",
+        "Primary data sources":"CRM, sales enablement tools, pipeline reports",
+        "Default realisation rate (decimal)":0.70,
+        "Example exposure (placeholder)":"Pipeline exposure (e.g., £100,000,000)",
+        "Translation Formula (text)":"Incremental revenue = WinRate_delta × Pipeline_exposure × Avg_deal_margin × Realisation_rate",
+        "Notes":"Use S&S ROI templates; compute NPV/payback"
+    },
+    {
+        "Offering":"Total Rewards Optimisation (TRO)",
+        "Jobs we do":"Maximise perceived employee value per £; rebalance spend; model cost vs perceived value; align rewards to EVP",
+        "Primary KPI":"Perceived Employee Value per £ Spend OR Retention rate (priority cohorts)",
+        "Primary KPI Unit":"Index/£ OR %",
+        "Primary KPI Definition":"Conjoint-based perceived value divided by employer spend OR retention % for target cohorts",
+        "Baseline guidance":"Pre/post conjoint; segment-level analysis",
+        "Measurement frequency":"6-12 months post-implementation",
+        "Preferred research design":"Segmented trials or cohort comparisons",
+        "Supporting KPI 1":"Take-up Rate",
+        "Supporting KPI 1 Unit":"%",
+        "Supporting KPI 2":"Cost per Employee",
+        "Supporting KPI 2 Unit":"£",
+        "Primary data sources":"Survey (conjoint), payroll, HRIS",
+        "Default realisation rate (decimal)":0.50,
+        "Example exposure (placeholder)":"Employees in cohort (e.g., 500)",
+        "Translation Formula (text)":"Value = Retention_improvement × cohort_size × avg_replacement_cost + (value of rebalanced spend) − incremental_cost",
+        "Notes":"TRO cases show high leverage when aligned to segments"
+    },
+    {
+        "Offering":"People Analytics / KFI Analytics",
+        "Jobs we do":"Identify drivers of engagement/performance; build predictive models; validate assessment-to-outcome links; quantify savings",
+        "Primary KPI":"Turnover Risk Predictive Accuracy (AUC) and Realised Turnover Reduction (%)",
+        "Primary KPI Unit":"AUC and percentage (%)",
+        "Primary KPI Definition":"Model predictive accuracy and realised reduction in voluntary turnover after interventions",
+        "Baseline guidance":"Baseline: prior 12 months turnover; model validation on holdout sets",
+        "Measurement frequency":"Monthly and 12 months",
+        "Preferred research design":"Backtested predictive models with holdout and cross-validation",
+        "Supporting KPI 1":"Top drivers (feature importance)",
+        "Supporting KPI 1 Unit":"List / scores",
+        "Supporting KPI 2":"Promotion velocity for retained talent",
+        "Supporting KPI 2 Unit":"Months/ratio",
+        "Primary data sources":"HRIS, engagement surveys, performance data",
+        "Default realisation rate (decimal)":0.60,
+        "Example exposure (placeholder)":"Employees in scope (e.g., 1000)",
+        "Translation Formula (text)":"Savings = Turnover_reduction × #employees × replacement_cost − analytics_cost",
+        "Notes":"Include backtest results and uplift monitoring"
+    },
+    {
+        "Offering":"Value Management / Client Success & Talent Suite",
+        "Jobs we do":"Align solutions to outcomes; track adoption and outcomes; govern re-measurement; deliver Talent Suite",
+        "Primary KPI":"Value Realisation % (Actual vs Target)",
+        "Primary KPI Unit":"%",
+        "Primary KPI Definition":"Actual realised financial value divided by the target value stated in the Value Hypothesis",
+        "Baseline guidance":"Baseline = target value set in the hypothesis; track monthly",
+        "Measurement frequency":"Monthly and final remeasure at 12 months",
+        "Preferred research design":"Governance-based measurement; aggregate from solution KPIs",
+        "Supporting KPI 1":"Adoption Rate",
+        "Supporting KPI 1 Unit":"%",
+        "Supporting KPI 2":"Time to First Value",
+        "Supporting KPI 2 Unit":"Months",
+        "Primary data sources":"Aggregated solution KPIs, usage logs, finance",
+        "Default realisation rate (decimal)":0.60,
+        "Example exposure (placeholder)":"Target NPV or target_value (placeholder)",
+        "Translation Formula (text)":"Value Realisation % = realised_value ÷ target_value; use for scale decision",
+        "Notes":"Serve as governance header; aggregate values from other offerings"
+    }
+]
+
+# Build dataframe and write to Excel
+df = pd.DataFrame(rows)
+xlsx_file = "job_metric_library.xlsx"
+with pd.ExcelWriter(xlsx_file, engine="openpyxl") as writer:
+    df.to_excel(writer, index=False, sheet_name="Job_Metric_Library")
+
+# Create Formulas & Examples sheet
+example_rows = [
+    ["Description", "Value"],
+    ["QoH delta (index points)", 10],
+    ["Hires per year", 120],
+    ["Avg margin per hire", 100000],
+    ["Realisation rate", 0.6],
+    ["Implementation cost", 150000],
+    ["Ongoing annual cost", 50000],
+    ["Discount rate", 0.08],
+    ["Horizon years", 3],
+    # Year 1 incremental (formula text)
+    ["Year1 incremental (calc)", "=B2*B3*B4*B5"]
+]
+
+# Write the example sheet
+wb = load_workbook(xlsx_file)
+ws = wb.create_sheet("Formulas & Examples")
+for r_idx, row in enumerate(example_rows, start=1):
+    for c_idx, val in enumerate(row, start=1):
+        ws.cell(row=r_idx, column=c_idx, value=val)
+
+# Format headers on Job_Metric_Library
+ws_dm = wb["Job_Metric_Library"]
+header = ws_dm[1]
+for cell in header:
+    cell.font = Font(bold=True, color="FFFFFF")
+    cell.fill = PatternFill("solid", fgColor="00634F")
+    cell.alignment = Alignment(horizontal="center", vertical="center")
+
+# Adjust column widths
+for i, col in enumerate(ws_dm.columns, start=1):
+    max_length = 0
+    for cell in col:
+        try:
+            if cell.value:
+                max_length = max(max_length, len(str(cell.value)))
+        except:
+            pass
+    adjusted_width = (max_length + 2)
+    ws_dm.column_dimensions[get_column_letter(i)].width = min(adjusted_width, 60)
+
+# Save workbook
+wb.save(xlsx_file)
+print(f"Created {xlsx_file} in the current directory.")
