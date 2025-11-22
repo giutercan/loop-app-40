@@ -12,9 +12,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Building2 } from "lucide-react";
+import { Plus, Building2, Trash2 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Project } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +29,7 @@ export default function ProjectSelector({ currentProjectId, onProjectChange }: P
   const [_, setLocation] = useLocation();
   const { toast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [newProject, setNewProject] = useState({
     name: "",
     companyName: "",
@@ -65,6 +67,32 @@ export default function ProjectSelector({ currentProjectId, onProjectChange }: P
     },
   });
 
+  const deleteProjectMutation = useMutation({
+    mutationFn: async (projectId: number) => {
+      const res = await apiRequest("DELETE", `/api/projects/${projectId}`, {});
+      return await res.json();
+    },
+    onSuccess: (_, deletedId) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      setProjectToDelete(null);
+      toast({
+        title: "Project deleted",
+        description: "Project has been permanently deleted.",
+      });
+      // If the deleted project was the current one, navigate away
+      if (currentProjectId === deletedId) {
+        setLocation("/");
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleProjectChange = (projectId: string) => {
     const project = projects.find(p => p.id === parseInt(projectId));
     if (project) {
@@ -88,7 +116,7 @@ export default function ProjectSelector({ currentProjectId, onProjectChange }: P
   };
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2">
       <div className="flex items-center gap-2 min-w-[300px]">
         <Building2 className="w-5 h-5 text-muted-foreground" />
         <Select value={currentProjectId?.toString()} onValueChange={handleProjectChange}>
@@ -104,6 +132,52 @@ export default function ProjectSelector({ currentProjectId, onProjectChange }: P
           </SelectContent>
         </Select>
       </div>
+
+      {currentProjectId && (
+        <Dialog open={!!projectToDelete} onOpenChange={(open) => !open && setProjectToDelete(null)}>
+          <DialogTrigger asChild>
+            <Button
+              size="icon"
+              variant="outline"
+              onClick={() => {
+                const project = projects.find(p => p.id === currentProjectId);
+                if (project) setProjectToDelete(project);
+              }}
+              data-testid="button-delete-project"
+              title="Delete project"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </DialogTrigger>
+          {projectToDelete && (
+            <DialogContent data-testid="dialog-delete-confirmation">
+              <DialogHeader>
+                <DialogTitle>Delete Project</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to delete "{projectToDelete.name}"? This action cannot be undone and will delete all associated data.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setProjectToDelete(null)}
+                  data-testid="button-cancel-delete"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => deleteProjectMutation.mutate(projectToDelete.id)}
+                  disabled={deleteProjectMutation.isPending}
+                  data-testid="button-confirm-delete"
+                >
+                  {deleteProjectMutation.isPending ? "Deleting..." : "Delete Project"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          )}
+        </Dialog>
+      )}
 
       <Dialog open={isCreating} onOpenChange={setIsCreating}>
         <DialogTrigger asChild>
