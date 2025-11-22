@@ -342,3 +342,23 @@ export const updateDiscoveryQuestionSchema = insertDiscoveryQuestionSchema.parti
 export type UpdateDiscoveryQuestion = z.infer<typeof updateDiscoveryQuestionSchema>;
 
 export type DiscoveryQuestion = typeof discoveryQuestions.$inferSelect;
+
+// Attachments for Build Value Case (file uploads and voice notes)
+export const attachments = pgTable("attachments", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  type: text("type", { enum: ["file", "voice"] }).notNull(),
+  fileName: text("file_name"),
+  fileSize: integer("file_size"),
+  mimeType: text("mime_type"),
+  content: text("content"), // Base64 for files or transcription text for voice
+  duration: integer("duration"), // For voice recordings in seconds
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertAttachmentSchema = createInsertSchema(attachments).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertAttachment = z.infer<typeof insertAttachmentSchema>;
+export type Attachment = typeof attachments.$inferSelect;

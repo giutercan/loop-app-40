@@ -16,7 +16,8 @@ import type {
   EvidenceDocument, InsertEvidenceDocument,
   AnalyticsReview, InsertAnalyticsReview,
   ResponsibleAiChecklist, InsertResponsibleAiChecklist,
-  DiscoveryQuestion, InsertDiscoveryQuestion
+  DiscoveryQuestion, InsertDiscoveryQuestion,
+  Attachment, InsertAttachment
 } from "@shared/schema";
 
 export interface IStorage {
@@ -110,6 +111,11 @@ export interface IStorage {
   createDiscoveryQuestion(question: InsertDiscoveryQuestion): Promise<DiscoveryQuestion>;
   updateDiscoveryQuestion(id: number, question: Partial<InsertDiscoveryQuestion>): Promise<DiscoveryQuestion | undefined>;
   deleteDiscoveryQuestion(id: number): Promise<void>;
+  
+  // Attachments (file uploads and voice notes)
+  getAttachments(projectId: number): Promise<Attachment[]>;
+  createAttachment(attachment: InsertAttachment): Promise<Attachment>;
+  deleteAttachment(id: number): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -472,6 +478,22 @@ export class DbStorage implements IStorage {
   
   async deleteDiscoveryQuestion(id: number): Promise<void> {
     await db.delete(schema.discoveryQuestions).where(eq(schema.discoveryQuestions.id, id));
+  }
+  
+  // Attachments (file uploads and voice notes)
+  async getAttachments(projectId: number): Promise<Attachment[]> {
+    return await db.select().from(schema.attachments)
+      .where(eq(schema.attachments.projectId, projectId))
+      .orderBy(desc(schema.attachments.createdAt));
+  }
+  
+  async createAttachment(attachment: InsertAttachment): Promise<Attachment> {
+    const results = await db.insert(schema.attachments).values(attachment).returning();
+    return results[0];
+  }
+  
+  async deleteAttachment(id: number): Promise<void> {
+    await db.delete(schema.attachments).where(eq(schema.attachments.id, id));
   }
 }
 
