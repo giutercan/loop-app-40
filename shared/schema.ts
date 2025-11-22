@@ -313,3 +313,27 @@ export const insertResponsibleAiChecklistSchema = createInsertSchema(responsible
 });
 export type InsertResponsibleAiChecklist = z.infer<typeof insertResponsibleAiChecklistSchema>;
 export type ResponsibleAiChecklist = typeof responsibleAiChecklists.$inferSelect;
+
+// Discovery Questions for client engagement
+export const discoveryQuestions = pgTable("discovery_questions", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  capabilityName: text("capability_name").notNull(), // Which Korn Ferry capability this relates to
+  question: text("question").notNull(), // The customized question
+  questionType: text("question_type", { enum: ["quantitative", "qualitative", "both"] }).notNull(),
+  purpose: text("purpose").notNull(), // Why we're asking this question
+  relatedKPI: text("related_kpi"), // KPI this question helps measure
+  answer: text("answer"), // Client's answer
+  isTemplate: boolean("is_template").notNull().default(false), // true if from template, false if AI-generated
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertDiscoveryQuestionSchema = createInsertSchema(discoveryQuestions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertDiscoveryQuestion = z.infer<typeof insertDiscoveryQuestionSchema>;
+export type DiscoveryQuestion = typeof discoveryQuestions.$inferSelect;

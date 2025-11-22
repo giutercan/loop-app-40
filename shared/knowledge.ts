@@ -308,3 +308,213 @@ export function getSolutionSummary(): string {
     return `${key} (${solution.title}):\n${capabilities}`;
   }).join('\n\n');
 }
+
+// Discovery question templates for each capability
+export interface DiscoveryQuestionTemplate {
+  question: string;
+  type: 'quantitative' | 'qualitative' | 'both';
+  purpose: string;
+  relatedKPI?: string;
+}
+
+export const CAPABILITY_DISCOVERY_QUESTIONS: Record<string, DiscoveryQuestionTemplate[]> = {
+  "Success Profiles & Role Design": [
+    {
+      question: "How many new hires do you typically bring on board annually for this role or function?",
+      type: "quantitative",
+      purpose: "Establish exposure for value calculation",
+      relatedKPI: "Quality of Hire (QoH) at 6 months"
+    },
+    {
+      question: "What is the average time it takes for a new hire in this role to reach full productivity?",
+      type: "quantitative",
+      purpose: "Baseline for improvement measurement",
+      relatedKPI: "Time to Productivity"
+    },
+    {
+      question: "What percentage of your recent hires in this role are meeting performance expectations at the 6-month mark?",
+      type: "quantitative",
+      purpose: "Establish current Quality of Hire baseline",
+      relatedKPI: "Quality of Hire (QoH) at 6 months"
+    },
+    {
+      question: "What are the primary challenges or pain points you experience in the hiring process for this role?",
+      type: "qualitative",
+      purpose: "Contextualize the opportunity and identify specific areas for improvement"
+    }
+  ],
+  "Standardised Assessments & Assessments at Scale": [
+    {
+      question: "How many candidates do you assess annually across the roles where you'd implement standardized assessments?",
+      type: "quantitative",
+      purpose: "Establish assessment volume for value calculation",
+      relatedKPI: "Assessment Completion Rate"
+    },
+    {
+      question: "What is your current offer-to-acceptance ratio, and what percentage of accepted offers turn into successful hires (retained beyond 12 months)?",
+      type: "quantitative",
+      purpose: "Baseline for predictive validity improvement",
+      relatedKPI: "Predictive Validity (AUC or correlation r)"
+    },
+    {
+      question: "What assessment methods are you currently using, if any, and how confident are you in their ability to predict job success?",
+      type: "qualitative",
+      purpose: "Understand current state and identify gaps"
+    }
+  ],
+  "Leadership & Development Journeys": [
+    {
+      question: "How many leaders or teams would participate in this development initiative annually?",
+      type: "quantitative",
+      purpose: "Establish exposure for value calculation",
+      relatedKPI: "Business KPI Delta attributable to participants"
+    },
+    {
+      question: "What specific business KPI (e.g., team revenue, productivity, customer satisfaction) would you like this leadership program to impact?",
+      type: "both",
+      purpose: "Identify the target KPI for value measurement",
+      relatedKPI: "Business KPI Delta attributable to participants"
+    },
+    {
+      question: "What is the current baseline performance for that KPI, and what improvement would represent meaningful business impact?",
+      type: "quantitative",
+      purpose: "Establish baseline and target for value calculation",
+      relatedKPI: "Business KPI Delta attributable to participants"
+    },
+    {
+      question: "What are the key leadership gaps or behavioral changes you want to see from this program?",
+      type: "qualitative",
+      purpose: "Define success criteria and contextualize the hypothesis"
+    }
+  ],
+  "AI-Ready Leader (within L&D)": [
+    {
+      question: "How many leaders would you want to develop AI readiness capabilities?",
+      type: "quantitative",
+      purpose: "Establish exposure for value calculation",
+      relatedKPI: "AI Readiness Index (0-100) OR Decision Lead Time (hours)"
+    },
+    {
+      question: "On average, how long does it currently take your leadership team to make data-driven decisions, from information gathering to action?",
+      type: "quantitative",
+      purpose: "Baseline for decision lead time improvement",
+      relatedKPI: "AI Readiness Index (0-100) OR Decision Lead Time (hours)"
+    },
+    {
+      question: "What percentage of leadership decisions currently leverage AI or advanced analytics, and what barriers prevent greater adoption?",
+      type: "both",
+      purpose: "Assess current AI adoption and identify opportunities",
+      relatedKPI: "AI Adoption Rate"
+    }
+  ],
+  "Organisation Strategy & Transformation": [
+    {
+      question: "How many employees or teams would be affected by this organizational transformation?",
+      type: "quantitative",
+      purpose: "Establish exposure for value calculation",
+      relatedKPI: "Productivity per FTE OR Net Promoter Score (NPS) delta"
+    },
+    {
+      question: "What operational or business KPI would you most want to see improve as a result of this transformation (e.g., productivity, customer satisfaction, time-to-market)?",
+      type: "both",
+      purpose: "Identify target KPI for value measurement",
+      relatedKPI: "Productivity per FTE OR Net Promoter Score (NPS) delta"
+    },
+    {
+      question: "What is your current baseline for that KPI, and what does success look like?",
+      type: "quantitative",
+      purpose: "Establish baseline and improvement target",
+      relatedKPI: "Productivity per FTE OR Net Promoter Score (NPS) delta"
+    },
+    {
+      question: "What are the main organizational challenges or cultural barriers you're trying to address with this transformation?",
+      type: "qualitative",
+      purpose: "Contextualize the transformation and identify critical success factors"
+    }
+  ],
+  "Total Rewards Optimisation (TRO)": [
+    {
+      question: "What is your current total compensation spend annually for the employee population you're targeting?",
+      type: "quantitative",
+      purpose: "Establish baseline for cost optimization",
+      relatedKPI: "Compensation Cost as % Revenue"
+    },
+    {
+      question: "What is your current voluntary turnover rate for critical roles, and what does it cost to replace one of these employees?",
+      type: "quantitative",
+      purpose: "Establish retention baseline and replacement cost",
+      relatedKPI: "Voluntary Turnover Rate (critical roles)"
+    },
+    {
+      question: "How satisfied are employees with the current rewards structure, and what elements do they value most?",
+      type: "qualitative",
+      purpose: "Understand perception gaps and optimization opportunities"
+    }
+  ],
+  "Sales & Service (KF Sell)": [
+    {
+      question: "How many sales or service professionals would be included in this initiative?",
+      type: "quantitative",
+      purpose: "Establish exposure for value calculation",
+      relatedKPI: "Revenue per Sales FTE OR Customer Satisfaction Score (CSAT)"
+    },
+    {
+      question: "What is the current average revenue per salesperson (or customer satisfaction score for service roles)?",
+      type: "quantitative",
+      purpose: "Establish baseline for improvement",
+      relatedKPI: "Revenue per Sales FTE OR Customer Satisfaction Score (CSAT)"
+    },
+    {
+      question: "What percentage of your sales or service team consistently meets or exceeds their targets?",
+      type: "quantitative",
+      purpose: "Assess current performance distribution",
+      relatedKPI: "Revenue per Sales FTE OR Customer Satisfaction Score (CSAT)"
+    },
+    {
+      question: "What are the primary challenges your sales or service teams face in achieving their goals?",
+      type: "qualitative",
+      purpose: "Identify root causes and intervention points"
+    }
+  ],
+  "People Analytics / KFI Analytics": [
+    {
+      question: "What business decision or HR process would you like to improve with better people analytics?",
+      type: "qualitative",
+      purpose: "Identify the primary use case and value opportunity"
+    },
+    {
+      question: "How many HR or business decisions of this type do you make annually, and what is the typical impact of each decision?",
+      type: "both",
+      purpose: "Quantify decision frequency and impact",
+      relatedKPI: "Decision Accuracy OR Time to Insight"
+    },
+    {
+      question: "What data sources do you currently use for these decisions, and how long does it take to gather and analyze the information?",
+      type: "both",
+      purpose: "Assess current state and time savings opportunity",
+      relatedKPI: "Time to Insight"
+    }
+  ],
+  "Value Management / Client Success & Talent Suite": [
+    {
+      question: "How many client engagements or talent initiatives would benefit from enhanced value tracking and measurement?",
+      type: "quantitative",
+      purpose: "Establish scope for value calculation"
+    },
+    {
+      question: "What is the typical value (revenue or cost savings) of a successful client engagement or talent initiative?",
+      type: "quantitative",
+      purpose: "Establish value per engagement for scaling calculation"
+    },
+    {
+      question: "What percentage of your current initiatives have clearly defined and measured business outcomes?",
+      type: "quantitative",
+      purpose: "Assess baseline for value management maturity"
+    },
+    {
+      question: "What are the main challenges in demonstrating ROI or business impact to stakeholders?",
+      type: "qualitative",
+      purpose: "Identify process gaps and improvement opportunities"
+    }
+  ]
+};

@@ -15,7 +15,8 @@ import type {
   FinancialProjection, InsertFinancialProjection,
   EvidenceDocument, InsertEvidenceDocument,
   AnalyticsReview, InsertAnalyticsReview,
-  ResponsibleAiChecklist, InsertResponsibleAiChecklist
+  ResponsibleAiChecklist, InsertResponsibleAiChecklist,
+  DiscoveryQuestion, InsertDiscoveryQuestion
 } from "@shared/schema";
 
 export interface IStorage {
@@ -103,6 +104,12 @@ export interface IStorage {
   createResponsibleAiChecklist(checklist: InsertResponsibleAiChecklist): Promise<ResponsibleAiChecklist>;
   updateResponsibleAiChecklist(id: number, checklist: Partial<InsertResponsibleAiChecklist>): Promise<ResponsibleAiChecklist | undefined>;
   deleteResponsibleAiChecklist(id: number): Promise<void>;
+  
+  // Discovery Questions
+  getDiscoveryQuestions(projectId: number): Promise<DiscoveryQuestion[]>;
+  createDiscoveryQuestion(question: InsertDiscoveryQuestion): Promise<DiscoveryQuestion>;
+  updateDiscoveryQuestion(id: number, question: Partial<InsertDiscoveryQuestion>): Promise<DiscoveryQuestion | undefined>;
+  deleteDiscoveryQuestion(id: number): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -441,6 +448,30 @@ export class DbStorage implements IStorage {
 
   async deleteResponsibleAiChecklist(id: number): Promise<void> {
     await db.delete(schema.responsibleAiChecklists).where(eq(schema.responsibleAiChecklists.id, id));
+  }
+  
+  // Discovery Questions
+  async getDiscoveryQuestions(projectId: number): Promise<DiscoveryQuestion[]> {
+    return await db.select().from(schema.discoveryQuestions)
+      .where(eq(schema.discoveryQuestions.projectId, projectId))
+      .orderBy(schema.discoveryQuestions.sortOrder, schema.discoveryQuestions.createdAt);
+  }
+  
+  async createDiscoveryQuestion(question: InsertDiscoveryQuestion): Promise<DiscoveryQuestion> {
+    const results = await db.insert(schema.discoveryQuestions).values(question).returning();
+    return results[0];
+  }
+  
+  async updateDiscoveryQuestion(id: number, question: Partial<InsertDiscoveryQuestion>): Promise<DiscoveryQuestion | undefined> {
+    const results = await db.update(schema.discoveryQuestions)
+      .set({...question, updatedAt: new Date()})
+      .where(eq(schema.discoveryQuestions.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deleteDiscoveryQuestion(id: number): Promise<void> {
+    await db.delete(schema.discoveryQuestions).where(eq(schema.discoveryQuestions.id, id));
   }
 }
 
