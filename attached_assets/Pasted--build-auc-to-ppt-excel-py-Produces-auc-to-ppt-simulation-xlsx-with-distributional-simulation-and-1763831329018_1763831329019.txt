@@ -1,0 +1,154 @@
+# build_auc_to_ppt_excel.py
+# Produces auc_to_ppt_simulation.xlsx with distributional simulation and financial math.
+
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.utils import get_column_letter
+
+def set_header_style(cell):
+    cell.font = Font(bold=True, color="FFFFFF")
+    cell.fill = PatternFill("solid", fgColor="00634F")
+    cell.alignment = Alignment(horizontal="center", vertical="center")
+
+wb = Workbook()
+
+# -------------------
+# Inputs sheet
+# -------------------
+ws_inputs = wb.active
+ws_inputs.title = "Inputs"
+ws_inputs["A1"] = "Parameter"
+ws_inputs["B1"] = "Value"
+set_header_style(ws_inputs["A1"])
+set_header_style(ws_inputs["B1"])
+
+inputs = [
+    ("AUC_base", 0.70, "Baseline AUC (0.5-1.0)"),
+    ("Delta_AUC", 0.05, "Change in AUC (positive)"),
+    ("Selection_rate", 0.50, "Selection rate (0-1)"),
+    ("Annual_hires", 100, "Annual hires (count)"),
+    ("Avg_contribution", 90000, "Average annual contribution per hire in £"),
+    ("Realisation_rate", 0.6, "Realisation rate (0-1)"),
+    ("Discount_rate", 0.08, "Discount rate (decimal)"),
+    ("Horizon_years", 3, "Horizon for NPV (years)"),
+    ("Implementation_cost", 100000, "One-off implementation cost (£)"),
+    ("Ongoing_annual_cost", 20000, "Ongoing annual cost (£)"),
+    ("Rule_of_thumb_ppt_per_0.01_AUC", 1.0, "Rule-of-thumb: ppt per 0.01 AUC")
+]
+
+for i, (name, val, note) in enumerate(inputs, start=2):
+    ws_inputs[f"A{i}"] = name
+    ws_inputs[f"B{i}"] = val
+    ws_inputs[f"C{i}"] = note
+
+# Column widths
+ws_inputs.column_dimensions['A'].width = 30
+ws_inputs.column_dimensions['B'].width = 18
+ws_inputs.column_dimensions['C'].width = 50
+
+# -------------------
+# Calculations sheet
+# -------------------
+ws_calc = wb.create_sheet(title="Calculations")
+ws_calc["A1"] = "Calculation"
+ws_calc["B1"] = "Formula / Value"
+set_header_style(ws_calc["A1"])
+set_header_style(ws_calc["B1"])
+
+# Place labels and formulas
+calcs = [
+    ("d_base", '=SQRT(2)*NORM.S.INV(Inputs!B2)', "d (Cohen d) for baseline AUC"),
+    ("AUC_new", '=Inputs!B2 + Inputs!B3', "New AUC = baseline + delta"),
+    ("d_new", '=SQRT(2)*NORM.S.INV(Calculations!B3)', "d for new AUC"),
+    ("t_threshold", '=NORM.S.INV(1 - Inputs!B4)', "Threshold t from selection rate"),
+    ("TPR_base", '=1 - NORM.S.DIST(Calculations!B5 - Calculations!B2, TRUE)', "True positive rate baseline"),
+    ("TPR_new", '=1 - NORM.S.DIST(Calculations!B5 - Calculations!B4, TRUE)', "True positive rate new"),
+    ("ppt_change", '=(Calculations!B7 - Calculations!B6) * 100', "Percentage point change in TPR"),
+    ("incremental_hires", '=Calculations!B8/100 * Inputs!B5', "Incremental hires per year"),
+    ("annual_incremental", '=Calculations!B9 * Inputs!B6 * Inputs!B7', "Annual incremental contribution (£)"),
+    ("annual_net_after_ongoing", '=Calculations!B10 - Inputs!B11', "Annual net after ongoing costs (£)"),
+    # NPV: using annuity formula for constant annual net: net * (1 - (1+r)^-n) / r - implementation_cost
+    ("NPV", '=IF(Inputs!B8>0, Calculations!B11 * (1 - (1 + Inputs!B8) ^ (-Inputs!B9)) / Inputs!B8 - Inputs!B10, "" )', "NPV of net cashflows minus initial cost"),
+    ("Payback_months", '=IF(Calculations!B11>0, Inputs!B10 / Calculations!B11 * 12, "")', "Payback in months"),
+    ("RuleOfThumb_ppt_for_delta", '=Inputs!B12 * (Inputs!B3 / 0.01)', "Rule-of-thumb mapping: ppt for given delta_AUC")
+]
+
+for idx, (label, formula, note) in enumerate(calcs, start=2):
+    ws_calc[f"A{idx}"] = label
+    ws_calc[f"B{idx}"] = formula
+    ws_calc[f"C{idx}"] = note
+
+# Format calculation sheet column widths
+ws_calc.column_dimensions['A'].width = 30
+ws_calc.column_dimensions['B'].width = 40
+ws_calc.column_dimensions['C'].width = 50
+
+# Freeze header
+ws_calc.freeze_panes = "A2"
+
+# -------------------
+# Sensitivity sheet
+# -------------------
+ws_sens = wb.create_sheet(title="Sensitivity")
+ws_sens["A1"] = "Scenario"
+ws_sens["B1"] = "Multiplier"
+ws_sens["C1"] = "ppt_change (scenario)"
+ws_sens["D1"] = "Incremental hires"
+ws_sens["E1"] = "Annual incremental (£)"
+ws_sens["F1"] = "NPV (£)"
+set_header_style(ws_sens["A1"]); set_header_style(ws_sens["B1"]); set_header_style(ws_sens["C1"])
+set_header_style(ws_sens["D1"]); set_header_style(ws_sens["E1"]); set_header_style(ws_sens["F1"])
+
+# Add three rows: low, base, high as multipliers to the calculated ppt_change in Calculations!B8
+scenarios = [
+    ("Low", 0.5),
+    ("Base (distributional)", 1.0),
+    ("High", 1.5)
+]
+start_row = 2
+for i, (name, mult) in enumerate(scenarios, start=start_row):
+    ws_sens[f"A{i}"] = name
+    ws_sens[f"B{i}"] = mult
+    # C = mult * Calculations!B8
+    ws_sens[f"C{i}"] = f"=B{i} * Calculations!B8"
+    # D = C/100 * Inputs!B5
+    ws_sens[f"D{i}"] = f"=C{i}/100 * Inputs!B5"
+    # E = D * Inputs!B6 * Inputs!B7
+    ws_sens[f"E{i}"] = f"=D{i} * Inputs!B6 * Inputs!B7"
+    # F = (E - Inputs!B11) * annuity factor - Inputs!B10
+    # net = E - Inputs!B11 -> use F_i
+    ws_sens[f"F{i}"] = f"=IF(Inputs!B8>0, (E{i} - Inputs!B11) * (1 - (1 + Inputs!B8) ^ (-Inputs!B9)) / Inputs!B8 - Inputs!B10, \"\")"
+
+# Column widths
+for col in ['A','B','C','D','E','F']:
+    ws_sens.column_dimensions[col].width = 22
+
+# -------------------
+# Examples & Explanation sheet
+# -------------------
+ws_expl = wb.create_sheet(title="Examples & Explanation")
+ws_expl.column_dimensions['A'].width = 100
+ws_expl["A1"] = "Distributional Simulation (AUC -> Cohen's d -> TPR -> ppt)"
+ws_expl["A1"].font = Font(bold=True)
+explanation = (
+    "Method explanation:\n\n"
+    "1. Convert AUC to Cohen's d using d = sqrt(2) * NORM.S.INV(AUC).\n"
+    "2. Given a selection rate, compute the threshold t = NORM.S.INV(1 - selection_rate).\n"
+    "3. Compute TPR = 1 - Phi(t - d) where Phi is the standard normal CDF.\n"
+    "4. The ppt change is (TPR_new - TPR_base) * 100.\n\n"
+    "This sheet uses Excel native functions (NORM.S.INV and NORM.S.DIST). The Sensitivity "
+    "sheet shows low/base/high multipliers. For Tier 3 claims, please provide empirical "
+    "mapping from historical candidate data (Analytics will run logistic calibration)."
+)
+ws_expl["A3"] = explanation
+
+# -------------------
+# Styling header row in Inputs done above; style Sensitivity headers done.
+# Set default view
+for sheet in wb.worksheets:
+    sheet.sheet_view.showGridLines = True
+
+# Save workbook
+file_name = "auc_to_ppt_simulation.xlsx"
+wb.save(file_name)
+print(f"Created {file_name} in the current directory.")

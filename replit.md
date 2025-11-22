@@ -20,8 +20,9 @@ Enable Korn Ferry consultants to:
   - Default realisation rates (50-70%) based on typical engagement outcomes
   - Measurement frequencies and data sources for each KPI
   - Preferred research designs for validation
-- Created `shared/valueCalculations.ts` with calculation utilities for 6 capabilities:
+- Created `shared/valueCalculations.ts` with calculation utilities for 7 capabilities:
   - **Success Profiles & Role Design**: QoH improvement → hiring value
+  - **Standardised Assessments**: AUC improvement → distributional simulation → incremental hires → value
   - **Sales & Service (KF Sell)**: Win rate → revenue impact
   - **Organisation Strategy & Transformation**: Productivity gains → cost savings
   - **Total Rewards Optimisation**: Retention improvement → replacement cost savings
@@ -42,9 +43,10 @@ Enable Korn Ferry consultants to:
   - Step 4: Results display (Year 1 value, NPV, payback period, yearly breakdown)
 - Created ValueHypothesisCard to display saved hypotheses with financial metrics
 - Replaced Alignment page with value hypothesis-focused interface
-- Capability filtering: UI only shows the 6 capabilities with implemented calculations
-- End-to-end tests passed for Success Profiles (£54M Year 1, £139M NPV) and Sales & Service (£280k Year 1, £672k NPV)
-- **Note**: 3 capabilities pending implementation: Standardised Assessments, AI-Ready Leader, Value Management
+- Capability filtering: UI only shows the 7 capabilities with implemented calculations
+- End-to-end tests passed for Success Profiles (£54M Year 1, £139M NPV), Sales & Service (£280k Year 1, £672k NPV), and Standardised Assessments (£319k Year 1, £671k NPV)
+- **Standardised Assessments** uses distributional simulation (AUC → Cohen's d → TPR → ppt → value) to calculate hiring improvements
+- **Note**: 2 capabilities pending implementation: AI-Ready Leader, Value Management
 
 ### 2025-11-22: Korn Ferry Knowledge Structure Integration
 - Integrated comprehensive knowledge structure mapping Korn Ferry's solutions to specific KPIs

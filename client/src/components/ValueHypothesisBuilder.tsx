@@ -23,6 +23,7 @@ import type { SolutionArea } from "@shared/knowledge";
 import { KORN_FERRY_SOLUTIONS } from "@shared/knowledge";
 import {
   calculateSuccessProfilesValue,
+  calculateStandardisedAssessmentsValue,
   calculateSalesServiceValue,
   calculateTransformationValue,
   calculateTotalRewardsValue,
@@ -81,6 +82,7 @@ export default function ValueHypothesisBuilder({
   // Only show capabilities that have calculation functions implemented
   const SUPPORTED_CAPABILITIES = [
     "Success Profiles & Role Design",
+    "Standardised Assessments & Assessments at Scale",
     "Sales & Service (KF Sell)",
     "Organisation Strategy & Transformation",
     "Total Rewards Optimisation (TRO)",
@@ -121,6 +123,9 @@ export default function ValueHypothesisBuilder({
       switch (selectedCapability) {
         case "Success Profiles & Role Design":
           result = calculateSuccessProfilesValue(calculationInputs);
+          break;
+        case "Standardised Assessments & Assessments at Scale":
+          result = calculateStandardisedAssessmentsValue(calculationInputs);
           break;
         case "Sales & Service (KF Sell)":
           result = calculateSalesServiceValue(calculationInputs);
@@ -450,6 +455,8 @@ function validateInputs(capabilityName: string, inputs: any): boolean {
   switch (capabilityName) {
     case "Success Profiles & Role Design":
       return !!(inputs.qohDelta && inputs.hiresPerYear && inputs.avgMarginPerHire);
+    case "Standardised Assessments & Assessments at Scale":
+      return !!(inputs.aucBase && inputs.aucDelta && inputs.selectionRate && inputs.annualHires && inputs.avgContribution);
     case "Sales & Service (KF Sell)":
       return !!(inputs.winRateDelta && inputs.pipelineExposure && inputs.avgDealMargin);
     case "Organisation Strategy & Transformation":
@@ -511,6 +518,98 @@ function renderInputFields(
               onChange={(e) => updateInput("avgMarginPerHire", e.target.value)}
               placeholder="e.g., 50000"
               data-testid="input-avgMarginPerHire"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="implementationCost">Implementation Cost (£)</Label>
+            <Input
+              id="implementationCost"
+              type="number"
+              value={inputs.implementationCost || ""}
+              onChange={(e) => updateInput("implementationCost", e.target.value)}
+              placeholder="e.g., 100000"
+              data-testid="input-implementationCost"
+            />
+          </div>
+        </div>
+      );
+
+    case "Standardised Assessments & Assessments at Scale":
+      return (
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="aucBase">Baseline AUC (0.5-1.0)</Label>
+            <Input
+              id="aucBase"
+              type="number"
+              step="0.01"
+              min="0.5"
+              max="1.0"
+              value={inputs.aucBase || ""}
+              onChange={(e) => updateInput("aucBase", e.target.value)}
+              placeholder="e.g., 0.70"
+              data-testid="input-aucBase"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="aucDelta">AUC Improvement</Label>
+            <Input
+              id="aucDelta"
+              type="number"
+              step="0.01"
+              min="0"
+              max="0.5"
+              value={inputs.aucDelta || ""}
+              onChange={(e) => updateInput("aucDelta", e.target.value)}
+              placeholder="e.g., 0.05"
+              data-testid="input-aucDelta"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="selectionRate">Selection Rate (0-1)</Label>
+            <Input
+              id="selectionRate"
+              type="number"
+              step="0.01"
+              min="0"
+              max="1"
+              value={inputs.selectionRate || ""}
+              onChange={(e) => updateInput("selectionRate", e.target.value)}
+              placeholder="e.g., 0.50"
+              data-testid="input-selectionRate"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="annualHires">Annual Hires</Label>
+            <Input
+              id="annualHires"
+              type="number"
+              value={inputs.annualHires || ""}
+              onChange={(e) => updateInput("annualHires", e.target.value)}
+              placeholder="e.g., 100"
+              data-testid="input-annualHires"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="avgContribution">Avg Contribution per Hire (£)</Label>
+            <Input
+              id="avgContribution"
+              type="number"
+              value={inputs.avgContribution || ""}
+              onChange={(e) => updateInput("avgContribution", e.target.value)}
+              placeholder="e.g., 90000"
+              data-testid="input-avgContribution"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="assessmentCostPerHire">Assessment Cost per Hire (£, optional)</Label>
+            <Input
+              id="assessmentCostPerHire"
+              type="number"
+              value={inputs.assessmentCostPerHire || ""}
+              onChange={(e) => updateInput("assessmentCostPerHire", e.target.value)}
+              placeholder="e.g., 200"
+              data-testid="input-assessmentCostPerHire"
             />
           </div>
           <div className="space-y-2">
