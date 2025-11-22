@@ -150,6 +150,8 @@ IMPORTANT REQUIREMENTS:
 
 
   try {
+    console.log(`[AI Research] Starting research for ${companyName}...`);
+    
     // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
     const response = await openai.chat.completions.create({
       model: "gpt-5",
@@ -159,7 +161,11 @@ IMPORTANT REQUIREMENTS:
     });
 
     const content = response.choices[0]?.message?.content || "{}";
+    console.log(`[AI Research] Raw AI response length: ${content.length} characters`);
+    console.log(`[AI Research] First 500 chars: ${content.substring(0, 500)}`);
+    
     const result = JSON.parse(content);
+    console.log(`[AI Research] Parsed result - dataPoints: ${result.dataPoints?.length || 0}, headlines: ${result.headlines?.length || 0}`);
     
     return {
       dataPoints: result.dataPoints || [],
