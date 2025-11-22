@@ -12,6 +12,28 @@ Enable Korn Ferry consultants to:
 
 ## Recent Changes
 
+### 2025-11-22: Korn Ferry Knowledge Structure Integration
+- Integrated comprehensive knowledge structure mapping Korn Ferry's solutions to specific KPIs
+- Created `shared/knowledge.ts` with structured data:
+  - 6 Solution Areas: ASSESS, DEVELOP, TRANSFORM, REWARD, COMMERCIAL, ANALYTICS & GOVERNANCE
+  - Capabilities within each solution (e.g., Success Profiles, Leadership Development)
+  - Jobs/applications for each capability
+  - Primary and supporting KPIs with measurement sources
+  - Translation notes for value articulation
+- Extended database schema with two new fields:
+  - `solutionArea` (enum): Maps each insight to one of 6 Korn Ferry solution areas
+  - `relatedKPIs` (text array): 1-3 relevant KPI names from knowledge base
+- Enhanced AI research prompts:
+  - AI selects most relevant solution area for each insight
+  - AI identifies 1-3 KPIs from knowledge structure based on insight content
+  - All responses validated server-side with type checking
+- Updated UI to display knowledge structure:
+  - Solution area badges with color coding (blue, emerald, purple, amber, red, cyan)
+  - "Relevant KPIs:" section with outlined KPI badges
+  - Visual hierarchy: Priority → Confidence → Pillar → Solution Area → KPIs
+- Pastel badge backgrounds chosen for readability in data-dense interface
+- Knowledge structure enables consultants to quickly map insights to Korn Ferry service offerings and measurable outcomes
+
 ### 2025-11-22: AI Research Prioritization System
 - Implemented priority scoring (1-5 scale) for all AI-generated insights
 - AI now returns maximum 8 high-quality insights instead of 15-20
@@ -130,6 +152,8 @@ Enable Korn Ferry consultants to:
 - Confidence levels (high/medium/low) for all data points
 - Priority scores (1-5 integer) with server-side validation
 - Korn Ferry pillar enum (6 consulting service categories)
+- Solution area enum (ASSESS, DEVELOP, TRANSFORM, REWARD, COMMERCIAL, ANALYTICS)
+- Related KPIs array (1-3 KPI names from knowledge structure)
 - Data sorted by priority DESC, then confidence DESC
 
 #### Storage Architecture
@@ -140,6 +164,7 @@ Enable Korn Ferry consultants to:
 ## File Structure
 
 ### Key Files
+- `shared/knowledge.ts`: Korn Ferry knowledge structure (solutions, capabilities, jobs, KPIs)
 - `server/ai.ts`: AI research logic (initial + follow-up)
 - `server/routes.ts`: API endpoints for all features
 - `server/storage.ts`: Storage interface and in-memory implementation
