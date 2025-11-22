@@ -362,3 +362,43 @@ export const insertAttachmentSchema = createInsertSchema(attachments).omit({
 });
 export type InsertAttachment = z.infer<typeof insertAttachmentSchema>;
 export type Attachment = typeof attachments.$inferSelect;
+
+// Shared Questionnaires - for client collaboration
+export const sharedQuestionnaires = pgTable("shared_questionnaires", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  shareToken: text("share_token").notNull().unique(), // Unique token for the shareable link
+  clientName: text("client_name"), // Optional: who the questionnaire is shared with
+  clientEmail: text("client_email"), // Optional: client contact
+  status: text("status", { enum: ["active", "completed", "expired"] }).notNull().default("active"),
+  expiresAt: timestamp("expires_at"), // Optional: expiration date for the link
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"), // When both parties finalized
+});
+
+export const insertSharedQuestionnaireSchema = createInsertSchema(sharedQuestionnaires).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertSharedQuestionnaire = z.infer<typeof insertSharedQuestionnaireSchema>;
+export type SharedQuestionnaire = typeof sharedQuestionnaires.$inferSelect;
+
+// Question Responses - tracks answers from both consultant and client
+export const questionResponses = pgTable("question_responses", {
+  id: serial("id").primaryKey(),
+  questionId: integer("question_id").notNull().references(() => discoveryQuestions.id, { onDelete: "cascade" }),
+  sharedQuestionnaireId: integer("shared_questionnaire_id").references(() => sharedQuestionnaires.id, { onDelete: "cascade" }),
+  respondentType: text("respondent_type", { enum: ["consultant", "client"] }).notNull(),
+  respondentName: text("respondent_name"), // Optional: who specifically answered
+  answer: text("answer").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertQuestionResponseSchema = createInsertSchema(questionResponses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertQuestionResponse = z.infer<typeof insertQuestionResponseSchema>;
+export type QuestionResponse = typeof questionResponses.$inferSelect;

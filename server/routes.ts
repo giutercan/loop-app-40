@@ -1528,4 +1528,187 @@ export function registerRoutes(app: Express) {
       res.status(500).json({ error: error.message });
     }
   });
+
+  // Shared Questionnaires - Client Collaboration
+  
+  // Share questionnaire with client
+  app.post("/api/projects/:projectId/share-questionnaire", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const { clientName, clientEmail } = req.body;
+      
+      // Check if project exists
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Check if questions exist
+      const questions = await storage.getDiscoveryQuestions(projectId);
+      if (questions.length === 0) {
+        return res.status(400).json({ error: "No discovery questions to share. Generate questions first." });
+      }
+      
+      // Generate unique share token
+      const crypto = await import('crypto');
+      const shareToken = crypto.randomBytes(16).toString('hex');
+      
+      // Create shared questionnaire
+      const sharedQuestionnaire = await storage.createSharedQuestionnaire({
+        projectId,
+        shareToken,
+        clientName: clientName || null,
+        clientEmail: clientEmail || null,
+        status: "active"
+      });
+      
+      res.json(sharedQuestionnaire);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Get shared questionnaire status
+  app.get("/api/projects/:projectId/shared-questionnaire", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const sharedQuestionnaire = await storage.getSharedQuestionnaire(projectId);
+      res.json(sharedQuestionnaire || null);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Public endpoint: Get questionnaire by token (for clients)
+  app.get("/api/questionnaire/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      
+      // Get shared questionnaire
+      const sharedQuestionnaire = await storage.getSharedQuestionnaireByToken(token);
+      if (!sharedQuestionnaire) {
+        return res.status(404).json({ error: "Questionnaire not found or expired" });
+      }
+      
+      if (sharedQuestionnaire.status !== "active") {
+        return res.status(410).json({ error: "This questionnaire is no longer active" });
+      }
+      
+      // Get project details
+      const project = await storage.getProject(sharedQuestionnaire.projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Get discovery questions
+      const questions = await storage.getDiscoveryQuestions(sharedQuestionnaire.projectId);
+      
+      // Get existing responses
+      const responses = await storage.getQuestionResponsesByQuestionnaire(sharedQuestionnaire.id);
+      
+      res.json({
+        project: {
+          name: project.name,
+          companyName: project.companyName,
+          companyLogoUrl: project.companyLogoUrl
+        },
+        sharedQuestionnaire,
+        questions,
+        responses
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Public endpoint: Submit client responses
+  app.post("/api/questionnaire/:token/responses", async (req, res) => {
+    try {
+      const { token } = req.params;
+      const { questionId, answer, respondentName } = req.body;
+      
+      // Validate input
+      if (!questionId || !answer) {
+        return res.status(400).json({ error: "Question ID and answer are required" });
+      }
+      
+      // Get shared questionnaire
+      const sharedQuestionnaire = await storage.getSharedQuestionnaireByToken(token);
+      if (!sharedQuestionnaire) {
+        return res.status(404).json({ error: "Questionnaire not found" });
+      }
+      
+      if (sharedQuestionnaire.status !== "active") {
+        return res.status(410).json({ error: "This questionnaire is no longer active" });
+      }
+      
+      // Create response
+      const response = await storage.createQuestionResponse({
+        questionId,
+        sharedQuestionnaireId: sharedQuestionnaire.id,
+        respondentType: "client",
+        respondentName: respondentName || null,
+        answer
+      });
+      
+      res.json(response);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Get all responses for a project's shared questionnaire
+  app.get("/api/projects/:projectId/questionnaire-responses", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      
+      // Get shared questionnaire
+      const sharedQuestionnaire = await storage.getSharedQuestionnaire(projectId);
+      if (!sharedQuestionnaire) {
+        return res.json([]);
+      }
+      
+      // Get all responses
+      const responses = await storage.getQuestionResponsesByQuestionnaire(sharedQuestionnaire.id);
+      res.json(responses);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Consultant submits response
+  app.post("/api/projects/:projectId/consultant-response", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const { questionId, answer } = req.body;
+      
+      if (!questionId || !answer) {
+        return res.status(400).json({ error: "Question ID and answer are required" });
+      }
+      
+      // Get or create shared questionnaire
+      let sharedQuestionnaire = await storage.getSharedQuestionnaire(projectId);
+      if (!sharedQuestionnaire) {
+        const crypto = await import('crypto');
+        const shareToken = crypto.randomBytes(16).toString('hex');
+        sharedQuestionnaire = await storage.createSharedQuestionnaire({
+          projectId,
+          shareToken,
+          status: "active"
+        });
+      }
+      
+      // Create consultant response
+      const response = await storage.createQuestionResponse({
+        questionId,
+        sharedQuestionnaireId: sharedQuestionnaire.id,
+        respondentType: "consultant",
+        answer
+      });
+      
+      res.json(response);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 }

@@ -17,7 +17,9 @@ import type {
   AnalyticsReview, InsertAnalyticsReview,
   ResponsibleAiChecklist, InsertResponsibleAiChecklist,
   DiscoveryQuestion, InsertDiscoveryQuestion,
-  Attachment, InsertAttachment
+  Attachment, InsertAttachment,
+  SharedQuestionnaire, InsertSharedQuestionnaire,
+  QuestionResponse, InsertQuestionResponse
 } from "@shared/schema";
 
 export interface IStorage {
@@ -116,6 +118,18 @@ export interface IStorage {
   getAttachments(projectId: number): Promise<Attachment[]>;
   createAttachment(attachment: InsertAttachment): Promise<Attachment>;
   deleteAttachment(id: number): Promise<void>;
+  
+  // Shared Questionnaires (client collaboration)
+  getSharedQuestionnaire(projectId: number): Promise<SharedQuestionnaire | undefined>;
+  getSharedQuestionnaireByToken(token: string): Promise<SharedQuestionnaire | undefined>;
+  createSharedQuestionnaire(questionnaire: InsertSharedQuestionnaire): Promise<SharedQuestionnaire>;
+  updateSharedQuestionnaire(id: number, questionnaire: Partial<InsertSharedQuestionnaire>): Promise<SharedQuestionnaire | undefined>;
+  
+  // Question Responses (consultant and client answers)
+  getQuestionResponses(questionId: number): Promise<QuestionResponse[]>;
+  getQuestionResponsesByQuestionnaire(sharedQuestionnaireId: number): Promise<QuestionResponse[]>;
+  createQuestionResponse(response: InsertQuestionResponse): Promise<QuestionResponse>;
+  updateQuestionResponse(id: number, response: Partial<InsertQuestionResponse>): Promise<QuestionResponse | undefined>;
 }
 
 export class DbStorage implements IStorage {
@@ -494,6 +508,60 @@ export class DbStorage implements IStorage {
   
   async deleteAttachment(id: number): Promise<void> {
     await db.delete(schema.attachments).where(eq(schema.attachments.id, id));
+  }
+  
+  // Shared Questionnaires (client collaboration)
+  async getSharedQuestionnaire(projectId: number): Promise<SharedQuestionnaire | undefined> {
+    const results = await db.select().from(schema.sharedQuestionnaires)
+      .where(eq(schema.sharedQuestionnaires.projectId, projectId))
+      .orderBy(desc(schema.sharedQuestionnaires.createdAt))
+      .limit(1);
+    return results[0];
+  }
+  
+  async getSharedQuestionnaireByToken(token: string): Promise<SharedQuestionnaire | undefined> {
+    const results = await db.select().from(schema.sharedQuestionnaires)
+      .where(eq(schema.sharedQuestionnaires.shareToken, token));
+    return results[0];
+  }
+  
+  async createSharedQuestionnaire(questionnaire: InsertSharedQuestionnaire): Promise<SharedQuestionnaire> {
+    const results = await db.insert(schema.sharedQuestionnaires).values(questionnaire).returning();
+    return results[0];
+  }
+  
+  async updateSharedQuestionnaire(id: number, questionnaire: Partial<InsertSharedQuestionnaire>): Promise<SharedQuestionnaire | undefined> {
+    const results = await db.update(schema.sharedQuestionnaires)
+      .set(questionnaire)
+      .where(eq(schema.sharedQuestionnaires.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  // Question Responses (consultant and client answers)
+  async getQuestionResponses(questionId: number): Promise<QuestionResponse[]> {
+    return await db.select().from(schema.questionResponses)
+      .where(eq(schema.questionResponses.questionId, questionId))
+      .orderBy(schema.questionResponses.createdAt);
+  }
+  
+  async getQuestionResponsesByQuestionnaire(sharedQuestionnaireId: number): Promise<QuestionResponse[]> {
+    return await db.select().from(schema.questionResponses)
+      .where(eq(schema.questionResponses.sharedQuestionnaireId, sharedQuestionnaireId))
+      .orderBy(schema.questionResponses.createdAt);
+  }
+  
+  async createQuestionResponse(response: InsertQuestionResponse): Promise<QuestionResponse> {
+    const results = await db.insert(schema.questionResponses).values(response).returning();
+    return results[0];
+  }
+  
+  async updateQuestionResponse(id: number, response: Partial<InsertQuestionResponse>): Promise<QuestionResponse | undefined> {
+    const results = await db.update(schema.questionResponses)
+      .set({...response, updatedAt: new Date()})
+      .where(eq(schema.questionResponses.id, id))
+      .returning();
+    return results[0];
   }
 }
 
