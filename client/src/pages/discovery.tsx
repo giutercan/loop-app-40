@@ -411,6 +411,10 @@ export default function Discovery() {
                     isFollowUp: Boolean(dp.provenance && typeof dp.provenance === 'object' && 'type' in dp.provenance && dp.provenance.type === 'ai_follow_up'),
                     selectedForNotes: dp.selectedForNotes,
                     relevantJob: dp.relevantJob || undefined,
+                    priorityScore: dp.priorityScore,
+                    kornFerryPillar: dp.kornFerryPillar || undefined,
+                    solutionArea: dp.solutionArea || undefined,
+                    relatedKPIs: (dp.relatedKPIs as string[] | null) || undefined,
                   }))}
                   headlines={headlines.map(h => ({
                     title: h.title,
