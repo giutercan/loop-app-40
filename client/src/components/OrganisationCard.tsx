@@ -19,6 +19,8 @@ interface DataPoint {
   relevantJob?: string;
   priorityScore?: number;
   kornFerryPillar?: string;
+  solutionArea?: string;
+  relatedKPIs?: string[];
 }
 
 interface Headline {
@@ -46,6 +48,15 @@ const KORN_FERRY_JOBS = [
   { value: "organizational-design", label: "Organizational Design" },
   { value: "change-management", label: "Change Management" },
 ];
+
+const SOLUTION_AREA_COLORS: Record<string, string> = {
+  "ASSESS": "bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300",
+  "DEVELOP": "bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300",
+  "TRANSFORM": "bg-purple-100 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300",
+  "REWARD": "bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300",
+  "COMMERCIAL": "bg-red-100 dark:bg-red-950/30 text-red-700 dark:text-red-300",
+  "ANALYTICS": "bg-cyan-100 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-300",
+};
 
 const PriorityIndicator = ({ score = 3 }: { score?: number }) => {
   // Ensure score is in valid range (1-5)
@@ -167,6 +178,14 @@ export default function OrganisationCard({
                       {getKornFerryPillarLabel(point.kornFerryPillar)}
                     </Badge>
                   )}
+                  {point.solutionArea && (
+                    <Badge 
+                      className={`text-xs px-1.5 py-0 h-5 ${SOLUTION_AREA_COLORS[point.solutionArea] || 'bg-secondary text-secondary-foreground'}`}
+                      data-testid={`badge-solution-${point.id}`}
+                    >
+                      {point.solutionArea}
+                    </Badge>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <PriorityIndicator score={point.priorityScore ?? 3} />
@@ -174,6 +193,23 @@ export default function OrganisationCard({
                 </div>
               </div>
               <p className="text-sm leading-relaxed">{point.value}</p>
+              {point.relatedKPIs && point.relatedKPIs.length > 0 && (
+                <div className="flex items-start gap-2 pt-1">
+                  <span className="text-xs text-muted-foreground font-medium shrink-0">Relevant KPIs:</span>
+                  <div className="flex flex-wrap gap-1">
+                    {point.relatedKPIs.map((kpi, idx) => (
+                      <Badge 
+                        key={idx} 
+                        variant="outline" 
+                        className="text-xs px-1.5 py-0 h-5 font-normal"
+                        data-testid={`badge-kpi-${point.id}-${idx}`}
+                      >
+                        {kpi}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
               {point.source && (
                 <a 
                   href="#" 
