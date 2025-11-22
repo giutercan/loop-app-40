@@ -16,7 +16,8 @@ import {
   insertEvidenceDocumentSchema,
   insertAnalyticsReviewSchema,
   insertResponsibleAiChecklistSchema,
-  insertDiscoveryQuestionSchema
+  insertDiscoveryQuestionSchema,
+  updateDiscoveryQuestionSchema
 } from "@shared/schema";
 
 export function registerRoutes(app: Express) {
@@ -575,7 +576,7 @@ export function registerRoutes(app: Express) {
 
   app.patch("/api/discovery-questions/:id", async (req, res) => {
     try {
-      const validated = insertDiscoveryQuestionSchema.partial().parse(req.body);
+      const validated = updateDiscoveryQuestionSchema.parse(req.body);
       const question = await storage.updateDiscoveryQuestion(parseInt(req.params.id), validated);
       if (!question) {
         return res.status(404).json({ error: "Discovery question not found" });

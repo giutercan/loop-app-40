@@ -336,4 +336,9 @@ export const insertDiscoveryQuestionSchema = createInsertSchema(discoveryQuestio
   updatedAt: true,
 });
 export type InsertDiscoveryQuestion = z.infer<typeof insertDiscoveryQuestionSchema>;
+
+// Schema for updating discovery questions (allows partial updates including answer field)
+export const updateDiscoveryQuestionSchema = insertDiscoveryQuestionSchema.partial();
+export type UpdateDiscoveryQuestion = z.infer<typeof updateDiscoveryQuestionSchema>;
+
 export type DiscoveryQuestion = typeof discoveryQuestions.$inferSelect;
