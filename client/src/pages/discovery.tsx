@@ -955,7 +955,7 @@ export default function Discovery() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  Click "Extract Insights" to have AI analyze your notes and files. New insights will appear in the Organization tab and can be selected as evidence below.
+                  Click "Extract Insights" to have AI analyze your notes and files. Enriched insights will appear highlighted in Step 3 below, combined with any insights you selected from the Organization tab.
                 </p>
                 <p className="text-sm text-muted-foreground mt-2">
                   <strong>Supported for AI analysis:</strong> Text files (.txt, .csv, .json) and voice notes
@@ -963,7 +963,7 @@ export default function Discovery() {
               </CardContent>
             </Card>
 
-            {/* Step 3: Select Evidence */}
+            {/* Step 3: Combined Evidence */}
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -971,82 +971,117 @@ export default function Discovery() {
                     3
                   </div>
                   <div className="flex-1">
-                    <CardTitle>Select Evidence</CardTitle>
+                    <CardTitle>Evidence & Enriched Insights</CardTitle>
                     <CardDescription>
-                      {dataPoints.filter(dp => dp.selectedForNotes).length === 0 
-                        ? "Choose insights from the Organization tab to build your value case"
-                        : `${dataPoints.filter(dp => dp.selectedForNotes).length} insight${dataPoints.filter(dp => dp.selectedForNotes).length !== 1 ? 's' : ''} selected`
-                      }
+                      {(() => {
+                        const selectedCount = dataPoints.filter(dp => dp.selectedForNotes).length;
+                        const enrichedCount = dataPoints.filter(dp => (dp.provenance as any)?.type === 'notes_enrichment').length;
+                        const total = selectedCount + enrichedCount;
+                        
+                        if (total === 0) {
+                          return "Choose insights from the Organization tab to build your value case";
+                        }
+                        
+                        const parts = [];
+                        if (selectedCount > 0) parts.push(`${selectedCount} selected`);
+                        if (enrichedCount > 0) parts.push(`${enrichedCount} enriched`);
+                        return parts.join(' + ');
+                      })()}
                     </CardDescription>
                   </div>
                 </div>
               </CardHeader>
-              {dataPoints.filter(dp => dp.selectedForNotes).length === 0 ? (
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    Go to the <strong>Organization tab</strong> and check the boxes next to insights you want to include as evidence. 
-                    Selected insights will be organized here by Korn Ferry capability.
-                  </p>
-                </CardContent>
-              ) : (
-                <CardContent className="space-y-6">
-                  {[
-                      'Success Profiles & Role Design',
-                      'Standardised Assessments & Assessments at Scale',
-                      'Leadership & Development Journeys',
-                      'AI-Ready Leader (within L&D)',
-                      'Organisation Strategy & Transformation',
-                      'Total Rewards Optimisation (TRO)',
-                      'Sales & Service (KF Sell)',
-                      'People Analytics / KFI Analytics',
-                      'Value Management / Client Success & Talent Suite',
-                      null
-                    ].map(capabilityKey => {
-                      const capabilityPoints = dataPoints.filter(dp => 
-                        dp.selectedForNotes && 
-                        (capabilityKey === null ? !dp.relevantCapability : dp.relevantCapability === capabilityKey)
-                      );
-                      if (capabilityPoints.length === 0) return null;
+              {(() => {
+                const combinedPoints = dataPoints.filter(dp => 
+                  dp.selectedForNotes || (dp.provenance as any)?.type === 'notes_enrichment'
+                );
+                
+                if (combinedPoints.length === 0) {
+                  return (
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground">
+                        Go to the <strong>Organization tab</strong> and check the boxes next to insights you want to include as evidence. 
+                        You can also extract insights from your notes above using the "Extract Insights" button.
+                      </p>
+                    </CardContent>
+                  );
+                }
+                
+                return (
+                  <CardContent className="space-y-6">
+                    {[
+                        'Success Profiles & Role Design',
+                        'Standardised Assessments & Assessments at Scale',
+                        'Leadership & Development Journeys',
+                        'AI-Ready Leader (within L&D)',
+                        'Organisation Strategy & Transformation',
+                        'Total Rewards Optimisation (TRO)',
+                        'Sales & Service (KF Sell)',
+                        'People Analytics / KFI Analytics',
+                        'Value Management / Client Success & Talent Suite',
+                        null
+                      ].map(capabilityKey => {
+                        const capabilityPoints = combinedPoints.filter(dp => 
+                          capabilityKey === null ? !dp.relevantCapability : dp.relevantCapability === capabilityKey
+                        );
+                        if (capabilityPoints.length === 0) return null;
 
-                      const capabilityLabel = capabilityKey || 'Not Identified';
+                        const capabilityLabel = capabilityKey || 'Not Identified';
 
-                      return (
-                        <div key={capabilityKey || 'not-identified'} className="space-y-3">
-                          <div className="flex items-center gap-2 pb-2 border-b">
-                            <Briefcase className="w-4 h-4 text-primary" />
-                            <h3 className="font-semibold text-sm">{capabilityLabel}</h3>
-                            <Badge variant="secondary" className="text-xs">{capabilityPoints.length}</Badge>
+                        return (
+                          <div key={capabilityKey || 'not-identified'} className="space-y-3">
+                            <div className="flex items-center gap-2 pb-2 border-b">
+                              <Briefcase className="w-4 h-4 text-primary" />
+                              <h3 className="font-semibold text-sm">{capabilityLabel}</h3>
+                              <Badge variant="secondary" className="text-xs">{capabilityPoints.length}</Badge>
+                            </div>
+                            <div className="space-y-2 pl-6">
+                              {capabilityPoints.map((point, idx) => {
+                                const isEnriched = (point.provenance as any)?.type === 'notes_enrichment';
+                                
+                                return (
+                                  <div 
+                                    key={point.id} 
+                                    className={`rounded-md p-3 space-y-1.5 ${
+                                      isEnriched 
+                                        ? 'bg-primary/10 border-2 border-primary/30' 
+                                        : 'bg-muted/30'
+                                    }`}
+                                    data-testid={`selected-point-${point.id}`}
+                                  >
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <p className="text-xs font-medium text-muted-foreground">{point.label}</p>
+                                        {isEnriched && (
+                                          <Badge className="bg-primary text-primary-foreground text-xs px-2 py-0">
+                                            <Sparkles className="w-3 h-3 mr-1" />
+                                            New from enrichment
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <ConfidenceBadge level={point.confidence as "high" | "medium" | "low"} />
+                                    </div>
+                                    <p className="text-sm leading-relaxed">{point.value}</p>
+                                    {point.source && (
+                                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                        <ExternalLink className="w-3 h-3" />
+                                        {point.source}
+                                      </p>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
-                          <div className="space-y-2 pl-6">
-                            {capabilityPoints.map((point, idx) => (
-                              <div 
-                                key={point.id} 
-                                className="bg-muted/30 rounded-md p-3 space-y-1.5"
-                                data-testid={`selected-point-${point.id}`}
-                              >
-                                <div className="flex items-start justify-between gap-2">
-                                  <p className="text-xs font-medium text-muted-foreground">{point.label}</p>
-                                  <ConfidenceBadge level={point.confidence as "high" | "medium" | "low"} />
-                                </div>
-                                <p className="text-sm leading-relaxed">{point.value}</p>
-                                {point.source && (
-                                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                    <ExternalLink className="w-3 h-3" />
-                                    {point.source}
-                                  </p>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                </CardContent>
-              )}
+                        );
+                      })}
+                  </CardContent>
+                );
+              })()}
             </Card>
 
-            {/* Step 4: Discovery Questions - Only show if evidence is selected */}
-            {dataPoints.filter(dp => dp.selectedForNotes).length > 0 && (
+            {/* Step 4: Discovery Questions - Only show if any evidence exists */}
+            {dataPoints.filter(dp => dp.selectedForNotes || (dp.provenance as any)?.type === 'notes_enrichment').length > 0 && (
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
