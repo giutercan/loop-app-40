@@ -23,7 +23,7 @@ interface CompanyResearchResult {
 export async function researchCompany(companyName: string, sector?: string): Promise<CompanyResearchResult> {
   const prompt = `You are a business intelligence analyst. Research ${companyName}${sector ? ` (${sector})` : ''} and provide specific, actionable insights.
 
-Return a JSON object with two arrays: dataPoints and headlines.
+Return valid JSON with two arrays: dataPoints and headlines.
 
 For dataPoints, include 15+ items covering:
 - Annual report priorities (revenue targets, strategic initiatives, M&A)
@@ -35,43 +35,30 @@ For dataPoints, include 15+ items covering:
 
 For headlines, include 8+ recent news items from the last 12 months.
 
-JSON format (return ONLY the JSON object, no markdown, no extra text):
+Return this JSON:
 {
-  "dataPoints": [
-    {
-      "label": "string describing the data point",
-      "value": "specific fact or number",
-      "confidence": "high" | "medium" | "low",
-      "source": "source of information"
-    }
-  ],
-  "headlines": [
-    {
-      "title": "news headline",
-      "date": "YYYY-MM-DD",
-      "source": "news source",
-      "url": "https://example.com/news"
-    }
-  ]
+  "dataPoints": [{"label": "string", "value": "string", "confidence": "high|medium|low", "source": "string"}],
+  "headlines": [{"title": "string", "date": "YYYY-MM-DD", "source": "string", "url": "string"}]
 }`;
 
   let rawContent = "";
   try {
     console.log(`Starting AI research for ${companyName}${sector ? ` (${sector})` : ''}`);
+    console.log(`API Key available: ${!!process.env.AI_INTEGRATIONS_OPENAI_API_KEY}`);
+    console.log(`API Base URL: ${process.env.AI_INTEGRATIONS_OPENAI_BASE_URL}`);
     
     // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
     const response = await openai.chat.completions.create({
       model: "gpt-5",
       messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-      max_completion_tokens: 8192,
+      max_completion_tokens: 4000,
     });
 
     rawContent = response.choices?.[0]?.message?.content || "";
     console.log(`Raw AI response received, length: ${rawContent.length}`);
     
     if (!rawContent || rawContent.trim() === "") {
-      console.error("Empty response from AI");
+      console.error("Empty response from AI - API may be unavailable or rate limited");
       return { dataPoints: [], headlines: [] };
     }
 
@@ -82,10 +69,7 @@ JSON format (return ONLY the JSON object, no markdown, no extra text):
       content = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
     }
     
-    console.log(`Parsing JSON, content preview: ${content.substring(0, 100)}...`);
     const result = JSON.parse(content);
-    
-    console.log(`Parsed result - dataPoints: ${result.dataPoints?.length || 0}, headlines: ${result.headlines?.length || 0}`);
     
     // Ensure we have valid arrays
     const dataPoints = Array.isArray(result.dataPoints) ? result.dataPoints : [];
@@ -99,8 +83,6 @@ JSON format (return ONLY the JSON object, no markdown, no extra text):
     };
   } catch (error) {
     console.error("Error researching company:", error instanceof Error ? error.message : String(error));
-    console.error("Raw response content:", rawContent.substring(0, 500));
-    // Return empty arrays instead of throwing to avoid breaking the API
     return { dataPoints: [], headlines: [] };
   }
 }
