@@ -13,8 +13,19 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Building2 } from "lucide-react";
+import { Plus, Building2, Trash2 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Project } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -65,6 +76,31 @@ export default function ProjectSelector({ currentProjectId, onProjectChange }: P
     },
   });
 
+  const deleteProjectMutation = useMutation({
+    mutationFn: async (projectId: number) => {
+      await apiRequest("DELETE", `/api/projects/${projectId}`, {});
+    },
+    onSuccess: (_, deletedProjectId) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      toast({
+        title: "Project deleted",
+        description: "The project has been permanently deleted.",
+      });
+      
+      // If we just deleted the current project, redirect to home
+      if (currentProjectId === deletedProjectId) {
+        setLocation("/");
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error deleting project",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleProjectChange = (projectId: string) => {
     const project = projects.find(p => p.id === parseInt(projectId));
     if (project) {
@@ -87,6 +123,8 @@ export default function ProjectSelector({ currentProjectId, onProjectChange }: P
     createProjectMutation.mutate(newProject);
   };
 
+  const currentProject = projects.find(p => p.id === currentProjectId);
+
   return (
     <div className="flex items-center gap-3">
       <div className="flex items-center gap-2 min-w-[300px]">
@@ -104,6 +142,41 @@ export default function ProjectSelector({ currentProjectId, onProjectChange }: P
           </SelectContent>
         </Select>
       </div>
+
+      {currentProjectId && currentProject && (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button 
+              size="icon" 
+              variant="outline"
+              data-testid="button-delete-project"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Project</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete "{currentProject.name}" for {currentProject.companyName}? 
+                This action cannot be undone and will permanently delete all associated data including discovery notes, 
+                value hypotheses, KPIs, and financial projections.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => deleteProjectMutation.mutate(currentProjectId)}
+                disabled={deleteProjectMutation.isPending}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                data-testid="button-confirm-delete"
+              >
+                {deleteProjectMutation.isPending ? "Deleting..." : "Delete Project"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
 
       <Dialog open={isCreating} onOpenChange={setIsCreating}>
         <DialogTrigger asChild>
