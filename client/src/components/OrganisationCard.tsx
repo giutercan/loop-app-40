@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import ConfidenceBadge from "./ConfidenceBadge";
-import { ExternalLink, Building2, TrendingUp } from "lucide-react";
+import { ExternalLink, Building2, TrendingUp, Briefcase, BarChart3, Users } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface DataPoint {
