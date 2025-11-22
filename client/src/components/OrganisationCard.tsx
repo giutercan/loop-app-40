@@ -35,36 +35,62 @@ export default function OrganisationCard({
   revenueData = [],
   headlines = []
 }: OrganisationCardProps) {
-  return (
-    <Card data-testid="card-organisation">
-      <CardHeader className="space-y-4">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-primary/10 rounded-lg">
-              <Building2 className="w-8 h-8 text-primary" />
-            </div>
-            <div>
-              <CardTitle className="text-3xl font-bold">{name}</CardTitle>
-              <CardDescription className="mt-1">
-                <Badge variant="secondary" className="mt-2">{sector}</Badge>
-              </CardDescription>
-            </div>
+  // Categorize data points based on their labels
+  const strategicPoints = dataPoints.filter(dp => 
+    dp.label.toLowerCase().includes('strategic') || 
+    dp.label.toLowerCase().includes('initiative') ||
+    dp.label.toLowerCase().includes('transformation') ||
+    dp.label.toLowerCase().includes('market position') ||
+    dp.label.toLowerCase().includes('investment') ||
+    dp.label.toLowerCase().includes('leadership') ||
+    dp.label.toLowerCase().includes('m&a') ||
+    dp.label.toLowerCase().includes('acquisition') ||
+    dp.label.toLowerCase().includes('esg') ||
+    dp.label.toLowerCase().includes('sustainability')
+  );
+  
+  const industryPoints = dataPoints.filter(dp => 
+    dp.label.toLowerCase().includes('trend') ||
+    dp.label.toLowerCase().includes('industry') ||
+    dp.label.toLowerCase().includes('competitive') ||
+    dp.label.toLowerCase().includes('market') ||
+    dp.label.toLowerCase().includes('regulatory') ||
+    dp.label.toLowerCase().includes('supply chain') ||
+    dp.label.toLowerCase().includes('disruption')
+  );
+  
+  const businessPoints = dataPoints.filter(dp => 
+    !strategicPoints.includes(dp) && !industryPoints.includes(dp)
+  );
+
+  const renderDataPointSection = (title: string, points: DataPoint[], icon: any, description: string) => {
+    if (points.length === 0) return null;
+    
+    const Icon = icon;
+    
+    return (
+      <div className="space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="p-2 bg-primary/10 rounded-md shrink-0">
+            <Icon className="w-4 h-4 text-primary" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-sm">{title}</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
           </div>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {dataPoints.map((point, idx) => (
-            <div key={idx} className="border rounded-lg p-4 space-y-2" data-testid={`datapoint-${idx}`}>
+        <div className="space-y-2.5 pl-11">
+          {points.map((point, idx) => (
+            <div key={idx} className="bg-muted/30 rounded-md p-3 space-y-1.5 hover-elevate" data-testid={`datapoint-${idx}`}>
               <div className="flex items-start justify-between gap-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{point.label}</p>
+                <p className="text-xs font-medium text-muted-foreground">{point.label}</p>
                 <ConfidenceBadge level={point.confidence} />
               </div>
-              <p className="text-2xl font-bold font-mono">{point.value}</p>
+              <p className="text-sm leading-relaxed">{point.value}</p>
               {point.source && (
                 <a 
                   href="#" 
-                  className="text-xs text-primary hover:underline flex items-center gap-1"
+                  className="text-xs text-primary hover:underline flex items-center gap-1 w-fit"
                   data-testid={`link-source-${idx}`}
                   onClick={(e) => {
                     e.preventDefault();
@@ -78,46 +104,102 @@ export default function OrganisationCard({
             </div>
           ))}
         </div>
+      </div>
+    );
+  };
+
+  return (
+    <Card data-testid="card-organisation">
+      <CardHeader className="space-y-3 pb-4">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-primary/10 rounded-lg">
+              <Building2 className="w-6 h-6 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-xl font-bold">{name}</CardTitle>
+              <CardDescription className="mt-1">
+                <Badge variant="secondary" className="mt-1">{sector}</Badge>
+              </CardDescription>
+            </div>
+          </div>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Strategic insights to inform Korn Ferry's consulting engagement
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {renderDataPointSection(
+          "Strategic Intelligence",
+          strategicPoints,
+          Briefcase,
+          "Key initiatives and organizational priorities relevant for transformation and leadership advisory"
+        )}
+
+        {strategicPoints.length > 0 && industryPoints.length > 0 && <Separator />}
+
+        {renderDataPointSection(
+          "Industry Context",
+          industryPoints,
+          BarChart3,
+          "Market dynamics and competitive landscape insights for strategy consulting"
+        )}
+
+        {(strategicPoints.length > 0 || industryPoints.length > 0) && businessPoints.length > 0 && <Separator />}
+
+        {renderDataPointSection(
+          "Business Performance",
+          businessPoints,
+          Users,
+          "Operational and financial indicators to understand organizational health"
+        )}
 
         {revenueData.length > 0 && (
-          <div className="border rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="w-5 h-5 text-primary" />
-              <h3 className="text-lg font-semibold">Revenue Trend</h3>
+          <>
+            <Separator />
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-primary" />
+                <h3 className="text-sm font-semibold">Revenue Trend</h3>
+              </div>
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={revenueData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '0.375rem',
+                      fontSize: '12px'
+                    }}
+                  />
+                  <Line type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={revenueData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
-                <YAxis stroke="hsl(var(--muted-foreground))" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '0.375rem'
-                  }}
-                />
-                <Line type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          </>
         )}
 
         {headlines.length > 0 && (
-          <div>
-            <Separator className="mb-4" />
+          <>
+            <Separator />
             <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="headlines">
-                <AccordionTrigger data-testid="accordion-headlines">
-                  Recent Headlines ({headlines.length})
+              <AccordionItem value="headlines" className="border-none">
+                <AccordionTrigger className="text-sm font-semibold hover:no-underline py-2" data-testid="accordion-headlines">
+                  Recent Headlines & News ({headlines.length})
                 </AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-3">
+                <AccordionContent className="pt-3">
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Strategic news and developments to understand recent company activities
+                  </p>
+                  <div className="space-y-2">
                     {headlines.map((headline, idx) => (
-                      <div key={idx} className="border-l-4 border-primary pl-4 py-2" data-testid={`headline-${idx}`}>
+                      <div key={idx} className="bg-muted/30 rounded-md p-3 hover-elevate" data-testid={`headline-${idx}`}>
                         <a 
                           href={headline.url} 
-                          className="font-medium hover:text-primary hover:underline"
+                          className="text-sm font-medium hover:text-primary hover:underline block"
                           onClick={(e) => {
                             e.preventDefault();
                             console.log('Headline clicked:', headline.title);
@@ -125,8 +207,10 @@ export default function OrganisationCard({
                         >
                           {headline.title}
                         </a>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {headline.source} • {headline.date}
+                        <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1.5">
+                          <span>{headline.source}</span>
+                          <span>•</span>
+                          <span>{headline.date}</span>
                         </p>
                       </div>
                     ))}
@@ -134,7 +218,7 @@ export default function OrganisationCard({
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
-          </div>
+          </>
         )}
       </CardContent>
     </Card>
