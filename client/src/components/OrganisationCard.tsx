@@ -5,7 +5,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ConfidenceBadge from "./ConfidenceBadge";
-import { ExternalLink, Building2, TrendingUp, Briefcase, BarChart3, Users, CheckSquare } from "lucide-react";
+import { ExternalLink, Building2, TrendingUp, Briefcase, BarChart3, Users, CheckSquare, Star, Flame } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface DataPoint {
@@ -17,6 +17,8 @@ interface DataPoint {
   isFollowUp?: boolean;
   selectedForNotes?: boolean;
   relevantJob?: string;
+  priorityScore?: number;
+  kornFerryPillar?: string;
 }
 
 interface Headline {
@@ -44,6 +46,50 @@ const KORN_FERRY_JOBS = [
   { value: "organizational-design", label: "Organizational Design" },
   { value: "change-management", label: "Change Management" },
 ];
+
+const PriorityIndicator = ({ score = 3 }: { score?: number }) => {
+  // Ensure score is in valid range (1-5)
+  const validScore = Math.max(1, Math.min(5, score || 3));
+  
+  if (validScore === 5) {
+    return (
+      <div className="flex items-center gap-1" title="Critical Priority - Top 3 insights">
+        <Flame className="w-3.5 h-3.5 text-orange-500" />
+        <span className="text-xs font-semibold text-orange-500">Critical</span>
+      </div>
+    );
+  }
+  
+  if (validScore === 4) {
+    return (
+      <div className="flex items-center gap-0.5" title="High Priority">
+        {[...Array(5)].map((_, i) => (
+          <Star 
+            key={i} 
+            className={`w-3 h-3 ${i < validScore ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/30'}`}
+          />
+        ))}
+      </div>
+    );
+  }
+  
+  // For scores 1-3, show a simpler indicator
+  return (
+    <div className="flex items-center gap-0.5" title={`Priority ${validScore}/5`}>
+      {[...Array(5)].map((_, i) => (
+        <Star 
+          key={i} 
+          className={`w-2.5 h-2.5 ${i < validScore ? 'fill-muted-foreground/60 text-muted-foreground/60' : 'text-muted-foreground/20'}`}
+        />
+      ))}
+    </div>
+  );
+};
+
+const getKornFerryPillarLabel = (pillar?: string) => {
+  const job = KORN_FERRY_JOBS.find(j => j.value === pillar);
+  return job?.label || null;
+};
 
 export default function OrganisationCard({ 
   name, 
@@ -101,8 +147,10 @@ export default function OrganisationCard({
           {points.map((point) => (
             <div 
               key={point.id || point.label} 
-              className={`rounded-md p-3 space-y-2 hover-elevate ${
-                point.isFollowUp 
+              className={`rounded-md p-3 space-y-2.5 hover-elevate ${
+                point.priorityScore === 5 
+                  ? 'bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30'
+                  : point.isFollowUp 
                   ? 'bg-primary/10 border border-primary/20' 
                   : 'bg-muted/30'
               }`}
@@ -114,8 +162,16 @@ export default function OrganisationCard({
                   {point.isFollowUp && (
                     <Badge variant="default" className="text-xs px-1.5 py-0 h-5">New</Badge>
                   )}
+                  {point.kornFerryPillar && (
+                    <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5">
+                      {getKornFerryPillarLabel(point.kornFerryPillar)}
+                    </Badge>
+                  )}
                 </div>
-                <ConfidenceBadge level={point.confidence} />
+                <div className="flex items-center gap-2">
+                  <PriorityIndicator score={point.priorityScore ?? 3} />
+                  <ConfidenceBadge level={point.confidence} />
+                </div>
               </div>
               <p className="text-sm leading-relaxed">{point.value}</p>
               {point.source && (

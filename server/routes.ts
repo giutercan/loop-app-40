@@ -168,9 +168,41 @@ export function registerRoutes(app: Express) {
         await storage.deleteHeadline(aiH.id);
       }
 
+      // Validate AI response quality
+      if (result.dataPoints.length < 6) {
+        console.warn(`AI returned only ${result.dataPoints.length} insights (expected 8)`);
+      }
+
+      const validKornFerryPillars = [
+        "leadership-development", "talent-acquisition", "succession-planning",
+        "culture-transformation", "organizational-design", "change-management"
+      ];
+
       const validatedDataPoints = [];
       for (const dp of result.dataPoints) {
         try {
+          // Validate and sanitize priority score
+          let priorityScore = 3; // default
+          if (typeof dp.priorityScore === 'number' && !isNaN(dp.priorityScore)) {
+            if (dp.priorityScore >= 1 && dp.priorityScore <= 5) {
+              priorityScore = Math.round(dp.priorityScore); // Ensure integer
+            } else {
+              console.warn(`AI returned out-of-range priorityScore ${dp.priorityScore}, using default 3`);
+            }
+          } else if (dp.priorityScore !== undefined && dp.priorityScore !== null) {
+            console.warn(`AI returned non-numeric priorityScore ${dp.priorityScore}, using default 3`);
+          }
+          
+          // Validate and sanitize Korn Ferry pillar
+          let kornFerryPillar = null;
+          if (dp.kornFerryPillar) {
+            if (typeof dp.kornFerryPillar === 'string' && validKornFerryPillars.includes(dp.kornFerryPillar)) {
+              kornFerryPillar = dp.kornFerryPillar;
+            } else {
+              console.warn(`AI returned invalid kornFerryPillar "${dp.kornFerryPillar}", setting to null`);
+            }
+          }
+          
           const validated = insertCompanyDataPointSchema.parse({
             projectId,
             label: dp.label,
@@ -181,8 +213,8 @@ export function registerRoutes(app: Express) {
             provenance: { type: "ai_generated", model: "gpt-5", timestamp: new Date().toISOString() },
             selectedForNotes: false,
             relevantJob: null,
-            priorityScore: dp.priorityScore || 3,
-            kornFerryPillar: dp.kornFerryPillar || null
+            priorityScore,
+            kornFerryPillar
           });
           validatedDataPoints.push(await storage.createCompanyDataPoint(validated));
         } catch (validationError: any) {
@@ -239,15 +271,19 @@ export function registerRoutes(app: Express) {
       const existingDataPoints = await storage.getCompanyDataPoints(projectId);
       const existingHeadlines = await storage.getHeadlines(projectId);
 
+      // Map existing research with proper type safety
       const existingResearch = {
-        dataPoints: existingDataPoints.map(dp => ({
-          label: dp.label,
-          value: dp.value,
-          confidence: dp.confidence as "high" | "medium" | "low",
-          source: dp.source || "",
-          priorityScore: dp.priorityScore,
-          kornFerryPillar: dp.kornFerryPillar as "leadership-development" | "talent-acquisition" | "succession-planning" | "culture-transformation" | "organizational-design" | "change-management"
-        })),
+        dataPoints: existingDataPoints.map(dp => {
+          const pillar = dp.kornFerryPillar as "leadership-development" | "talent-acquisition" | "succession-planning" | "culture-transformation" | "organizational-design" | "change-management" | null;
+          return {
+            label: dp.label,
+            value: dp.value,
+            confidence: dp.confidence as "high" | "medium" | "low",
+            source: dp.source || "",
+            priorityScore: dp.priorityScore,
+            kornFerryPillar: pillar || "leadership-development" // Provide safe default for AI context
+          };
+        }),
         headlines: existingHeadlines.map(h => ({
           title: h.title,
           date: h.date,
@@ -272,9 +308,36 @@ export function registerRoutes(app: Express) {
       }
 
       // Add new data points with follow-up provenance
+      const validKornFerryPillars = [
+        "leadership-development", "talent-acquisition", "succession-planning",
+        "culture-transformation", "organizational-design", "change-management"
+      ];
+
       const validatedDataPoints = [];
       for (const dp of result.dataPoints) {
         try {
+          // Validate and sanitize priority score
+          let priorityScore = 4; // default for follow-up
+          if (typeof dp.priorityScore === 'number' && !isNaN(dp.priorityScore)) {
+            if (dp.priorityScore >= 1 && dp.priorityScore <= 5) {
+              priorityScore = Math.round(dp.priorityScore); // Ensure integer
+            } else {
+              console.warn(`Follow-up AI returned out-of-range priorityScore ${dp.priorityScore}, using default 4`);
+            }
+          } else if (dp.priorityScore !== undefined && dp.priorityScore !== null) {
+            console.warn(`Follow-up AI returned non-numeric priorityScore ${dp.priorityScore}, using default 4`);
+          }
+          
+          // Validate and sanitize Korn Ferry pillar
+          let kornFerryPillar = null;
+          if (dp.kornFerryPillar) {
+            if (typeof dp.kornFerryPillar === 'string' && validKornFerryPillars.includes(dp.kornFerryPillar)) {
+              kornFerryPillar = dp.kornFerryPillar;
+            } else {
+              console.warn(`Follow-up AI returned invalid kornFerryPillar "${dp.kornFerryPillar}", setting to null`);
+            }
+          }
+          
           const validated = insertCompanyDataPointSchema.parse({
             projectId,
             label: dp.label,
@@ -290,8 +353,8 @@ export function registerRoutes(app: Express) {
             },
             selectedForNotes: false,
             relevantJob: null,
-            priorityScore: dp.priorityScore || 3,
-            kornFerryPillar: dp.kornFerryPillar || null
+            priorityScore,
+            kornFerryPillar
           });
           validatedDataPoints.push(await storage.createCompanyDataPoint(validated));
         } catch (validationError: any) {
