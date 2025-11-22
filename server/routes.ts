@@ -115,35 +115,39 @@ export function registerRoutes(app: Express) {
       const validatedDataPoints = [];
       for (const dp of result.dataPoints) {
         try {
-          const validated = insertCompanyDataPointSchema.parse({
-            projectId,
+          const dataPointData = {
+            projectId: projectId,
             label: dp.label,
             value: dp.value,
             confidence: dp.confidence,
             source: dp.source || "AI Research",
             sourceUrl: null,
             provenance: { type: "ai_generated", model: "gpt-5", timestamp: new Date().toISOString() }
-          });
-          validatedDataPoints.push(await storage.createCompanyDataPoint(validated));
+          };
+          const validated = insertCompanyDataPointSchema.parse(dataPointData);
+          const created = await storage.createCompanyDataPoint(validated);
+          validatedDataPoints.push(created);
         } catch (validationError: any) {
-          console.error("Invalid data point from AI:", validationError.message, dp);
+          console.error("Failed to create data point:", validationError.message);
         }
       }
 
       const validatedHeadlines = [];
       for (const h of result.headlines) {
         try {
-          const validated = insertHeadlineSchema.parse({
-            projectId,
+          const headlineData = {
+            projectId: projectId,
             title: h.title,
             date: h.date,
             source: h.source || "AI Research",
             url: h.url || "",
             excerpt: null
-          });
-          validatedHeadlines.push(await storage.createHeadline(validated));
+          };
+          const validated = insertHeadlineSchema.parse(headlineData);
+          const created = await storage.createHeadline(validated);
+          validatedHeadlines.push(created);
         } catch (validationError: any) {
-          console.error("Invalid headline from AI:", validationError.message, h);
+          console.error("Failed to create headline:", validationError.message);
         }
       }
 
