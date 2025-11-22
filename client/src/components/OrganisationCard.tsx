@@ -2,16 +2,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ConfidenceBadge from "./ConfidenceBadge";
-import { ExternalLink, Building2, TrendingUp, Briefcase, BarChart3, Users } from "lucide-react";
+import { ExternalLink, Building2, TrendingUp, Briefcase, BarChart3, Users, CheckSquare } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface DataPoint {
+  id?: number;
   label: string;
   value: string;
   confidence: "high" | "medium" | "low";
   source?: string;
   isFollowUp?: boolean;
+  selectedForNotes?: boolean;
+  relevantJob?: string;
 }
 
 interface Headline {
@@ -28,14 +33,25 @@ interface OrganisationCardProps {
   dataPoints: DataPoint[];
   revenueData?: { month: string; revenue: number }[];
   headlines?: Headline[];
+  onDataPointSelect?: (id: number, selected: boolean, job?: string) => void;
 }
+
+const KORN_FERRY_JOBS = [
+  { value: "leadership-development", label: "Leadership Development" },
+  { value: "talent-acquisition", label: "Talent Acquisition" },
+  { value: "succession-planning", label: "Succession Planning" },
+  { value: "culture-transformation", label: "Culture Transformation" },
+  { value: "organizational-design", label: "Organizational Design" },
+  { value: "change-management", label: "Change Management" },
+];
 
 export default function OrganisationCard({ 
   name, 
   sector, 
   dataPoints,
   revenueData = [],
-  headlines = []
+  headlines = [],
+  onDataPointSelect
 }: OrganisationCardProps) {
   // Categorize data points based on their labels
   const strategicPoints = dataPoints.filter(dp => 
@@ -82,15 +98,15 @@ export default function OrganisationCard({
           </div>
         </div>
         <div className="space-y-2.5 pl-11">
-          {points.map((point, idx) => (
+          {points.map((point) => (
             <div 
-              key={idx} 
-              className={`rounded-md p-3 space-y-1.5 hover-elevate ${
+              key={point.id || point.label} 
+              className={`rounded-md p-3 space-y-2 hover-elevate ${
                 point.isFollowUp 
                   ? 'bg-primary/10 border border-primary/20' 
                   : 'bg-muted/30'
               }`}
-              data-testid={`datapoint-${idx}`}
+              data-testid={`datapoint-${point.id}`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -106,7 +122,7 @@ export default function OrganisationCard({
                 <a 
                   href="#" 
                   className="text-xs text-primary hover:underline flex items-center gap-1 w-fit"
-                  data-testid={`link-source-${idx}`}
+                  data-testid={`link-source-${point.id}`}
                   onClick={(e) => {
                     e.preventDefault();
                     console.log('Source clicked:', point.source);
@@ -115,6 +131,47 @@ export default function OrganisationCard({
                   <ExternalLink className="w-3 h-3" />
                   {point.source}
                 </a>
+              )}
+              {onDataPointSelect && point.id && (
+                <div className="flex items-center gap-3 pt-2 border-t">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id={`select-${point.id}`}
+                      checked={point.selectedForNotes}
+                      onCheckedChange={(checked) => {
+                        // When unchecking, clear the relevantJob to remove it from Notes & Evidence grouping
+                        onDataPointSelect(point.id!, checked as boolean, checked ? point.relevantJob : undefined);
+                      }}
+                      data-testid={`checkbox-select-${point.id}`}
+                    />
+                    <label 
+                      htmlFor={`select-${point.id}`} 
+                      className="text-xs font-medium cursor-pointer"
+                    >
+                      Add to Notes & Evidence
+                    </label>
+                  </div>
+                  {point.selectedForNotes && (
+                    <Select
+                      value={point.relevantJob || ""}
+                      onValueChange={(value) => {
+                        // Selecting a job implicitly selects the data point
+                        onDataPointSelect(point.id!, true, value);
+                      }}
+                    >
+                      <SelectTrigger className="h-7 w-[200px] text-xs" data-testid={`select-job-${point.id}`}>
+                        <SelectValue placeholder="Select job relevance..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {KORN_FERRY_JOBS.map(job => (
+                          <SelectItem key={job.value} value={job.value} className="text-xs">
+                            {job.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
               )}
             </div>
           ))}

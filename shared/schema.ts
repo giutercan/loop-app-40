@@ -34,6 +34,8 @@ export const companyDataPoints = pgTable("company_data_points", {
   source: text("source"),
   sourceUrl: text("source_url"),
   provenance: jsonb("provenance"),
+  selectedForNotes: boolean("selected_for_notes").default(false).notNull(),
+  relevantJob: text("relevant_job"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -19,7 +20,8 @@ import OrganisationCard from "@/components/OrganisationCard";
 import ValueHypothesisBuilder from "@/components/ValueHypothesisBuilder";
 import ProjectSelector from "@/components/ProjectSelector";
 import StatusBadge from "@/components/StatusBadge";
-import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, MessageSquarePlus } from "lucide-react";
+import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink } from "lucide-react";
+import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { Link, useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -167,6 +169,65 @@ export default function Discovery() {
       });
     },
   });
+
+  const updateDataPointSelectionMutation = useMutation({
+    mutationFn: async ({ id, selectedForNotes, relevantJob }: { id: number; selectedForNotes: boolean; relevantJob?: string }) => {
+      // Send relevantJob as null if undefined to clear it in the database
+      const res = await apiRequest("PATCH", `/api/data-points/${id}`, { 
+        selectedForNotes, 
+        relevantJob: relevantJob !== undefined ? relevantJob : null 
+      });
+      return await res.json();
+    },
+    onMutate: async ({ id, selectedForNotes, relevantJob }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["/api/projects", selectedProjectId, "data-points"] });
+      
+      // Snapshot the previous value
+      const previousDataPoints = queryClient.getQueryData(["/api/projects", selectedProjectId, "data-points"]);
+      
+      // Optimistically update to the new value
+      queryClient.setQueryData(["/api/projects", selectedProjectId, "data-points"], (old: any) => {
+        if (!old) return old;
+        return old.map((dp: any) => 
+          dp.id === id 
+            ? { 
+                ...dp, 
+                selectedForNotes, 
+                // If relevantJob is explicitly undefined, clear it; otherwise use the new value or keep existing
+                relevantJob: relevantJob !== undefined ? relevantJob : null 
+              }
+            : dp
+        );
+      });
+      
+      // Return context with the snapshot
+      return { previousDataPoints };
+    },
+    onError: (err, variables, context: any) => {
+      // Rollback to the previous value on error
+      if (context?.previousDataPoints) {
+        queryClient.setQueryData(
+          ["/api/projects", selectedProjectId, "data-points"],
+          context.previousDataPoints
+        );
+      }
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure we're in sync
+      queryClient.invalidateQueries({ 
+        queryKey: ["/api/projects", selectedProjectId, "data-points"]
+      });
+    },
+  });
+
+  const handleDataPointSelect = (id: number, selected: boolean, job?: string) => {
+    updateDataPointSelectionMutation.mutate({ 
+      id, 
+      selectedForNotes: selected, 
+      relevantJob: job 
+    });
+  };
 
   const handleSaveDraft = () => {
     saveNotesMutation.mutate();
@@ -342,11 +403,14 @@ export default function Discovery() {
                   name={project?.companyName || ""}
                   sector={project?.sector || ""}
                   dataPoints={dataPoints.map(dp => ({
+                    id: dp.id,
                     label: dp.label,
                     value: dp.value,
                     confidence: dp.confidence as "high" | "medium" | "low",
                     source: dp.source || undefined,
                     isFollowUp: Boolean(dp.provenance && typeof dp.provenance === 'object' && 'type' in dp.provenance && dp.provenance.type === 'ai_follow_up'),
+                    selectedForNotes: dp.selectedForNotes,
+                    relevantJob: dp.relevantJob || undefined,
                   }))}
                   headlines={headlines.map(h => ({
                     title: h.title,
@@ -355,6 +419,7 @@ export default function Discovery() {
                     url: h.url,
                     isFollowUp: h.source === "AI Follow-up",
                   }))}
+                  onDataPointSelect={handleDataPointSelect}
                 />
               </>
             )}
@@ -381,66 +446,111 @@ export default function Discovery() {
           </TabsContent>
 
           <TabsContent value="notes" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-              <Card className="lg:col-span-3">
+            {dataPoints.filter(dp => dp.selectedForNotes).length === 0 ? (
+              <Card>
                 <CardHeader>
-                  <CardTitle>Freeform Notes</CardTitle>
-                  <CardDescription>Capture key insights from discovery conversation</CardDescription>
+                  <CardTitle>No Evidence Selected Yet</CardTitle>
+                  <CardDescription>
+                    Select key insights from the Organization tab to build your evidence base
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Textarea
-                    placeholder="Start typing your notes here..."
-                    className="min-h-[400px] resize-none"
-                    value={localNotes.freeformNotes}
-                    onChange={(e) => setLocalNotes({ ...localNotes, freeformNotes: e.target.value })}
-                    data-testid="textarea-notes"
-                  />
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Changes are saved when you click Save Draft
+                  <p className="text-sm text-muted-foreground">
+                    Go to the Organization tab and check the insights you want to add to Notes & Evidence. 
+                    Tag them with relevant Korn Ferry jobs to organize your findings.
                   </p>
                 </CardContent>
               </Card>
+            ) : (
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Evidence Organized by Korn Ferry Jobs</CardTitle>
+                    <CardDescription>
+                      {dataPoints.filter(dp => dp.selectedForNotes).length} insight{dataPoints.filter(dp => dp.selectedForNotes).length !== 1 ? 's' : ''} selected from research
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {['leadership-development', 'talent-acquisition', 'succession-planning', 'culture-transformation', 'organizational-design', 'change-management', null].map(jobKey => {
+                      const jobPoints = dataPoints.filter(dp => dp.selectedForNotes && (jobKey === null ? !dp.relevantJob : dp.relevantJob === jobKey));
+                      if (jobPoints.length === 0) return null;
 
-              <Card className="lg:col-span-2">
-                <CardHeader>
-                  <CardTitle>Structured Fields</CardTitle>
-                  <CardDescription>Capture specific data points</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="stakeholder">Key Stakeholder</Label>
-                    <Input
-                      id="stakeholder"
-                      placeholder="Name, Title"
-                      value={localNotes.keyStakeholder}
-                      onChange={(e) => setLocalNotes({ ...localNotes, keyStakeholder: e.target.value })}
-                      data-testid="input-stakeholder"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="challenges">Top Challenges</Label>
-                    <Textarea
-                      id="challenges"
-                      placeholder="List main challenges..."
-                      className="resize-none"
-                      value={localNotes.topChallenges}
-                      onChange={(e) => setLocalNotes({ ...localNotes, topChallenges: e.target.value })}
-                      data-testid="textarea-challenges"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="timeline">Timeline</Label>
-                    <Input
-                      id="timeline"
-                      placeholder="Expected timeline"
-                      value={localNotes.timeline}
-                      onChange={(e) => setLocalNotes({ ...localNotes, timeline: e.target.value })}
-                      data-testid="input-timeline"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                      const jobLabel = jobKey 
+                        ? ({
+                            'leadership-development': 'Leadership Development',
+                            'talent-acquisition': 'Talent Acquisition',
+                            'succession-planning': 'Succession Planning',
+                            'culture-transformation': 'Culture Transformation',
+                            'organizational-design': 'Organizational Design',
+                            'change-management': 'Change Management',
+                          }[jobKey] || jobKey)
+                        : 'Uncategorized';
+
+                      return (
+                        <div key={jobKey || 'uncategorized'} className="space-y-3">
+                          <div className="flex items-center gap-2 pb-2 border-b">
+                            <Briefcase className="w-4 h-4 text-primary" />
+                            <h3 className="font-semibold text-sm">{jobLabel}</h3>
+                            <Badge variant="secondary" className="text-xs">{jobPoints.length}</Badge>
+                          </div>
+                          <div className="space-y-2 pl-6">
+                            {jobPoints.map((point, idx) => (
+                              <div 
+                                key={point.id} 
+                                className="bg-muted/30 rounded-md p-3 space-y-1.5"
+                                data-testid={`selected-point-${idx}`}
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className="text-xs font-medium text-muted-foreground">{point.label}</p>
+                                  <ConfidenceBadge level={point.confidence as "high" | "medium" | "low"} />
+                                </div>
+                                <p className="text-sm leading-relaxed">{point.value}</p>
+                                {point.source && (
+                                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <ExternalLink className="w-3 h-3" />
+                                    {point.source}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Additional Notes</CardTitle>
+                    <CardDescription>Add context and observations to complement the evidence</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="stakeholder">Key Stakeholder</Label>
+                      <Input
+                        id="stakeholder"
+                        placeholder="Name, Title"
+                        value={localNotes.keyStakeholder}
+                        onChange={(e) => setLocalNotes({ ...localNotes, keyStakeholder: e.target.value })}
+                        data-testid="input-stakeholder"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="freeform">Freeform Notes</Label>
+                      <Textarea
+                        id="freeform"
+                        placeholder="Capture additional insights..."
+                        className="min-h-[200px] resize-none"
+                        value={localNotes.freeformNotes}
+                        onChange={(e) => setLocalNotes({ ...localNotes, freeformNotes: e.target.value })}
+                        data-testid="textarea-notes"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
           </TabsContent>
 
           <TabsContent value="hypothesis" className="space-y-6">
