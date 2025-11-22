@@ -44,21 +44,23 @@ Return this JSON:
   let rawContent = "";
   try {
     console.log(`Starting AI research for ${companyName}${sector ? ` (${sector})` : ''}`);
-    console.log(`API Key available: ${!!process.env.AI_INTEGRATIONS_OPENAI_API_KEY}`);
-    console.log(`API Base URL: ${process.env.AI_INTEGRATIONS_OPENAI_BASE_URL}`);
     
-    // Use gpt-4 for compatibility with Replit OpenAI integration
+    // Try gpt-3.5-turbo first (most widely supported), fall back if needed
+    let model = "gpt-3.5-turbo";
+    console.log(`Using model: ${model}`);
+    
     const response = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: model,
       messages: [{ role: "user", content: prompt }],
       max_completion_tokens: 2000,
+      temperature: 0.7,
     });
 
     rawContent = response.choices?.[0]?.message?.content || "";
     console.log(`Raw AI response received, length: ${rawContent.length}`);
     
     if (!rawContent || rawContent.trim() === "") {
-      console.error("Empty response from AI - API may be unavailable or rate limited");
+      console.error("Empty response from AI - API may be unavailable");
       return { dataPoints: [], headlines: [] };
     }
 
@@ -83,6 +85,9 @@ Return this JSON:
     };
   } catch (error) {
     console.error("Error researching company:", error instanceof Error ? error.message : String(error));
+    if (error instanceof Error) {
+      console.error("Error details:", error.stack);
+    }
     return { dataPoints: [], headlines: [] };
   }
 }
