@@ -21,30 +21,45 @@ interface CompanyResearchResult {
 }
 
 export async function researchCompany(companyName: string, sector?: string): Promise<CompanyResearchResult> {
-  const prompt = `Research ${companyName}${sector ? ` (${sector} sector)` : ''} and provide:
+  const prompt = `You are helping a Korn Ferry consultant prepare for a customer engagement. Research ${companyName}${sector ? ` (${sector} sector)` : ''} and provide strategically relevant insights:
 
-1. Key company data points:
-   - Revenue (latest year)
-   - Employee count
-   - Market cap (if public)
-   - Number of locations/offices
-   - Year founded
-   - CEO name
+1. Strategic Intelligence (from latest annual reports, investor presentations, and company statements):
+   - Key strategic initiatives and transformation programs underway
+   - Stated competitive advantages and market positioning strategy
+   - Major investment priorities (R&D, technology, digital transformation)
+   - Organizational structure and recent leadership changes
+   - Merger & acquisition strategy and recent deals
+   - Geographic expansion and market entry priorities
+   - Sustainability and ESG commitments and progress
 
-2. Recent headlines or major news (last 6 months)
+2. Industry Context & Trends:
+   - Key industry trends and disruptions affecting the company
+   - Competitive pressures and market headwinds
+   - Regulatory changes impacting the business
+   - Emerging opportunities in the market
+   - Supply chain considerations and challenges
+
+3. Business Performance & Outlook:
+   - Recent financial performance and guidance
+   - Key growth drivers and revenue streams
+   - Operational challenges and efficiency initiatives
+   - Workforce and talent strategy
 
 Return your response in JSON format with this exact structure:
 {
   "dataPoints": [
-    {"label": "Revenue", "value": "$X billion", "confidence": "high|medium|low", "source": "source name"}
+    {"label": "Strategic Initiative", "value": "Description of initiative and business impact", "confidence": "high|medium|low", "source": "source name"},
+    {"label": "Market Position", "value": "Competitive advantages and positioning", "confidence": "high|medium|low", "source": "source name"}
   ],
   "headlines": [
-    {"title": "headline text", "date": "YYYY-MM-DD", "source": "source name", "url": "https://..."}
+    {"title": "headline text with strategic relevance", "date": "YYYY-MM-DD", "source": "source name", "url": "https://..."}
   ]
 }
 
 Important:
-- Use "high" confidence for publicly available facts, "medium" for estimates, "low" for uncertain data
+- Prioritize data points that would be most relevant for a management consultant to understand before engaging with this company
+- Use "high" confidence for publicly available facts from annual reports and official sources, "medium" for analyst estimates or less-confirmed reports, "low" for uncertain or speculative data
+- Focus on strategic, operational, and market intelligence rather than just basic company facts
 - Include specific sources for each data point
 - For headlines, use real or plausible URLs
 - If you don't have current data, use your training data and mark confidence as "medium" or "low"`;
