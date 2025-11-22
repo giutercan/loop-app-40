@@ -21,33 +21,67 @@ interface CompanyResearchResult {
 }
 
 export async function researchCompany(companyName: string, sector?: string): Promise<CompanyResearchResult> {
-  const prompt = `Research ${companyName}${sector ? ` (${sector} sector)` : ''} and provide:
+  const prompt = `Deep research ${companyName}${sector ? ` (${sector} sector)` : ''} to provide TANGIBLE business intelligence for a sales/consulting conversation. Return REAL, SPECIFIC findings.
 
-1. Key company data points:
-   - Revenue (latest year)
-   - Employee count
-   - Market cap (if public)
-   - Number of locations/offices
-   - Year founded
-   - CEO name
+FOCUS ON THESE AREAS (use your latest knowledge):
 
-2. Recent headlines or major news (last 6 months)
+1. STRATEGIC PRIORITIES & ANNUAL REPORT FINDINGS:
+   - Key strategic initiatives mentioned in latest annual report
+   - Revenue growth targets/actual growth rates
+   - Market expansion plans
+   - Digital transformation initiatives
+   - Cost optimization or efficiency programs
+   - Geographic expansion or contraction
+   - M&A activity or partnerships
 
-Return your response in JSON format with this exact structure:
+2. RECENT NEWS & PRESS RELEASES (Last 12 months):
+   - Leadership changes (C-suite appointments/departures)
+   - Major product launches or announcements
+   - Earnings surprises or guidance changes
+   - Sustainability/ESG commitments
+   - Industry awards or recognitions
+   - Layoff announcements or hiring sprees
+   - Strategic partnerships or deals
+
+3. OPERATIONAL METRICS & CHALLENGES:
+   - Current headcount and recent changes
+   - Key markets by revenue
+   - Customer concentration or churn issues
+   - Supply chain challenges
+   - Regulatory or compliance issues
+   - Industry disruption threats
+
+4. LINKEDIN & TALENT INSIGHTS:
+   - Recent high-profile departures or hirings
+   - Areas with most hiring activity
+   - Cultural themes from employee posts
+   - Leadership visibility on LinkedIn
+
+5. COMPETITIVE POSITION:
+   - Market share vs competitors
+   - Unique value proposition
+   - Key competitive threats
+   - Customer satisfaction indicators
+
+Return ONLY valid JSON (no markdown, no extra text):
 {
   "dataPoints": [
-    {"label": "Revenue", "value": "$X billion", "confidence": "high|medium|low", "source": "source name"}
+    {"label": "Strategic Priority: [initiative name]", "value": "[specific detail from annual report/earnings]", "confidence": "high|medium|low", "source": "[Annual Report 2024|Press Release|Earnings Call|LinkedIn|News Article]"}
   ],
   "headlines": [
-    {"title": "headline text", "date": "YYYY-MM-DD", "source": "source name", "url": "https://..."}
+    {"title": "[Specific news headline with actual details]", "date": "YYYY-MM-DD", "source": "[Company|Reuters|Bloomberg|Press Release|Industry News]", "url": "https://[real domain]/news/[slug]"}
   ]
 }
 
-Important:
-- Use "high" confidence for publicly available facts, "medium" for estimates, "low" for uncertain data
-- Include specific sources for each data point
-- For headlines, use real or plausible URLs
-- If you don't have current data, use your training data and mark confidence as "medium" or "low"`;
+CRITICAL: 
+- ONLY include real, verifiable facts from your knowledge
+- Mark confidence as "high" only for official company announcements or well-established facts
+- Mark as "medium" for recent reports and news
+- Mark as "low" for analysis or predictions
+- Include AT LEAST 15 data points covering all areas above
+- Include AT LEAST 8 recent news items (last 12 months)
+- Be SPECIFIC with numbers, dates, and actual initiatives - NOT generic
+- Focus on what helps someone prepare for a business conversation with this company`;
 
   try {
     // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
