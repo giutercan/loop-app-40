@@ -248,3 +248,98 @@ IMPORTANT REQUIREMENTS:
     throw new Error("Failed to research company with AI");
   }
 }
+
+interface DiscoveryQuestionInput {
+  capability: string;
+  insights: Array<{
+    label: string;
+    value: string;
+    relatedKPIs?: string[];
+  }>;
+}
+
+interface GeneratedQuestion {
+  question: string;
+  questionType: "quantitative" | "qualitative" | "both";
+  purpose: string;
+  relatedKPI: string | null;
+}
+
+export async function generateDiscoveryQuestions(
+  companyName: string,
+  capabilityQuestions: DiscoveryQuestionInput[]
+): Promise<Record<string, GeneratedQuestion[]>> {
+  const knowledgeBase = getSolutionSummary();
+  
+  const capabilityContext = capabilityQuestions.map(cq => `
+${cq.capability}:
+Selected Insights:
+${cq.insights.map(i => `- ${i.label}: ${i.value}${i.relatedKPIs && i.relatedKPIs.length > 0 ? ` (KPIs: ${i.relatedKPIs.join(', ')})` : ''}`).join('\n')}
+`).join('\n');
+
+  const prompt = `You are a Korn Ferry consultant preparing for a discovery session with ${companyName}. Based on the AI research insights that have been selected, generate targeted discovery questions that will help investigate further and capture data for KPI calculations.
+
+SELECTED INSIGHTS BY CAPABILITY:
+${capabilityContext}
+
+KORN FERRY KNOWLEDGE BASE:
+${knowledgeBase}
+
+For each capability with selected insights, generate 2-4 discovery questions that:
+1. Build on the selected insights to dig deeper into the client's situation
+2. Are client-centered and conversational (not internal consulting jargon)
+3. Capture both quantitative metrics (for calculations) and qualitative context (for rationale)
+4. Map to specific KPIs from the knowledge base when applicable
+5. Help bridge insights to value hypotheses
+
+Question types:
+- "quantitative": Asks for numbers, metrics, counts, percentages
+- "qualitative": Asks for context, challenges, goals, strategies
+- "both": Asks for both quantitative data and qualitative context
+
+Return JSON with this structure:
+{
+  "capabilityName1": [
+    {
+      "question": "Client-friendly question text",
+      "questionType": "quantitative" | "qualitative" | "both",
+      "purpose": "Why we're asking this - what it helps us understand",
+      "relatedKPI": "Specific KPI name from knowledge base or null"
+    }
+  ],
+  "capabilityName2": [...]
+}
+
+EXAMPLES:
+For "Leadership & Development Journeys" with insight about leadership transitions:
+{
+  "question": "How many leadership transitions do you anticipate in the next 12-18 months?",
+  "questionType": "quantitative",
+  "purpose": "Understand the scale of succession planning needs",
+  "relatedKPI": "Leadership Bench Strength"
+}
+
+{
+  "question": "What are the biggest challenges you've faced with recent leadership transitions?",
+  "questionType": "qualitative",
+  "purpose": "Identify pain points in current succession process",
+  "relatedKPI": null
+}`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-5",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 4096,
+    });
+
+    const content = response.choices[0]?.message?.content || "{}";
+    const result = JSON.parse(content);
+    
+    return result;
+  } catch (error) {
+    console.error("Error generating discovery questions:", error);
+    throw new Error("Failed to generate discovery questions with AI");
+  }
+}

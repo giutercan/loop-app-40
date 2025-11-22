@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "./storage";
-import { researchCompany, followUpResearch } from "./ai";
+import { researchCompany, followUpResearch, generateDiscoveryQuestions } from "./ai";
 import { 
   insertProjectSchema,
   insertCompanyDataPointSchema,
@@ -15,7 +15,8 @@ import {
   insertFinancialProjectionSchema,
   insertEvidenceDocumentSchema,
   insertAnalyticsReviewSchema,
-  insertResponsibleAiChecklistSchema
+  insertResponsibleAiChecklistSchema,
+  insertDiscoveryQuestionSchema
 } from "@shared/schema";
 
 export function registerRoutes(app: Express) {
@@ -464,6 +465,132 @@ export function registerRoutes(app: Express) {
         error: "An unexpected error occurred",
         details: error.message 
       });
+    }
+  });
+
+  // Discovery Questions
+  app.get("/api/projects/:projectId/discovery-questions", async (req, res) => {
+    try {
+      const questions = await storage.getDiscoveryQuestions(parseInt(req.params.projectId));
+      res.json(questions);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/projects/:projectId/discovery-questions/generate", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Get selected insights grouped by capability
+      const allDataPoints = await storage.getCompanyDataPoints(projectId);
+      const selectedInsights = allDataPoints.filter(dp => dp.selectedForNotes);
+      
+      if (selectedInsights.length === 0) {
+        return res.status(400).json({ error: "No insights selected for discovery questions" });
+      }
+
+      // Group by capability
+      const capabilityGroups = new Map<string, typeof selectedInsights>();
+      for (const insight of selectedInsights) {
+        if (insight.relevantCapability) {
+          const existing = capabilityGroups.get(insight.relevantCapability) || [];
+          existing.push(insight);
+          capabilityGroups.set(insight.relevantCapability, existing);
+        }
+      }
+
+      if (capabilityGroups.size === 0) {
+        return res.status(400).json({ error: "Selected insights must have capability classification" });
+      }
+
+      // Prepare input for AI
+      const capabilityQuestions = Array.from(capabilityGroups.entries()).map(([capability, insights]) => ({
+        capability,
+        insights: insights.map(i => ({
+          label: i.label,
+          value: i.value,
+          relatedKPIs: i.relatedKPIs as string[] || undefined
+        }))
+      }));
+
+      // Generate questions with AI
+      let generatedQuestions;
+      try {
+        generatedQuestions = await generateDiscoveryQuestions(project.companyName, capabilityQuestions);
+      } catch (aiError: any) {
+        return res.status(500).json({ 
+          error: "AI question generation failed",
+          details: aiError.message
+        });
+      }
+
+      // Delete existing AI-generated questions for this project
+      const existingQuestions = await storage.getDiscoveryQuestions(projectId);
+      const aiQuestions = existingQuestions.filter(q => !q.isTemplate);
+      for (const q of aiQuestions) {
+        await storage.deleteDiscoveryQuestion(q.id);
+      }
+
+      // Save new questions
+      const savedQuestions = [];
+      let sortOrder = 0;
+      for (const [capabilityName, questions] of Object.entries(generatedQuestions)) {
+        for (const q of questions) {
+          try {
+            const validated = insertDiscoveryQuestionSchema.parse({
+              projectId,
+              capabilityName,
+              question: q.question,
+              questionType: q.questionType,
+              purpose: q.purpose,
+              relatedKPI: q.relatedKPI,
+              answer: null,
+              isTemplate: false,
+              sortOrder: sortOrder++
+            });
+            savedQuestions.push(await storage.createDiscoveryQuestion(validated));
+          } catch (validationError: any) {
+            console.error("Invalid question from AI:", validationError.message, q);
+          }
+        }
+      }
+
+      res.json({
+        questions: savedQuestions,
+        summary: `Generated ${savedQuestions.length} discovery questions across ${capabilityGroups.size} capabilities`
+      });
+    } catch (error: any) {
+      res.status(500).json({ 
+        error: "An unexpected error occurred",
+        details: error.message 
+      });
+    }
+  });
+
+  app.patch("/api/discovery-questions/:id", async (req, res) => {
+    try {
+      const validated = insertDiscoveryQuestionSchema.partial().parse(req.body);
+      const question = await storage.updateDiscoveryQuestion(parseInt(req.params.id), validated);
+      if (!question) {
+        return res.status(404).json({ error: "Discovery question not found" });
+      }
+      res.json(question);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/discovery-questions/:id", async (req, res) => {
+    try {
+      await storage.deleteDiscoveryQuestion(parseInt(req.params.id));
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 
