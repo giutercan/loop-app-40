@@ -91,24 +91,45 @@ export const insertDiscoveryNotesSchema = createInsertSchema(discoveryNotes).omi
 export type InsertDiscoveryNotes = z.infer<typeof insertDiscoveryNotesSchema>;
 export type DiscoveryNotes = typeof discoveryNotes.$inferSelect;
 
-// Value Hypotheses with provenance
+// Value Hypotheses with detailed calculation support
 export const valueHypotheses = pgTable("value_hypotheses", {
   id: serial("id").primaryKey(),
   projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
-  job: text("job").notNull(),
-  primaryKpi: text("primary_kpi").notNull(),
-  exposure: decimal("exposure", { precision: 20, scale: 4 }).notNull(),
-  target: text("target").notNull(),
+  
+  // Basic information
+  title: text("title").notNull(), // e.g., "Improve Quality of Hire in Tech Hiring"
+  capabilityName: text("capability_name").notNull(), // From knowledge.ts
+  solutionArea: text("solution_area", {
+    enum: ["ASSESS", "DEVELOP", "TRANSFORM", "REWARD", "COMMERCIAL", "ANALYTICS"]
+  }).notNull(),
+  
+  // Calculation data
+  calculationInputs: jsonb("calculation_inputs").notNull(), // All inputs to calculation function
+  calculationResults: jsonb("calculation_results"), // Full ValueCalculationResult
+  
+  // Supporting evidence
+  linkedInsights: text("linked_insights").array(), // Array of data point IDs
+  rationale: text("rationale"), // Why this hypothesis is valuable
+  
+  // Legacy fields (kept for compatibility)
+  job: text("job"),
+  primaryKpi: text("primary_kpi"),
+  exposure: decimal("exposure", { precision: 20, scale: 4 }),
+  target: text("target"),
   researchDesign: text("research_design"),
+  
+  // Status tracking
   status: text("status", { enum: ["draft", "sent", "approved"] }).notNull().default("draft"),
   confidence: text("confidence", { enum: ["high", "medium", "low"] }).notNull().default("medium"),
   provenance: jsonb("provenance"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const insertValueHypothesisSchema = createInsertSchema(valueHypotheses).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
 });
 export type InsertValueHypothesis = z.infer<typeof insertValueHypothesisSchema>;
 export type ValueHypothesis = typeof valueHypotheses.$inferSelect;
