@@ -96,6 +96,7 @@ CRITICAL:
 - Be SPECIFIC with numbers, dates, and actual initiatives - NOT generic
 - Focus on what helps someone prepare for a business conversation with this company`;
 
+  let rawContent = "";
   try {
     // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
     const response = await openai.chat.completions.create({
@@ -105,15 +106,35 @@ CRITICAL:
       max_completion_tokens: 8192,
     });
 
-    const content = response.choices[0]?.message?.content || "{}";
+    rawContent = response.choices[0]?.message?.content || "{}";
+    let content = rawContent;
+    
+    // Handle markdown-wrapped JSON
+    if (content.includes("```json")) {
+      content = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    } else if (content.includes("```")) {
+      content = content.replace(/```\n?/g, "").trim();
+    }
+    
     const result = JSON.parse(content);
     
+    if (!result.dataPoints || !Array.isArray(result.dataPoints)) {
+      console.error("Invalid AI response format - missing dataPoints array:", result);
+      return { dataPoints: [], headlines: [] };
+    }
+    
+    if (!result.headlines || !Array.isArray(result.headlines)) {
+      console.error("Invalid AI response format - missing headlines array:", result);
+      return { dataPoints: result.dataPoints || [], headlines: [] };
+    }
+    
     return {
-      dataPoints: result.dataPoints || [],
-      headlines: result.headlines || [],
+      dataPoints: result.dataPoints,
+      headlines: result.headlines,
     };
   } catch (error) {
     console.error("Error researching company:", error);
-    throw new Error("Failed to research company with AI");
+    console.error("Raw response content:", rawContent);
+    throw new Error("Failed to research company with AI: " + (error instanceof Error ? error.message : "Unknown error"));
   }
 }
