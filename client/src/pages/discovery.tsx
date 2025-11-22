@@ -7,11 +7,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import OrganisationCard from "@/components/OrganisationCard";
 import ValueHypothesisBuilder from "@/components/ValueHypothesisBuilder";
 import ProjectSelector from "@/components/ProjectSelector";
 import StatusBadge from "@/components/StatusBadge";
-import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles } from "lucide-react";
+import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, MessageSquarePlus } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -57,6 +65,9 @@ export default function Discovery() {
     topChallenges: "",
     timeline: "",
   });
+
+  const [followUpQuestion, setFollowUpQuestion] = useState("");
+  const [isFollowUpDialogOpen, setIsFollowUpDialogOpen] = useState(false);
 
   useEffect(() => {
     if (notes) {
@@ -119,6 +130,38 @@ export default function Discovery() {
       }
       toast({
         title: "Research failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const followUpResearchMutation = useMutation({
+    mutationFn: async (question: string) => {
+      if (!selectedProjectId) return;
+      const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/research/follow-up`, { question });
+      return await res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "data-points"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "headlines"] });
+      setIsFollowUpDialogOpen(false);
+      setFollowUpQuestion("");
+      toast({
+        title: "Additional research complete",
+        description: data?.summary || "New insights have been added.",
+      });
+    },
+    onError: async (error: any) => {
+      let errorMessage = "An error occurred during follow-up research.";
+      try {
+        const errorData = JSON.parse(error.message);
+        errorMessage = errorData.details || errorData.error || errorMessage;
+      } catch {
+        errorMessage = error.message;
+      }
+      toast({
+        title: "Follow-up research failed",
         description: errorMessage,
         variant: "destructive",
       });
@@ -229,22 +272,84 @@ export default function Discovery() {
             </Card>
 
             {dataPoints.length > 0 && (
-              <OrganisationCard
-                name={project?.companyName || ""}
-                sector={project?.sector || ""}
-                dataPoints={dataPoints.map(dp => ({
-                  label: dp.label,
-                  value: dp.value,
-                  confidence: dp.confidence as "high" | "medium" | "low",
-                  source: dp.source || undefined,
-                }))}
-                headlines={headlines.map(h => ({
-                  title: h.title,
-                  date: h.date,
-                  source: h.source,
-                  url: h.url,
-                }))}
-              />
+              <>
+                <OrganisationCard
+                  name={project?.companyName || ""}
+                  sector={project?.sector || ""}
+                  dataPoints={dataPoints.map(dp => ({
+                    label: dp.label,
+                    value: dp.value,
+                    confidence: dp.confidence as "high" | "medium" | "low",
+                    source: dp.source || undefined,
+                  }))}
+                  headlines={headlines.map(h => ({
+                    title: h.title,
+                    date: h.date,
+                    source: h.source,
+                    url: h.url,
+                  }))}
+                />
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Need More Information?</CardTitle>
+                    <CardDescription>
+                      Ask the AI for additional insights about {project?.companyName}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Dialog open={isFollowUpDialogOpen} onOpenChange={setIsFollowUpDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" data-testid="button-ask-followup">
+                          <MessageSquarePlus className="w-4 h-4 mr-2" />
+                          Ask Follow-up Question
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[600px]">
+                        <DialogHeader>
+                          <DialogTitle>Ask for Additional Research</DialogTitle>
+                          <DialogDescription>
+                            What specific information would you like to know about {project?.companyName}?
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="follow-up-question">Your Question</Label>
+                            <Textarea
+                              id="follow-up-question"
+                              placeholder="e.g., What are their recent technology investments? What challenges do they face in digital transformation? What are their main competitors doing?"
+                              className="min-h-[120px]"
+                              value={followUpQuestion}
+                              onChange={(e) => setFollowUpQuestion(e.target.value)}
+                              data-testid="textarea-followup-question"
+                            />
+                          </div>
+                          <div className="flex justify-end gap-3">
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                setIsFollowUpDialogOpen(false);
+                                setFollowUpQuestion("");
+                              }}
+                              data-testid="button-cancel-followup"
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              onClick={() => followUpResearchMutation.mutate(followUpQuestion)}
+                              disabled={followUpResearchMutation.isPending || !followUpQuestion.trim()}
+                              data-testid="button-submit-followup"
+                            >
+                              <Sparkles className="w-4 h-4 mr-2" />
+                              {followUpResearchMutation.isPending ? "Researching..." : "Get Insights"}
+                            </Button>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </CardContent>
+                </Card>
+              </>
             )}
 
             {dataPoints.length === 0 && (

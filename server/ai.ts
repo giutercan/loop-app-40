@@ -20,6 +20,66 @@ interface CompanyResearchResult {
   }>;
 }
 
+export async function followUpResearch(
+  companyName: string, 
+  question: string, 
+  existingResearch: CompanyResearchResult,
+  sector?: string
+): Promise<CompanyResearchResult> {
+  const existingContext = `
+Existing Research Summary:
+${existingResearch.dataPoints.map(dp => `- ${dp.label}: ${dp.value}`).join('\n')}
+
+Recent Headlines:
+${existingResearch.headlines.map(h => `- ${h.title} (${h.date})`).join('\n')}
+`;
+
+  const prompt = `You are helping a Korn Ferry consultant who needs additional information about ${companyName}${sector ? ` (${sector} sector)` : ''}.
+
+${existingContext}
+
+The consultant has asked: "${question}"
+
+Provide targeted, strategic insights to answer this specific question. Focus on actionable information that would help a management consultant prepare for client engagement.
+
+Return your response in JSON format with this exact structure:
+{
+  "dataPoints": [
+    {"label": "Category or aspect", "value": "Detailed answer or insight", "confidence": "high|medium|low", "source": "source name"}
+  ],
+  "headlines": [
+    {"title": "headline text relevant to the question", "date": "YYYY-MM-DD", "source": "source name", "url": "https://..."}
+  ]
+}
+
+Important:
+- Focus specifically on answering the consultant's question
+- Provide concrete, actionable insights
+- Use "high" confidence for publicly available facts, "medium" for analyst estimates, "low" for uncertain data
+- Include specific sources
+- Build on the existing research context provided above`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-5",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 8192,
+    });
+
+    const content = response.choices[0]?.message?.content || "{}";
+    const result = JSON.parse(content);
+    
+    return {
+      dataPoints: result.dataPoints || [],
+      headlines: result.headlines || [],
+    };
+  } catch (error) {
+    console.error("Error in follow-up research:", error);
+    throw new Error("Failed to complete follow-up research");
+  }
+}
+
 export async function researchCompany(companyName: string, sector?: string): Promise<CompanyResearchResult> {
   const prompt = `You are helping a Korn Ferry consultant prepare for a customer engagement. Research ${companyName}${sector ? ` (${sector} sector)` : ''} and provide strategically relevant insights:
 

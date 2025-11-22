@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "./storage";
-import { researchCompany } from "./ai";
+import { researchCompany, followUpResearch } from "./ai";
 import { 
   insertProjectSchema,
   insertCompanyDataPointSchema,
@@ -207,6 +207,109 @@ export function registerRoutes(app: Express) {
         dataPoints: validatedDataPoints,
         headlines: validatedHeadlines,
         summary: `Successfully created ${validatedDataPoints.length} data points and ${validatedHeadlines.length} headlines`
+      });
+    } catch (error: any) {
+      res.status(500).json({ 
+        error: "An unexpected error occurred",
+        details: error.message 
+      });
+    }
+  });
+
+  // AI Follow-up Research
+  app.post("/api/projects/:projectId/research/follow-up", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const { question } = req.body;
+      
+      if (!question || typeof question !== 'string' || question.trim().length === 0) {
+        return res.status(400).json({ error: "Question is required" });
+      }
+
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Get existing research to provide context
+      const existingDataPoints = await storage.getCompanyDataPoints(projectId);
+      const existingHeadlines = await storage.getHeadlines(projectId);
+
+      const existingResearch = {
+        dataPoints: existingDataPoints.map(dp => ({
+          label: dp.label,
+          value: dp.value,
+          confidence: dp.confidence as "high" | "medium" | "low",
+          source: dp.source || ""
+        })),
+        headlines: existingHeadlines.map(h => ({
+          title: h.title,
+          date: h.date,
+          source: h.source,
+          url: h.url
+        }))
+      };
+
+      let result;
+      try {
+        result = await followUpResearch(
+          project.companyName, 
+          question, 
+          existingResearch,
+          project.sector || undefined
+        );
+      } catch (aiError: any) {
+        return res.status(500).json({ 
+          error: "AI follow-up research failed",
+          details: aiError.message
+        });
+      }
+
+      // Add new data points with follow-up provenance
+      const validatedDataPoints = [];
+      for (const dp of result.dataPoints) {
+        try {
+          const validated = insertCompanyDataPointSchema.parse({
+            projectId,
+            label: dp.label,
+            value: dp.value,
+            confidence: dp.confidence,
+            source: dp.source || "AI Follow-up",
+            sourceUrl: null,
+            provenance: { 
+              type: "ai_follow_up", 
+              model: "gpt-5", 
+              timestamp: new Date().toISOString(),
+              question 
+            }
+          });
+          validatedDataPoints.push(await storage.createCompanyDataPoint(validated));
+        } catch (validationError: any) {
+          console.error("Invalid data point from follow-up AI:", validationError.message, dp);
+        }
+      }
+
+      const validatedHeadlines = [];
+      for (const h of result.headlines) {
+        try {
+          const validated = insertHeadlineSchema.parse({
+            projectId,
+            title: h.title,
+            date: h.date,
+            source: h.source || "AI Follow-up",
+            url: h.url || "",
+            excerpt: null
+          });
+          validatedHeadlines.push(await storage.createHeadline(validated));
+        } catch (validationError: any) {
+          console.error("Invalid headline from follow-up AI:", validationError.message, h);
+        }
+      }
+
+      res.json({
+        dataPoints: validatedDataPoints,
+        headlines: validatedHeadlines,
+        summary: `Added ${validatedDataPoints.length} new insights and ${validatedHeadlines.length} headlines based on your question`
       });
     } catch (error: any) {
       res.status(500).json({ 
