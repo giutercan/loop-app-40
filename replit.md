@@ -30,7 +30,7 @@ A full-stack web application designed to empower Korn Ferry consultants in manag
 - **Company Search & Autocomplete**: Real-time company name autocomplete with logos using Clearout's API, with manual entry fallback.
 - **Engagement Management**: Structured three-phase (Discovery, Alignment, Realization) workflow.
 - **Project Management**: Creation, selection, and deletion of projects.
-- **Notes & Evidence System**: Users can select and tag insights with Korn Ferry job categories, organizing evidence in a dedicated tab.
+- **Notes & Evidence System**: Users can select insights via checkbox, organizing them in a dedicated tab grouped by their AI-classified Korn Ferry capability.
 
 ### Feature Specifications
 - **Discovery Phase**: Focuses on company research, data collection, and initial note-taking.
