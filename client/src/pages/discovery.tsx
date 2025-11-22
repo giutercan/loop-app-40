@@ -15,7 +15,7 @@ import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles } from "lucide-
 import { Link, useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Project, CompanyDataPoint, Headline, DiscoveryNotes } from "@shared/schema";
+import type { Project, CompanyDataPoint, Headline, DiscoveryNotes, OrganizationalPriority, CompanyQuestion } from "@shared/schema";
 
 export default function Discovery() {
   const [location] = useLocation();
@@ -56,6 +56,21 @@ export default function Discovery() {
     keyStakeholder: "",
     topChallenges: "",
     timeline: "",
+    annualReportSummary: "",
+    annualReportUrl: "",
+  });
+
+  const [newPriority, setNewPriority] = useState({ title: "", description: "", category: "priority", impact: "", alignmentNote: "" });
+  const [newQuestion, setNewQuestion] = useState({ question: "", answer: "" });
+
+  const { data: priorities = [] } = useQuery<OrganizationalPriority[]>({
+    queryKey: ["/api/projects", selectedProjectId, "priorities"],
+    enabled: !!selectedProjectId,
+  });
+
+  const { data: questions = [] } = useQuery<CompanyQuestion[]>({
+    queryKey: ["/api/projects", selectedProjectId, "questions"],
+    enabled: !!selectedProjectId,
   });
 
   useEffect(() => {
@@ -65,9 +80,66 @@ export default function Discovery() {
         keyStakeholder: notes.keyStakeholder || "",
         topChallenges: notes.topChallenges || "",
         timeline: notes.timeline || "",
+        annualReportSummary: notes.annualReportSummary || "",
+        annualReportUrl: notes.annualReportUrl || "",
       });
     }
   }, [notes]);
+
+  const createPriorityMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedProjectId || !newPriority.title) return;
+      const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/priorities`, {
+        ...newPriority,
+        projectId: selectedProjectId,
+      });
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "priorities"] });
+      setNewPriority({ title: "", description: "", category: "priority", impact: "", alignmentNote: "" });
+      toast({ title: "Priority saved", description: "New organizational priority added." });
+    },
+  });
+
+  const deletePriorityMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("DELETE", `/api/priorities/${id}`, {});
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "priorities"] });
+      toast({ title: "Priority deleted", description: "Organizational priority removed." });
+    },
+  });
+
+  const createQuestionMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedProjectId || !newQuestion.question) return;
+      const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/questions`, {
+        ...newQuestion,
+        projectId: selectedProjectId,
+        status: "open",
+      });
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "questions"] });
+      setNewQuestion({ question: "", answer: "" });
+      toast({ title: "Question saved", description: "Company research question added." });
+    },
+  });
+
+  const updateQuestionMutation = useMutation({
+    mutationFn: async ({ id, answer }: { id: number; answer: string }) => {
+      const res = await apiRequest("PATCH", `/api/questions/${id}`, { answer, status: answer ? "answered" : "open" });
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "questions"] });
+      toast({ title: "Answer saved", description: "Question updated." });
+    },
+  });
 
   const saveNotesMutation = useMutation({
     mutationFn: async () => {

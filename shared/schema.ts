@@ -69,6 +69,8 @@ export const discoveryNotes = pgTable("discovery_notes", {
   keyStakeholder: text("key_stakeholder"),
   topChallenges: text("top_challenges"),
   timeline: text("timeline"),
+  annualReportSummary: text("annual_report_summary"),
+  annualReportUrl: text("annual_report_url"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
@@ -78,6 +80,43 @@ export const insertDiscoveryNotesSchema = createInsertSchema(discoveryNotes).omi
 });
 export type InsertDiscoveryNotes = z.infer<typeof insertDiscoveryNotesSchema>;
 export type DiscoveryNotes = typeof discoveryNotes.$inferSelect;
+
+// Organizational Priorities (saveable findings)
+export const organizationalPriorities = pgTable("organizational_priorities", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  category: text("category", { enum: ["priority", "opportunity", "challenge", "insight"] }).notNull().default("priority"),
+  impact: text("impact"),
+  alignmentNote: text("alignment_note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertOrganizationalPrioritySchema = createInsertSchema(organizationalPriorities).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertOrganizationalPriority = z.infer<typeof insertOrganizationalPrioritySchema>;
+export type OrganizationalPriority = typeof organizationalPriorities.$inferSelect;
+
+// Company Research Questions
+export const companyQuestions = pgTable("company_questions", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  question: text("question").notNull(),
+  answer: text("answer"),
+  category: text("category"),
+  status: text("status", { enum: ["open", "answered", "pending"] }).notNull().default("open"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertCompanyQuestionSchema = createInsertSchema(companyQuestions).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertCompanyQuestion = z.infer<typeof insertCompanyQuestionSchema>;
+export type CompanyQuestion = typeof companyQuestions.$inferSelect;
 
 // Value Hypotheses with provenance
 export const valueHypotheses = pgTable("value_hypotheses", {
