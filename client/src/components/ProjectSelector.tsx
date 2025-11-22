@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -24,11 +24,25 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Building2, Trash2 } from "lucide-react";
+import { Plus, Building2, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Project } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface ProjectSelectorProps {
   currentProjectId?: number;
@@ -48,10 +62,34 @@ export default function ProjectSelector({ currentProjectId, onProjectChange }: P
     businessUnit: "",
     sector: "",
   });
+  const [companySearchQuery, setCompanySearchQuery] = useState("");
+  const [openCombobox, setOpenCombobox] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
 
   const { data: projects = [] } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
   });
+
+  // Debounced company search
+  useEffect(() => {
+    if (companySearchQuery.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/search-companies?query=${encodeURIComponent(companySearchQuery)}`);
+        const data = await response.json();
+        setSearchResults(data || []);
+      } catch (error) {
+        console.error("Error searching companies:", error);
+        setSearchResults([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [companySearchQuery]);
 
   const verifyCompanyMutation = useMutation({
     mutationFn: async (companyName: string) => {
@@ -260,13 +298,93 @@ export default function ProjectSelector({ currentProjectId, onProjectChange }: P
             </div>
             <div>
               <Label htmlFor="companyName">Company Name</Label>
-              <Input
-                id="companyName"
-                placeholder="e.g., Acme Corporation"
-                value={newProject.companyName}
-                onChange={(e) => setNewProject({ ...newProject, companyName: e.target.value })}
-                data-testid="input-company-name"
-              />
+              <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openCombobox}
+                    className="w-full justify-between font-normal"
+                    data-testid="button-company-search"
+                  >
+                    {newProject.companyName || "Search for a company..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <Command shouldFilter={false}>
+                    <CommandInput 
+                      placeholder="Type to search companies..." 
+                      value={companySearchQuery}
+                      onValueChange={setCompanySearchQuery}
+                      data-testid="input-company-search"
+                    />
+                    <CommandList>
+                      <CommandEmpty>
+                        {companySearchQuery.length < 2 
+                          ? "Type at least 2 characters to search" 
+                          : "No companies found"}
+                      </CommandEmpty>
+                      {searchResults.length > 0 && (
+                        <CommandGroup>
+                          {searchResults.map((company) => (
+                            <CommandItem
+                              key={company.domain}
+                              value={company.name}
+                              onSelect={(currentValue) => {
+                                setNewProject({ ...newProject, companyName: company.name });
+                                setOpenCombobox(false);
+                                setCompanySearchQuery("");
+                              }}
+                              data-testid={`company-option-${company.domain}`}
+                            >
+                              <div className="flex items-center gap-2">
+                                {company.logo && (
+                                  <img 
+                                    src={company.logo} 
+                                    alt={company.name}
+                                    className="w-5 h-5 object-contain"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).style.display = 'none';
+                                    }}
+                                  />
+                                )}
+                                <div className="flex flex-col">
+                                  <span className="text-sm">{company.name}</span>
+                                  {company.domain && (
+                                    <span className="text-xs text-muted-foreground">{company.domain}</span>
+                                  )}
+                                </div>
+                              </div>
+                              <Check
+                                className={cn(
+                                  "ml-auto h-4 w-4",
+                                  newProject.companyName === company.name ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      )}
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              <p className="text-xs text-muted-foreground mt-1.5">
+                Or type manually if not found in search
+              </p>
+              {!newProject.companyName && (
+                <Input
+                  placeholder="Or type company name manually"
+                  value={companySearchQuery}
+                  onChange={(e) => {
+                    setCompanySearchQuery(e.target.value);
+                    setNewProject({ ...newProject, companyName: e.target.value });
+                  }}
+                  className="mt-2"
+                  data-testid="input-company-manual"
+                />
+              )}
             </div>
             <div>
               <Label htmlFor="businessUnit">Business Unit (Optional)</Label>

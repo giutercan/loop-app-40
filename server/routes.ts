@@ -73,6 +73,39 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // Company Search Autocomplete
+  app.get("/api/search-companies", async (req, res) => {
+    try {
+      const { query } = req.query;
+      if (!query || typeof query !== 'string' || query.trim().length === 0) {
+        return res.json([]);
+      }
+
+      // Use Clearout's free autocomplete API
+      const response = await fetch(
+        `https://api.clearout.io/public/companies/autocomplete?query=${encodeURIComponent(query)}`
+      );
+      
+      if (!response.ok) {
+        return res.json([]);
+      }
+
+      const data = await response.json();
+      
+      // Transform the response to our format
+      const companies = (data.data || []).map((company: any) => ({
+        name: company.name,
+        domain: company.domain,
+        logo: company.logo || `https://logo.clearbit.com/${company.domain}`,
+      }));
+      
+      res.json(companies);
+    } catch (error: any) {
+      console.error("Company search error:", error);
+      res.json([]);
+    }
+  });
+
   // Company Logo Verification
   app.post("/api/verify-company", async (req, res) => {
     try {
