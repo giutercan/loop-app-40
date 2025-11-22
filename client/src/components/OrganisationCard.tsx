@@ -240,11 +240,16 @@ export default function OrganisationCard({
                       <SelectValue placeholder="No capability identified" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none" className="text-xs">
+                      <SelectItem value="none" className="text-xs" data-testid={`option-capability-none-${point.id}`}>
                         No capability identified
                       </SelectItem>
                       {KORN_FERRY_CAPABILITIES.map(capability => (
-                        <SelectItem key={capability} value={capability} className="text-xs">
+                        <SelectItem 
+                          key={capability} 
+                          value={capability} 
+                          className="text-xs"
+                          data-testid={`option-capability-${capability.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${point.id}`}
+                        >
                           {capability}
                         </SelectItem>
                       ))}
