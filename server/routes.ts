@@ -542,57 +542,16 @@ export function registerRoutes(app: Express) {
                            mimeType.includes("csv") ||
                            mimeType === "application/json" ||
                            ["txt", "csv", "json"].includes(fileExt);
-                           
-          const isPDF = mimeType === "application/pdf" || 
-                       (mimeType === "application/octet-stream" && fileExt === "pdf") ||
-                       fileExt === "pdf";
           
-          if ((isTextFile || isPDF) && att.content) {
+          if (isTextFile && att.content) {
             supportedFilesCount++;
             try {
               // Extract base64 data after the data URL prefix
               const base64Data = att.content.split(',')[1];
               if (!base64Data) continue;
               
-              let extractedText = "";
-              
-              if (isPDF) {
-                // Extract text from PDF using pdf-parse
-                try {
-                  const pdfBuffer = Buffer.from(base64Data, 'base64');
-                  // Dynamic import of pdf-parse - it exports a default function
-                  const pdf = (await import("pdf-parse")).default;
-                  
-                  if (!pdf || typeof pdf !== 'function') {
-                    const error = `PDF parser not available for ${att.fileName}`;
-                    console.error(error);
-                    fileProcessingErrors.push(error);
-                    continue;
-                  }
-                  
-                  // Call the function to parse PDF
-                  const result = await pdf(pdfBuffer);
-                  extractedText = result.text || "";
-                  
-                  if (extractedText.trim().length === 0) {
-                    const warning = `PDF ${att.fileName} contained no extractable text (might be image-based PDF)`;
-                    console.warn(warning);
-                    fileProcessingErrors.push(warning);
-                    continue;
-                  }
-                  
-                  console.log(`✓ Extracted ${extractedText.length} chars from PDF: ${att.fileName}`);
-                } catch (pdfError: any) {
-                  const error = `Failed to parse PDF ${att.fileName}: ${pdfError.message}`;
-                  console.error(`✗ ${error}`);
-                  fileProcessingErrors.push(error);
-                  // If PDF parsing fails, don't crash - just skip this attachment
-                  continue;
-                }
-              } else {
-                // Decode plain text files
-                extractedText = Buffer.from(base64Data, 'base64').toString('utf-8');
-              }
+              // Decode text files
+              let extractedText = Buffer.from(base64Data, 'base64').toString('utf-8');
               
               // Truncate very long text to avoid token limits
               if (extractedText.length > MAX_TEXT_LENGTH) {
@@ -607,11 +566,11 @@ export function registerRoutes(app: Express) {
                 });
               }
             } catch (error) {
-              console.error(`Failed to process file ${att.fileName}:`, error);
-              // Skip files that can't be decoded
+              console.error(`Failed to process text file ${att.fileName}:`, error);
+              fileProcessingErrors.push(`Failed to read ${att.fileName}`);
             }
           } else {
-            // For other binary files (images, Word, Excel, etc.), note they're not supported
+            // For other binary files (PDFs, images, Word, Excel, etc.), note they're not supported
             console.log(`Skipping unsupported file format for enrichment: ${att.fileName} (${mimeType})`);
           }
         }
@@ -653,9 +612,42 @@ export function registerRoutes(app: Express) {
 
       const validSolutionAreas = ["ASSESS", "DEVELOP", "TRANSFORM", "REWARD", "COMMERCIAL", "ANALYTICS"];
 
+      // Helper function to normalize text for duplicate detection
+      const normalizeText = (text: string): string => {
+        return text
+          .toLowerCase()
+          .trim()
+          // Normalize numbers and units
+          .replace(/\$\s*/g, 'dollar ')
+          .replace(/(\d+)\s*%/g, '$1 percent')
+          .replace(/(\d+)\s*(million|m)\b/gi, '$1000000')
+          .replace(/(\d+)\s*(billion|b)\b/gi, '$1000000000')
+          .replace(/(\d+)\s*(thousand|k)\b/gi, '$1000')
+          // Remove common stopwords that don't change meaning
+          .replace(/\b(the|a|an|and|or|but|in|on|at|to|for|of|with|by)\b/g, '')
+          // Remove punctuation
+          .replace(/[^\w\s]/g, '')
+          // Normalize whitespace
+          .replace(/\s+/g, ' ')
+          .trim();
+      };
+
+      // Build set of existing data points (normalized) for duplicate detection
+      const existingNormalized = new Set<string>();
+      for (const existing of existingDataPoints) {
+        const normalized = normalizeText(`${existing.label}:${existing.value}`);
+        existingNormalized.add(normalized);
+      }
+
       const validatedDataPoints = [];
       for (const dp of result.dataPoints) {
         try {
+          // Check for duplicates using normalized text
+          const newNormalized = normalizeText(`${dp.label}:${dp.value}`);
+          if (existingNormalized.has(newNormalized)) {
+            console.log(`Skipping duplicate insight: "${dp.label}"`);
+            continue; // Skip this duplicate
+          }
           let priorityScore = 4;
           if (typeof dp.priorityScore === 'number' && !isNaN(dp.priorityScore)) {
             if (dp.priorityScore >= 1 && dp.priorityScore <= 5) {
@@ -706,7 +698,11 @@ export function registerRoutes(app: Express) {
             solutionArea,
             relatedKPIs
           });
-          validatedDataPoints.push(await storage.createCompanyDataPoint(validated));
+          
+          // Add to storage and track in duplicate set
+          const newDataPoint = await storage.createCompanyDataPoint(validated);
+          validatedDataPoints.push(newDataPoint);
+          existingNormalized.add(newNormalized); // Prevent duplicates within this batch
         } catch (validationError: any) {
           console.error("Invalid data point from enrichment AI:", validationError.message, dp);
         }
@@ -718,7 +714,7 @@ export function registerRoutes(app: Express) {
         return res.status(422).json({
           error: "Failed to process uploaded files",
           details: fileProcessingErrors.join("; "),
-          suggestion: "Check that PDFs contain extractable text (not just images). Text files (.txt, .csv, .json) work best."
+          suggestion: "Only text files (.txt, .csv, .json) can be analyzed for insights. Make sure your files are in a supported format."
         });
       }
 

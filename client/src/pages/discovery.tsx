@@ -804,7 +804,7 @@ export default function Discovery() {
                   AI will analyze your notes and uploaded files to identify new strategic insights, metrics, and opportunities that aren't already captured in your research. These insights will be added to the Organization tab and used to generate better discovery questions.
                 </p>
                 <p className="text-sm text-muted-foreground mt-2">
-                  <strong>Supported:</strong> Text files (.txt, .csv, .json), PDFs, and voice notes are analyzed for insights. Word, Excel, and image files are saved for reference but content cannot be extracted for AI analysis.
+                  <strong>Supported:</strong> Text files (.txt, .csv, .json) and voice notes are analyzed for insights. Other file types (PDFs, Word, Excel, images) are saved for reference but not analyzed.
                 </p>
                 {(!notes?.freeformNotes && attachments.length === 0) && (
                   <p className="text-sm text-muted-foreground mt-2 italic">
