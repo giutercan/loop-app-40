@@ -59,21 +59,32 @@ KORN FERRY CONSULTING PILLARS (for tagging):
 6. change-management - Digital transformation, strategic change
 
 KORN FERRY CAPABILITIES (for auto-classification):
-1. Success Profiles & Role Design
-2. Standardised Assessments & Assessments at Scale
-3. Leadership & Development Journeys
-4. AI-Ready Leader (within L&D)
-5. Organisation Strategy & Transformation
-6. Total Rewards Optimisation (TRO)
-7. Sales & Service (KF Sell)
-8. People Analytics / KFI Analytics
-9. Value Management / Client Success & Talent Suite
+1. Success Profiles & Role Design - Job architecture, role clarity, competency frameworks
+2. Standardised Assessments & Assessments at Scale - Talent evaluation, assessment programs
+3. Leadership & Development Journeys - Executive development, learning programs, leadership pipelines
+4. AI-Ready Leader (within L&D) - AI adoption, digital leadership, tech-enabled learning
+5. Organisation Strategy & Transformation - Org redesign, operating models, M&A integration
+6. Total Rewards Optimisation (TRO) - Compensation strategy, pay equity, rewards programs
+7. Sales & Service (KF Sell) - Sales effectiveness, commercial transformation, go-to-market
+8. People Analytics / KFI Analytics - Workforce analytics, talent insights, data-driven HR
+9. Value Management / Client Success & Talent Suite - Technology platforms, talent systems
 
 Provide 2-4 highly targeted insights that directly answer the question. Each insight must be:
 - Specifically addressing the consultant's question
 - Tied to a Korn Ferry Solution Area and relevant KPIs
 - Strategically actionable and outcome-focused
-- Auto-classified to the most relevant Korn Ferry capability (or null if no clear match)
+- Auto-classified to the MOST RELEVANT Korn Ferry capability from the list above
+
+CAPABILITY CLASSIFICATION GUIDANCE:
+- You MUST assign a capability to each insight whenever there is ANY reasonable connection
+- Only use null if the insight is purely about market conditions or competitive landscape with NO people/talent dimension
+- When in doubt, choose the closest capability match - err on the side of classification
+- Most insights about leadership → "Leadership & Development Journeys"
+- Most insights about talent/hiring → "Standardised Assessments & Assessments at Scale"
+- Most insights about org structure → "Organisation Strategy & Transformation"
+- Most insights about compensation → "Total Rewards Optimisation (TRO)"
+- Most insights about sales/revenue → "Sales & Service (KF Sell)"
+- Most insights about data/analytics → "People Analytics / KFI Analytics"
 
 Return your response in JSON format with this exact structure:
 {
@@ -101,9 +112,10 @@ IMPORTANT:
 - Each data point MUST have kornFerryPillar matching one of the six pillars
 - Each data point MUST have solutionArea matching one of: ASSESS, DEVELOP, TRANSFORM, REWARD, COMMERCIAL, ANALYTICS
 - Each data point MUST have relatedKPIs array with 1-3 relevant KPI names from the knowledge base
-- Each data point MUST have relevantCapability: the EXACT capability name from the list above, or null if no clear match
+- Each data point MUST have relevantCapability: the EXACT capability name from the list above (strongly prefer classification over null)
 - Focus on answering the specific question, not general research
-- Build on existing context without repeating information`;
+- Build on existing context without repeating information
+- Remember: 95% of insights should have a capability assigned - only truly generic market insights should be null`;
 
   try {
     const response = await openai.chat.completions.create({
@@ -143,22 +155,33 @@ KORN FERRY CONSULTING PILLARS (for tagging):
 6. change-management - Digital transformation, merger integration, strategic change
 
 KORN FERRY CAPABILITIES (for auto-classification):
-1. Success Profiles & Role Design
-2. Standardised Assessments & Assessments at Scale
-3. Leadership & Development Journeys
-4. AI-Ready Leader (within L&D)
-5. Organisation Strategy & Transformation
-6. Total Rewards Optimisation (TRO)
-7. Sales & Service (KF Sell)
-8. People Analytics / KFI Analytics
-9. Value Management / Client Success & Talent Suite
+1. Success Profiles & Role Design - Job architecture, role clarity, competency frameworks
+2. Standardised Assessments & Assessments at Scale - Talent evaluation, assessment programs
+3. Leadership & Development Journeys - Executive development, learning programs, leadership pipelines
+4. AI-Ready Leader (within L&D) - AI adoption, digital leadership, tech-enabled learning
+5. Organisation Strategy & Transformation - Org redesign, operating models, M&A integration
+6. Total Rewards Optimisation (TRO) - Compensation strategy, pay equity, rewards programs
+7. Sales & Service (KF Sell) - Sales effectiveness, commercial transformation, go-to-market
+8. People Analytics / KFI Analytics - Workforce analytics, talent insights, data-driven HR
+9. Value Management / Client Success & Talent Suite - Technology platforms, talent systems
 
 CRITICAL: Provide ONLY the 8 MOST STRATEGIC insights. Quality over quantity. Each insight must be:
 - Directly actionable for a Korn Ferry engagement
 - Tied to one of the 6 Solution Areas (ASSESS, DEVELOP, TRANSFORM, REWARD, COMMERCIAL, ANALYTICS)
 - Tagged with relevant KPIs from the knowledge base above
-- Auto-classified to the most relevant Korn Ferry capability (or null if no clear match)
+- Auto-classified to the MOST RELEVANT Korn Ferry capability from the list above
 - Focused on measurable business outcomes that map to Korn Ferry's KPI frameworks
+
+CAPABILITY CLASSIFICATION GUIDANCE:
+- You MUST assign a capability to each insight whenever there is ANY reasonable connection
+- Only use null if the insight is purely about market conditions or competitive landscape with NO people/talent dimension
+- When in doubt, choose the closest capability match - err on the side of classification
+- Most insights about leadership → "Leadership & Development Journeys"
+- Most insights about talent/hiring → "Standardised Assessments & Assessments at Scale"
+- Most insights about org structure → "Organisation Strategy & Transformation"
+- Most insights about compensation → "Total Rewards Optimisation (TRO)"
+- Most insights about sales/revenue → "Sales & Service (KF Sell)"
+- Most insights about data/analytics → "People Analytics / KFI Analytics"
 
 Prioritize insights in this order:
 1. Top 3 "Critical Priority" insights (priorityScore: 5) - The most compelling opportunities for Korn Ferry engagement
@@ -191,10 +214,11 @@ IMPORTANT REQUIREMENTS:
 - Each data point MUST have kornFerryPillar matching one of the six pillars exactly
 - Each data point MUST have solutionArea matching one of: ASSESS, DEVELOP, TRANSFORM, REWARD, COMMERCIAL, ANALYTICS
 - Each data point MUST have relatedKPIs array with 1-3 relevant KPI names from the knowledge base
-- Each data point MUST have relevantCapability: the EXACT capability name from the list above, or null if no clear match
+- Each data point MUST have relevantCapability: the EXACT capability name from the list above (strongly prefer classification over null)
 - Focus on transformation initiatives, leadership changes, workforce challenges that map to measurable KPIs
 - Use "high" confidence only for verified facts from official sources
-- Omit low-value information - every insight must earn its place and connect to Korn Ferry's measurement framework`;
+- Omit low-value information - every insight must earn its place and connect to Korn Ferry's measurement framework
+- Remember: 95% of insights should have a capability assigned - only truly generic market insights should be null`;
 
 
   try {
