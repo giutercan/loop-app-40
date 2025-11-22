@@ -614,6 +614,51 @@ export function registerRoutes(app: Express) {
         ...req.body,
         projectId: parseInt(req.params.projectId),
       });
+
+      // Validate file attachments
+      if (parsed.type === "file") {
+        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+        const ALLOWED_MIME_TYPES = [
+          'application/pdf',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'application/vnd.ms-excel',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'text/plain',
+          'text/csv',
+          'image/jpeg',
+          'image/png',
+          'image/gif',
+        ];
+
+        if (!parsed.fileName || !parsed.mimeType || !parsed.content) {
+          return res.status(400).json({ error: "File name, MIME type, and content are required for file attachments" });
+        }
+
+        if (!ALLOWED_MIME_TYPES.includes(parsed.mimeType)) {
+          return res.status(400).json({ error: "File type not allowed. Supported types: PDF, Word, Excel, text files, and images" });
+        }
+
+        if (parsed.fileSize && parsed.fileSize > MAX_FILE_SIZE) {
+          return res.status(400).json({ error: "File size exceeds maximum limit of 10MB" });
+        }
+
+        // Validate base64 content
+        if (!parsed.content.startsWith('data:')) {
+          return res.status(400).json({ error: "Invalid file data format" });
+        }
+      }
+
+      // Validate voice transcriptions
+      if (parsed.type === "voice") {
+        if (!parsed.content || parsed.content.trim().length === 0) {
+          return res.status(400).json({ error: "Voice transcription cannot be empty" });
+        }
+        if (parsed.content.length > 10000) {
+          return res.status(400).json({ error: "Voice transcription too long (max 10,000 characters)" });
+        }
+      }
+
       const attachment = await storage.createAttachment(parsed);
       res.json(attachment);
     } catch (error: any) {

@@ -329,11 +329,20 @@ export default function Discovery() {
   const uploadFileMutation = useMutation({
     mutationFn: async (file: File) => {
       if (!selectedProjectId) return;
+
+      // Validate file size on frontend
+      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+      if (file.size > MAX_FILE_SIZE) {
+        throw new Error("File size exceeds maximum limit of 10MB");
+      }
+
       const reader = new FileReader();
-      const content = await new Promise<string>((resolve) => {
+      const content = await new Promise<string>((resolve, reject) => {
         reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("Failed to read file"));
         reader.readAsDataURL(file);
       });
+
       const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/attachments`, {
         type: "file",
         fileName: file.name,
@@ -341,6 +350,12 @@ export default function Discovery() {
         mimeType: file.type,
         content,
       });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to upload file");
+      }
+
       return await res.json();
     },
     onSuccess: () => {
@@ -350,15 +365,34 @@ export default function Discovery() {
         description: "Your file has been uploaded successfully.",
       });
     },
+    onError: (error: any) => {
+      toast({
+        title: "Upload failed",
+        description: error.message || "Failed to upload file",
+        variant: "destructive",
+      });
+    },
   });
 
   const saveVoiceNoteMutation = useMutation({
     mutationFn: async (transcript: string) => {
       if (!selectedProjectId) return;
+
+      // Validate transcript is not empty
+      if (!transcript || transcript.trim().length === 0) {
+        throw new Error("Voice transcription cannot be empty");
+      }
+
       const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/attachments`, {
         type: "voice",
-        content: transcript,
+        content: transcript.trim(),
       });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to save voice note");
+      }
+
       return await res.json();
     },
     onSuccess: () => {
@@ -369,11 +403,22 @@ export default function Discovery() {
         description: "Your voice transcription has been saved successfully.",
       });
     },
+    onError: (error: any) => {
+      toast({
+        title: "Save failed",
+        description: error.message || "Failed to save voice note",
+        variant: "destructive",
+      });
+    },
   });
 
   const deleteAttachmentMutation = useMutation({
     mutationFn: async (id: number) => {
       const res = await apiRequest("DELETE", `/api/attachments/${id}`, {});
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to delete attachment");
+      }
       return await res.json();
     },
     onSuccess: () => {
@@ -381,6 +426,13 @@ export default function Discovery() {
       toast({
         title: "Attachment deleted",
         description: "The attachment has been removed.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Delete failed",
+        description: error.message || "Failed to delete attachment",
+        variant: "destructive",
       });
     },
   });
@@ -474,9 +526,16 @@ export default function Discovery() {
   };
 
   const handleSaveVoiceNote = () => {
-    if (voiceTranscript.trim()) {
-      saveVoiceNoteMutation.mutate(voiceTranscript);
+    const trimmedTranscript = voiceTranscript.trim();
+    if (!trimmedTranscript) {
+      toast({
+        title: "Cannot save",
+        description: "Voice transcription is empty. Please record something first.",
+        variant: "destructive",
+      });
+      return;
     }
+    saveVoiceNoteMutation.mutate(trimmedTranscript);
   };
 
   if (!selectedProjectId) {
@@ -891,129 +950,129 @@ export default function Discovery() {
                     </div>
                   </CardContent>
                 </Card>
-
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle>File Uploads & Voice Notes</CardTitle>
-                        <CardDescription>Attach documents or record voice notes to support your value case</CardDescription>
-                      </div>
-                      <div className="flex gap-2">
-                        <Input
-                          type="file"
-                          onChange={handleFileUpload}
-                          className="hidden"
-                          id="file-upload"
-                          data-testid="input-file-upload"
-                        />
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => document.getElementById('file-upload')?.click()}
-                          disabled={uploadFileMutation.isPending}
-                          data-testid="button-upload-file"
-                        >
-                          <Upload className="w-4 h-4 mr-2" />
-                          {uploadFileMutation.isPending ? "Uploading..." : "Upload File"}
-                        </Button>
-                        {!isRecording ? (
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={handleStartRecording}
-                            data-testid="button-start-recording"
-                          >
-                            <Mic className="w-4 h-4 mr-2" />
-                            Record Voice
-                          </Button>
-                        ) : (
-                          <Button 
-                            variant="destructive" 
-                            size="sm"
-                            onClick={handleStopRecording}
-                            data-testid="button-stop-recording"
-                          >
-                            <X className="w-4 h-4 mr-2" />
-                            Stop Recording
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {isRecording && voiceTranscript && (
-                      <div className="bg-primary/5 border border-primary/20 rounded-md p-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Mic className="w-4 h-4 text-primary animate-pulse" />
-                            <span className="text-sm font-medium">Recording in progress...</span>
-                          </div>
-                          <Button 
-                            size="sm"
-                            onClick={handleSaveVoiceNote}
-                            disabled={saveVoiceNoteMutation.isPending}
-                            data-testid="button-save-voice-note"
-                          >
-                            <Save className="w-4 h-4 mr-2" />
-                            {saveVoiceNoteMutation.isPending ? "Saving..." : "Save"}
-                          </Button>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{voiceTranscript}</p>
-                      </div>
-                    )}
-
-                    {attachments.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
-                        No attachments yet. Upload files or record voice notes to add supporting materials.
-                      </p>
-                    ) : (
-                      <div className="space-y-3">
-                        {attachments.map((attachment) => (
-                          <div 
-                            key={attachment.id} 
-                            className="flex items-start justify-between gap-3 bg-muted/30 rounded-md p-3"
-                            data-testid={`attachment-${attachment.id}`}
-                          >
-                            <div className="flex items-start gap-3 flex-1 min-w-0">
-                              {attachment.type === "file" ? (
-                                <File className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-                              ) : (
-                                <Mic className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-                              )}
-                              <div className="flex-1 min-w-0">
-                                {attachment.type === "file" ? (
-                                  <>
-                                    <p className="text-sm font-medium truncate">{attachment.fileName}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {attachment.fileSize && `${(attachment.fileSize / 1024).toFixed(1)} KB`}
-                                    </p>
-                                  </>
-                                ) : (
-                                  <p className="text-sm">{attachment.content}</p>
-                                )}
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  {new Date(attachment.createdAt).toLocaleDateString()} at {new Date(attachment.createdAt).toLocaleTimeString()}
-                                </p>
-                              </div>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => deleteAttachmentMutation.mutate(attachment.id)}
-                              disabled={deleteAttachmentMutation.isPending}
-                              data-testid={`button-delete-attachment-${attachment.id}`}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
               </>
             )}
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>File Uploads & Voice Notes</CardTitle>
+                    <CardDescription>Attach documents or record voice notes to support your value case</CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      type="file"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      id="file-upload"
+                      data-testid="input-file-upload"
+                    />
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => document.getElementById('file-upload')?.click()}
+                      disabled={uploadFileMutation.isPending}
+                      data-testid="button-upload-file"
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      {uploadFileMutation.isPending ? "Uploading..." : "Upload File"}
+                    </Button>
+                    {!isRecording ? (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={handleStartRecording}
+                        data-testid="button-start-recording"
+                      >
+                        <Mic className="w-4 h-4 mr-2" />
+                        Record Voice
+                      </Button>
+                    ) : (
+                      <Button 
+                        variant="destructive" 
+                        size="sm"
+                        onClick={handleStopRecording}
+                        data-testid="button-stop-recording"
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Stop Recording
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {isRecording && voiceTranscript && (
+                  <div className="bg-primary/5 border border-primary/20 rounded-md p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Mic className="w-4 h-4 text-primary animate-pulse" />
+                        <span className="text-sm font-medium">Recording in progress...</span>
+                      </div>
+                      <Button 
+                        size="sm"
+                        onClick={handleSaveVoiceNote}
+                        disabled={saveVoiceNoteMutation.isPending}
+                        data-testid="button-save-voice-note"
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        {saveVoiceNoteMutation.isPending ? "Saving..." : "Save"}
+                      </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{voiceTranscript}</p>
+                  </div>
+                )}
+
+                {attachments.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No attachments yet. Upload files or record voice notes to add supporting materials.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {attachments.map((attachment) => (
+                      <div 
+                        key={attachment.id} 
+                        className="flex items-start justify-between gap-3 bg-muted/30 rounded-md p-3"
+                        data-testid={`attachment-${attachment.id}`}
+                      >
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          {attachment.type === "file" ? (
+                            <File className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                          ) : (
+                            <Mic className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            {attachment.type === "file" ? (
+                              <>
+                                <p className="text-sm font-medium truncate">{attachment.fileName}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {attachment.fileSize && `${(attachment.fileSize / 1024).toFixed(1)} KB`}
+                                </p>
+                              </>
+                            ) : (
+                              <p className="text-sm">{attachment.content}</p>
+                            )}
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {new Date(attachment.createdAt).toLocaleDateString()} at {new Date(attachment.createdAt).toLocaleTimeString()}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteAttachmentMutation.mutate(attachment.id)}
+                          disabled={deleteAttachmentMutation.isPending}
+                          data-testid={`button-delete-attachment-${attachment.id}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="hypothesis" className="space-y-6">
