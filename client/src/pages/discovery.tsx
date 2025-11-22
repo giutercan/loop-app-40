@@ -20,12 +20,12 @@ import OrganisationCard from "@/components/OrganisationCard";
 import ValueHypothesisBuilder from "@/components/ValueHypothesisBuilder";
 import ProjectSelector from "@/components/ProjectSelector";
 import StatusBadge from "@/components/StatusBadge";
-import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink } from "lucide-react";
+import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File } from "lucide-react";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { Link, useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Project, CompanyDataPoint, Headline, DiscoveryNotes, DiscoveryQuestion } from "@shared/schema";
+import type { Project, CompanyDataPoint, Headline, DiscoveryNotes, DiscoveryQuestion, Attachment } from "@shared/schema";
 
 export default function Discovery() {
   const [location] = useLocation();
@@ -66,6 +66,11 @@ export default function Discovery() {
     enabled: !!selectedProjectId,
   });
 
+  const { data: attachments = [] } = useQuery<Attachment[]>({
+    queryKey: ["/api/projects", selectedProjectId, "attachments"],
+    enabled: !!selectedProjectId,
+  });
+
   const [localNotes, setLocalNotes] = useState({
     freeformNotes: "",
     keyStakeholder: "",
@@ -75,6 +80,8 @@ export default function Discovery() {
 
   const [followUpQuestion, setFollowUpQuestion] = useState("");
   const [isFollowUpDialogOpen, setIsFollowUpDialogOpen] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState("");
 
   useEffect(() => {
     if (notes) {
@@ -319,6 +326,65 @@ export default function Discovery() {
     },
   });
 
+  const uploadFileMutation = useMutation({
+    mutationFn: async (file: File) => {
+      if (!selectedProjectId) return;
+      const reader = new FileReader();
+      const content = await new Promise<string>((resolve) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+      const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/attachments`, {
+        type: "file",
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type,
+        content,
+      });
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "attachments"] });
+      toast({
+        title: "File uploaded",
+        description: "Your file has been uploaded successfully.",
+      });
+    },
+  });
+
+  const saveVoiceNoteMutation = useMutation({
+    mutationFn: async (transcript: string) => {
+      if (!selectedProjectId) return;
+      const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/attachments`, {
+        type: "voice",
+        content: transcript,
+      });
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "attachments"] });
+      setVoiceTranscript("");
+      toast({
+        title: "Voice note saved",
+        description: "Your voice transcription has been saved successfully.",
+      });
+    },
+  });
+
+  const deleteAttachmentMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("DELETE", `/api/attachments/${id}`, {});
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "attachments"] });
+      toast({
+        title: "Attachment deleted",
+        description: "The attachment has been removed.",
+      });
+    },
+  });
+
   const handleCapabilityChange = (id: number, capability: string | null) => {
     updateCapabilityMutation.mutate({ 
       id, 
@@ -343,6 +409,74 @@ export default function Discovery() {
       title: "Sent to client",
       description: "Discovery phase completed. Moving to Alignment phase.",
     });
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      uploadFileMutation.mutate(file);
+      e.target.value = "";
+    }
+  };
+
+  const handleStartRecording = () => {
+    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+      toast({
+        title: "Not supported",
+        description: "Speech recognition is not supported in your browser.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    
+    let finalTranscript = "";
+    recognition.onresult = (event: any) => {
+      let interimTranscript = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript + " ";
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+      setVoiceTranscript(finalTranscript + interimTranscript);
+    };
+
+    recognition.onerror = (event: any) => {
+      toast({
+        title: "Recording error",
+        description: event.error,
+        variant: "destructive",
+      });
+      setIsRecording(false);
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+    };
+
+    recognition.start();
+    setIsRecording(true);
+    (window as any).currentRecognition = recognition;
+  };
+
+  const handleStopRecording = () => {
+    if ((window as any).currentRecognition) {
+      (window as any).currentRecognition.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const handleSaveVoiceNote = () => {
+    if (voiceTranscript.trim()) {
+      saveVoiceNoteMutation.mutate(voiceTranscript);
+    }
   };
 
   if (!selectedProjectId) {
@@ -755,6 +889,127 @@ export default function Discovery() {
                         data-testid="textarea-notes"
                       />
                     </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>File Uploads & Voice Notes</CardTitle>
+                        <CardDescription>Attach documents or record voice notes to support your value case</CardDescription>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input
+                          type="file"
+                          onChange={handleFileUpload}
+                          className="hidden"
+                          id="file-upload"
+                          data-testid="input-file-upload"
+                        />
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => document.getElementById('file-upload')?.click()}
+                          disabled={uploadFileMutation.isPending}
+                          data-testid="button-upload-file"
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          {uploadFileMutation.isPending ? "Uploading..." : "Upload File"}
+                        </Button>
+                        {!isRecording ? (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={handleStartRecording}
+                            data-testid="button-start-recording"
+                          >
+                            <Mic className="w-4 h-4 mr-2" />
+                            Record Voice
+                          </Button>
+                        ) : (
+                          <Button 
+                            variant="destructive" 
+                            size="sm"
+                            onClick={handleStopRecording}
+                            data-testid="button-stop-recording"
+                          >
+                            <X className="w-4 h-4 mr-2" />
+                            Stop Recording
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {isRecording && voiceTranscript && (
+                      <div className="bg-primary/5 border border-primary/20 rounded-md p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Mic className="w-4 h-4 text-primary animate-pulse" />
+                            <span className="text-sm font-medium">Recording in progress...</span>
+                          </div>
+                          <Button 
+                            size="sm"
+                            onClick={handleSaveVoiceNote}
+                            disabled={saveVoiceNoteMutation.isPending}
+                            data-testid="button-save-voice-note"
+                          >
+                            <Save className="w-4 h-4 mr-2" />
+                            {saveVoiceNoteMutation.isPending ? "Saving..." : "Save"}
+                          </Button>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{voiceTranscript}</p>
+                      </div>
+                    )}
+
+                    {attachments.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        No attachments yet. Upload files or record voice notes to add supporting materials.
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {attachments.map((attachment) => (
+                          <div 
+                            key={attachment.id} 
+                            className="flex items-start justify-between gap-3 bg-muted/30 rounded-md p-3"
+                            data-testid={`attachment-${attachment.id}`}
+                          >
+                            <div className="flex items-start gap-3 flex-1 min-w-0">
+                              {attachment.type === "file" ? (
+                                <File className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                              ) : (
+                                <Mic className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                {attachment.type === "file" ? (
+                                  <>
+                                    <p className="text-sm font-medium truncate">{attachment.fileName}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {attachment.fileSize && `${(attachment.fileSize / 1024).toFixed(1)} KB`}
+                                    </p>
+                                  </>
+                                ) : (
+                                  <p className="text-sm">{attachment.content}</p>
+                                )}
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {new Date(attachment.createdAt).toLocaleDateString()} at {new Date(attachment.createdAt).toLocaleTimeString()}
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteAttachmentMutation.mutate(attachment.id)}
+                              disabled={deleteAttachmentMutation.isPending}
+                              data-testid={`button-delete-attachment-${attachment.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </>
