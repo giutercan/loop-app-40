@@ -321,7 +321,8 @@ export function registerRoutes(app: Express) {
             priorityScore: dp.priorityScore,
             kornFerryPillar: pillar || "leadership-development", // Provide safe default for AI context
             solutionArea: solution || "DEVELOP",
-            relatedKPIs: (dp.relatedKPIs as string[] | null) || []
+            relatedKPIs: (dp.relatedKPIs as string[] | null) || [],
+            relevantCapability: dp.relevantCapability
           };
         }),
         headlines: existingHeadlines.map(h => ({

@@ -25,7 +25,7 @@ import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { Link, useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Project, CompanyDataPoint, Headline, DiscoveryNotes } from "@shared/schema";
+import type { Project, CompanyDataPoint, Headline, DiscoveryNotes, DiscoveryQuestion } from "@shared/schema";
 
 export default function Discovery() {
   const [location] = useLocation();
@@ -58,6 +58,11 @@ export default function Discovery() {
 
   const { data: valueHypotheses = [] } = useQuery<any[]>({
     queryKey: ["/api/projects", selectedProjectId, "value-hypotheses"],
+    enabled: !!selectedProjectId,
+  });
+
+  const { data: discoveryQuestions = [] } = useQuery<DiscoveryQuestion[]>({
+    queryKey: ["/api/projects", selectedProjectId, "discovery-questions"],
     enabled: !!selectedProjectId,
   });
 
@@ -250,6 +255,66 @@ export default function Discovery() {
     onSettled: () => {
       queryClient.invalidateQueries({ 
         queryKey: ["/api/projects", selectedProjectId, "data-points"]
+      });
+    },
+  });
+
+  const generateDiscoveryQuestionsMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedProjectId) return;
+      const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/discovery-questions/generate`, {});
+      return await res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "discovery-questions"] });
+      toast({
+        title: "Discovery questions generated",
+        description: data?.summary || "AI has generated discovery questions based on your selected insights.",
+      });
+    },
+    onError: async (error: any) => {
+      let errorMessage = "An error occurred during question generation.";
+      try {
+        const errorData = await error.response?.json();
+        errorMessage = errorData?.error || errorMessage;
+      } catch {}
+      toast({
+        title: "Generation failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateQuestionAnswerMutation = useMutation({
+    mutationFn: async ({ id, answer }: { id: number; answer: string }) => {
+      const res = await apiRequest("PATCH", `/api/discovery-questions/${id}`, { answer });
+      return await res.json();
+    },
+    onMutate: async ({ id, answer }) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/projects", selectedProjectId, "discovery-questions"] });
+      const previousQuestions = queryClient.getQueryData(["/api/projects", selectedProjectId, "discovery-questions"]);
+      queryClient.setQueryData(["/api/projects", selectedProjectId, "discovery-questions"], (old: any) => {
+        if (!old) return old;
+        return old.map((q: any) => 
+          q.id === id 
+            ? { ...q, answer }
+            : q
+        );
+      });
+      return { previousQuestions };
+    },
+    onError: (err, variables, context: any) => {
+      if (context?.previousQuestions) {
+        queryClient.setQueryData(
+          ["/api/projects", selectedProjectId, "discovery-questions"],
+          context.previousQuestions
+        );
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ 
+        queryKey: ["/api/projects", selectedProjectId, "discovery-questions"]
       });
     },
   });
@@ -572,6 +637,99 @@ export default function Discovery() {
 
                 <Card>
                   <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Discovery Questions</CardTitle>
+                        <CardDescription>AI-generated questions to investigate insights and capture data for KPI calculations</CardDescription>
+                      </div>
+                      <Button 
+                        onClick={() => generateDiscoveryQuestionsMutation.mutate()}
+                        disabled={generateDiscoveryQuestionsMutation.isPending}
+                        data-testid="button-generate-questions"
+                      >
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        {generateDiscoveryQuestionsMutation.isPending ? "Generating..." : "Generate Questions"}
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {discoveryQuestions.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        Click "Generate Questions" to create discovery questions based on your selected insights. 
+                        These questions will help you dig deeper during client conversations and capture quantitative metrics for value calculations.
+                      </p>
+                    ) : (
+                      <div className="space-y-6">
+                        {[
+                          'Success Profiles & Role Design',
+                          'Standardised Assessments & Assessments at Scale',
+                          'Leadership & Development Journeys',
+                          'AI-Ready Leader (within L&D)',
+                          'Organisation Strategy & Transformation',
+                          'Total Rewards Optimisation (TRO)',
+                          'Sales & Service (KF Sell)',
+                          'People Analytics / KFI Analytics',
+                          'Value Management / Client Success & Talent Suite',
+                        ].map(capability => {
+                          const capabilityQuestions = discoveryQuestions.filter(q => q.capabilityName === capability);
+                          if (capabilityQuestions.length === 0) return null;
+
+                          return (
+                            <div key={capability} className="space-y-3">
+                              <div className="flex items-center gap-2 pb-2 border-b">
+                                <Briefcase className="w-4 h-4 text-primary" />
+                                <h3 className="font-semibold text-sm">{capability}</h3>
+                                <Badge variant="secondary" className="text-xs">{capabilityQuestions.length} question{capabilityQuestions.length !== 1 ? 's' : ''}</Badge>
+                              </div>
+                              <div className="space-y-3 pl-6">
+                                {capabilityQuestions.map((question) => (
+                                  <div 
+                                    key={question.id} 
+                                    className="bg-muted/30 rounded-md p-3 space-y-2.5"
+                                    data-testid={`question-${question.id}`}
+                                  >
+                                    <div className="flex items-start gap-2">
+                                      <p className="text-sm font-medium flex-1">{question.question}</p>
+                                      <Badge 
+                                        variant={question.questionType === 'quantitative' ? 'default' : question.questionType === 'qualitative' ? 'secondary' : 'outline'}
+                                        className="text-xs shrink-0"
+                                      >
+                                        {question.questionType}
+                                      </Badge>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground italic">{question.purpose}</p>
+                                    {question.relatedKPI && (
+                                      <p className="text-xs text-primary font-medium">
+                                        Related KPI: {question.relatedKPI}
+                                      </p>
+                                    )}
+                                    <div className="pt-2">
+                                      <Textarea
+                                        placeholder="Enter your answer or client's response..."
+                                        className="min-h-[80px] resize-none text-sm"
+                                        value={question.answer || ''}
+                                        onChange={(e) => {
+                                          updateQuestionAnswerMutation.mutate({
+                                            id: question.id,
+                                            answer: e.target.value
+                                          });
+                                        }}
+                                        data-testid={`answer-${question.id}`}
+                                      />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
                     <CardTitle>Additional Notes</CardTitle>
                     <CardDescription>Add context and observations to complement the evidence</CardDescription>
                   </CardHeader>
@@ -641,7 +799,17 @@ export default function Discovery() {
               </Card>
             )}
             
-            {selectedProjectId && <ValueHypothesisBuilder projectId={selectedProjectId} />}
+            <Card>
+              <CardHeader>
+                <CardTitle>Create Value Hypothesis</CardTitle>
+                <CardDescription>Build quantitative value hypotheses based on insights and discovery question answers</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Value hypothesis builder will be available once you've captured discovery question answers.
+                </p>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </main>
