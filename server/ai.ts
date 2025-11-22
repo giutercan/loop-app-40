@@ -21,83 +21,44 @@ interface CompanyResearchResult {
 }
 
 export async function researchCompany(companyName: string, sector?: string): Promise<CompanyResearchResult> {
-  const prompt = `Deep research ${companyName}${sector ? ` (${sector} sector)` : ''} to provide TANGIBLE business intelligence for a sales/consulting conversation. Return REAL, SPECIFIC findings.
+  const prompt = `You are a business intelligence analyst. Research ${companyName}${sector ? ` (${sector})` : ''} and provide specific, actionable insights.
 
-FOCUS ON THESE AREAS (use your latest knowledge):
+Return a JSON object with two arrays: dataPoints and headlines.
 
-1. STRATEGIC PRIORITIES & ANNUAL REPORT FINDINGS:
-   - Key strategic initiatives mentioned in latest annual report
-   - Revenue growth targets/actual growth rates
-   - Market expansion plans
-   - Digital transformation initiatives
-   - Cost optimization or efficiency programs
-   - Geographic expansion or contraction
-   - M&A activity or partnerships
+For dataPoints, include 15+ items covering:
+- Annual report priorities (revenue targets, strategic initiatives, M&A)
+- Industry trends (disruptions, technology adoption, regulatory changes)
+- Recent news items (leadership changes, product launches, partnerships)
+- Operational metrics (headcount, markets, supply chain)
+- LinkedIn insights (hiring patterns, departures)
+- Competitive position (market share, threats, customer satisfaction)
 
-2. INDUSTRY TRENDS & MARKET CONTEXT:
-   - Key industry disruptions (AI, automation, consolidation, etc.)
-   - Regulatory changes impacting the industry
-   - Shifting customer preferences in the sector
-   - Emerging competitors or new business models
-   - Industry growth rates and forecasts
-   - Technology adoption trends (cloud, AI, blockchain, etc.)
-   - Sustainability/ESG trends in the industry
-   - Labor market trends in the industry
-   - Supply chain evolution in the sector
+For headlines, include 8+ recent news items from the last 12 months.
 
-3. RECENT NEWS & PRESS RELEASES (Last 12 months):
-   - Leadership changes (C-suite appointments/departures)
-   - Major product launches or announcements
-   - Earnings surprises or guidance changes
-   - Sustainability/ESG commitments
-   - Industry awards or recognitions
-   - Layoff announcements or hiring sprees
-   - Strategic partnerships or deals
-
-4. OPERATIONAL METRICS & CHALLENGES:
-   - Current headcount and recent changes
-   - Key markets by revenue
-   - Customer concentration or churn issues
-   - Supply chain challenges
-   - Regulatory or compliance issues
-   - Industry disruption threats
-
-5. LINKEDIN & TALENT INSIGHTS:
-   - Recent high-profile departures or hirings
-   - Areas with most hiring activity
-   - Cultural themes from employee posts
-   - Leadership visibility on LinkedIn
-
-6. COMPETITIVE POSITION:
-   - Market share vs competitors
-   - Unique value proposition
-   - Key competitive threats
-   - Customer satisfaction indicators
-
-Return ONLY valid JSON (no markdown, no extra text):
+JSON format (return ONLY the JSON object, no markdown, no extra text):
 {
   "dataPoints": [
-    {"label": "Strategic Priority: [initiative name]", "value": "[specific detail from annual report/earnings]", "confidence": "high|medium|low", "source": "[Annual Report 2024|Press Release|Earnings Call|LinkedIn|News Article]"},
-    {"label": "Industry Trend: [trend name]", "value": "[specific market impact/adoption rate]", "confidence": "high|medium|low", "source": "[Industry Report|Market Analysis|News]"}
+    {
+      "label": "string describing the data point",
+      "value": "specific fact or number",
+      "confidence": "high" | "medium" | "low",
+      "source": "source of information"
+    }
   ],
   "headlines": [
-    {"title": "[Specific news headline with actual details]", "date": "YYYY-MM-DD", "source": "[Company|Reuters|Bloomberg|Press Release|Industry News]", "url": "https://[real domain]/news/[slug]"}
+    {
+      "title": "news headline",
+      "date": "YYYY-MM-DD",
+      "source": "news source",
+      "url": "https://example.com/news"
+    }
   ]
-}
-
-CRITICAL: 
-- ONLY include real, verifiable facts from your knowledge
-- Mark confidence as "high" only for official company announcements or well-established facts
-- Mark as "medium" for recent reports and news
-- Mark as "low" for analysis or predictions
-- Include AT LEAST 15 data points covering strategic priorities, industry trends, operational metrics, and competitive landscape
-- Include AT LEAST 5 data points specifically about industry trends and how they impact this company
-- Include AT LEAST 8 recent news items (last 12 months)
-- Be SPECIFIC with numbers, dates, and actual initiatives - NOT generic
-- Focus on what helps someone prepare for a business conversation with this company`;
+}`;
 
   let rawContent = "";
   try {
+    console.log(`Starting AI research for ${companyName}${sector ? ` (${sector})` : ''}`);
+    
     // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
     const response = await openai.chat.completions.create({
       model: "gpt-5",
@@ -106,35 +67,40 @@ CRITICAL:
       max_completion_tokens: 8192,
     });
 
-    rawContent = response.choices[0]?.message?.content || "{}";
-    let content = rawContent;
+    rawContent = response.choices[0]?.message?.content || "";
+    console.log(`Raw AI response received, length: ${rawContent.length}`);
     
-    // Handle markdown-wrapped JSON
-    if (content.includes("```json")) {
-      content = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    } else if (content.includes("```")) {
-      content = content.replace(/```\n?/g, "").trim();
-    }
-    
-    const result = JSON.parse(content);
-    
-    if (!result.dataPoints || !Array.isArray(result.dataPoints)) {
-      console.error("Invalid AI response format - missing dataPoints array:", result);
+    if (!rawContent || rawContent.trim() === "") {
+      console.error("Empty response from AI");
       return { dataPoints: [], headlines: [] };
     }
+
+    let content = rawContent.trim();
     
-    if (!result.headlines || !Array.isArray(result.headlines)) {
-      console.error("Invalid AI response format - missing headlines array:", result);
-      return { dataPoints: result.dataPoints || [], headlines: [] };
+    // Remove markdown if present
+    if (content.includes("```")) {
+      content = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
     }
     
+    console.log(`Parsing JSON, content preview: ${content.substring(0, 100)}...`);
+    const result = JSON.parse(content);
+    
+    console.log(`Parsed result - dataPoints: ${result.dataPoints?.length || 0}, headlines: ${result.headlines?.length || 0}`);
+    
+    // Ensure we have valid arrays
+    const dataPoints = Array.isArray(result.dataPoints) ? result.dataPoints : [];
+    const headlines = Array.isArray(result.headlines) ? result.headlines : [];
+    
+    console.log(`Successfully processed research: ${dataPoints.length} data points, ${headlines.length} headlines`);
+    
     return {
-      dataPoints: result.dataPoints,
-      headlines: result.headlines,
+      dataPoints,
+      headlines,
     };
   } catch (error) {
-    console.error("Error researching company:", error);
-    console.error("Raw response content:", rawContent);
-    throw new Error("Failed to research company with AI: " + (error instanceof Error ? error.message : "Unknown error"));
+    console.error("Error researching company:", error instanceof Error ? error.message : String(error));
+    console.error("Raw response content:", rawContent.substring(0, 500));
+    // Return empty arrays instead of throwing to avoid breaking the API
+    return { dataPoints: [], headlines: [] };
   }
 }
