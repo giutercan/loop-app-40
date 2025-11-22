@@ -67,18 +67,11 @@ JSON format (return ONLY the JSON object, no markdown, no extra text):
       max_completion_tokens: 8192,
     });
 
-    console.log(`Full response object:`, JSON.stringify({
-      choices_length: response.choices?.length,
-      first_choice_message: response.choices?.[0]?.message,
-      finish_reason: response.choices?.[0]?.finish_reason
-    }, null, 2));
-
     rawContent = response.choices?.[0]?.message?.content || "";
-    console.log(`Raw AI response received, length: ${rawContent.length}, content: "${rawContent.substring(0, 200)}"`);
+    console.log(`Raw AI response received, length: ${rawContent.length}`);
     
     if (!rawContent || rawContent.trim() === "") {
-      console.error("Empty response from AI - this may indicate an API issue");
-      console.error("Response finish reason:", response.choices?.[0]?.finish_reason);
+      console.error("Empty response from AI");
       return { dataPoints: [], headlines: [] };
     }
 
