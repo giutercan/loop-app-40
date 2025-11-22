@@ -242,6 +242,11 @@ export default function Discovery() {
           context.previousDataPoints
         );
       }
+      toast({
+        title: "Selection failed",
+        description: "Failed to update insight selection. Please try again.",
+        variant: "destructive",
+      });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ 
