@@ -214,10 +214,54 @@ export default function Discovery() {
     },
   });
 
+  const updateDataPointSelectionMutation = useMutation({
+    mutationFn: async ({ id, selectedForNotes, relevantJob }: { id: number; selectedForNotes: boolean; relevantJob?: string }) => {
+      const res = await apiRequest("PATCH", `/api/data-points/${id}`, { 
+        selectedForNotes,
+        relevantJob: selectedForNotes ? (relevantJob || null) : null
+      });
+      return await res.json();
+    },
+    onMutate: async ({ id, selectedForNotes, relevantJob }) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/projects", selectedProjectId, "data-points"] });
+      const previousDataPoints = queryClient.getQueryData(["/api/projects", selectedProjectId, "data-points"]);
+      queryClient.setQueryData(["/api/projects", selectedProjectId, "data-points"], (old: any) => {
+        if (!old) return old;
+        return old.map((dp: any) => 
+          dp.id === id 
+            ? { ...dp, selectedForNotes, relevantJob: selectedForNotes ? (relevantJob || null) : null }
+            : dp
+        );
+      });
+      return { previousDataPoints };
+    },
+    onError: (err, variables, context: any) => {
+      if (context?.previousDataPoints) {
+        queryClient.setQueryData(
+          ["/api/projects", selectedProjectId, "data-points"],
+          context.previousDataPoints
+        );
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ 
+        queryKey: ["/api/projects", selectedProjectId, "data-points"]
+      });
+    },
+  });
+
   const handleCapabilityChange = (id: number, capability: string | null) => {
     updateCapabilityMutation.mutate({ 
       id, 
       relevantCapability: capability 
+    });
+  };
+
+  const handleDataPointSelect = (id: number, selected: boolean, job?: string) => {
+    updateDataPointSelectionMutation.mutate({ 
+      id, 
+      selectedForNotes: selected,
+      relevantJob: job
     });
   };
 
@@ -417,6 +461,7 @@ export default function Discovery() {
                     isFollowUp: h.source === "AI Follow-up",
                   }))}
                   onCapabilityChange={handleCapabilityChange}
+                  onDataPointSelect={handleDataPointSelect}
                 />
               </>
             )}
