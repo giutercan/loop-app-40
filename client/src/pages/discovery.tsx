@@ -215,21 +215,20 @@ export default function Discovery() {
   });
 
   const updateDataPointSelectionMutation = useMutation({
-    mutationFn: async ({ id, selectedForNotes, relevantJob }: { id: number; selectedForNotes: boolean; relevantJob?: string }) => {
+    mutationFn: async ({ id, selectedForNotes }: { id: number; selectedForNotes: boolean }) => {
       const res = await apiRequest("PATCH", `/api/data-points/${id}`, { 
-        selectedForNotes,
-        relevantJob: selectedForNotes ? (relevantJob || null) : null
+        selectedForNotes
       });
       return await res.json();
     },
-    onMutate: async ({ id, selectedForNotes, relevantJob }) => {
+    onMutate: async ({ id, selectedForNotes }) => {
       await queryClient.cancelQueries({ queryKey: ["/api/projects", selectedProjectId, "data-points"] });
       const previousDataPoints = queryClient.getQueryData(["/api/projects", selectedProjectId, "data-points"]);
       queryClient.setQueryData(["/api/projects", selectedProjectId, "data-points"], (old: any) => {
         if (!old) return old;
         return old.map((dp: any) => 
           dp.id === id 
-            ? { ...dp, selectedForNotes, relevantJob: selectedForNotes ? (relevantJob || null) : null }
+            ? { ...dp, selectedForNotes }
             : dp
         );
       });
@@ -262,11 +261,10 @@ export default function Discovery() {
     });
   };
 
-  const handleDataPointSelect = (id: number, selected: boolean, job?: string) => {
+  const handleDataPointSelect = (id: number, selected: boolean) => {
     updateDataPointSelectionMutation.mutate({ 
       id, 
-      selectedForNotes: selected,
-      relevantJob: job
+      selectedForNotes: selected
     });
   };
 
@@ -504,7 +502,7 @@ export default function Discovery() {
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
                     Go to the Organization tab and check the insights you want to add to Notes & Evidence. 
-                    Tag them with relevant Korn Ferry jobs to organize your findings.
+                    They will be organized by their Korn Ferry capability classification.
                   </p>
                 </CardContent>
               </Card>
@@ -512,40 +510,45 @@ export default function Discovery() {
               <>
                 <Card>
                   <CardHeader>
-                    <CardTitle>Evidence Organized by Korn Ferry Jobs</CardTitle>
+                    <CardTitle>Evidence Organized by Capability</CardTitle>
                     <CardDescription>
                       {dataPoints.filter(dp => dp.selectedForNotes).length} insight{dataPoints.filter(dp => dp.selectedForNotes).length !== 1 ? 's' : ''} selected from research
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {['leadership-development', 'talent-acquisition', 'succession-planning', 'culture-transformation', 'organizational-design', 'change-management', null].map(jobKey => {
-                      const jobPoints = dataPoints.filter(dp => dp.selectedForNotes && (jobKey === null ? !dp.relevantJob : dp.relevantJob === jobKey));
-                      if (jobPoints.length === 0) return null;
+                    {[
+                      'Success Profiles & Role Design',
+                      'Standardised Assessments & Assessments at Scale',
+                      'Leadership & Development Journeys',
+                      'AI-Ready Leader (within L&D)',
+                      'Organisation Strategy & Transformation',
+                      'Total Rewards Optimisation (TRO)',
+                      'Sales & Service (KF Sell)',
+                      'People Analytics / KFI Analytics',
+                      'Value Management / Client Success & Talent Suite',
+                      null
+                    ].map(capabilityKey => {
+                      const capabilityPoints = dataPoints.filter(dp => 
+                        dp.selectedForNotes && 
+                        (capabilityKey === null ? !dp.relevantCapability : dp.relevantCapability === capabilityKey)
+                      );
+                      if (capabilityPoints.length === 0) return null;
 
-                      const jobLabel = jobKey 
-                        ? ({
-                            'leadership-development': 'Leadership Development',
-                            'talent-acquisition': 'Talent Acquisition',
-                            'succession-planning': 'Succession Planning',
-                            'culture-transformation': 'Culture Transformation',
-                            'organizational-design': 'Organizational Design',
-                            'change-management': 'Change Management',
-                          }[jobKey] || jobKey)
-                        : 'Uncategorized';
+                      const capabilityLabel = capabilityKey || 'Not Identified';
 
                       return (
-                        <div key={jobKey || 'uncategorized'} className="space-y-3">
+                        <div key={capabilityKey || 'not-identified'} className="space-y-3">
                           <div className="flex items-center gap-2 pb-2 border-b">
                             <Briefcase className="w-4 h-4 text-primary" />
-                            <h3 className="font-semibold text-sm">{jobLabel}</h3>
-                            <Badge variant="secondary" className="text-xs">{jobPoints.length}</Badge>
+                            <h3 className="font-semibold text-sm">{capabilityLabel}</h3>
+                            <Badge variant="secondary" className="text-xs">{capabilityPoints.length}</Badge>
                           </div>
                           <div className="space-y-2 pl-6">
-                            {jobPoints.map((point, idx) => (
+                            {capabilityPoints.map((point, idx) => (
                               <div 
                                 key={point.id} 
                                 className="bg-muted/30 rounded-md p-3 space-y-1.5"
-                                data-testid={`selected-point-${idx}`}
+                                data-testid={`selected-point-${point.id}`}
                               >
                                 <div className="flex items-start justify-between gap-2">
                                   <p className="text-xs font-medium text-muted-foreground">{point.label}</p>

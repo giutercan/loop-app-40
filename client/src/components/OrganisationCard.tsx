@@ -39,7 +39,7 @@ interface OrganisationCardProps {
   revenueData?: { month: string; revenue: number }[];
   headlines?: Headline[];
   onCapabilityChange?: (id: number, capability: string | null) => void;
-  onDataPointSelect?: (id: number, selected: boolean, job?: string) => void;
+  onDataPointSelect?: (id: number, selected: boolean) => void;
 }
 
 const KORN_FERRY_CAPABILITIES = [
@@ -230,45 +230,21 @@ export default function OrganisationCard({
                 </a>
               )}
               {onDataPointSelect && point.id && (
-                <div className="flex items-start gap-2 pt-2 border-t">
-                  <div className="flex items-center gap-2 pt-0.5">
-                    <Checkbox
-                      id={`select-${point.id}`}
-                      checked={point.selectedForNotes || false}
-                      onCheckedChange={(checked) => {
-                        onDataPointSelect(point.id!, checked as boolean, point.relevantJob);
-                      }}
-                      data-testid={`checkbox-select-${point.id}`}
-                    />
-                    <label
-                      htmlFor={`select-${point.id}`}
-                      className="text-xs text-muted-foreground font-medium cursor-pointer"
-                    >
-                      Add to Notes & Evidence
-                    </label>
-                  </div>
-                  {point.selectedForNotes && (
-                    <Select
-                      value={point.relevantJob || "none"}
-                      onValueChange={(value) => {
-                        onDataPointSelect(point.id!, true, value === "none" ? undefined : value);
-                      }}
-                    >
-                      <SelectTrigger className="h-7 w-[200px] text-xs" data-testid={`select-job-${point.id}`}>
-                        <SelectValue placeholder="Select job category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none" className="text-xs">
-                          No category
-                        </SelectItem>
-                        {KORN_FERRY_JOBS.map(job => (
-                          <SelectItem key={job.value} value={job.value} className="text-xs">
-                            {job.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
+                <div className="flex items-center gap-2 pt-2 border-t">
+                  <Checkbox
+                    id={`select-${point.id}`}
+                    checked={point.selectedForNotes || false}
+                    onCheckedChange={(checked) => {
+                      onDataPointSelect(point.id!, checked as boolean);
+                    }}
+                    data-testid={`checkbox-select-${point.id}`}
+                  />
+                  <label
+                    htmlFor={`select-${point.id}`}
+                    className="text-xs text-muted-foreground font-medium cursor-pointer"
+                  >
+                    Add to Notes & Evidence
+                  </label>
                 </div>
               )}
               {onCapabilityChange && point.id && (
