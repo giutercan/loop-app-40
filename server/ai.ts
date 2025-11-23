@@ -539,57 +539,43 @@ export async function generateSuccessStoryRecommendations(
     ? `Consultant Notes:\n${projectContext.notesContent.slice(0, 1000)}`
     : '';
 
-  const prompt = `You are an expert Korn Ferry consultant tasked with identifying relevant client success stories and case studies.
+  const systemPrompt = `You are a Korn Ferry AI assistant. Generate realistic client success story recommendations in JSON format with key "recommendations" containing an array of 3-5 case studies.`;
 
-CLIENT CONTEXT:
-Company: ${projectContext.companyName}
-${projectContext.industry ? `Industry: ${projectContext.industry}` : ''}
+  const userPrompt = `Generate 3-5 Korn Ferry client success stories for ${projectContext.companyName}${projectContext.industry ? ` (${projectContext.industry})` : ''}.
 
 ${insightsContext}
 
 ${kpisContext}
 
-${notesContext}
-
-KORN FERRY SOLUTIONS & CAPABILITIES:
-${knowledgeBase}
-
-TASK: Generate 3-5 highly relevant Korn Ferry client success stories that would strengthen the value proposition for this engagement.
-
-REQUIREMENTS:
-1. Each story must be realistic and plausible for a consulting firm of Korn Ferry's caliber
-2. Stories should align with the discovery insights and target KPIs
-3. Include specific industries and measurable outcomes
-4. Focus on transformation initiatives similar to this client's needs
-5. Tie each story to a specific Korn Ferry capability and solution area
-
-Generate realistic case study recommendations in the following JSON format:
-
+Return JSON with this exact structure (no markdown, just raw JSON):
 {
   "recommendations": [
     {
-      "title": "Descriptive case study title (e.g., 'Global Tech Company Transforms Sales Organization')",
-      "url": "https://www.kornferry.com/insights/case-studies/[relevant-slug]",
-      "category": "Category like 'Sales Transformation', 'Leadership Development', 'Organizational Design'",
-      "relevanceReason": "2-3 sentences explaining why this case study is relevant to the current engagement",
-      "industry": "Industry of the case study client (e.g., 'Technology', 'Financial Services', 'Healthcare')",
-      "capabilityName": "One of the 9 Korn Ferry capabilities",
-      "solutionArea": "ASSESS, DEVELOP, TRANSFORM, REWARD, COMMERCIAL, or ANALYTICS",
-      "impactSummary": "1-2 sentences describing measurable outcomes (e.g., '25% increase in sales productivity, $50M revenue impact')"
+      "title": "Descriptive case study title",
+      "url": "https://www.kornferry.com/insights/case-studies/example-slug",
+      "category": "Transformation category",
+      "relevanceReason": "Why this is relevant to the client",
+      "industry": "Client industry",
+      "capabilityName": "Korn Ferry capability name",
+      "solutionArea": "ASSESS or DEVELOP or TRANSFORM or REWARD or COMMERCIAL or ANALYTICS",
+      "impactSummary": "Measurable outcomes achieved"
     }
   ]
 }
 
-Ensure all recommendations are:
-- Strategically relevant to the client's context
-- Backed by specific, measurable outcomes
-- Aligned with Korn Ferry's capabilities
-- Diverse in approach (don't repeat the same capability/solution area)`;
+Make each story:
+- Aligned with the client's insights and KPIs
+- Focused on measurable outcomes
+- Tied to a specific Korn Ferry capability
+- Realistic and professionally written`;
 
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-5",
-      messages: [{ role: "user", content: prompt }],
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
       response_format: { type: "json_object" },
       max_completion_tokens: 3000,
     });
