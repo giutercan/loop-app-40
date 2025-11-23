@@ -12,11 +12,12 @@ import type { JobThemeKPI } from "@shared/schema";
 interface KPIRecommendationDialogProps {
   jobThemeId: number;
   jobName: string;
+  projectId: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export default function KPIRecommendationDialog({ jobThemeId, jobName, open, onOpenChange }: KPIRecommendationDialogProps) {
+export default function KPIRecommendationDialog({ jobThemeId, jobName, projectId, open, onOpenChange }: KPIRecommendationDialogProps) {
   const { toast } = useToast();
   const [selectedKPIs, setSelectedKPIs] = useState<Set<number>>(new Set());
 
@@ -56,7 +57,12 @@ export default function KPIRecommendationDialog({ jobThemeId, jobName, open, onO
       return res.json();
     },
     onSuccess: () => {
+      // Invalidate both the KPIs list and the finalized jobs data
       queryClient.invalidateQueries({ queryKey: [`/api/job-themes/${jobThemeId}/kpis`] });
+      
+      // Invalidate finalized jobs query to refresh the Alignment page
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/alignment/finalized-jobs`] });
+      
       toast({
         title: "KPI Selected",
         description: "Added to your tracking list",

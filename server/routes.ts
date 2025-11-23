@@ -2122,6 +2122,22 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // GET AI-recommended KPIs for a job theme
+  app.get("/api/job-themes/:jobThemeId/recommend-kpis", async (req, res) => {
+    try {
+      const jobThemeId = parseInt(req.params.jobThemeId);
+      
+      // Get all KPIs for this job theme and filter to AI-recommended ones
+      const allKPIs = await storage.getJobThemeKPIs(jobThemeId);
+      const recommendations = allKPIs.filter(kpi => kpi.isAIRecommended === true);
+      
+      res.json(recommendations);
+    } catch (error: any) {
+      console.error("[GET KPI Recommendations] Error:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch KPI recommendations" });
+    }
+  });
+
   // Generate AI-powered KPI recommendations for a job theme
   app.post("/api/job-themes/:jobThemeId/recommend-kpis", async (req, res) => {
     try {

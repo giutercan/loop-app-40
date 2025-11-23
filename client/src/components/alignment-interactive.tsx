@@ -254,6 +254,7 @@ function JobCard({ job, jobIndex, selectedKPIs, updateKPIMutation }: JobCardProp
         <KPIRecommendationDialog
           jobThemeId={job.id}
           jobName={job.jobName}
+          projectId={projectId}
           open={showRecommendations}
           onOpenChange={setShowRecommendations}
         />
