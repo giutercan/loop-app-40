@@ -1,0 +1,207 @@
+The Ultimate Guide To Value Realization 2024
+Many B2B SaaS companies base their business model on monthly subscriptions or rolling contracts. The flexibility this offers is attractive to customers – it implies the SaaS will continuously deliver business value to customers month-on-month. Because if it doesn’t, customers can easily switch to a competitor.
+
+This business model is equally appealing to investors and business owners. As their enterprises consistently provide value to customers, they anticipate achieving robust, positive net revenue retention (NRR). 
+
+Most SaaS companies know that to get new customers, they must sell this promise of ongoing business value. The problem is that few companies deliver on this promise. As a result, they experience customer churn, which often leads to disappointing NRR.
+
+Numerous B2B SaaS companies now recognise that sustainable scaling requires a heightened focus on customer retention, rather than focusing purely on sales. They need to ensure their clients realise the full value promised by their solutions. 
+
+Enter customer success
+
+Customer success was developed to solve this retention and expansion challenge. Its purpose is to ensure that customers realize the value they are sold. This increases customer satisfaction and makes them more likely to renew or expand the services they buy from the SaaS provider. 
+
+Unfortunately, customer success teams rarely discuss the value the customer realized or the business outcomes they delivered with decision-makers. Instead, they find themselves mired in discussions with operational staff about product usage.
+
+The recent economic downturn has forced businesses to scrutinize their bloated tech stacks. Many find themselves asking:
+
+“We’re paying so much. Does any of this actually deliver value?”
+
+The result: NRR at publicly traded SaaS companies has decreased by 7% year-on-year from 2022-23.
+
+The issue lies in resource allocation. Most SaaS companies have invested heavily in headcount and sales infrastructure, while few have invested in ways to prove the value they have delivered to their customers.
+
+B2B SaaS companies have underinvested in ways to:
+
+Ensure ongoing alignment with customer value
+Adapt success plans based on changes in customer value
+Track tangible value delivery against success metrics
+Cuvama helps you sell, deliver and realise value
+
+The truth is SaaS models cannot be successful unless their customers realise value. This is ultimately the reason why we built Cuvama: to connect selling value to delivering and realising it. 
+
+This guide explains everything you need to know about value realization, including what it is, why it is important and how to implement it.
+
+What Is Value Realisation
+In B2B SaaS, value realization is the ongoing process of ensuring that customers perceive and continuously receive value from the software they invest in. 
+
+⚠️ What value realization is not
+
+Value realisation is not about simply presenting large return on investment (ROI) numbers or favourable customer satisfaction figures during renewal. Both of these factors are important, but they are parts of a much wider value story.
+True value realization is about proving to the customer that your solution is helping them solve their business problems and achieve their strategic outcomes.
+
+It is intrinsically linked to the sales process, using the information uncovered during discovery to continuously: 
+
+Align with the customer’s pain points
+Understand the impact on their business
+Prioritize outcomes
+It’s a dynamic process that evolves with the customer life cycle, demanding continuous alignment.
+
+Why Is Value Realisation Important?
+People buy software because: 
+
+They have a problem that they need to solve
+They want to achieve their desired business impact goals
+Customers will only renew and expand their investment in your software if they can see it successfully doing these two things. 
+
+Why? Because the economy is increasingly challenging and buyer budgets are shrinking. Many companies already have bloated tech stacks that they don’t get value from. 
+
+As a result, most are reviewing their software stacks and cutting anything that isn’t critical. Chief financial officers (CFOs) are cutting budgets and cancelling anything that does not have a material impact.  
+
+Gone are the days when experimenting with new technology in hopes of gaining a competitive edge was the norm. Nowadays, customers seek to clearly understand the impact a solution has on their business and the specific outcomes it achieves. 
+
+But realising value isn’t just about mitigating risks. It also offers substantial benefits, including:
+
+✔️ Reduced commoditization: Proving that your solution is solving your customer’s business challenges makes it an indispensable part of their strategy and not simply a tool that does something useful. Customers will be less likely to pressure you to reduce your price.
+
+✔️ Increased sales: Customers are more likely to purchase and invest further when they consistently recognize the value and impact of your solution.
+
+✔️ Better case studies: Customer stories and case studies evidence the real-world value you provide to customers. They are critical for winning new accounts. Value realization can be used to create new case studies and enrich existing ones. Integrating value realization with the sales process in this way is known as customer value management.
+
+5 Common Value Realisation Mistakes
+
+Many companies understand the significance of value realization for NRR, but often they either lack a proper grasp of it or implement it incorrectly. To get value realization right, it helps to understand common mistakes others make.
+
+1. Perceiving ROI as the sole metric
+Value realisation is about more than quantifying ROI. It encompasses a broader spectrum, including, for example: 
+
+✔️ Leading metrics
+
+✔️ Sentiment analysis
+
+✔️ Adoption rates
+
+The aim is to continuously monitor how well you are delivering value for the customer, enhance areas where performance is lacking, and consistently show the customer where you are delivering value. 
+
+2. Presenting large ROI figures
+Value realisation isn’t about showcasing a substantial ROI number during renewals. Just like with value selling, good discovery is the heart of value realisation. This involves:
+
+🔍 Uncovering and aligning on customer pain
+
+🔍 Identifying the impact of that pain on the customer’s business
+
+🔍 Determining which problem should be prioritised
+
+🔍 Identifying the customer’s outcomes
+
+All of these may change throughout the customer life cycle. It’s therefore important to continuously evolve the value story that the customer developed with you during the sales process. This ensures you are aligned with the customer.
+
+3. Assuming value realisation is universally applicable
+Value realisation is not a one-size-fits-all solution. It’s best suited to complex solutions that have a tangible impact and demand high retention, as typically seen in enterprise SaaS companies.
+
+If your business is based on transactional sales or you only need 80% NRR, then your business may not need to set up a value realization function.
+
+
+
+Even if you do set up a value realization function, you don’t need to apply it to every account or segment. Think about which ones would truly benefit from value realization. You may decide it is only worth doing on strategically important clients.  
+
+4. Assuming universal skillsets
+Conducting value-based conversations requires a unique skill set. Not everyone in the customer success team might possess these abilities. You can enable your team to have effective value conversations by providing them with:
+
+✔️ Value proposition content and materials tailored to the customer’s situation
+
+✔️ Training
+
+✔️ Tech that can support them in live value conversations with customers
+
+5. Failing to align KPIs and processes
+Your customer success team’s KPIs must be aligned with value realization. You may wish to reward customer success managers with financial incentives or promotions for implementing value realization. 
+
+It’s also worth considering each individual customer success manager’s abilities as well as the complexity of each account. A skilled customer success manager might successfully implement value realization strategies across several complex accounts independently. However, others may require assistance to apply these strategies effectively even to a single, relatively straightforward account.
+
+The Role of Value Teams
+Value engineering or value consulting, is a function of B2B businesses. Its job is to:
+
+Help develop business cases for their solution
+Quantify the impact of prospects implementing their solutions
+The role was initially introduced to support value selling for complex deals. However, this has changed in recent years. Now value engineers increasingly focus on post-sale activities like supporting customer success in quantifying impact during renewals. 
+
+The value engineering challenge
+In the past, the biggest challenge for value engineering teams was that they could not support every sales deal. It simply wasn’t scalable.
+
+Now that they are increasingly working with customer success, this challenge has multiplied, as there are usually many more renewals than sales.
+
+The role of value engineering is increasingly shifting towards empowering customer success teams to adhere to a value-focused process and to guide conversations centred on value. Value engineers might become directly involved in the top 10% of the most critical deals, providing specialised support and expertise. But the rest of their time will be spent providing materials for sales and customer success to access and use themselves.
+
+
+
+However, this won’t help those customer success reps who need a value engineer to support them in live meetings. Value enablement tech is the only solution. The in-meeting knowledge and experience that value engineers provide need to be distilled into software that can guide reps through value conversations with customers. 
+
+Cuvama’s 4-Step Value Realization Framework​
+Value realization often takes place after the sales process. It’s usually led by customer success and involves continuously reinforcing the value that’s being delivered. It is part of the customer value management cycle, which in itself is part of the customer value cycle, along with sales and product. 
+
+
+
+The primary objective of value realization is to comprehend and align with the customer’s value story, ensuring consistent delivery, and reinforcing achieved outcomes.
+
+Cuvama’s value realization framework consists of four steps that seamlessly integrate with the sales, product, and customer success cycles.
+
+1. Ensure a seamless handover from sales to customer success
+During the sales process, the rep assists the customer in developing a business case, agreeing on the specific value that their solution will provide. There must be a seamless transition from the business case to the customer success plan. 
+
+Customer success plays a pivotal role in this value realization stage, connecting the promises made in the sales pitch with the reality of service delivery.
+
+2. Verify the success plan
+At this point, the customer success rep must:
+
+✔️Validate the pain points and desired outcomes the customer articulated during the sales engagement
+
+✔️Collaborate with the client to establish Key Performance indicators (KPIs) that serve as benchmarks for tracking value delivery
+
+✔️Prioritize outcomes or pain points 
+
+The result is a comprehensive plan that outlines the customer’s starting point, the envisioned success, and the roadmap to get there. This includes key value realization milestones.
+
+3. Regular business reviews
+Maintaining a consistent dialogue with the client is essential to ensure continued value realization. Regular business reviews provide a platform for customer success teams to share valuable insights and updates with the customer. 
+
+The customer success rep must seek to ensure they are still aligned with the client’s evolving problems and outcomes. This involves ongoing discovery of the customer’s value story. These reviews look at a range of KPIs, including quantitative data and qualitative elements such as sentiment analysis and progress toward value realization events.
+
+4. Understanding evolving needs and new opportunities
+The needs of the clients change constantly.
+
+By conducting periodic discovery sessions, customer success can identify shifts in the client’s value story. This presents a unique opportunity not only to understand evolving needs but also to uncover potential upsell or cross-sell opportunities. Value realization, in this context, becomes a proactive strategy, aligning the solution with the client’s ever-changing business.
+
+This value realization framework forms a continuous loop that reinforces the delivery of value, aligning the customer’s value expectation with the actual outcomes achieved.
+
+Cuvama’s four-step model integrates seamlessly with the broader customer value management cycle, creating a symbiotic relationship between sales, product, and customer success. This not only strengthens individual engagements but also makes it more likely that customers will want to collaborate with and expand their accounts.
+
+How to Enable and Scale Value Realization
+Effectively implementing value realization requires attention to strategy, people, processes, and technology.
+
+
+
+Strategy
+It’s essential to clearly define the scope of value realization, identifying which accounts and solutions justify the investment. Additionally, obtaining approval from high-level senior management is crucial for this process. This isn’t merely a functional strategy but an organizational one, and you must align it with your entire go-to-market (GTM) strategy.
+
+People
+Empowering your customer success team involves training them on the significance of value realization, its processes, and how to implement it. You need to provide them with enablement tools and materials including:
+
+Value proposition content that highlights the pain you solve and outcomes you drive for a range of different personas and segments
+Guidance on how to engage in value-based conversations, including how to put that value proposition content into practice to uncover, align and reinforce value
+Processes
+You must document:
+
+What your value realization process look like within your company
+The types of outcomes that can be tracked and supported
+The business objectives and key results (OKRs), KPIs, and promotions that incentivize value realization
+Tech
+Traditional customer relationship management (CRM) systems do not have the right capabilities to allow you to implement value realization.
+
+Instead, your organisation needs to seek out new purpose-built tech that will enable you to:
+
+Maintain a record of customer value and outcomes from sales to CS
+Ensure the record can be updated so that value can be tracked
+Enable the CS team to access the right content to support them in having value-based conversations
+Conclusion
+Value realization requires organizational change. Getting sales and customer success to align on customer value requires your entire business to become outcomes-focused. 
