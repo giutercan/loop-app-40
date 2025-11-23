@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Target, TrendingDown, ChevronDown, Sparkles, Briefcase, Loader2 } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -37,11 +37,24 @@ interface Job {
 
 interface AlignmentInteractiveProps {
   projectId: number;
-  jobs: Job[];
 }
 
-export function AlignmentInteractive({ projectId, jobs }: AlignmentInteractiveProps) {
+interface FinalizedJobsResponse {
+  finalized: boolean;
+  jobs: Job[];
+  transferredAt: string | null;
+}
+
+export function AlignmentInteractive({ projectId }: AlignmentInteractiveProps) {
   const { toast } = useToast();
+  
+  // Fetch finalized jobs data
+  const { data: finalizedData, isLoading } = useQuery<FinalizedJobsResponse>({
+    queryKey: [`/api/projects/${projectId}/alignment/finalized-jobs`],
+    enabled: !!projectId,
+  });
+  
+  const jobs = finalizedData?.jobs || [];
 
   const updateKPIMutation = useMutation({
     mutationFn: async ({ kpiId, data }: { kpiId: number; data: Partial<KPI> }) => {
@@ -60,6 +73,30 @@ export function AlignmentInteractive({ projectId, jobs }: AlignmentInteractivePr
       });
     },
   });
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="text-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
+        <p className="mt-4 text-sm text-muted-foreground">Loading finalized jobs...</p>
+      </div>
+    );
+  }
+  
+  // Show empty state if not finalized
+  if (!finalizedData?.finalized || jobs.length === 0) {
+    return (
+      <Card className="border-muted">
+        <CardHeader>
+          <CardTitle className="text-center">No Finalized Discovery Data</CardTitle>
+          <CardDescription className="text-center">
+            Complete and finalize the Discovery phase to see job themes and KPIs here.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">

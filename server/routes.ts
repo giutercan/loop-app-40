@@ -1914,12 +1914,10 @@ export function registerRoutes(app: Express) {
       const kpiId = parseInt(req.params.kpiId);
       
       // Get the KPI details
-      const kpis = await storage.getJobThemeKPIs(kpiId);
-      if (!kpis || kpis.length === 0) {
+      const kpiData = await storage.getJobThemeKPI(kpiId);
+      if (!kpiData) {
         return res.status(404).json({ error: "KPI not found" });
       }
-      
-      const kpiData = kpis[0];
       
       // Get project details for industry context
       const jobTheme = await storage.getJobTheme(kpiData.jobThemeId);

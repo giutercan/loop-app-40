@@ -653,6 +653,12 @@ export class DbStorage implements IStorage {
       .orderBy(desc(schema.jobThemeKPIs.isSelected));
   }
   
+  async getJobThemeKPI(kpiId: number): Promise<JobThemeKPI | undefined> {
+    const results = await db.select().from(schema.jobThemeKPIs)
+      .where(eq(schema.jobThemeKPIs.id, kpiId));
+    return results[0];
+  }
+  
   async createJobThemeKPI(kpi: InsertJobThemeKPI): Promise<JobThemeKPI> {
     const results = await db.insert(schema.jobThemeKPIs).values(kpi).returning();
     return results[0];
