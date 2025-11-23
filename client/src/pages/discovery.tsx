@@ -20,7 +20,7 @@ import OrganisationCard from "@/components/OrganisationCard";
 import ValueHypothesisBuilder from "@/components/ValueHypothesisBuilder";
 import ProjectSelector from "@/components/ProjectSelector";
 import StatusBadge from "@/components/StatusBadge";
-import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown } from "lucide-react";
+import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, Activity } from "lucide-react";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { Link, useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -1013,6 +1013,12 @@ export default function Discovery() {
                 <Send className="w-4 h-4 mr-2" />
                 Send to Client
               </Button>
+              <Link href={`/projects/${selectedProjectId}/realisation`}>
+                <Button variant="default" data-testid="button-realization">
+                  <Activity className="w-4 h-4 mr-2" />
+                  Realization
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
