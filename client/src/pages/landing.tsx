@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Brain, Target, Users, FileText, Mic, CheckCircle2, ArrowRight, Zap, TrendingUp, MessageSquare, BarChart3 } from "lucide-react";
+import { Sparkles, Brain, Target, Users, FileText, Mic, CheckCircle2, ArrowRight, Zap, TrendingUp, MessageSquare, BarChart3, Calendar, Award, Activity } from "lucide-react";
 import { Link } from "wouter";
 
 export default function Landing() {
@@ -102,7 +102,7 @@ export default function Landing() {
               </div>
             </div>
             
-            {/* Right: Feature Preview Cards - FIXED: All Same Size */}
+            {/* Right: Feature Preview Cards - Complete Lifecycle */}
             <div className="relative">
               <div className="grid grid-cols-2 gap-5">
                 <Card className="hover-elevate transition-all duration-300 border-2 hover:border-primary/20 group">
@@ -122,41 +122,41 @@ export default function Landing() {
                 <Card className="hover-elevate transition-all duration-300 border-2 hover:border-primary/20 group">
                   <CardHeader className="pb-3">
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
-                      <Target className="w-6 h-6 text-primary" />
-                    </div>
-                    <CardTitle className="text-lg font-bold">Jobs Mapping</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      Aggregate insights to strategic "Jobs We Do" themes
-                    </p>
-                  </CardContent>
-                </Card>
-                
-                <Card className="hover-elevate transition-all duration-300 border-2 hover:border-primary/20 group">
-                  <CardHeader className="pb-3">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
-                      <MessageSquare className="w-6 h-6 text-primary" />
-                    </div>
-                    <CardTitle className="text-lg font-bold">Client Collaboration</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      Share questionnaires and gather responses seamlessly
-                    </p>
-                  </CardContent>
-                </Card>
-                
-                <Card className="hover-elevate transition-all duration-300 border-2 hover:border-primary/20 group">
-                  <CardHeader className="pb-3">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
                       <BarChart3 className="w-6 h-6 text-primary" />
                     </div>
-                    <CardTitle className="text-lg font-bold">Value Metrics</CardTitle>
+                    <CardTitle className="text-lg font-bold">Value Alignment</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground leading-relaxed">
                       Baseline to target KPIs with benchmark data
+                    </p>
+                  </CardContent>
+                </Card>
+                
+                <Card className="hover-elevate transition-all duration-300 border-2 hover:border-primary/20 group">
+                  <CardHeader className="pb-3">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                      <Activity className="w-6 h-6 text-primary" />
+                    </div>
+                    <CardTitle className="text-lg font-bold">Progress Tracking</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      Monitor KPIs from baseline to target in real-time
+                    </p>
+                  </CardContent>
+                </Card>
+                
+                <Card className="hover-elevate transition-all duration-300 border-2 hover:border-primary/20 group">
+                  <CardHeader className="pb-3">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                      <Calendar className="w-6 h-6 text-primary" />
+                    </div>
+                    <CardTitle className="text-lg font-bold">Business Reviews</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      Track client engagement with sentiment analysis
                     </p>
                   </CardContent>
                 </Card>
@@ -431,6 +431,129 @@ export default function Landing() {
                 </ul>
               </CardContent>
             </Card>
+
+            {/* Business Reviews */}
+            <Card className="hover-elevate transition-all duration-300 hover:shadow-2xl hover:shadow-primary/10 group border-2">
+              <CardHeader className="pb-6">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                  <Calendar className="w-7 h-7 text-primary" />
+                </div>
+                <CardTitle className="text-2xl font-bold">Business Reviews</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <CardDescription className="text-base leading-relaxed">
+                  Schedule and track client business reviews with sentiment analysis and outcome documentation
+                </CardDescription>
+                <ul className="space-y-3 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
+                    <span>Quarterly, Monthly, and Ad-hoc review types</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
+                    <span>Client sentiment tracking (Positive, Neutral, Negative)</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
+                    <span>Key outcomes, action items, and decisions</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
+                    <span>Automatic filtering: Completed vs. Upcoming</span>
+                  </li>
+                </ul>
+              </CardContent>
+            </Card>
+
+            {/* Progress Tracking */}
+            <Card className="hover-elevate transition-all duration-300 hover:shadow-2xl hover:shadow-primary/10 group border-2">
+              <CardHeader className="pb-6">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                  <Activity className="w-7 h-7 text-primary" />
+                </div>
+                <CardTitle className="text-2xl font-bold">Progress Tracking</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <CardDescription className="text-base leading-relaxed">
+                  Monitor KPI progress over time showing movement from baseline to actual to target values
+                </CardDescription>
+                <ul className="space-y-3 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
+                    <span>Baseline → Actual → Target visualization</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
+                    <span>Historical KPI tracking with timestamps</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
+                    <span>Integration with finalized discovery jobs</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
+                    <span>Real-time progress notes and updates</span>
+                  </li>
+                </ul>
+              </CardContent>
+            </Card>
+
+            {/* Success Stories */}
+            <Card className="hover-elevate transition-all duration-300 hover:shadow-2xl hover:shadow-primary/10 group border-2">
+              <CardHeader className="pb-6">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                  <Award className="w-7 h-7 text-primary" />
+                </div>
+                <CardTitle className="text-2xl font-bold">Success Stories</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <CardDescription className="text-base leading-relaxed">
+                  Link relevant Korn Ferry client case studies to projects for proven outcome references
+                </CardDescription>
+                <ul className="space-y-3 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
+                    <span>Link published Korn Ferry case studies</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
+                    <span>Track by industry, title, and impact summary</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
+                    <span>Reference proven outcomes in value cases</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
+                    <span>Capability-based story organization</span>
+                  </li>
+                </ul>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
@@ -572,18 +695,36 @@ export default function Landing() {
                 <CardHeader className="pb-6">
                   <CardTitle className="text-2xl font-bold">Realization</CardTitle>
                   <CardDescription className="text-base leading-relaxed">
-                    Track progress and measure outcomes throughout delivery
+                    Track value delivery and continuous client engagement with measurable outcomes
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-4">
                     <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-accent/50 transition-colors">
                       <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
-                        <BarChart3 className="w-5 h-5 text-primary" />
+                        <Calendar className="w-5 h-5 text-primary" />
                       </div>
                       <div>
-                        <p className="font-semibold text-sm">KPI Tracking</p>
-                        <p className="text-xs text-muted-foreground">Real-time progress monitoring</p>
+                        <p className="font-semibold text-sm">Business Reviews</p>
+                        <p className="text-xs text-muted-foreground">Schedule reviews with sentiment tracking</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-accent/50 transition-colors">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Activity className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm">Progress Tracking</p>
+                        <p className="text-xs text-muted-foreground">Baseline → Actual → Target monitoring</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-accent/50 transition-colors">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Award className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm">Success Stories</p>
+                        <p className="text-xs text-muted-foreground">Link proven Korn Ferry outcomes</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-accent/50 transition-colors">
@@ -591,26 +732,8 @@ export default function Landing() {
                         <TrendingUp className="w-5 h-5 text-primary" />
                       </div>
                       <div>
-                        <p className="font-semibold text-sm">Value Measurement</p>
-                        <p className="text-xs text-muted-foreground">Quantified impact reporting</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-accent/50 transition-colors">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
-                        <CheckCircle2 className="w-5 h-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-sm">Outcome Validation</p>
-                        <p className="text-xs text-muted-foreground">Achievement verification</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-accent/50 transition-colors">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
-                        <FileText className="w-5 h-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-sm">Executive Reporting</p>
-                        <p className="text-xs text-muted-foreground">Board-ready deliverables</p>
+                        <p className="font-semibold text-sm">Historical Tracking</p>
+                        <p className="text-xs text-muted-foreground">KPI progress over time</p>
                       </div>
                     </div>
                   </div>
