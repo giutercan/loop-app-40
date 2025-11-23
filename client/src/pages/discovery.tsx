@@ -823,6 +823,7 @@ export default function Discovery() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "phase-transfer"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${selectedProjectId}/alignment/finalized-jobs`] });
       toast({
         title: "Discovery phase finalized",
         description: "Your selections have been locked and transferred to Alignment phase.",
