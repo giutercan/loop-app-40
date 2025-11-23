@@ -34,6 +34,34 @@ import {
   insertSuccessStorySchema
 } from "@shared/schema";
 
+// Helper function for robust HTML/script sanitization
+function sanitizeInput(input: string): string {
+  let sanitized = input;
+  
+  // Remove script tags and their entire content (handle nested brackets/quotes)
+  // Use a loop to handle multiple occurrences and nested cases
+  let prevLength;
+  do {
+    prevLength = sanitized.length;
+    sanitized = sanitized.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "");
+  } while (sanitized.length !== prevLength);
+  
+  // Remove style tags and their entire content
+  do {
+    prevLength = sanitized.length;
+    sanitized = sanitized.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "");
+  } while (sanitized.length !== prevLength);
+  
+  // Remove all remaining HTML tags
+  sanitized = sanitized.replace(/<[^>]*>/g, "");
+  
+  // Remove any remaining script-like patterns
+  sanitized = sanitized.replace(/javascript:/gi, "");
+  sanitized = sanitized.replace(/on\w+\s*=/gi, ""); // Remove event handlers like onclick=
+  
+  return sanitized.trim();
+}
+
 export function registerRoutes(app: Express) {
   // Projects
   app.get("/api/projects", async (req, res) => {
@@ -60,6 +88,40 @@ export function registerRoutes(app: Express) {
   app.post("/api/projects", async (req, res) => {
     try {
       const validated = insertProjectSchema.parse(req.body);
+      
+      // Sanitize companyName using robust helper
+      if (validated.companyName) {
+        validated.companyName = sanitizeInput(validated.companyName);
+      }
+      
+      // Sanitize name field
+      if (validated.name) {
+        validated.name = sanitizeInput(validated.name);
+      }
+      
+      // Sanitize and validate companyLogoUrl
+      if (validated.companyLogoUrl) {
+        try {
+          const logoUrl = new URL(validated.companyLogoUrl);
+          // Only allow HTTPS URLs from trusted domains
+          if (logoUrl.protocol !== "https:" || 
+              !["logo.clearbit.com", "clearbit.com"].some(domain => logoUrl.hostname.endsWith(domain))) {
+            validated.companyLogoUrl = null;
+          }
+        } catch {
+          // Invalid URL, set to null
+          validated.companyLogoUrl = null;
+        }
+      }
+      
+      // Sanitize sector using robust helper
+      if (validated.sector) {
+        validated.sector = sanitizeInput(validated.sector);
+        if (!validated.sector) {
+          validated.sector = null;
+        }
+      }
+      
       const project = await storage.createProject(validated);
       res.json(project);
     } catch (error: any) {
@@ -70,6 +132,53 @@ export function registerRoutes(app: Express) {
   app.patch("/api/projects/:id", async (req, res) => {
     try {
       const validated = insertProjectSchema.partial().parse(req.body);
+      
+      // Sanitize companyName using robust helper
+      if (validated.companyName !== undefined) {
+        if (validated.companyName) {
+          validated.companyName = sanitizeInput(validated.companyName);
+          // Reject empty company names after sanitization
+          if (!validated.companyName) {
+            return res.status(400).json({ error: "Company name cannot be empty after sanitization" });
+          }
+        }
+      }
+      
+      // Sanitize name field
+      if (validated.name !== undefined) {
+        if (validated.name) {
+          validated.name = sanitizeInput(validated.name);
+          if (!validated.name) {
+            return res.status(400).json({ error: "Project name cannot be empty after sanitization" });
+          }
+        }
+      }
+      
+      // Sanitize and validate companyLogoUrl
+      if (validated.companyLogoUrl !== undefined) {
+        if (validated.companyLogoUrl) {
+          try {
+            const logoUrl = new URL(validated.companyLogoUrl);
+            if (logoUrl.protocol !== "https:" || 
+                !["logo.clearbit.com", "clearbit.com"].some(domain => logoUrl.hostname.endsWith(domain))) {
+              validated.companyLogoUrl = null;
+            }
+          } catch {
+            validated.companyLogoUrl = null;
+          }
+        }
+      }
+      
+      // Sanitize sector using robust helper
+      if (validated.sector !== undefined) {
+        if (validated.sector) {
+          validated.sector = sanitizeInput(validated.sector);
+          if (!validated.sector) {
+            validated.sector = null;
+          }
+        }
+      }
+      
       const project = await storage.updateProject(parseInt(req.params.id), validated);
       if (!project) {
         return res.status(404).json({ error: "Project not found" });

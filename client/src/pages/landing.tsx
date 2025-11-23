@@ -25,8 +25,8 @@ export default function Landing() {
               <a href="#how-it-works" className="text-sm font-medium hover:text-primary transition-colors">How It Works</a>
               <a href="#capabilities" className="text-sm font-medium hover:text-primary transition-colors">Capabilities</a>
             </nav>
-            <Link href="/discovery">
-              <Button size="lg" className="shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all" data-testid="button-start-discovery">
+            <Link href="/projects">
+              <Button size="lg" className="shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all" data-testid="button-get-started">
                 Get Started
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
@@ -59,7 +59,7 @@ export default function Landing() {
               </div>
               
               <div className="flex flex-wrap gap-4 pt-2">
-                <Link href="/discovery">
+                <Link href="/projects">
                   <Button 
                     size="lg" 
                     className="px-10 py-7 text-lg font-semibold shadow-2xl shadow-primary/30 hover:shadow-primary/40 hover:scale-105 transition-all duration-300" 
