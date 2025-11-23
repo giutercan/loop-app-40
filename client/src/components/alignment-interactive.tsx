@@ -3,7 +3,9 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Target, TrendingDown, ChevronDown, Sparkles, Briefcase } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Target, TrendingDown, ChevronDown, Sparkles, Briefcase, Loader2 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -219,12 +221,54 @@ interface KPICardProps {
 }
 
 function KPICard({ kpi, updateKPIMutation }: KPICardProps) {
+  const { toast } = useToast();
+  const [baselineMode, setBaselineMode] = useState<"client" | "industry">("client");
+  const [isGeneratingBenchmark, setIsGeneratingBenchmark] = useState(false);
+  
   const baselineNum = parseFloat(kpi.baselineValue || "0");
   const targetNum = parseFloat(kpi.targetValue || "0");
   const hasValues = kpi.baselineValue && kpi.targetValue;
   const improvement = hasValues && baselineNum > 0 
     ? ((targetNum - baselineNum) / baselineNum * 100).toFixed(1)
     : null;
+
+  const generateAIBenchmark = async () => {
+    setIsGeneratingBenchmark(true);
+    try {
+      const response = await fetch(`/api/job-theme-kpis/${kpi.id}/generate-benchmark`, {
+        method: "POST",
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to generate benchmark");
+      }
+      
+      const data = await response.json();
+      
+      // Auto-fill the baseline with AI suggestion
+      updateKPIMutation.mutate({
+        kpiId: kpi.id,
+        data: {
+          baselineValue: data.benchmarkValue,
+          baselineSource: `AI-generated: ${data.source}`
+        }
+      });
+      
+      toast({
+        title: "AI Benchmark Generated",
+        description: data.rationale,
+        variant: "default",
+      });
+    } catch (error) {
+      toast({
+        title: "Generation Failed",
+        description: "Could not generate industry benchmark. Please enter manually.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingBenchmark(false);
+    }
+  };
 
   return (
     <div 
@@ -360,18 +404,63 @@ function KPICard({ kpi, updateKPIMutation }: KPICardProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Baseline */}
         <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
-              <TrendingDown className="w-4 h-4 text-orange-600" />
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center shrink-0">
+                <TrendingDown className="w-4 h-4 text-orange-600" />
+              </div>
+              <Label htmlFor={`baseline-${kpi.id}`} className="font-semibold">
+                Baseline (Current State)
+              </Label>
             </div>
-            <Label htmlFor={`baseline-${kpi.id}`} className="font-semibold">
-              Baseline (Current State)
-            </Label>
+            
+            {/* Toggle Switch */}
+            <div className="flex items-center gap-2 bg-muted/50 rounded-full px-3 py-1.5">
+              <span className={`text-xs ${baselineMode === "client" ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
+                Client Data
+              </span>
+              <Switch
+                checked={baselineMode === "industry"}
+                onCheckedChange={(checked) => setBaselineMode(checked ? "industry" : "client")}
+                data-testid={`switch-baseline-mode-${kpi.id}`}
+              />
+              <span className={`text-xs ${baselineMode === "industry" ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
+                Industry
+              </span>
+            </div>
           </div>
+          
+          {baselineMode === "industry" && (
+            <Button
+              onClick={generateAIBenchmark}
+              disabled={isGeneratingBenchmark}
+              variant="outline"
+              size="sm"
+              className="w-full border-primary/30 hover:bg-primary/10"
+              data-testid={`button-generate-benchmark-${kpi.id}`}
+            >
+              {isGeneratingBenchmark ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Generating AI Benchmark...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Generate AI Benchmark
+                </>
+              )}
+            </Button>
+          )}
+          
           <Input
             id={`baseline-${kpi.id}`}
             type="text"
-            placeholder={kpi.benchmarkValue ? `Benchmark: ${kpi.benchmarkValue}` : `Enter current ${kpi.unit}`}
+            placeholder={
+              baselineMode === "industry" 
+                ? "Click button above to generate AI benchmark"
+                : kpi.benchmarkValue ? `Benchmark: ${kpi.benchmarkValue}` : `Enter current ${kpi.unit}`
+            }
             value={kpi.baselineValue || ""}
             onChange={(e) => {
               updateKPIMutation.mutate({
@@ -381,10 +470,11 @@ function KPICard({ kpi, updateKPIMutation }: KPICardProps) {
             }}
             className="text-lg font-semibold"
             data-testid={`input-baseline-${kpi.id}`}
+            disabled={baselineMode === "industry" && !kpi.baselineValue}
           />
           <Input
             type="text"
-            placeholder="Data source (e.g., HRIS, Client report)"
+            placeholder={baselineMode === "industry" ? "AI-generated source" : "Data source (e.g., HRIS, Client report)"}
             value={kpi.baselineSource || ""}
             onChange={(e) => {
               updateKPIMutation.mutate({

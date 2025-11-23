@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "./storage";
-import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda } from "./ai";
+import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark } from "./ai";
 import { z } from "zod";
 
 // Track in-flight success story generations per project (prevents concurrent requests)
@@ -1933,7 +1933,7 @@ export function registerRoutes(app: Express) {
       }
       
       // Generate AI benchmark
-      const benchmark = await ai.generateIndustryBenchmark(
+      const benchmark = await generateIndustryBenchmark(
         kpiData.kpiName,
         kpiData.unit,
         project.sector || "General Business",
