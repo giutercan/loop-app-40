@@ -94,7 +94,7 @@ export default function ValueCaseBuilder({
   ];
 
   const capabilities = useMemo(() => {
-    if (!selectedSolution) return [];
+    if (!selectedSolution || !KORN_FERRY_SOLUTIONS[selectedSolution]) return [];
     return KORN_FERRY_SOLUTIONS[selectedSolution].capabilities.filter(
       cap => SUPPORTED_CAPABILITIES.includes(cap.name)
     );
