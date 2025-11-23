@@ -911,10 +911,10 @@ interface JobThemeWithKPIs {
   kpis: Array<{
     id: number;
     kpiName: string;
+    kpiType: "primary" | "supporting";
     unit: string;
     baselineValue: string | null;
     targetValue: string | null;
-    isPrimary: boolean;
   }>;
 }
 
@@ -930,7 +930,7 @@ Priority ${idx + 1}: ${job.jobName}
 - Capability: ${job.capabilityName}
 - Summary: ${job.aggregationSummary || 'No summary available'}
 - Evidence Count: ${job.evidenceCount} supporting insights
-- KPIs: ${(job.kpis || []).map(k => `${k.kpiName} (${k.baselineValue || 'TBD'} → ${k.targetValue || 'TBD'} ${k.unit})${k.isPrimary ? ' [PRIMARY]' : ''}`).join(', ') || 'No KPIs configured'}
+- KPIs: ${(job.kpis || []).map(k => `${k.kpiName} (${k.baselineValue || 'TBD'} → ${k.targetValue || 'TBD'} ${k.unit})${k.kpiType === "primary" ? ' [PRIMARY]' : ''}`).join(', ') || 'No KPIs configured'}
 `).join('\n');
 
   const prompt = `You are a Korn Ferry consultant creating value case recommendations for ${companyName} in the ${industry} industry.
@@ -1072,7 +1072,7 @@ export interface ValueNarrativeInput {
     unit: string;
     baselineValue: string;
     targetValue: string;
-    isPrimary: boolean;
+    kpiType: "primary" | "supporting";
   }>;
   financialResults?: {
     totalNPV: number;
@@ -1117,7 +1117,7 @@ export async function generateValueNarrative(
   const kpiSummary = linkedKPIs
     .map(
       (kpi) =>
-        `- ${kpi.kpiName}: ${kpi.baselineValue} → ${kpi.targetValue} ${kpi.unit}${kpi.isPrimary ? ' [PRIMARY]' : ''}`
+        `- ${kpi.kpiName}: ${kpi.baselineValue} → ${kpi.targetValue} ${kpi.unit}${kpi.kpiType === "primary" ? ' [PRIMARY]' : ''}`
     )
     .join('\n');
 

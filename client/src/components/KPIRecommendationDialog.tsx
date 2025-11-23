@@ -65,8 +65,19 @@ export default function KPIRecommendationDialog({ jobThemeId, jobName, open, onO
   });
 
   const handleSelectKPI = async (kpiId: number) => {
+    // Optimistically update UI
     setSelectedKPIs(prev => new Set(prev).add(kpiId));
-    await selectMutation.mutateAsync(kpiId);
+    
+    try {
+      await selectMutation.mutateAsync(kpiId);
+    } catch (error) {
+      // Revert optimistic update on failure
+      setSelectedKPIs(prev => {
+        const updated = new Set(prev);
+        updated.delete(kpiId);
+        return updated;
+      });
+    }
   };
 
   const handleGenerateRecommendations = async () => {

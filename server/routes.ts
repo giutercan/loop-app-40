@@ -2802,7 +2802,7 @@ export function registerRoutes(app: Express) {
                 unit: kpi.unit,
                 baselineValue: kpi.baselineValue || "TBD",
                 targetValue: kpi.targetValue || "TBD",
-                isPrimary: kpi.kpiType === "primary"
+                kpiType: kpi.kpiType
               };
             }
           }
