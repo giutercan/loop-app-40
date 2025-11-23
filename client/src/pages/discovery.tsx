@@ -20,6 +20,7 @@ import OrganisationCard from "@/components/OrganisationCard";
 import ValueHypothesisBuilder from "@/components/ValueHypothesisBuilder";
 import ProjectSelector from "@/components/ProjectSelector";
 import StatusBadge from "@/components/StatusBadge";
+import { AlignmentInteractive } from "@/components/alignment-interactive";
 import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, Activity, Award, Building, Calendar } from "lucide-react";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { Link, useLocation } from "wouter";
@@ -2393,156 +2394,8 @@ export default function Discovery() {
           </TabsContent>
 
           <TabsContent value="alignment" className="space-y-6">
-            {/* Finalized Discovery Jobs */}
             {finalizedData && finalizedData.finalized && finalizedData.jobs.length > 0 ? (
-              <div className="space-y-4">
-                <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-background">
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground font-bold text-lg shrink-0">
-                        <Briefcase className="w-5 h-5" />
-                      </div>
-                      <div className="flex-1">
-                        <CardTitle className="text-xl">Finalized Discovery Priorities</CardTitle>
-                        <CardDescription>
-                          Top {finalizedData.jobs.length} jobs from Discovery phase with baseline and target values
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                </Card>
-
-                {finalizedData.jobs.map((job, idx) => (
-                  <Card key={job.id} className="border-l-4 border-l-primary">
-                    <CardHeader>
-                      <div className="flex items-start gap-3">
-                        <Badge variant="default" className="text-lg px-3 py-1 shrink-0" data-testid={`badge-job-rank-${idx + 1}`}>
-                          #{idx + 1}
-                        </Badge>
-                        <div className="flex-1">
-                          <CardTitle className="text-lg" data-testid={`text-job-name-${job.id}`}>{job.jobName}</CardTitle>
-                          <CardDescription className="mt-1">
-                            {job.capabilityName} {job.solutionArea && `• ${job.solutionArea}`}
-                          </CardDescription>
-                          {job.aggregationSummary && (
-                            <p className="text-sm text-muted-foreground mt-2">{job.aggregationSummary}</p>
-                          )}
-                        </div>
-                        <Badge variant="secondary" className="shrink-0">
-                          {job.evidenceCount} insight{job.evidenceCount !== 1 ? 's' : ''}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-
-                    <CardContent className="space-y-4">
-                      {job.kpis.filter(kpi => kpi.isSelected).length > 0 ? (
-                        job.kpis.filter(kpi => kpi.isSelected).map(kpi => (
-                          <div key={kpi.id} className="border rounded-md p-4 space-y-4 bg-card" data-testid={`kpi-card-${kpi.id}`}>
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <h4 className="font-semibold" data-testid={`text-kpi-name-${kpi.id}`}>{kpi.kpiName}</h4>
-                                  <Badge variant={kpi.kpiType === "primary" ? "default" : "secondary"} className="text-xs">
-                                    {kpi.kpiType}
-                                  </Badge>
-                                </div>
-                                {kpi.definition && (
-                                  <p className="text-sm text-muted-foreground mt-1">{kpi.definition}</p>
-                                )}
-                                <p className="text-xs text-muted-foreground mt-1">Unit: {kpi.unit}</p>
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                              {/* Baseline Value */}
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <TrendingDown className="w-4 h-4 text-orange-600" />
-                                  <Label htmlFor={`baseline-${kpi.id}`} className="font-semibold">Baseline (Current)</Label>
-                                </div>
-                                <Input
-                                  id={`baseline-${kpi.id}`}
-                                  type="text"
-                                  placeholder={kpi.benchmarkValue ? `Benchmark: ${kpi.benchmarkValue}` : "Enter baseline"}
-                                  value={kpi.baselineValue || ""}
-                                  onChange={(e) => {
-                                    updateKPIMutation.mutate({
-                                      kpiId: kpi.id,
-                                      data: { baselineValue: e.target.value }
-                                    });
-                                  }}
-                                  data-testid={`input-baseline-${kpi.id}`}
-                                />
-                                <Input
-                                  type="text"
-                                  placeholder="Source (e.g., HRIS, Client data)"
-                                  value={kpi.baselineSource || ""}
-                                  onChange={(e) => {
-                                    updateKPIMutation.mutate({
-                                      kpiId: kpi.id,
-                                      data: { baselineSource: e.target.value }
-                                    });
-                                  }}
-                                  className="text-sm"
-                                  data-testid={`input-baseline-source-${kpi.id}`}
-                                />
-                              </div>
-
-                              {/* Target Value */}
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <Target className="w-4 h-4 text-emerald-600" />
-                                  <Label htmlFor={`target-${kpi.id}`} className="font-semibold">Target (Outcome)</Label>
-                                </div>
-                                <Input
-                                  id={`target-${kpi.id}`}
-                                  type="text"
-                                  placeholder="Enter target value"
-                                  value={kpi.targetValue || ""}
-                                  onChange={(e) => {
-                                    updateKPIMutation.mutate({
-                                      kpiId: kpi.id,
-                                      data: { targetValue: e.target.value }
-                                    });
-                                  }}
-                                  data-testid={`input-target-${kpi.id}`}
-                                />
-                                <Input
-                                  type="text"
-                                  placeholder="Source (e.g., Industry best practice)"
-                                  value={kpi.targetSource || ""}
-                                  onChange={(e) => {
-                                    updateKPIMutation.mutate({
-                                      kpiId: kpi.id,
-                                      data: { targetSource: e.target.value }
-                                    });
-                                  }}
-                                  className="text-sm"
-                                  data-testid={`input-target-source-${kpi.id}`}
-                                />
-                              </div>
-                            </div>
-
-                            {/* Benchmark Reference (if available) */}
-                            {kpi.benchmarkValue && (
-                              <div className="bg-muted/50 rounded-md p-3 text-sm">
-                                <p className="font-medium">Korn Ferry Benchmark</p>
-                                <p className="text-muted-foreground">
-                                  {kpi.benchmarkValue} {kpi.benchmarkSource && `(${kpi.benchmarkSource})`}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-sm text-muted-foreground text-center py-4">
-                          No KPIs selected for this job in Discovery phase
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              <AlignmentInteractive projectId={selectedProjectId} jobs={finalizedData.jobs} />
             ) : (
               <Card className="max-w-2xl mx-auto">
                 <CardHeader>
