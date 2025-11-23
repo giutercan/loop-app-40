@@ -600,8 +600,10 @@ Ensure all recommendations are:
     let parsedContent;
     try {
       parsedContent = JSON.parse(content);
+      console.log("AI Success Stories Response (parsed):", JSON.stringify(parsedContent, null, 2));
     } catch (parseError) {
       console.error("Failed to parse AI response as JSON:", parseError);
+      console.error("Raw AI response:", content);
       throw new Error("AI returned invalid JSON response");
     }
     
@@ -609,6 +611,7 @@ Ensure all recommendations are:
     const validationResult = aiSuccessStoriesResponseSchema.safeParse(parsedContent);
     if (!validationResult.success) {
       console.error("AI response validation failed:", validationResult.error);
+      console.error("Parsed content that failed validation:", JSON.stringify(parsedContent, null, 2));
       throw new Error(`AI response validation failed: ${validationResult.error.message}`);
     }
     
