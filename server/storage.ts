@@ -6,7 +6,7 @@ import type {
   CompanyDataPoint, InsertCompanyDataPoint,
   Headline, InsertHeadline,
   DiscoveryNotes, InsertDiscoveryNotes,
-  ValueHypothesis, InsertValueHypothesis,
+  ValueCase, InsertValueCase,
   StrategicChallenge, InsertStrategicChallenge,
   Baseline, InsertBaseline,
   Kpi, InsertKpi,
@@ -50,11 +50,11 @@ export interface IStorage {
   getDiscoveryNotes(projectId: number): Promise<DiscoveryNotes | undefined>;
   upsertDiscoveryNotes(notes: InsertDiscoveryNotes): Promise<DiscoveryNotes>;
   
-  // Value Hypotheses
-  getValueHypotheses(projectId: number): Promise<ValueHypothesis[]>;
-  getValueHypothesis(id: number): Promise<ValueHypothesis | undefined>;
-  createValueHypothesis(hypothesis: InsertValueHypothesis): Promise<ValueHypothesis>;
-  updateValueHypothesis(id: number, hypothesis: Partial<InsertValueHypothesis>): Promise<ValueHypothesis | undefined>;
+  // Value Cases
+  getValueCases(projectId: number): Promise<ValueCase[]>;
+  getValueCase(id: number): Promise<ValueCase | undefined>;
+  createValueCase(valueCase: InsertValueCase): Promise<ValueCase>;
+  updateValueCase(id: number, valueCase: Partial<InsertValueCase>): Promise<ValueCase | undefined>;
   
   // Strategic Challenges
   getStrategicChallenges(projectId: number): Promise<StrategicChallenge[]>;
@@ -94,7 +94,7 @@ export interface IStorage {
   
   // Delete operations for core entities
   deleteProject(id: number): Promise<void>;
-  deleteValueHypothesis(id: number): Promise<void>;
+  deleteValueCase(id: number): Promise<void>;
   deleteKpi(id: number): Promise<void>;
   deleteBaseline(id: number): Promise<void>;
   deleteKpiReading(id: number): Promise<void>;
@@ -263,28 +263,28 @@ export class DbStorage implements IStorage {
     }
   }
 
-  // Value Hypotheses
-  async getValueHypotheses(projectId: number): Promise<ValueHypothesis[]> {
-    return await db.select().from(schema.valueHypotheses)
-      .where(eq(schema.valueHypotheses.projectId, projectId))
-      .orderBy(desc(schema.valueHypotheses.createdAt));
+  // Value Cases
+  async getValueCases(projectId: number): Promise<ValueCase[]> {
+    return await db.select().from(schema.valueCases)
+      .where(eq(schema.valueCases.projectId, projectId))
+      .orderBy(desc(schema.valueCases.createdAt));
   }
 
-  async getValueHypothesis(id: number): Promise<ValueHypothesis | undefined> {
-    const results = await db.select().from(schema.valueHypotheses)
-      .where(eq(schema.valueHypotheses.id, id));
+  async getValueCase(id: number): Promise<ValueCase | undefined> {
+    const results = await db.select().from(schema.valueCases)
+      .where(eq(schema.valueCases.id, id));
     return results[0];
   }
 
-  async createValueHypothesis(hypothesis: InsertValueHypothesis): Promise<ValueHypothesis> {
-    const results = await db.insert(schema.valueHypotheses).values(hypothesis).returning();
+  async createValueCase(valueCase: InsertValueCase): Promise<ValueCase> {
+    const results = await db.insert(schema.valueCases).values(valueCase).returning();
     return results[0];
   }
 
-  async updateValueHypothesis(id: number, hypothesis: Partial<InsertValueHypothesis>): Promise<ValueHypothesis | undefined> {
-    const results = await db.update(schema.valueHypotheses)
-      .set(hypothesis)
-      .where(eq(schema.valueHypotheses.id, id))
+  async updateValueCase(id: number, valueCase: Partial<InsertValueCase>): Promise<ValueCase | undefined> {
+    const results = await db.update(schema.valueCases)
+      .set(valueCase)
+      .where(eq(schema.valueCases.id, id))
       .returning();
     return results[0];
   }
@@ -436,8 +436,8 @@ export class DbStorage implements IStorage {
     await db.delete(schema.projects).where(eq(schema.projects.id, id));
   }
 
-  async deleteValueHypothesis(id: number): Promise<void> {
-    await db.delete(schema.valueHypotheses).where(eq(schema.valueHypotheses.id, id));
+  async deleteValueCase(id: number): Promise<void> {
+    await db.delete(schema.valueCases).where(eq(schema.valueCases.id, id));
   }
 
   async deleteKpi(id: number): Promise<void> {

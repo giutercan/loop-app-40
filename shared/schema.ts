@@ -92,8 +92,8 @@ export const insertDiscoveryNotesSchema = createInsertSchema(discoveryNotes).omi
 export type InsertDiscoveryNotes = z.infer<typeof insertDiscoveryNotesSchema>;
 export type DiscoveryNotes = typeof discoveryNotes.$inferSelect;
 
-// Value Hypotheses with detailed calculation support
-export const valueHypotheses = pgTable("value_hypotheses", {
+// Value Cases with detailed calculation support
+export const valueCases = pgTable("value_hypotheses", {
   id: serial("id").primaryKey(),
   projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
   
@@ -110,7 +110,7 @@ export const valueHypotheses = pgTable("value_hypotheses", {
   
   // Supporting evidence
   linkedInsights: text("linked_insights").array(), // Array of data point IDs
-  rationale: text("rationale"), // Why this hypothesis is valuable
+  rationale: text("rationale"), // Why this case is valuable
   
   // Legacy fields (kept for compatibility)
   job: text("job"),
@@ -127,13 +127,13 @@ export const valueHypotheses = pgTable("value_hypotheses", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const insertValueHypothesisSchema = createInsertSchema(valueHypotheses).omit({
+export const insertValueCaseSchema = createInsertSchema(valueCases).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
 });
-export type InsertValueHypothesis = z.infer<typeof insertValueHypothesisSchema>;
-export type ValueHypothesis = typeof valueHypotheses.$inferSelect;
+export type InsertValueCase = z.infer<typeof insertValueCaseSchema>;
+export type ValueCase = typeof valueCases.$inferSelect;
 
 // Strategic Challenges
 export const strategicChallenges = pgTable("strategic_challenges", {
