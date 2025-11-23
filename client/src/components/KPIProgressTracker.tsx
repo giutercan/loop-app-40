@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useQueries, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,54 +25,93 @@ export default function KPIProgressTracker({ projectId }: KPIProgressTrackerProp
   const [showRecordDialog, setShowRecordDialog] = useState(false);
 
   // Fetch finalized jobs
-  const { data: finalizedJobs = [] } = useQuery<JobTheme[]>({
+  const { data: finalizedJobsData, isLoading: jobsLoading } = useQuery<JobTheme[]>({
     queryKey: [`/api/projects/${projectId}/alignment/finalized-jobs`],
     enabled: !!projectId,
   });
 
-  // Fetch all KPIs for finalized jobs
-  const finalizedJobIds = finalizedJobs.map(job => job.id);
-  
-  const kpiQueries = finalizedJobIds.map(jobId =>
-    useQuery<JobThemeKPI[]>({
-      queryKey: [`/api/job-themes/${jobId}/kpis`],
-      enabled: !!jobId,
-    })
-  );
+  // Defensive check: Ensure finalizedJobs is always an array
+  const finalizedJobs = Array.isArray(finalizedJobsData) ? finalizedJobsData : [];
 
-  // Collect all KPIs with their job context
-  const allKPIs: KPIWithActuals[] = [];
-  kpiQueries.forEach((query, index) => {
-    if (query.data) {
-      const job = finalizedJobs[index];
-      query.data
-        .filter(kpi => kpi.isSelected && kpi.baselineValue && kpi.targetValue)
-        .forEach(kpi => {
-          allKPIs.push({
-            ...kpi,
-            actuals: [],
-            jobName: job.jobName,
-            capabilityName: job.capabilityName,
-          });
-        });
-    }
+  // Fetch all KPIs for finalized jobs using useQueries to avoid hook count issues
+  const kpiQueries = useQueries({
+    queries: finalizedJobs.map(job => ({
+      queryKey: [`/api/job-themes/${job.id}/kpis`],
+      enabled: !!job.id,
+    })),
   });
 
-  // Fetch actuals for each KPI
-  const actualsQueries = allKPIs.map(kpi =>
-    useQuery<KPIActual[]>({
+  // Check if KPI queries are still loading or have errors
+  const isLoadingKPIs = kpiQueries.some(q => q.isLoading);
+  const allKPIQueriesSettled = kpiQueries.every(q => !q.isLoading);
+
+  // Collect all KPIs with their job context - ONLY when all queries are settled
+  const allKPIs: KPIWithActuals[] = [];
+  if (allKPIQueriesSettled) {
+    kpiQueries.forEach((query, index) => {
+      if (query.data) {
+        const job = finalizedJobs[index];
+        const kpiList = query.data as JobThemeKPI[];
+        
+        // Log KPI data for debugging
+        console.log('[KPIProgressTracker] Job:', job.jobName, 'Total KPIs:', kpiList.length);
+        kpiList.forEach(kpi => {
+          console.log(`  KPI ${kpi.id}:`, {
+            name: kpi.kpiName,
+            isSelected: kpi.isSelected,
+            hasBaseline: !!kpi.baselineValue,
+            hasTarget: !!kpi.targetValue,
+            baseline: kpi.baselineValue,
+            target: kpi.targetValue,
+          });
+        });
+        
+        kpiList
+          .filter(kpi => kpi.isSelected && kpi.baselineValue && kpi.targetValue)
+          .forEach(kpi => {
+            allKPIs.push({
+              ...kpi,
+              actuals: [],
+              jobName: job.jobName,
+              capabilityName: job.capabilityName,
+            });
+          });
+      }
+    });
+  }
+  
+  console.log('[KPIProgressTracker] Total filtered KPIs:', allKPIs.length);
+
+  // Fetch actuals for each KPI using useQueries - ONLY when allKPIs is populated
+  const actualsQueries = useQueries({
+    queries: allKPIs.map(kpi => ({
       queryKey: [`/api/job-theme-kpis/${kpi.id}/actuals`],
-      enabled: !!kpi.id,
-    })
-  );
+      enabled: !!kpi.id && allKPIQueriesSettled,
+    })),
+  });
 
-  // Merge actuals into KPIs
-  const kpisWithActuals: KPIWithActuals[] = allKPIs.map((kpi, index) => ({
-    ...kpi,
-    actuals: actualsQueries[index].data || [],
-  }));
+  // Check if actuals queries are still loading
+  const isLoadingActuals = actualsQueries.some(q => q.isLoading);
+  const allActualsQueriesSettled = allKPIs.length === 0 || actualsQueries.every(q => !q.isLoading);
+  
+  // Critical: Verify query array lengths match to prevent stale data access
+  const queriesLengthMatch = actualsQueries.length === allKPIs.length;
+  
+  // Overall loading state - show loading until ALL data is ready AND lengths match
+  const isLoading = jobsLoading || isLoadingKPIs || (allKPIs.length > 0 && isLoadingActuals) || !queriesLengthMatch;
+  
+  // Merge actuals into KPIs - only when lengths match to prevent undefined access
+  const kpisWithActuals: KPIWithActuals[] = queriesLengthMatch
+    ? allKPIs.map((kpi, index) => {
+        const queryResult = actualsQueries[index];
+        return {
+          ...kpi,
+          actuals: (queryResult?.data as KPIActual[]) || [],
+        };
+      })
+    : [];
 
-  // Calculate KPI status based on progress
+  // Calculate KPI status using direction-aware progress algorithm
   const getKPIStatus = (kpi: KPIWithActuals): 'on-track' | 'at-risk' | 'off-track' | 'no-data' => {
     if (kpi.actuals.length === 0) return 'no-data';
 
@@ -83,15 +122,48 @@ export default function KPIProgressTracker({ projectId }: KPIProgressTrackerProp
 
     if (isNaN(baseline) || isNaN(target) || isNaN(current)) return 'no-data';
 
-    const totalChange = target - baseline;
-    const currentChange = current - baseline;
-    const progressPercent = (currentChange / totalChange) * 100;
-
-    // On track: making 80%+ of expected progress
-    if (progressPercent >= 80) return 'on-track';
-    // At risk: 50-80% of expected progress
-    if (progressPercent >= 50) return 'at-risk';
-    // Off track: <50% of expected progress
+    const totalDistance = Math.abs(target - baseline);
+    
+    // Handle zero-delta case (target equals baseline)
+    if (totalDistance === 0) {
+      return current === target ? 'on-track' : 'off-track';
+    }
+    
+    // Determine if this is an increasing or decreasing KPI
+    const isIncreasingKPI = target > baseline;
+    
+    // Check if current is outside baseline/target bounds (automatic off-track)
+    const minBound = Math.min(baseline, target);
+    const maxBound = Math.max(baseline, target);
+    if (current < minBound || current > maxBound) {
+      return 'off-track';
+    }
+    
+    // Calculate normalized progress ratio (0 to 1)
+    // For increasing KPIs: progress = (current - baseline) / (target - baseline)
+    // For decreasing KPIs: progress = (baseline - current) / (baseline - target)
+    let completedDistance: number;
+    if (isIncreasingKPI) {
+      completedDistance = current - baseline;
+    } else {
+      completedDistance = baseline - current;
+    }
+    
+    const progressRatio = Math.max(0, Math.min(1, completedDistance / totalDistance));
+    const remainingSlack = 1 - progressRatio;
+    
+    // Two-axis decision system with configurable thresholds
+    // On-track: progress ≥ 0.85 OR slack ≤ 0.15
+    if (progressRatio >= 0.85 || remainingSlack <= 0.15) {
+      return 'on-track';
+    }
+    
+    // At-risk: progress ∈ [0.60, 0.85) OR slack ∈ (0.15, 0.40]
+    if ((progressRatio >= 0.60 && progressRatio < 0.85) || (remainingSlack > 0.15 && remainingSlack <= 0.40)) {
+      return 'at-risk';
+    }
+    
+    // Off-track: progress < 0.60 OR slack > 0.40
     return 'off-track';
   };
 
@@ -162,6 +234,25 @@ export default function KPIProgressTracker({ projectId }: KPIProgressTrackerProp
       borderColor: 'border-gray-200 dark:border-gray-800',
     },
   };
+
+  // Show loading skeleton while data is being fetched
+  if (isLoading) {
+    return (
+      <Card data-testid="card-loading">
+        <CardHeader>
+          <CardTitle>KPI Progress Tracking</CardTitle>
+          <CardDescription>Loading KPI data...</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-32 bg-muted/30 animate-pulse rounded-md" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (kpisWithActuals.length === 0) {
     return (

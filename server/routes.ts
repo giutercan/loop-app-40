@@ -1944,6 +1944,9 @@ export function registerRoutes(app: Express) {
         const insights = await storage.getCompanyDataPoints(projectId);
         const questions = await storage.getDiscoveryQuestions(projectId);
         
+        console.log(`[Job Theme Generation] Project ${projectId}: Found ${insights.length} insights, ${questions.length} questions`);
+        console.log(`[Job Theme Generation] Insights with capability:`, insights.filter(i => i.relevantCapability).map(i => ({ id: i.id, capability: i.relevantCapability, label: i.label })));
+        
         const capabilityGroups = new Map<string, { insights: any[], questions: any[] }>();
         
         // Group insights by capability
@@ -1967,10 +1970,14 @@ export function registerRoutes(app: Express) {
         });
         
         // Create job themes from capability groups
+        console.log(`[Job Theme Generation] Found ${capabilityGroups.size} capability groups:`, Array.from(capabilityGroups.keys()));
+        
         for (const [capabilityName, data] of Array.from(capabilityGroups.entries())) {
           const { getCapabilityMetadata, getSolutionAreaForCapability } = await import("@shared/knowledge");
           const capability = getCapabilityMetadata(capabilityName);
           const solutionArea = getSolutionAreaForCapability(capabilityName);
+          
+          console.log(`[Job Theme Generation] Processing capability "${capabilityName}": found=${!!capability}, insights=${data.insights.length}, questions=${data.questions.length}`);
           
           if (capability) {
             // Calculate composite score (average of insight priority scores)
@@ -2006,11 +2013,15 @@ export function registerRoutes(app: Express) {
                 benchmarkSource: benchmark?.source || null
               });
             }
+            console.log(`[Job Theme Generation] Created job theme: ${theme.jobName} with ${kpis.length} KPIs`);
+          } else {
+            console.log(`[Job Theme Generation] WARNING: Could not find capability metadata for "${capabilityName}"`);
           }
         }
         
         // Fetch the newly created themes
         jobThemes = await storage.getJobThemes(projectId);
+        console.log(`[Job Theme Generation] Final result: ${jobThemes.length} job themes created`);
       }
       
       // Enrich with KPIs

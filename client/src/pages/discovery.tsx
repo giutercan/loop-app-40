@@ -26,33 +26,16 @@ import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { Link, useLocation, useRoute } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Project, CompanyDataPoint, Headline, DiscoveryNotes, DiscoveryQuestion, Attachment, SharedQuestionnaire, QuestionResponse, JobThemeWithKPIs, DiscoveryPhaseTransfer, SuccessStory } from "@shared/schema";
+import type { Project, CompanyDataPoint, Headline, DiscoveryNotes, DiscoveryQuestion, Attachment, SharedQuestionnaire, QuestionResponse, JobThemeWithKPIs, DiscoveryPhaseTransfer, SuccessStory, JobThemeKPI, UpdateJobThemeKPIRequest } from "@shared/schema";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
 
-// Job Theme Card Component - Displays prioritized job with KPIs and baseline input
-interface KPI {
-  id: number;
-  jobThemeId: number;
-  kpiName: string;
-  kpiType: "primary" | "supporting";
-  unit: string;
-  isSelected: boolean;
-  baselineValue: string | null;
-  baselineSource: string | null;
-  benchmarkValue: string | null;
-  benchmarkSource: string | null;
-  definition: string | null;
-  measurementFrequency: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
+// Job Theme Card Component - Displays prioritized job with KPIs and baseline/target input
 interface JobThemeCardProps {
   theme: JobThemeWithKPIs;
   rank: number;
   updateKPIMutation: {
-    mutate: (params: { kpiId: number; data: { isSelected?: boolean; baselineValue?: string; baselineSource?: string } }) => void;
+    mutate: (params: { kpiId: number; data: UpdateJobThemeKPIRequest }) => void;
     isPending: boolean;
   };
   isFinalized: boolean;
@@ -61,17 +44,29 @@ interface JobThemeCardProps {
 
 function JobThemeCard({ theme, rank, updateKPIMutation, isFinalized, onDeselect }: JobThemeCardProps) {
   const [baselineInputs, setBaselineInputs] = useState<Record<number, { value: string; source: string }>>({});
+  const [targetInputs, setTargetInputs] = useState<Record<number, { value: string; source: string }>>({});
   
-  const handleKPIToggle = (kpi: KPI) => {
+  const handleKPIToggle = (kpi: JobThemeKPI) => {
     updateKPIMutation.mutate({
       kpiId: kpi.id,
       data: { isSelected: !kpi.isSelected }
     });
   };
   
-  const handleBaselineUpdate = (kpi: KPI) => {
+  const handleBaselineUpdate = (kpi: JobThemeKPI) => {
     const input = baselineInputs[kpi.id];
     if (input) {
+      // Validate that the value is numeric
+      const numericValue = parseFloat(input.value);
+      if (isNaN(numericValue)) {
+        toast({
+          title: "Invalid Input",
+          description: "Baseline value must be a valid number",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       updateKPIMutation.mutate({
         kpiId: kpi.id,
         data: {
@@ -81,6 +76,36 @@ function JobThemeCard({ theme, rank, updateKPIMutation, isFinalized, onDeselect 
       });
       // Clear input
       setBaselineInputs(prev => {
+        const newInputs = { ...prev };
+        delete newInputs[kpi.id];
+        return newInputs;
+      });
+    }
+  };
+  
+  const handleTargetUpdate = (kpi: JobThemeKPI) => {
+    const input = targetInputs[kpi.id];
+    if (input) {
+      // Validate that the value is numeric
+      const numericValue = parseFloat(input.value);
+      if (isNaN(numericValue)) {
+        toast({
+          title: "Invalid Input",
+          description: "Target value must be a valid number",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      updateKPIMutation.mutate({
+        kpiId: kpi.id,
+        data: {
+          targetValue: input.value,
+          targetSource: input.source || "User input"
+        }
+      });
+      // Clear input
+      setTargetInputs(prev => {
         const newInputs = { ...prev };
         delete newInputs[kpi.id];
         return newInputs;
@@ -119,7 +144,7 @@ function JobThemeCard({ theme, rank, updateKPIMutation, isFinalized, onDeselect 
       {theme.kpis && theme.kpis.length > 0 && (
         <div className="space-y-3 mt-4 pt-4 border-t">
           <div className="font-medium text-sm">Key Performance Indicators</div>
-          {theme.kpis.map((kpi: KPI) => (
+          {theme.kpis.map((kpi: JobThemeKPI) => (
             <div key={kpi.id} className="border rounded-md p-3 space-y-3 bg-muted/30">
               <div className="flex items-start gap-3">
                 <Checkbox
@@ -157,7 +182,7 @@ function JobThemeCard({ theme, rank, updateKPIMutation, isFinalized, onDeselect 
                             onClick={() => {
                               setBaselineInputs({
                                 ...baselineInputs,
-                                [kpi.id]: { value: kpi.baselineValue, source: kpi.baselineSource }
+                                [kpi.id]: { value: kpi.baselineValue || '', source: kpi.baselineSource || '' }
                               });
                             }}
                             data-testid={`button-edit-baseline-${kpi.id}`}
@@ -178,7 +203,7 @@ function JobThemeCard({ theme, rank, updateKPIMutation, isFinalized, onDeselect 
                             onClick={() => {
                               setBaselineInputs({
                                 ...baselineInputs,
-                                [kpi.id]: { value: kpi.benchmarkValue, source: kpi.benchmarkSource }
+                                [kpi.id]: { value: kpi.benchmarkValue || '', source: kpi.benchmarkSource || '' }
                               });
                             }}
                           >
@@ -199,11 +224,84 @@ function JobThemeCard({ theme, rank, updateKPIMutation, isFinalized, onDeselect 
                             })}
                             data-testid={`input-baseline-${kpi.id}`}
                           />
+                          <Input
+                            placeholder="Source..."
+                            value={baselineInputs[kpi.id]?.source || ''}
+                            onChange={(e) => setBaselineInputs({
+                              ...baselineInputs,
+                              [kpi.id]: { ...baselineInputs[kpi.id], source: e.target.value }
+                            })}
+                            data-testid={`input-baseline-source-${kpi.id}`}
+                            className="w-48"
+                          />
                           <Button
                             size="sm"
                             onClick={() => handleBaselineUpdate(kpi)}
                             disabled={!baselineInputs[kpi.id]?.value}
                             data-testid={`button-save-baseline-${kpi.id}`}
+                          >
+                            Save
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Target Data Input - Only show if KPI is selected and baseline is set */}
+                  {kpi.isSelected && kpi.baselineValue && (
+                    <div className="space-y-2 mt-3 p-3 bg-background rounded border">
+                      <div className="text-xs font-medium">Target Value</div>
+                      
+                      {/* Show existing target */}
+                      {kpi.targetValue ? (
+                        <div className="flex items-center justify-between gap-2 p-2 bg-purple-50 dark:bg-purple-950/20 rounded border border-purple-200 dark:border-purple-900">
+                          <div>
+                            <div className="text-sm font-medium text-purple-900 dark:text-purple-100">{kpi.targetValue}</div>
+                            <div className="text-xs text-purple-700 dark:text-purple-300">Source: {kpi.targetSource}</div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setTargetInputs({
+                                ...targetInputs,
+                                [kpi.id]: { value: kpi.targetValue || '', source: kpi.targetSource || '' }
+                              });
+                            }}
+                            data-testid={`button-edit-target-${kpi.id}`}
+                          >
+                            Edit
+                          </Button>
+                        </div>
+                      ) : null}
+                      
+                      {/* Input form - disabled when finalized */}
+                      {!isFinalized && (
+                        <div className="flex gap-2 mt-2">
+                          <Input
+                            placeholder={`Enter target ${kpi.kpiName.toLowerCase()}...`}
+                            value={targetInputs[kpi.id]?.value || ''}
+                            onChange={(e) => setTargetInputs({
+                              ...targetInputs,
+                              [kpi.id]: { ...targetInputs[kpi.id], value: e.target.value }
+                            })}
+                            data-testid={`input-target-${kpi.id}`}
+                          />
+                          <Input
+                            placeholder="Source..."
+                            value={targetInputs[kpi.id]?.source || ''}
+                            onChange={(e) => setTargetInputs({
+                              ...targetInputs,
+                              [kpi.id]: { ...targetInputs[kpi.id], source: e.target.value }
+                            })}
+                            data-testid={`input-target-source-${kpi.id}`}
+                            className="w-48"
+                          />
+                          <Button
+                            size="sm"
+                            onClick={() => handleTargetUpdate(kpi)}
+                            disabled={!targetInputs[kpi.id]?.value}
+                            data-testid={`button-save-target-${kpi.id}`}
                           >
                             Save
                           </Button>
