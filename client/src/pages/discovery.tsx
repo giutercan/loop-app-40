@@ -1013,12 +1013,14 @@ export default function Discovery() {
                 <Send className="w-4 h-4 mr-2" />
                 Send to Client
               </Button>
-              <Link href={`/projects/${selectedProjectId}/realisation`}>
-                <Button variant="default" data-testid="button-realization">
-                  <Activity className="w-4 h-4 mr-2" />
-                  Realization
-                </Button>
-              </Link>
+              {selectedProjectId && (
+                <Link href={`/projects/${selectedProjectId}/realisation`}>
+                  <Button variant="default" data-testid="button-realization">
+                    <Activity className="w-4 h-4 mr-2" />
+                    Realization
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
         </div>
