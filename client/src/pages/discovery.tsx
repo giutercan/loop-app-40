@@ -221,6 +221,179 @@ function JobThemeCard({ theme, rank, updateKPIMutation, isFinalized, onDeselect 
   );
 }
 
+// ============================================================================
+// Success Stories Tab Component
+// ============================================================================
+
+function SuccessStoriesSection({ projectId }: { projectId: number | undefined }) {
+  const { toast } = useToast();
+  
+  const { data: stories = [] } = useQuery<SuccessStory[]>({
+    queryKey: [`/api/projects/${projectId}/success-stories`],
+    enabled: !!projectId,
+  });
+
+  const generateMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", `/api/projects/${projectId}/success-stories/generate`, {});
+    },
+    onSuccess: async (data: any) => {
+      await queryClient.invalidateQueries({ 
+        queryKey: [`/api/projects/${projectId}/success-stories`],
+        refetchType: 'active'
+      });
+      toast({ 
+        title: `${data.count} success stories generated`,
+        description: "AI recommendations added to your project"
+      });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Failed to generate success stories", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    },
+  });
+
+  if (!projectId) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <p className="text-sm text-muted-foreground text-center">
+            Select a project to view success stories
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (stories.length === 0) {
+    return (
+      <Card data-testid="card-success-stories-empty">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Award className="w-5 h-5 text-primary" />
+            Success Stories
+          </CardTitle>
+          <CardDescription>
+            Link relevant Korn Ferry client case studies to strengthen your value proposition
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center py-12">
+            <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mb-4">
+              <Sparkles className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h3 className="font-semibold mb-2">No Success Stories Yet</h3>
+            <p className="text-sm text-muted-foreground text-center max-w-md mb-6">
+              Generate relevant Korn Ferry case studies based on your project's insights and value hypotheses using AI.
+            </p>
+            <Button 
+              onClick={() => generateMutation.mutate()}
+              disabled={generateMutation.isPending}
+              data-testid="button-generate-stories"
+            >
+              {generateMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Generate Recommendations
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6" data-testid="container-success-stories">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <Award className="w-5 h-5 text-primary" />
+            Success Stories
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Korn Ferry case studies relevant to this engagement
+          </p>
+        </div>
+        <Button 
+          onClick={() => generateMutation.mutate()}
+          disabled={generateMutation.isPending}
+          data-testid="button-generate-more-stories"
+        >
+          {generateMutation.isPending ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Generating...
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-4 h-4 mr-2" />
+              Generate More
+            </>
+          )}
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {stories.map((story) => (
+          <Card key={story.id} className="hover-elevate" data-testid={`card-story-${story.id}`}>
+            <CardHeader>
+              <CardTitle className="text-base">{story.title}</CardTitle>
+              <CardDescription className="space-y-2">
+                {story.industry && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <Building className="w-3 h-3" />
+                    {story.industry}
+                  </div>
+                )}
+                {story.category && (
+                  <Badge variant="outline" className="text-xs">
+                    {story.category}
+                  </Badge>
+                )}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {story.relevanceReason && (
+                <p className="text-sm text-muted-foreground">
+                  {story.relevanceReason}
+                </p>
+              )}
+              {story.capabilityName && (
+                <div className="flex items-center gap-2 text-xs">
+                  <Badge variant="secondary">{story.capabilityName}</Badge>
+                  {story.solutionArea && (
+                    <Badge variant="outline">{story.solutionArea}</Badge>
+                  )}
+                </div>
+              )}
+              <a
+                href={story.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center text-sm text-primary hover:underline"
+                data-testid={`link-story-${story.id}`}
+              >
+                View Case Study
+                <ExternalLink className="w-3 h-3 ml-1" />
+              </a>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Discovery() {
   const [, params] = useRoute("/projects/:id/discovery");
   const projectId = parseInt(params?.id || "0");
@@ -1027,10 +1200,11 @@ export default function Discovery() {
 
       <main className="container mx-auto max-w-7xl px-4 lg:px-8 py-8">
         <Tabs defaultValue="organisation" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 max-w-3xl" data-testid="tabs-discovery">
+          <TabsList className="grid w-full grid-cols-4 max-w-4xl" data-testid="tabs-discovery">
             <TabsTrigger value="organisation">Organisation</TabsTrigger>
             <TabsTrigger value="notes">Build Value Case</TabsTrigger>
             <TabsTrigger value="jobs">Jobs & Priorities</TabsTrigger>
+            <TabsTrigger value="successStories" data-testid="tab-success-stories">Success Stories</TabsTrigger>
           </TabsList>
 
           <TabsContent value="organisation" className="space-y-6">
@@ -2050,6 +2224,11 @@ export default function Discovery() {
                 </>
               );
             })()}
+          </TabsContent>
+
+          {/* Success Stories Tab */}
+          <TabsContent value="successStories" className="space-y-6">
+            <SuccessStoriesSection projectId={projectId} />
           </TabsContent>
         </Tabs>
       </main>
