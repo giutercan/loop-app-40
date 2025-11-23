@@ -49,7 +49,7 @@ export default function QuestionnairePage() {
     mutationFn: async ({ questionId, response }: { questionId: number; response: string }) => {
       const res = await apiRequest("POST", `/api/questionnaire/${token}/responses`, {
         questionId,
-        response,
+        answer: response,
       });
       if (!res.ok) {
         const error = await res.json();
