@@ -31,7 +31,8 @@ import {
   finalizeDiscoveryRequestSchema,
   insertBusinessReviewSchema,
   insertKPIActualSchema,
-  insertSuccessStorySchema
+  insertSuccessStorySchema,
+  insertSuccessStoryLibrarySchema
 } from "@shared/schema";
 
 // Helper function for robust HTML/script sanitization
@@ -2577,6 +2578,122 @@ export function registerRoutes(app: Express) {
     } finally {
       // Always release lock
       generationLocks.delete(projectId);
+    }
+  });
+
+  // ============================
+  // Success Story Library Routes (Global verified stories for AI narrative generation)
+  // ============================
+
+  // GET /api/success-story-library - List all success stories with optional filters
+  app.get("/api/success-story-library", async (req, res) => {
+    try {
+      const filters = {
+        industry: req.query.industry as string | undefined,
+        capabilityName: req.query.capabilityName as string | undefined,
+        solutionArea: req.query.solutionArea as string | undefined,
+        approvalStatus: req.query.approvalStatus as string | undefined,
+      };
+      
+      // Remove undefined filters
+      const cleanFilters = Object.fromEntries(
+        Object.entries(filters).filter(([_, v]) => v !== undefined)
+      );
+      
+      const stories = await storage.getSuccessStoryLibrary(
+        Object.keys(cleanFilters).length > 0 ? cleanFilters : undefined
+      );
+      
+      res.json(stories);
+    } catch (error: any) {
+      console.error("Error fetching success story library:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch success stories" });
+    }
+  });
+
+  // GET /api/success-story-library/:id - Get a single success story
+  app.get("/api/success-story-library/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const story = await storage.getSuccessStoryLibraryItem(id);
+      
+      if (!story) {
+        return res.status(404).json({ error: "Success story not found" });
+      }
+      
+      res.json(story);
+    } catch (error: any) {
+      console.error("Error fetching success story:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch success story" });
+    }
+  });
+
+  // POST /api/success-story-library - Create a new success story
+  app.post("/api/success-story-library", async (req, res) => {
+    try {
+      const insertSchema = insertSuccessStoryLibrarySchema;
+      const validatedData = insertSchema.parse(req.body);
+      
+      const story = await storage.createSuccessStoryLibraryItem(validatedData);
+      res.status(201).json(story);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: "Validation error", details: error.errors });
+      }
+      console.error("Error creating success story:", error);
+      res.status(500).json({ error: error.message || "Failed to create success story" });
+    }
+  });
+
+  // PATCH /api/success-story-library/:id - Update a success story
+  app.patch("/api/success-story-library/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const story = await storage.updateSuccessStoryLibraryItem(id, req.body);
+      
+      if (!story) {
+        return res.status(404).json({ error: "Success story not found" });
+      }
+      
+      res.json(story);
+    } catch (error: any) {
+      console.error("Error updating success story:", error);
+      res.status(500).json({ error: error.message || "Failed to update success story" });
+    }
+  });
+
+  // POST /api/success-story-library/:id/approve - Approve a success story
+  app.post("/api/success-story-library/:id/approve", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { approvedBy } = req.body;
+      
+      if (!approvedBy) {
+        return res.status(400).json({ error: "approvedBy field is required" });
+      }
+      
+      const story = await storage.approveSuccessStoryLibraryItem(id, approvedBy);
+      
+      if (!story) {
+        return res.status(404).json({ error: "Success story not found" });
+      }
+      
+      res.json(story);
+    } catch (error: any) {
+      console.error("Error approving success story:", error);
+      res.status(500).json({ error: error.message || "Failed to approve success story" });
+    }
+  });
+
+  // DELETE /api/success-story-library/:id - Delete a success story
+  app.delete("/api/success-story-library/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteSuccessStoryLibraryItem(id);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting success story:", error);
+      res.status(500).json({ error: error.message || "Failed to delete success story" });
     }
   });
 }
