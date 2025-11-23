@@ -563,6 +563,9 @@ export const insertBusinessReviewSchema = createInsertSchema(businessReviews).om
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  reviewDate: z.coerce.date(),
+  nextReviewDate: z.coerce.date().nullable().optional(),
 });
 export type InsertBusinessReview = z.infer<typeof insertBusinessReviewSchema>;
 export type BusinessReview = typeof businessReviews.$inferSelect;
@@ -584,6 +587,8 @@ export const insertKPIActualSchema = createInsertSchema(kpiActuals).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  actualDate: z.coerce.date(),
 });
 export type InsertKPIActual = z.infer<typeof insertKPIActualSchema>;
 export type KPIActual = typeof kpiActuals.$inferSelect;

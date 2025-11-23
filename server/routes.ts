@@ -22,7 +22,10 @@ import {
   insertAttachmentSchema,
   prioritizeJobsRequestSchema,
   updateJobThemeKPIRequestSchema,
-  finalizeDiscoveryRequestSchema
+  finalizeDiscoveryRequestSchema,
+  insertBusinessReviewSchema,
+  insertKPIActualSchema,
+  insertSuccessStorySchema
 } from "@shared/schema";
 
 export function registerRoutes(app: Express) {
@@ -1984,6 +1987,160 @@ export function registerRoutes(app: Express) {
         jobs: jobsWithKPIs,
         transferredAt: transfer.transferredAt
       });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // PHASE 1: VALUE REALIZATION FEATURES
+  // ============================================================================
+
+  // Business Reviews
+  app.get("/api/projects/:projectId/business-reviews", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const reviews = await storage.getBusinessReviews(projectId);
+      res.json(reviews);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/projects/:projectId/business-reviews", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const validated = insertBusinessReviewSchema.parse({
+        ...req.body,
+        projectId
+      });
+      const review = await storage.createBusinessReview(validated);
+      res.json(review);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/business-reviews/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      // Validate partial update with Zod
+      const validated = insertBusinessReviewSchema.partial().parse(req.body);
+      const updated = await storage.updateBusinessReview(id, validated);
+      if (!updated) {
+        return res.status(404).json({ error: "Business review not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/business-reviews/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteBusinessReview(id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // KPI Actuals
+  app.get("/api/job-theme-kpis/:kpiId/actuals", async (req, res) => {
+    try {
+      const kpiId = parseInt(req.params.kpiId);
+      const actuals = await storage.getKPIActuals(kpiId);
+      res.json(actuals);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/job-theme-kpis/:kpiId/actuals", async (req, res) => {
+    try {
+      const kpiId = parseInt(req.params.kpiId);
+      const validated = insertKPIActualSchema.parse({
+        ...req.body,
+        jobThemeKPIId: kpiId
+      });
+      const actual = await storage.createKPIActual(validated);
+      res.json(actual);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/kpi-actuals/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      // Validate partial update with Zod
+      const validated = insertKPIActualSchema.partial().parse(req.body);
+      const updated = await storage.updateKPIActual(id, validated);
+      if (!updated) {
+        return res.status(404).json({ error: "KPI actual not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/kpi-actuals/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteKPIActual(id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Success Stories
+  app.get("/api/projects/:projectId/success-stories", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const stories = await storage.getSuccessStories(projectId);
+      res.json(stories);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/projects/:projectId/success-stories", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const validated = insertSuccessStorySchema.parse({
+        ...req.body,
+        projectId
+      });
+      const story = await storage.createSuccessStory(validated);
+      res.json(story);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/success-stories/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      // Validate partial update with Zod
+      const validated = insertSuccessStorySchema.partial().parse(req.body);
+      const updated = await storage.updateSuccessStory(id, validated);
+      if (!updated) {
+        return res.status(404).json({ error: "Success story not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/success-stories/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteSuccessStory(id);
+      res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

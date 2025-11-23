@@ -22,7 +22,10 @@ import type {
   QuestionResponse, InsertQuestionResponse,
   JobTheme, InsertJobTheme,
   JobThemeKPI, InsertJobThemeKPI,
-  DiscoveryPhaseTransfer, InsertDiscoveryPhaseTransfer
+  DiscoveryPhaseTransfer, InsertDiscoveryPhaseTransfer,
+  BusinessReview, InsertBusinessReview,
+  KPIActual, InsertKPIActual,
+  SuccessStory, InsertSuccessStory
 } from "@shared/schema";
 
 export interface IStorage {
@@ -152,6 +155,27 @@ export interface IStorage {
   getDiscoveryPhaseTransfer(projectId: number): Promise<DiscoveryPhaseTransfer | undefined>;
   createDiscoveryPhaseTransfer(transfer: InsertDiscoveryPhaseTransfer): Promise<DiscoveryPhaseTransfer>;
   updateDiscoveryPhaseTransfer(id: number, transfer: Partial<InsertDiscoveryPhaseTransfer>): Promise<DiscoveryPhaseTransfer | undefined>;
+  
+  // PHASE 1: Value Realization Features
+  
+  // Business Reviews
+  getBusinessReviews(projectId: number): Promise<BusinessReview[]>;
+  getBusinessReview(id: number): Promise<BusinessReview | undefined>;
+  createBusinessReview(review: InsertBusinessReview): Promise<BusinessReview>;
+  updateBusinessReview(id: number, review: Partial<InsertBusinessReview>): Promise<BusinessReview | undefined>;
+  deleteBusinessReview(id: number): Promise<void>;
+  
+  // KPI Actuals
+  getKPIActuals(jobThemeKPIId: number): Promise<KPIActual[]>;
+  createKPIActual(actual: InsertKPIActual): Promise<KPIActual>;
+  updateKPIActual(id: number, actual: Partial<InsertKPIActual>): Promise<KPIActual | undefined>;
+  deleteKPIActual(id: number): Promise<void>;
+  
+  // Success Stories
+  getSuccessStories(projectId: number): Promise<SuccessStory[]>;
+  createSuccessStory(story: InsertSuccessStory): Promise<SuccessStory>;
+  updateSuccessStory(id: number, story: Partial<InsertSuccessStory>): Promise<SuccessStory | undefined>;
+  deleteSuccessStory(id: number): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -666,6 +690,88 @@ export class DbStorage implements IStorage {
       .where(eq(schema.discoveryPhaseTransfers.id, id))
       .returning();
     return results[0];
+  }
+  
+  // ============================================================================
+  // PHASE 1: VALUE REALIZATION FEATURES
+  // ============================================================================
+  
+  // Business Reviews
+  async getBusinessReviews(projectId: number): Promise<BusinessReview[]> {
+    return await db.select().from(schema.businessReviews)
+      .where(eq(schema.businessReviews.projectId, projectId))
+      .orderBy(desc(schema.businessReviews.reviewDate));
+  }
+  
+  async getBusinessReview(id: number): Promise<BusinessReview | undefined> {
+    const results = await db.select().from(schema.businessReviews)
+      .where(eq(schema.businessReviews.id, id));
+    return results[0];
+  }
+  
+  async createBusinessReview(review: InsertBusinessReview): Promise<BusinessReview> {
+    const results = await db.insert(schema.businessReviews).values(review).returning();
+    return results[0];
+  }
+  
+  async updateBusinessReview(id: number, review: Partial<InsertBusinessReview>): Promise<BusinessReview | undefined> {
+    const results = await db.update(schema.businessReviews)
+      .set({...review, updatedAt: new Date()})
+      .where(eq(schema.businessReviews.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deleteBusinessReview(id: number): Promise<void> {
+    await db.delete(schema.businessReviews).where(eq(schema.businessReviews.id, id));
+  }
+  
+  // KPI Actuals
+  async getKPIActuals(jobThemeKPIId: number): Promise<KPIActual[]> {
+    return await db.select().from(schema.kpiActuals)
+      .where(eq(schema.kpiActuals.jobThemeKPIId, jobThemeKPIId))
+      .orderBy(desc(schema.kpiActuals.actualDate));
+  }
+  
+  async createKPIActual(actual: InsertKPIActual): Promise<KPIActual> {
+    const results = await db.insert(schema.kpiActuals).values(actual).returning();
+    return results[0];
+  }
+  
+  async updateKPIActual(id: number, actual: Partial<InsertKPIActual>): Promise<KPIActual | undefined> {
+    const results = await db.update(schema.kpiActuals)
+      .set({...actual, updatedAt: new Date()})
+      .where(eq(schema.kpiActuals.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deleteKPIActual(id: number): Promise<void> {
+    await db.delete(schema.kpiActuals).where(eq(schema.kpiActuals.id, id));
+  }
+  
+  // Success Stories
+  async getSuccessStories(projectId: number): Promise<SuccessStory[]> {
+    return await db.select().from(schema.successStories)
+      .where(eq(schema.successStories.projectId, projectId))
+      .orderBy(desc(schema.successStories.isHighlighted), desc(schema.successStories.createdAt));
+  }
+  
+  async createSuccessStory(story: InsertSuccessStory): Promise<SuccessStory> {
+    const results = await db.insert(schema.successStories).values(story).returning();
+    return results[0];
+  }
+  
+  async updateSuccessStory(id: number, story: Partial<InsertSuccessStory>): Promise<SuccessStory | undefined> {
+    const results = await db.update(schema.successStories)
+      .set(story)
+      .where(eq(schema.successStories.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deleteSuccessStory(id: number): Promise<void> {
+    await db.delete(schema.successStories).where(eq(schema.successStories.id, id));
   }
 }
 

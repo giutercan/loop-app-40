@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Discovery from "@/pages/discovery";
-import Realisation from "@/pages/realisation";
+import Realization from "@/pages/realization";
 import Questionnaire from "@/pages/questionnaire";
 
 function Router() {
@@ -15,7 +15,7 @@ function Router() {
       <Route path="/" component={Landing} />
       <Route path="/discovery" component={Discovery} />
       <Route path="/projects/:id/discovery" component={Discovery} />
-      <Route path="/realisation" component={Realisation} />
+      <Route path="/projects/:id/realisation" component={Realization} />
       <Route path="/questionnaire/:token" component={Questionnaire} />
       <Route component={NotFound} />
     </Switch>
