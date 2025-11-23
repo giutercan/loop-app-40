@@ -1,8 +1,19 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { 
   Plus, 
   Building2, 
@@ -13,8 +24,11 @@ import {
   ArrowRight,
   Briefcase,
   CheckCircle2,
-  Clock
+  Clock,
+  Trash2
 } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface Project {
   id: number;
@@ -27,8 +41,39 @@ interface Project {
 }
 
 export default function ProjectsDashboard() {
+  const { toast } = useToast();
   const { data: projects = [], isLoading } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (projectId: number) => {
+      try {
+        const response = await apiRequest("DELETE", `/api/projects/${projectId}`);
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error("Delete operation failed");
+        }
+        return data;
+      } catch (error: any) {
+        // Re-throw to ensure onError is triggered
+        throw new Error(error.message || "Failed to delete project");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"], refetchType: 'active' });
+      toast({
+        title: "Project deleted",
+        description: "The project has been successfully removed.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Delete failed",
+        description: error.message || "Failed to delete the project. Please try again.",
+      });
+    },
   });
 
   if (isLoading) {
@@ -148,7 +193,7 @@ export default function ProjectsDashboard() {
                 >
                   <CardHeader className="space-y-4">
                     <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
                         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shrink-0">
                           <Building2 className="w-5 h-5 text-primary" />
                         </div>
@@ -163,6 +208,41 @@ export default function ProjectsDashboard() {
                           )}
                         </div>
                       </div>
+                      
+                      {/* Delete Button */}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            className="shrink-0 text-muted-foreground hover:text-destructive"
+                            data-testid={`button-delete-project-${project.id}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Project</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete "{project.companyName}"? This action cannot be undone and will permanently remove all project data, including insights, hypotheses, and KPI tracking.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel data-testid={`button-cancel-delete-${project.id}`}>
+                              Cancel
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => deleteMutation.mutate(project.id)}
+                              disabled={deleteMutation.isPending}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              data-testid={`button-confirm-delete-${project.id}`}
+                            >
+                              {deleteMutation.isPending ? "Deleting..." : "Delete Project"}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
 
                     {/* Phase Progress */}
