@@ -440,6 +440,8 @@ export const jobThemeKPIs = pgTable("job_theme_kpis", {
   isSelected: boolean("is_selected").notNull().default(false), // User selected this KPI for hypothesis
   baselineValue: text("baseline_value"), // User-provided baseline (stored as text for flexibility)
   baselineSource: text("baseline_source"), // e.g., "Client data", "HRIS", "Manager estimate"
+  targetValue: text("target_value"), // Target/outcome value set in Alignment phase
+  targetSource: text("target_source"), // e.g., "Consultant estimate", "Industry best practice"
   benchmarkValue: text("benchmark_value"), // Korn Ferry industry benchmark
   benchmarkSource: text("benchmark_source"), // e.g., "Korn Ferry 2024 Study", "Industry average"
   definition: text("definition"), // KPI definition from knowledge base
