@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, decimal, timestamp, boolean, jsonb, date } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, decimal, timestamp, boolean, jsonb, date, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -610,7 +610,10 @@ export const successStories = pgTable("success_stories", {
   isHighlighted: boolean("is_highlighted").notNull().default(false), // Feature this story
   addedBy: text("added_by"), // Consultant who added this
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  // Unique index: Prevent duplicate URLs within same project (DB-enforced deduplication)
+  uniqueProjectUrlIdx: uniqueIndex("success_stories_project_url_idx").on(table.projectId, table.url),
+}));
 
 export const insertSuccessStorySchema = createInsertSchema(successStories).omit({
   id: true,

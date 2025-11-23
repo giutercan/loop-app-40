@@ -4,6 +4,9 @@ import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFr
 import { z } from "zod";
 
 // Track in-flight success story generations per project (prevents concurrent requests)
+// NOTE: This in-memory Set is sufficient for single-instance Replit deployment.
+// If scaling to multiple processes/workers, migrate to storage-level locking with
+// a database flag or distributed lock service (e.g., Redis).
 const generationLocks = new Set<number>();
 import { 
   insertProjectSchema,
@@ -2224,22 +2227,33 @@ export function registerRoutes(app: Express) {
           continue;
         }
         
-        const story = await storage.createSuccessStory({
-          projectId,
-          title: rec.title,
-          url: rec.url,
-          category: rec.category,
-          relevanceReason: rec.relevanceReason,
-          industry: rec.industry,
-          capabilityName: rec.capabilityName,
-          solutionArea: rec.solutionArea,
-          excerpt: rec.impactSummary
-        });
-        createdStories.push(story);
-        
-        // Add to deduplication sets to prevent duplicates within this batch
-        existingUrls.add(rec.url.toLowerCase());
-        existingTitles.add(rec.title.toLowerCase());
+        try {
+          const story = await storage.createSuccessStory({
+            projectId,
+            title: rec.title,
+            url: rec.url,
+            category: rec.category,
+            relevanceReason: rec.relevanceReason,
+            industry: rec.industry,
+            capabilityName: rec.capabilityName,
+            solutionArea: rec.solutionArea,
+            excerpt: rec.impactSummary
+          });
+          createdStories.push(story);
+          
+          // Add to deduplication sets to prevent duplicates within this batch
+          existingUrls.add(rec.url.toLowerCase());
+          existingTitles.add(rec.title.toLowerCase());
+        } catch (error: any) {
+          // Gracefully handle unique constraint violations (duplicate URL)
+          // This can occur in rare race conditions or if AI returns duplicate URLs
+          if (error.code === '23505' || error.message?.includes('unique constraint')) {
+            console.log(`Skipping duplicate success story (unique constraint): ${rec.title} | ${rec.url}`);
+            continue;
+          }
+          // Re-throw other errors
+          throw error;
+        }
       }
 
       res.json({ 

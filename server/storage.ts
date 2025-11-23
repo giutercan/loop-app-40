@@ -758,8 +758,26 @@ export class DbStorage implements IStorage {
   }
   
   async createSuccessStory(story: InsertSuccessStory): Promise<SuccessStory> {
-    const results = await db.insert(schema.successStories).values(story).returning();
-    return results[0];
+    try {
+      const results = await db.insert(schema.successStories).values(story).returning();
+      return results[0];
+    } catch (error: any) {
+      // Gracefully handle unique constraint violations (duplicate project_id + url)
+      // This ensures deduplication regardless of caller (route, admin tools, tests)
+      if (error.code === '23505' || error.message?.includes('unique constraint') || error.message?.includes('success_stories_project_url_idx')) {
+        console.log(`Storage: Skipping duplicate success story (unique constraint): ${story.title} | ${story.url}`);
+        // Return existing story instead of throwing
+        const existing = await db.select().from(schema.successStories)
+          .where(and(
+            eq(schema.successStories.projectId, story.projectId),
+            eq(schema.successStories.url, story.url)
+          ))
+          .limit(1);
+        return existing[0];
+      }
+      // Re-throw other errors
+      throw error;
+    }
   }
   
   async updateSuccessStory(id: number, story: Partial<InsertSuccessStory>): Promise<SuccessStory | undefined> {
