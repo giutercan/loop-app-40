@@ -492,6 +492,8 @@ export const updateJobThemeKPIRequestSchema = z.object({
   isSelected: z.boolean().optional(),
   baselineValue: z.string().optional(),
   baselineSource: z.string().optional(),
+  targetValue: z.string().optional(),
+  targetSource: z.string().optional(),
 });
 export type UpdateJobThemeKPIRequest = z.infer<typeof updateJobThemeKPIRequestSchema>;
 

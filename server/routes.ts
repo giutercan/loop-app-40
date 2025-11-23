@@ -1948,4 +1948,44 @@ export function registerRoutes(app: Express) {
       res.status(500).json({ error: error.message });
     }
   });
+
+  // Get finalized discovery data for Alignment page
+  app.get("/api/projects/:projectId/alignment/finalized-jobs", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      
+      // Get discovery phase transfer
+      const transfer = await storage.getDiscoveryPhaseTransfer(projectId);
+      
+      if (!transfer || !transfer.isFinalized) {
+        return res.json({ finalized: false, jobs: [] });
+      }
+      
+      // Get finalized job themes with KPIs
+      const finalizedJobIds = transfer.finalizedJobThemeIds || [];
+      const jobsWithKPIs = [];
+      
+      for (const jobId of finalizedJobIds) {
+        const job = await storage.getJobTheme(jobId);
+        if (job) {
+          const kpis = await storage.getJobThemeKPIs(jobId);
+          jobsWithKPIs.push({
+            ...job,
+            kpis: kpis
+          });
+        }
+      }
+      
+      // Sort by priority rank
+      jobsWithKPIs.sort((a, b) => (a.priorityRank || 999) - (b.priorityRank || 999));
+      
+      res.json({
+        finalized: true,
+        jobs: jobsWithKPIs,
+        transferredAt: transfer.transferredAt
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 }
