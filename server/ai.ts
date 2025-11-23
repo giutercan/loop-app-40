@@ -1021,3 +1021,247 @@ IMPORTANT:
     throw error; // Don't provide fallback for value cases - frontend should handle error
   }
 }
+
+// ============================
+// AI Narrative Generation
+// ============================
+
+export interface ValueNarrativeInput {
+  valueCaseName: string;
+  capabilityName: string;
+  solutionArea: string;
+  challenge: string;
+  proposedSolution: string;
+  linkedKPIs: Array<{
+    kpiName: string;
+    unit: string;
+    baselineValue: string;
+    targetValue: string;
+    isPrimary: boolean;
+  }>;
+  financialResults?: {
+    totalNPV: number;
+    paybackMonths: number;
+    yearOneImpact: number;
+    yearTwoImpact: number;
+    yearThreeImpact: number;
+    implementationCost: number;
+  };
+  companyName: string;
+  industry: string;
+  relevantSuccessStories: Array<{
+    title: string;
+    industry: string;
+    capabilityName: string;
+    challenge: string;
+    solution: string;
+    results: string;
+    metrics: Record<string, string>;
+    clientType: string;
+  }>;
+}
+
+export interface ValueNarrativeOutput {
+  ceoNarrative: {
+    title: string;
+    executiveSummary: string;
+    strategicImperative: string;
+    businessImpact: string;
+    successStoryHighlight: string;
+    callToAction: string;
+  };
+  cfoNarrative: {
+    title: string;
+    executiveSummary: string;
+    financialCaseOverview: string;
+    roiBreakdown: string;
+    riskMitigation: string;
+    successStoryHighlight: string;
+    callToAction: string;
+  };
+  ctoNarrative: {
+    title: string;
+    executiveSummary: string;
+    implementationApproach: string;
+    capabilityBuild: string;
+    changeManagement: string;
+    successStoryHighlight: string;
+    callToAction: string;
+  };
+}
+
+export async function generateValueNarrative(
+  input: ValueNarrativeInput
+): Promise<ValueNarrativeOutput> {
+  const {
+    valueCaseName,
+    capabilityName,
+    solutionArea,
+    challenge,
+    proposedSolution,
+    linkedKPIs,
+    financialResults,
+    companyName,
+    industry,
+    relevantSuccessStories,
+  } = input;
+
+  // Format KPIs for prompt
+  const kpiSummary = linkedKPIs
+    .map(
+      (kpi) =>
+        `- ${kpi.kpiName}: ${kpi.baselineValue} → ${kpi.targetValue} ${kpi.unit}${kpi.isPrimary ? ' [PRIMARY]' : ''}`
+    )
+    .join('\n');
+
+  // Format financial results for prompt
+  const financialSummary = financialResults
+    ? `
+FINANCIAL PROJECTIONS:
+- Net Present Value (NPV): £${financialResults.totalNPV.toLocaleString()} over 3 years
+- Payback Period: ${financialResults.paybackMonths} months
+- Year 1 Impact: £${financialResults.yearOneImpact.toLocaleString()}
+- Year 2 Impact: £${financialResults.yearTwoImpact.toLocaleString()}
+- Year 3 Impact: £${financialResults.yearThreeImpact.toLocaleString()}
+- Implementation Cost: £${financialResults.implementationCost.toLocaleString()}
+- ROI: ${((financialResults.totalNPV / financialResults.implementationCost) * 100).toFixed(0)}%
+`
+    : `
+ESTIMATED FINANCIAL IMPACT:
+- Detailed financial calculations are being developed
+- Conservative estimates suggest significant positive ROI
+- Full financial model will be available upon engagement
+`;
+
+  // Format success stories for prompt
+  const successStoriesSummary = relevantSuccessStories
+    .map(
+      (story, idx) => `
+SUCCESS STORY ${idx + 1}: ${story.title}
+- Industry: ${story.industry}
+- Client Type: ${story.clientType}
+- Capability: ${story.capabilityName}
+- Challenge: ${story.challenge}
+- Solution: ${story.solution}
+- Results: ${story.results}
+- Key Metrics: ${Object.entries(story.metrics || {}).map(([k, v]) => `${k}: ${v}`).join(', ')}
+`
+    )
+    .join('\n');
+
+  const prompt = `You are a senior Korn Ferry consultant crafting compelling value narratives for different stakeholders at ${companyName} in the ${industry} industry.
+
+VALUE CASE OVERVIEW:
+Name: ${valueCaseName}
+Capability: ${capabilityName}
+Solution Area: ${solutionArea}
+Challenge: ${challenge}
+Proposed Solution: ${proposedSolution}
+
+KEY PERFORMANCE INDICATORS:
+${kpiSummary}
+
+${financialSummary}
+
+RELEVANT VERIFIED KORN FERRY SUCCESS STORIES (for credibility and proof points):
+${successStoriesSummary}
+
+TASK: Generate THREE distinct value narratives, each optimized for a specific C-suite stakeholder:
+
+1. CEO NARRATIVE - Strategic Focus
+   - Emphasize business transformation, competitive advantage, strategic alignment
+   - Lead with vision and market positioning
+   - Use success story to demonstrate strategic outcomes
+   - Keep it inspiring and forward-looking
+
+2. CFO NARRATIVE - Financial Focus
+   - Lead with ROI, payback period, and risk mitigation
+   - Emphasize measurable financial outcomes and prudent investment
+   - Use success story to demonstrate financial returns
+   - Keep it data-driven and conservative
+
+3. CTO/Operations NARRATIVE - Implementation Focus
+   - Emphasize capability building, change management, and execution
+   - Focus on how the transformation will be achieved
+   - Use success story to demonstrate implementation approach
+   - Keep it pragmatic and execution-oriented
+
+GUIDELINES:
+- Each narrative should be 300-500 words total across all sections
+- Weave in success story details naturally - don't just copy-paste
+- Use specific metrics from success stories as proof points
+- Maintain Korn Ferry's professional yet confident tone
+- Make it personal to ${companyName}'s context and challenges
+- Each narrative should feel distinct in tone and emphasis
+
+Return JSON format:
+{
+  "ceoNarrative": {
+    "title": "Compelling title for CEO (8-12 words)",
+    "executiveSummary": "One-paragraph overview emphasizing strategic value (60-80 words)",
+    "strategicImperative": "Why this matters strategically, competitive positioning (80-100 words)",
+    "businessImpact": "Expected business outcomes and transformation (80-100 words)",
+    "successStoryHighlight": "How a similar client achieved strategic results - woven naturally into context (60-80 words)",
+    "callToAction": "Clear next steps for CEO (30-40 words)"
+  },
+  "cfoNarrative": {
+    "title": "Compelling title for CFO (8-12 words)",
+    "executiveSummary": "One-paragraph overview emphasizing financial prudence (60-80 words)",
+    "financialCaseOverview": "High-level financial case and investment rationale (80-100 words)",
+    "roiBreakdown": "Detailed ROI explanation with key metrics (80-100 words)",
+    "riskMitigation": "How this investment mitigates risk and ensures returns (60-80 words)",
+    "successStoryHighlight": "How a similar client achieved financial results - woven naturally into context (60-80 words)",
+    "callToAction": "Clear next steps for CFO (30-40 words)"
+  },
+  "ctoNarrative": {
+    "title": "Compelling title for CTO/Operations (8-12 words)",
+    "executiveSummary": "One-paragraph overview emphasizing implementation excellence (60-80 words)",
+    "implementationApproach": "How the transformation will be executed (80-100 words)",
+    "capabilityBuild": "What capabilities will be built and how (80-100 words)",
+    "changeManagement": "How change will be managed and adoption ensured (60-80 words)",
+    "successStoryHighlight": "How a similar client implemented successfully - woven naturally into context (60-80 words)",
+    "callToAction": "Clear next steps for CTO/Operations (30-40 words)"
+  }
+}
+
+IMPORTANT:
+- Be specific to ${companyName} and ${industry}
+- Use actual metrics from success stories as proof points
+- Each narrative should feel authentic to that stakeholder's priorities
+- Don't fabricate metrics - use only what's provided in success stories or financial results
+- Success story highlights should flow naturally, not feel like testimonials`;
+
+  try {
+    console.log(`[AI Narrative] Generating value narrative for: ${valueCaseName}`);
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 3000,
+    });
+
+    const content = response.choices[0]?.message?.content;
+
+    if (!content) {
+      throw new Error("AI returned empty response");
+    }
+
+    const parsedContent = JSON.parse(content);
+
+    // Validate structure (basic check)
+    if (
+      !parsedContent.ceoNarrative ||
+      !parsedContent.cfoNarrative ||
+      !parsedContent.ctoNarrative
+    ) {
+      throw new Error("AI response missing required narrative sections");
+    }
+
+    console.log(`[AI Narrative] Success! Generated narratives for all stakeholders`);
+    return parsedContent as ValueNarrativeOutput;
+  } catch (error) {
+    console.error("[AI Narrative] Error:", error);
+    throw error;
+  }
+}

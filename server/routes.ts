@@ -2696,4 +2696,118 @@ export function registerRoutes(app: Express) {
       res.status(500).json({ error: error.message || "Failed to delete success story" });
     }
   });
+
+  // ============================
+  // AI Value Narrative Generation
+  // ============================
+
+  // POST /api/projects/:projectId/value-cases/:valueCaseId/generate-narrative
+  app.post("/api/projects/:projectId/value-cases/:valueCaseId/generate-narrative", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const valueCaseId = parseInt(req.params.valueCaseId);
+
+      // Load project
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Load value case
+      const valueCase = await storage.getValueCase(valueCaseId);
+      if (!valueCase || valueCase.projectId !== projectId) {
+        return res.status(404).json({ error: "Value case not found" });
+      }
+
+      // Load calculation results if available
+      const calculationResults = valueCase.calculationResults as any;
+
+      // Load KPIs linked to this value case
+      const linkedKPIs = await Promise.all(
+        (valueCase.linkedKPIs || []).map(async (kpiId: number) => {
+          // Find KPI in job themes
+          const jobs = await storage.getJobThemes(projectId);
+          for (const job of jobs) {
+            const kpis = await storage.getJobThemeKPIs(job.id);
+            const kpi = kpis.find(k => k.id === kpiId);
+            if (kpi) {
+              return {
+                kpiName: kpi.kpiName,
+                unit: kpi.unit,
+                baselineValue: kpi.baselineValue || "TBD",
+                targetValue: kpi.targetValue || "TBD",
+                isPrimary: kpi.kpiType === "primary"
+              };
+            }
+          }
+          return null;
+        })
+      ).then(kpis => kpis.filter(k => k !== null));
+
+      // Load relevant success stories from library
+      // Filter by capability and industry for relevance
+      const successStories = await storage.getSuccessStoryLibrary({
+        approvalStatus: "approved",
+        capabilityName: valueCase.capabilityName || undefined,
+      });
+
+      // Further filter by industry similarity (optional - take top 3 most relevant)
+      const relevantStories = successStories
+        .slice(0, 3)
+        .map(story => ({
+          title: story.title,
+          industry: story.industry,
+          capabilityName: story.capabilityName,
+          challenge: story.challenge || "",
+          solution: story.solution || "",
+          results: story.results || "",
+          metrics: (story.metrics as Record<string, string>) || {},
+          clientType: story.clientType || "Enterprise"
+        }));
+
+      if (relevantStories.length === 0) {
+        return res.status(400).json({ 
+          error: "No approved success stories found in the library. Please add verified stories before generating narratives." 
+        });
+      }
+
+      // Generate narrative using AI
+      const { generateValueNarrative } = await import("./ai");
+      const narrativeOutput = await generateValueNarrative({
+        valueCaseName: valueCase.name,
+        capabilityName: valueCase.capabilityName || "Unknown",
+        solutionArea: valueCase.solutionArea || "TRANSFORM",
+        challenge: valueCase.challenge || "Organization facing strategic challenges",
+        proposedSolution: valueCase.proposedSolution || "Strategic intervention to drive business impact",
+        linkedKPIs,
+        financialResults: calculationResults ? {
+          totalNPV: calculationResults.totalNPV || 0,
+          paybackMonths: calculationResults.paybackMonths || 0,
+          yearOneImpact: calculationResults.yearOneImpact || 0,
+          yearTwoImpact: calculationResults.yearTwoImpact || 0,
+          yearThreeImpact: calculationResults.yearThreeImpact || 0,
+          implementationCost: calculationResults.implementationCost || 0,
+        } : undefined,
+        companyName: project.companyName,
+        industry: project.sector || "General Business",
+        relevantSuccessStories: relevantStories
+      });
+
+      res.json({
+        success: true,
+        narrative: narrativeOutput,
+        successStoriesUsed: relevantStories.length,
+        metadata: {
+          valueCaseName: valueCase.name,
+          companyName: project.companyName,
+          capability: valueCase.capabilityName,
+          hasFinancials: !!calculationResults,
+          linkedKPICount: linkedKPIs.length
+        }
+      });
+    } catch (error: any) {
+      console.error("Error generating value narrative:", error);
+      res.status(500).json({ error: error.message || "Failed to generate value narrative" });
+    }
+  });
 }
