@@ -162,8 +162,13 @@ export default function Landing() {
       </section>
 
       {/* Interactive Process Demo */}
-      <section id="how-it-works" className="py-24 lg:py-36 bg-background relative">
-        <div className="container mx-auto max-w-7xl px-4 lg:px-8">
+      <section id="how-it-works" className="py-24 lg:py-36 relative overflow-hidden">
+        {/* Layered Background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-primary/10" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-primary/15 via-transparent to-transparent opacity-60" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] opacity-20" />
+        
+        <div className="container mx-auto max-w-7xl px-4 lg:px-8 relative">
           <div className="text-center mb-16">
             <Badge variant="secondary" className="mb-6 shadow-md">
               <Play className="w-3.5 h-3.5 mr-2" />
