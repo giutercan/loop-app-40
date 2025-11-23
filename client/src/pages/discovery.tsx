@@ -1013,14 +1013,6 @@ export default function Discovery() {
                 <Send className="w-4 h-4 mr-2" />
                 Send to Client
               </Button>
-              {selectedProjectId && (
-                <Link href={`/projects/${selectedProjectId}/realisation`}>
-                  <Button variant="default" data-testid="button-realization">
-                    <Activity className="w-4 h-4 mr-2" />
-                    Realization
-                  </Button>
-                </Link>
-              )}
             </div>
           </div>
         </div>
@@ -1028,11 +1020,13 @@ export default function Discovery() {
 
       <main className="container mx-auto max-w-7xl px-4 lg:px-8 py-8">
         <Tabs defaultValue="organisation" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 max-w-4xl" data-testid="tabs-discovery">
+          <TabsList className="grid w-full grid-cols-6 max-w-6xl" data-testid="tabs-discovery">
             <TabsTrigger value="organisation">Organisation</TabsTrigger>
             <TabsTrigger value="notes">Build Value Case</TabsTrigger>
             <TabsTrigger value="jobs">Jobs & Priorities</TabsTrigger>
             <TabsTrigger value="alignment">Alignment</TabsTrigger>
+            <TabsTrigger value="realization" data-testid="tab-realization">Realization</TabsTrigger>
+            <TabsTrigger value="successStories" data-testid="tab-success-stories">Success Stories</TabsTrigger>
           </TabsList>
 
           <TabsContent value="organisation" className="space-y-6">
@@ -2220,6 +2214,40 @@ export default function Discovery() {
                 </CardHeader>
               </Card>
             )}
+          </TabsContent>
+
+          {/* Realization Tab */}
+          <TabsContent value="realization" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Realization Phase</CardTitle>
+                <CardDescription>
+                  Track value delivery through business reviews and KPI progress monitoring
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Realization content will be displayed here
+                </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Success Stories Tab */}
+          <TabsContent value="successStories" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Success Stories</CardTitle>
+                <CardDescription>
+                  AI-powered recommendations of relevant Korn Ferry case studies based on your project context
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Success Stories content will be displayed here
+                </p>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </main>
