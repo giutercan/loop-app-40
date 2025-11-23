@@ -1086,8 +1086,8 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* How It Works */}
-      <section id="how-it-works" className="py-24 lg:py-36 relative overflow-hidden">
+      {/* Three Phases Overview */}
+      <section id="three-phases" className="py-24 lg:py-36 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-t from-muted/20 to-transparent" />
         
         <div className="container mx-auto max-w-7xl px-4 lg:px-8 relative">
