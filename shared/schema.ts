@@ -402,3 +402,77 @@ export const insertQuestionResponseSchema = createInsertSchema(questionResponses
 });
 export type InsertQuestionResponse = z.infer<typeof insertQuestionResponseSchema>;
 export type QuestionResponse = typeof questionResponses.$inferSelect;
+
+// Job Themes - Aggregated insights grouped by "Jobs We Do"
+export const jobThemes = pgTable("job_themes", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  jobName: text("job_name").notNull(), // e.g., "Define role success; align roles"
+  capabilityName: text("capability_name").notNull(), // e.g., "Success Profiles & Role Design"
+  solutionArea: text("solution_area", {
+    enum: ["ASSESS", "DEVELOP", "TRANSFORM", "REWARD", "COMMERCIAL", "ANALYTICS"]
+  }),
+  priorityRank: integer("priority_rank"), // 1, 2, 3 for top priorities (null if not prioritized yet)
+  aggregationSummary: text("aggregation_summary"), // AI-generated summary of all insights for this job
+  sourceInsightIds: integer("source_insight_ids").array(), // IDs of companyDataPoints that contribute to this job
+  sourceQuestionIds: integer("source_question_ids").array(), // IDs of discoveryQuestions that contribute
+  compositeScore: integer("composite_score").notNull().default(3), // Weighted score from constituent insights
+  evidenceCount: integer("evidence_count").notNull().default(0), // Total number of supporting insights
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertJobThemeSchema = createInsertSchema(jobThemes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertJobTheme = z.infer<typeof insertJobThemeSchema>;
+export type JobTheme = typeof jobThemes.$inferSelect;
+
+// Job Theme KPIs - Selected KPIs with baseline data for each job theme
+export const jobThemeKPIs = pgTable("job_theme_kpis", {
+  id: serial("id").primaryKey(),
+  jobThemeId: integer("job_theme_id").notNull().references(() => jobThemes.id, { onDelete: "cascade" }),
+  kpiName: text("kpi_name").notNull(), // e.g., "Quality of Hire (QoH) at 6 months"
+  kpiType: text("kpi_type", { enum: ["primary", "supporting"] }).notNull(),
+  unit: text("unit").notNull(), // e.g., "Index 0-100", "Percent (%)", "Days"
+  isSelected: boolean("is_selected").notNull().default(false), // User selected this KPI for hypothesis
+  baselineValue: text("baseline_value"), // User-provided baseline (stored as text for flexibility)
+  baselineSource: text("baseline_source"), // e.g., "Client data", "HRIS", "Manager estimate"
+  benchmarkValue: text("benchmark_value"), // Korn Ferry industry benchmark
+  benchmarkSource: text("benchmark_source"), // e.g., "Korn Ferry 2024 Study", "Industry average"
+  definition: text("definition"), // KPI definition from knowledge base
+  measurementFrequency: text("measurement_frequency"), // e.g., "6 months", "Quarterly"
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertJobThemeKPISchema = createInsertSchema(jobThemeKPIs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertJobThemeKPI = z.infer<typeof insertJobThemeKPISchema>;
+export type JobThemeKPI = typeof jobThemeKPIs.$inferSelect;
+
+// Discovery Phase Transfer - Locks selections for Alignment phase
+export const discoveryPhaseTransfers = pgTable("discovery_phase_transfers", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  isFinalized: boolean("is_finalized").notNull().default(false),
+  finalizedJobThemeIds: integer("finalized_job_theme_ids").array(), // Top 3 prioritized job themes
+  transferredAt: timestamp("transferred_at"),
+  transferredBy: text("transferred_by"), // Consultant name/ID
+  notes: text("notes"), // Optional notes about the transfer
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertDiscoveryPhaseTransferSchema = createInsertSchema(discoveryPhaseTransfers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertDiscoveryPhaseTransfer = z.infer<typeof insertDiscoveryPhaseTransferSchema>;
+export type DiscoveryPhaseTransfer = typeof discoveryPhaseTransfers.$inferSelect;

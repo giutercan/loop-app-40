@@ -19,7 +19,10 @@ import type {
   DiscoveryQuestion, InsertDiscoveryQuestion,
   Attachment, InsertAttachment,
   SharedQuestionnaire, InsertSharedQuestionnaire,
-  QuestionResponse, InsertQuestionResponse
+  QuestionResponse, InsertQuestionResponse,
+  JobTheme, InsertJobTheme,
+  JobThemeKPI, InsertJobThemeKPI,
+  DiscoveryPhaseTransfer, InsertDiscoveryPhaseTransfer
 } from "@shared/schema";
 
 export interface IStorage {
@@ -131,6 +134,24 @@ export interface IStorage {
   getQuestionResponsesByQuestionnaire(sharedQuestionnaireId: number): Promise<QuestionResponse[]>;
   createQuestionResponse(response: InsertQuestionResponse): Promise<QuestionResponse>;
   updateQuestionResponse(id: number, response: Partial<InsertQuestionResponse>): Promise<QuestionResponse | undefined>;
+  
+  // Job Themes (aggregated insights by "Jobs We Do")
+  getJobThemes(projectId: number): Promise<JobTheme[]>;
+  getJobTheme(id: number): Promise<JobTheme | undefined>;
+  createJobTheme(theme: InsertJobTheme): Promise<JobTheme>;
+  updateJobTheme(id: number, theme: Partial<InsertJobTheme>): Promise<JobTheme | undefined>;
+  deleteJobTheme(id: number): Promise<void>;
+  
+  // Job Theme KPIs (selected KPIs with baseline data)
+  getJobThemeKPIs(jobThemeId: number): Promise<JobThemeKPI[]>;
+  createJobThemeKPI(kpi: InsertJobThemeKPI): Promise<JobThemeKPI>;
+  updateJobThemeKPI(id: number, kpi: Partial<InsertJobThemeKPI>): Promise<JobThemeKPI | undefined>;
+  deleteJobThemeKPI(id: number): Promise<void>;
+  
+  // Discovery Phase Transfer (finalization and lock)
+  getDiscoveryPhaseTransfer(projectId: number): Promise<DiscoveryPhaseTransfer | undefined>;
+  createDiscoveryPhaseTransfer(transfer: InsertDiscoveryPhaseTransfer): Promise<DiscoveryPhaseTransfer>;
+  updateDiscoveryPhaseTransfer(id: number, transfer: Partial<InsertDiscoveryPhaseTransfer>): Promise<DiscoveryPhaseTransfer | undefined>;
 }
 
 export class DbStorage implements IStorage {
@@ -567,6 +588,82 @@ export class DbStorage implements IStorage {
     const results = await db.update(schema.questionResponses)
       .set({...response, updatedAt: new Date()})
       .where(eq(schema.questionResponses.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  // Job Themes (aggregated insights by "Jobs We Do")
+  async getJobThemes(projectId: number): Promise<JobTheme[]> {
+    return await db.select().from(schema.jobThemes)
+      .where(eq(schema.jobThemes.projectId, projectId))
+      .orderBy(desc(schema.jobThemes.compositeScore), desc(schema.jobThemes.evidenceCount));
+  }
+  
+  async getJobTheme(id: number): Promise<JobTheme | undefined> {
+    const results = await db.select().from(schema.jobThemes)
+      .where(eq(schema.jobThemes.id, id));
+    return results[0];
+  }
+  
+  async createJobTheme(theme: InsertJobTheme): Promise<JobTheme> {
+    const results = await db.insert(schema.jobThemes).values(theme).returning();
+    return results[0];
+  }
+  
+  async updateJobTheme(id: number, theme: Partial<InsertJobTheme>): Promise<JobTheme | undefined> {
+    const results = await db.update(schema.jobThemes)
+      .set({...theme, updatedAt: new Date()})
+      .where(eq(schema.jobThemes.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deleteJobTheme(id: number): Promise<void> {
+    await db.delete(schema.jobThemes).where(eq(schema.jobThemes.id, id));
+  }
+  
+  // Job Theme KPIs (selected KPIs with baseline data)
+  async getJobThemeKPIs(jobThemeId: number): Promise<JobThemeKPI[]> {
+    return await db.select().from(schema.jobThemeKPIs)
+      .where(eq(schema.jobThemeKPIs.jobThemeId, jobThemeId))
+      .orderBy(desc(schema.jobThemeKPIs.isSelected));
+  }
+  
+  async createJobThemeKPI(kpi: InsertJobThemeKPI): Promise<JobThemeKPI> {
+    const results = await db.insert(schema.jobThemeKPIs).values(kpi).returning();
+    return results[0];
+  }
+  
+  async updateJobThemeKPI(id: number, kpi: Partial<InsertJobThemeKPI>): Promise<JobThemeKPI | undefined> {
+    const results = await db.update(schema.jobThemeKPIs)
+      .set({...kpi, updatedAt: new Date()})
+      .where(eq(schema.jobThemeKPIs.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deleteJobThemeKPI(id: number): Promise<void> {
+    await db.delete(schema.jobThemeKPIs).where(eq(schema.jobThemeKPIs.id, id));
+  }
+  
+  // Discovery Phase Transfer (finalization and lock)
+  async getDiscoveryPhaseTransfer(projectId: number): Promise<DiscoveryPhaseTransfer | undefined> {
+    const results = await db.select().from(schema.discoveryPhaseTransfers)
+      .where(eq(schema.discoveryPhaseTransfers.projectId, projectId))
+      .orderBy(desc(schema.discoveryPhaseTransfers.createdAt))
+      .limit(1);
+    return results[0];
+  }
+  
+  async createDiscoveryPhaseTransfer(transfer: InsertDiscoveryPhaseTransfer): Promise<DiscoveryPhaseTransfer> {
+    const results = await db.insert(schema.discoveryPhaseTransfers).values(transfer).returning();
+    return results[0];
+  }
+  
+  async updateDiscoveryPhaseTransfer(id: number, transfer: Partial<InsertDiscoveryPhaseTransfer>): Promise<DiscoveryPhaseTransfer | undefined> {
+    const results = await db.update(schema.discoveryPhaseTransfers)
+      .set({...transfer, updatedAt: new Date()})
+      .where(eq(schema.discoveryPhaseTransfers.id, id))
       .returning();
     return results[0];
   }
