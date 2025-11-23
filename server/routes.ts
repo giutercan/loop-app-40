@@ -2072,6 +2072,7 @@ export function registerRoutes(app: Express) {
       
       // Validate request body with Zod schema
       const validated = updateJobThemeKPIRequestSchema.parse(req.body);
+      console.log(`[PATCH /api/job-theme-kpis/${kpiId}] Request body:`, JSON.stringify(validated, null, 2));
       
       const updated = await storage.updateJobThemeKPI(kpiId, validated);
       
@@ -2079,6 +2080,7 @@ export function registerRoutes(app: Express) {
         return res.status(404).json({ error: "KPI not found" });
       }
       
+      console.log(`[PATCH /api/job-theme-kpis/${kpiId}] Updated KPI - isSelected:`, updated.isSelected, "isAIRecommended:", updated.isAIRecommended);
       res.json(updated);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -2263,6 +2265,7 @@ export function registerRoutes(app: Express) {
         const job = await storage.getJobTheme(jobId);
         if (job) {
           const kpis = await storage.getJobThemeKPIs(jobId);
+          console.log(`[GET finalized-jobs] Job ${jobId} has ${kpis.length} KPIs, selected: ${kpis.filter(k => k.isSelected).length}, AI-recommended: ${kpis.filter(k => k.isAIRecommended).length}`);
           jobsWithKPIs.push({
             ...job,
             kpis: kpis
@@ -2273,6 +2276,7 @@ export function registerRoutes(app: Express) {
       // Sort by priority rank
       jobsWithKPIs.sort((a, b) => (a.priorityRank || 999) - (b.priorityRank || 999));
       
+      console.log(`[GET finalized-jobs] Returning ${jobsWithKPIs.length} jobs with total ${jobsWithKPIs.reduce((sum, j) => sum + j.kpis.length, 0)} KPIs`);
       res.json({
         finalized: true,
         jobs: jobsWithKPIs,

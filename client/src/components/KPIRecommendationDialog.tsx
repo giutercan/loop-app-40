@@ -61,7 +61,13 @@ export default function KPIRecommendationDialog({ jobThemeId, jobName, projectId
       queryClient.invalidateQueries({ queryKey: [`/api/job-themes/${jobThemeId}/kpis`] });
       
       // Invalidate finalized jobs query to refresh the Alignment page
-      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/alignment/finalized-jobs`] });
+      // Use refetchType: "all" to force refetch even if query is inactive
+      const finalizedJobsKey = `/api/projects/${projectId}/alignment/finalized-jobs`;
+      console.log(`[KPI Selection] Invalidating finalized jobs with key: ${finalizedJobsKey}, projectId:`, projectId);
+      queryClient.invalidateQueries({ 
+        queryKey: [finalizedJobsKey],
+        refetchType: "all"
+      });
       
       toast({
         title: "KPI Selected",

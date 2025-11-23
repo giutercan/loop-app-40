@@ -142,6 +142,7 @@ export function AlignmentInteractive({ projectId }: AlignmentInteractiveProps) {
             job={job}
             jobIndex={idx}
             selectedKPIs={selectedKPIs}
+            projectId={projectId}
             updateKPIMutation={updateKPIMutation}
           />
         );
@@ -154,10 +155,11 @@ interface JobCardProps {
   job: Job;
   jobIndex: number;
   selectedKPIs: KPI[];
+  projectId: number;
   updateKPIMutation: any;
 }
 
-function JobCard({ job, jobIndex, selectedKPIs, updateKPIMutation }: JobCardProps) {
+function JobCard({ job, jobIndex, selectedKPIs, projectId, updateKPIMutation }: JobCardProps) {
   const [isExpanded, setIsExpanded] = useState<boolean>(jobIndex === 0);
   const [showRecommendations, setShowRecommendations] = useState(false);
   
