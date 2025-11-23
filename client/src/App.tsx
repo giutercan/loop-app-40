@@ -9,7 +9,7 @@ import ProjectsDashboard from "@/pages/projects-dashboard";
 import NewProject from "@/pages/new-project";
 import Discovery from "@/pages/discovery";
 import Alignment from "@/pages/alignment";
-import Realization from "@/pages/realization";
+import Realization from "@/pages/realisation";
 import Questionnaire from "@/pages/questionnaire";
 
 function Router() {

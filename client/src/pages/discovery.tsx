@@ -21,9 +21,10 @@ import ValueHypothesisBuilder from "@/components/ValueHypothesisBuilder";
 import ProjectSelector from "@/components/ProjectSelector";
 import StatusBadge from "@/components/StatusBadge";
 import { AlignmentInteractive } from "@/components/alignment-interactive";
+import ProjectPhaseNav from "@/components/project-phase-nav";
 import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, Activity, Award, Building, Calendar } from "lucide-react";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useRoute } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Project, CompanyDataPoint, Headline, DiscoveryNotes, DiscoveryQuestion, Attachment, SharedQuestionnaire, QuestionResponse, JobThemeWithKPIs, DiscoveryPhaseTransfer, SuccessStory } from "@shared/schema";
@@ -227,7 +228,7 @@ function JobThemeCard({ theme, rank, updateKPIMutation, isFinalized, onDeselect 
 
 function RealizationBusinessReviewsSection({ projectId }: { projectId: number | undefined }) {
   const { data: reviews = [] } = useQuery<any[]>({
-    queryKey: ["/api/projects", projectId, "business-reviews"],
+    queryKey: [`/api/projects/${projectId}/business-reviews`],
     enabled: !!projectId,
   });
 
@@ -301,7 +302,7 @@ function RealizationProgressTrackingSection({ projectId }: { projectId: number |
     jobs: any[];
     transferredAt: Date;
   }>({
-    queryKey: ["/api/projects", projectId, "alignment", "finalized-jobs"],
+    queryKey: [`/api/projects/${projectId}/alignment/finalized-jobs`],
     enabled: !!projectId,
   });
 
@@ -565,68 +566,65 @@ function SuccessStoriesSection({ projectId }: { projectId: number | undefined })
 }
 
 export default function Discovery() {
-  const [location] = useLocation();
+  const [, params] = useRoute("/projects/:id/discovery");
+  const projectId = parseInt(params?.id || "0");
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const urlParams = new URLSearchParams(location.split('?')[1]);
-  const projectIdParam = urlParams.get('project');
-  const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>(
-    projectIdParam ? parseInt(projectIdParam) : undefined
-  );
 
   const { data: project } = useQuery<Project>({
-    queryKey: ["/api/projects", selectedProjectId],
-    enabled: !!selectedProjectId,
+    queryKey: [`/api/projects/${projectId}`],
+    enabled: !!projectId,
   });
 
   const { data: dataPoints = [] } = useQuery<CompanyDataPoint[]>({
-    queryKey: ["/api/projects", selectedProjectId, "data-points"],
-    enabled: !!selectedProjectId,
+    queryKey: [`/api/projects/${projectId}/data-points`],
+    enabled: !!projectId,
   });
 
   const { data: headlines = [] } = useQuery<Headline[]>({
-    queryKey: ["/api/projects", selectedProjectId, "headlines"],
-    enabled: !!selectedProjectId,
+    queryKey: [`/api/projects/${projectId}/headlines`],
+    enabled: !!projectId,
   });
 
   const { data: notes } = useQuery<DiscoveryNotes>({
-    queryKey: ["/api/projects", selectedProjectId, "discovery-notes"],
-    enabled: !!selectedProjectId,
+    queryKey: [`/api/projects/${projectId}/discovery-notes`],
+    enabled: !!projectId,
   });
 
   const { data: valueHypotheses = [] } = useQuery<any[]>({
-    queryKey: ["/api/projects", selectedProjectId, "value-hypotheses"],
-    enabled: !!selectedProjectId,
+    queryKey: [`/api/projects/${projectId}/value-hypotheses`],
+    enabled: !!projectId,
   });
 
   const { data: discoveryQuestions = [] } = useQuery<DiscoveryQuestion[]>({
-    queryKey: ["/api/projects", selectedProjectId, "discovery-questions"],
-    enabled: !!selectedProjectId,
+    queryKey: [`/api/projects/${projectId}/discovery-questions`],
+    enabled: !!projectId,
   });
 
   const { data: attachments = [] } = useQuery<Attachment[]>({
-    queryKey: ["/api/projects", selectedProjectId, "attachments"],
-    enabled: !!selectedProjectId,
+    queryKey: [`/api/projects/${projectId}/attachments`],
+    enabled: !!projectId,
   });
 
   const { data: questionResponses = [] } = useQuery<QuestionResponse[]>({
-    queryKey: ["/api/projects", selectedProjectId, "questionnaire-responses"],
-    enabled: !!selectedProjectId,
+    queryKey: [`/api/projects/${projectId}/questionnaire-responses`],
+    enabled: !!projectId,
   });
 
   const { data: sharedQuestionnaire } = useQuery<SharedQuestionnaire | null>({
-    queryKey: ["/api/projects", selectedProjectId, "shared-questionnaire"],
-    enabled: !!selectedProjectId,
+    queryKey: [`/api/projects/${projectId}/shared-questionnaire`],
+    enabled: !!projectId,
   });
 
   // Jobs & Priorities queries (must be at top level, not inside TabsContent)
   const { data: jobThemesData, isLoading: jobThemesLoading } = useQuery<JobThemeWithKPIs[]>({
-    queryKey: ["/api/projects", selectedProjectId, "job-themes"],
-    enabled: !!selectedProjectId,
+    queryKey: [`/api/projects/${projectId}/job-themes`],
+    enabled: !!projectId,
   });
 
   const { data: phaseTransfer } = useQuery<DiscoveryPhaseTransfer>({
-    queryKey: ["/api/projects", selectedProjectId, "phase-transfer"],
-    enabled: !!selectedProjectId,
+    queryKey: [`/api/projects/${projectId}/phase-transfer`],
+    enabled: !!projectId,
   });
 
   // Alignment phase data (finalized jobs with KPIs)
@@ -659,8 +657,8 @@ export default function Discovery() {
     }>;
     transferredAt: string | null;
   }>({
-    queryKey: [`/api/projects/${selectedProjectId}/alignment/finalized-jobs`],
-    enabled: !!selectedProjectId,
+    queryKey: [`/api/projects/${projectId}/alignment/finalized-jobs`],
+    enabled: !!projectId,
   });
 
   const [localNotes, setLocalNotes] = useState({
@@ -693,12 +691,12 @@ export default function Discovery() {
 
   const saveNotesMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedProjectId) return;
-      const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/discovery-notes`, localNotes);
+      if (!projectId) return;
+      const res = await apiRequest("POST", `/api/projects/${projectId}/discovery-notes`, localNotes);
       return await res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "discovery-notes"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/discovery-notes`] });
       toast({
         title: "Notes saved",
         description: "Your discovery notes have been saved successfully.",
@@ -708,25 +706,25 @@ export default function Discovery() {
 
   const updateProjectPhaseMutation = useMutation({
     mutationFn: async (phase: string) => {
-      if (!selectedProjectId) return;
-      const res = await apiRequest("PATCH", `/api/projects/${selectedProjectId}`, { currentPhase: phase });
+      if (!projectId) return;
+      const res = await apiRequest("PATCH", `/api/projects/${projectId}`, { currentPhase: phase });
       return await res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}`] });
     },
   });
 
   const researchCompanyMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedProjectId) return;
-      const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/research`, {});
+      if (!projectId) return;
+      const res = await apiRequest("POST", `/api/projects/${projectId}/research`, {});
       return await res.json();
     },
     onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "data-points"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "headlines"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "job-themes"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/data-points`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/headlines`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/job-themes`] });
       toast({
         title: "Company research complete",
         description: data?.summary || "AI has populated company data and headlines.",
@@ -750,13 +748,13 @@ export default function Discovery() {
 
   const followUpResearchMutation = useMutation({
     mutationFn: async (question: string) => {
-      if (!selectedProjectId) return;
-      const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/research/follow-up`, { question });
+      if (!projectId) return;
+      const res = await apiRequest("POST", `/api/projects/${projectId}/research/follow-up`, { question });
       return await res.json();
     },
     onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "data-points"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "headlines"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/data-points`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/headlines`] });
       setIsFollowUpDialogOpen(false);
       setFollowUpQuestion("");
       toast({
@@ -789,13 +787,13 @@ export default function Discovery() {
     },
     onMutate: async ({ id, relevantCapability }) => {
       // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ["/api/projects", selectedProjectId, "data-points"] });
+      await queryClient.cancelQueries({ queryKey: [`/api/projects/${projectId}/data-points`] });
       
       // Snapshot the previous value
-      const previousDataPoints = queryClient.getQueryData(["/api/projects", selectedProjectId, "data-points"]);
+      const previousDataPoints = queryClient.getQueryData([`/api/projects/${projectId}/data-points`]);
       
       // Optimistically update to the new value
-      queryClient.setQueryData(["/api/projects", selectedProjectId, "data-points"], (old: any) => {
+      queryClient.setQueryData([`/api/projects/${projectId}/data-points`], (old: any) => {
         if (!old) return old;
         return old.map((dp: any) => 
           dp.id === id 
@@ -811,7 +809,7 @@ export default function Discovery() {
       // Rollback to the previous value on error
       if (context?.previousDataPoints) {
         queryClient.setQueryData(
-          ["/api/projects", selectedProjectId, "data-points"],
+          [`/api/projects/${projectId}/data-points`],
           context.previousDataPoints
         );
       }
@@ -819,7 +817,7 @@ export default function Discovery() {
     onSettled: () => {
       // Always refetch after error or success to ensure we're in sync
       queryClient.invalidateQueries({ 
-        queryKey: ["/api/projects", selectedProjectId, "data-points"]
+        queryKey: [`/api/projects/${projectId}/data-points`]
       });
     },
   });
@@ -832,9 +830,9 @@ export default function Discovery() {
       return await res.json();
     },
     onMutate: async ({ id, selectedForNotes }) => {
-      await queryClient.cancelQueries({ queryKey: ["/api/projects", selectedProjectId, "data-points"] });
-      const previousDataPoints = queryClient.getQueryData(["/api/projects", selectedProjectId, "data-points"]);
-      queryClient.setQueryData(["/api/projects", selectedProjectId, "data-points"], (old: any) => {
+      await queryClient.cancelQueries({ queryKey: [`/api/projects/${projectId}/data-points`] });
+      const previousDataPoints = queryClient.getQueryData([`/api/projects/${projectId}/data-points`]);
+      queryClient.setQueryData([`/api/projects/${projectId}/data-points`], (old: any) => {
         if (!old) return old;
         return old.map((dp: any) => 
           dp.id === id 
@@ -847,7 +845,7 @@ export default function Discovery() {
     onError: (err, variables, context: any) => {
       if (context?.previousDataPoints) {
         queryClient.setQueryData(
-          ["/api/projects", selectedProjectId, "data-points"],
+          [`/api/projects/${projectId}/data-points`],
           context.previousDataPoints
         );
       }
@@ -859,19 +857,19 @@ export default function Discovery() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ 
-        queryKey: ["/api/projects", selectedProjectId, "data-points"]
+        queryKey: [`/api/projects/${projectId}/data-points`]
       });
     },
   });
 
   const generateDiscoveryQuestionsMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedProjectId) return;
-      const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/discovery-questions/generate`, {});
+      if (!projectId) return;
+      const res = await apiRequest("POST", `/api/projects/${projectId}/discovery-questions/generate`, {});
       return await res.json();
     },
     onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "discovery-questions"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/discovery-questions`] });
       toast({
         title: "Discovery questions generated",
         description: data?.summary || "AI has generated discovery questions based on your selected insights.",
@@ -893,13 +891,13 @@ export default function Discovery() {
 
   const enrichFromNotesMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedProjectId) return;
-      const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/enrich-from-notes`, {});
+      if (!projectId) return;
+      const res = await apiRequest("POST", `/api/projects/${projectId}/enrich-from-notes`, {});
       return await res.json();
     },
     onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "data-points"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "discovery-questions"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/data-points`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/discovery-questions`] });
       toast({
         title: "Insights enriched",
         description: data?.summary || "AI has extracted new insights from your notes and attachments.",
@@ -925,9 +923,9 @@ export default function Discovery() {
       return await res.json();
     },
     onMutate: async ({ id, answer }) => {
-      await queryClient.cancelQueries({ queryKey: ["/api/projects", selectedProjectId, "discovery-questions"] });
-      const previousQuestions = queryClient.getQueryData(["/api/projects", selectedProjectId, "discovery-questions"]);
-      queryClient.setQueryData(["/api/projects", selectedProjectId, "discovery-questions"], (old: any) => {
+      await queryClient.cancelQueries({ queryKey: [`/api/projects/${projectId}/discovery-questions`] });
+      const previousQuestions = queryClient.getQueryData([`/api/projects/${projectId}/discovery-questions`]);
+      queryClient.setQueryData([`/api/projects/${projectId}/discovery-questions`], (old: any) => {
         if (!old) return old;
         return old.map((q: any) => 
           q.id === id 
@@ -940,21 +938,21 @@ export default function Discovery() {
     onError: (err, variables, context: any) => {
       if (context?.previousQuestions) {
         queryClient.setQueryData(
-          ["/api/projects", selectedProjectId, "discovery-questions"],
+          [`/api/projects/${projectId}/discovery-questions`],
           context.previousQuestions
         );
       }
     },
     onSettled: () => {
       queryClient.invalidateQueries({ 
-        queryKey: ["/api/projects", selectedProjectId, "discovery-questions"]
+        queryKey: [`/api/projects/${projectId}/discovery-questions`]
       });
     },
   });
 
   const uploadFileMutation = useMutation({
     mutationFn: async (file: File) => {
-      if (!selectedProjectId) return;
+      if (!projectId) return;
 
       // Validate file size on frontend
       const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -969,7 +967,7 @@ export default function Discovery() {
         reader.readAsDataURL(file);
       });
 
-      const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/attachments`, {
+      const res = await apiRequest("POST", `/api/projects/${projectId}/attachments`, {
         type: "file",
         fileName: file.name,
         fileSize: file.size,
@@ -985,7 +983,7 @@ export default function Discovery() {
       return await res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "attachments"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/attachments`] });
       toast({
         title: "File uploaded",
         description: "Your file has been uploaded successfully.",
@@ -1002,14 +1000,14 @@ export default function Discovery() {
 
   const saveVoiceNoteMutation = useMutation({
     mutationFn: async (transcript: string) => {
-      if (!selectedProjectId) return;
+      if (!projectId) return;
 
       // Validate transcript is not empty
       if (!transcript || transcript.trim().length === 0) {
         throw new Error("Voice transcription cannot be empty");
       }
 
-      const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/attachments`, {
+      const res = await apiRequest("POST", `/api/projects/${projectId}/attachments`, {
         type: "voice",
         content: transcript.trim(),
       });
@@ -1022,7 +1020,7 @@ export default function Discovery() {
       return await res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "attachments"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/attachments`] });
       setVoiceTranscript("");
       toast({
         title: "Voice note saved",
@@ -1048,7 +1046,7 @@ export default function Discovery() {
       return await res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "attachments"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/attachments`] });
       toast({
         title: "Attachment deleted",
         description: "The attachment has been removed.",
@@ -1065,8 +1063,8 @@ export default function Discovery() {
 
   const shareQuestionnaireMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedProjectId) return;
-      const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/share-questionnaire`, {
+      if (!projectId) return;
+      const res = await apiRequest("POST", `/api/projects/${projectId}/share-questionnaire`, {
         clientName: clientName || null,
         clientEmail: clientEmail || null,
       });
@@ -1077,7 +1075,7 @@ export default function Discovery() {
       return await res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "shared-questionnaire"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/shared-questionnaire`] });
       toast({
         title: "Questionnaire shared",
         description: "A shareable link has been generated for your client.",
@@ -1094,8 +1092,8 @@ export default function Discovery() {
 
   const submitConsultantResponseMutation = useMutation({
     mutationFn: async ({ questionId, response }: { questionId: number; response: string }) => {
-      if (!selectedProjectId) return;
-      const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/consultant-response`, {
+      if (!projectId) return;
+      const res = await apiRequest("POST", `/api/projects/${projectId}/consultant-response`, {
         questionId,
         response,
       });
@@ -1106,7 +1104,7 @@ export default function Discovery() {
       return await res.json();
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "questionnaire-responses"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/questionnaire-responses`] });
       setConsultantAnswers(prev => {
         const newAnswers = { ...prev };
         delete newAnswers[variables.questionId];
@@ -1129,14 +1127,14 @@ export default function Discovery() {
   // Jobs & Priorities mutations (must be at top level, not inside TabsContent)
   const prioritizeJobsMutation = useMutation({
     mutationFn: async ({ prioritizedIds }: { prioritizedIds: number[] }) => {
-      const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/job-themes/prioritize`, {
+      const res = await apiRequest("POST", `/api/projects/${projectId}/job-themes/prioritize`, {
         prioritizedIds
       });
       if (!res.ok) throw new Error("Failed to prioritize");
       return await res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "job-themes"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/job-themes`] });
       toast({ title: "Priorities updated successfully" });
     },
   });
@@ -1148,8 +1146,8 @@ export default function Discovery() {
       return await res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "job-themes"] });
-      queryClient.invalidateQueries({ queryKey: [`/api/projects/${selectedProjectId}/alignment/finalized-jobs`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/job-themes`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/alignment/finalized-jobs`] });
       toast({
         title: "KPI updated",
         description: "KPI has been updated successfully.",
@@ -1159,7 +1157,7 @@ export default function Discovery() {
 
   const finalizeDiscoveryMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/finalize-discovery`, {});
+      const res = await apiRequest("POST", `/api/projects/${projectId}/finalize-discovery`, {});
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.error || "Failed to finalize");
@@ -1167,8 +1165,8 @@ export default function Discovery() {
       return await res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "phase-transfer"] });
-      queryClient.invalidateQueries({ queryKey: [`/api/projects/${selectedProjectId}/alignment/finalized-jobs`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/phase-transfer`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/alignment/finalized-jobs`] });
       toast({
         title: "Discovery phase finalized",
         description: "Your selections have been locked and transferred to Alignment phase.",
@@ -1300,7 +1298,7 @@ export default function Discovery() {
     shareQuestionnaireMutation.mutate();
   };
 
-  if (!selectedProjectId) {
+  if (!projectId) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <Card className="max-w-2xl w-full">
@@ -1312,8 +1310,8 @@ export default function Discovery() {
           </CardHeader>
           <CardContent>
             <ProjectSelector
-              currentProjectId={selectedProjectId}
-              onProjectChange={(p) => setSelectedProjectId(p.id)}
+              currentProjectId={projectId}
+              onProjectChange={(p) => setLocation(`/projects/${p.id}/discovery`)}
             />
           </CardContent>
         </Card>
@@ -1342,8 +1340,8 @@ export default function Discovery() {
             </div>
             <div className="flex items-center gap-3">
               <ProjectSelector
-                currentProjectId={selectedProjectId}
-                onProjectChange={(p) => setSelectedProjectId(p.id)}
+                currentProjectId={projectId}
+                onProjectChange={(p) => setLocation(`/projects/${p.id}/discovery`)}
               />
               <Button
                 variant="outline"
@@ -1362,6 +1360,14 @@ export default function Discovery() {
           </div>
         </div>
       </header>
+
+      {project && (
+        <ProjectPhaseNav 
+          projectId={projectId!}
+          projectName={project.companyName}
+          currentPhase="discovery"
+        />
+      )}
 
       <main className="container mx-auto max-w-7xl px-4 lg:px-8 py-8">
         <Tabs defaultValue="organisation" className="space-y-6">
@@ -1385,7 +1391,7 @@ export default function Discovery() {
               <CardContent>
                 <Button
                   onClick={() => researchCompanyMutation.mutate()}
-                  disabled={researchCompanyMutation.isPending || !selectedProjectId}
+                  disabled={researchCompanyMutation.isPending || !projectId}
                   data-testid="button-ai-research"
                 >
                   <Sparkles className="w-4 h-4 mr-2" />
@@ -2395,7 +2401,7 @@ export default function Discovery() {
 
           <TabsContent value="alignment" className="space-y-6">
             {finalizedData && finalizedData.finalized && finalizedData.jobs.length > 0 ? (
-              <AlignmentInteractive projectId={selectedProjectId} jobs={finalizedData.jobs} />
+              <AlignmentInteractive projectId={projectId} jobs={finalizedData.jobs} />
             ) : (
               <Card className="max-w-2xl mx-auto">
                 <CardHeader>
@@ -2416,15 +2422,15 @@ export default function Discovery() {
           {/* Realization Tab */}
           <TabsContent value="realization" className="space-y-6">
             {/* Business Reviews Section */}
-            <RealizationBusinessReviewsSection projectId={selectedProjectId} />
+            <RealizationBusinessReviewsSection projectId={projectId} />
             
             {/* Progress Tracking Section */}
-            <RealizationProgressTrackingSection projectId={selectedProjectId} />
+            <RealizationProgressTrackingSection projectId={projectId} />
           </TabsContent>
 
           {/* Success Stories Tab */}
           <TabsContent value="successStories" className="space-y-6">
-            <SuccessStoriesSection projectId={selectedProjectId} />
+            <SuccessStoriesSection projectId={projectId} />
           </TabsContent>
         </Tabs>
       </main>

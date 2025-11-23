@@ -22,6 +22,7 @@ import type { Project, ValueHypothesis, CompanyDataPoint, JobThemeKPI } from "@s
 import ValueHypothesisBuilder from "@/components/ValueHypothesisBuilder";
 import ValueHypothesisCard from "@/components/ValueHypothesisCard";
 import { AlignmentInteractive } from "@/components/alignment-interactive";
+import ProjectPhaseNav from "@/components/project-phase-nav";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -114,6 +115,14 @@ export default function AlignmentPage() {
 
   return (
     <div className="h-full flex flex-col">
+      {project && (
+        <ProjectPhaseNav 
+          projectId={projectId}
+          projectName={project.companyName}
+          currentPhase="alignment"
+        />
+      )}
+      
       {/* Header */}
       <div className="border-b bg-card">
         <div className="p-6">

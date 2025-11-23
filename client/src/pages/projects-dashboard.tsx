@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +42,7 @@ interface Project {
 
 export default function ProjectsDashboard() {
   const { toast } = useToast();
+  const [_, setLocation] = useLocation();
   const { data: projects = [], isLoading } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
   });
@@ -93,24 +94,28 @@ export default function ProjectsDashboard() {
       <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto max-w-7xl px-4 lg:px-8">
           <div className="flex h-16 lg:h-20 items-center justify-between">
-            <Link href="/">
-              <a className="flex items-center gap-3 hover-elevate rounded-lg px-2 py-1 -mx-2">
-                <div className="w-10 h-10 bg-gradient-to-br from-primary via-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-                  <TrendingUp className="w-6 h-6 text-primary-foreground" />
-                </div>
-                <div>
-                  <span className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">Korn Ferry</span>
-                  <p className="text-xs text-muted-foreground hidden lg:block">Value Lifecycle</p>
-                </div>
-              </a>
+            <Link 
+              href="/" 
+              className="flex items-center gap-3 hover-elevate rounded-lg px-2 py-1 -mx-2"
+            >
+              <div className="w-10 h-10 bg-gradient-to-br from-primary via-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+                <TrendingUp className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <div>
+                <span className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">Korn Ferry</span>
+                <p className="text-xs text-muted-foreground hidden lg:block">Value Lifecycle</p>
+              </div>
             </Link>
             
-            <Link href="/projects/new">
-              <Button size="lg" className="shadow-lg shadow-primary/20" data-testid="button-new-project">
-                <Plus className="w-4 h-4 mr-2" />
-                New Project
-              </Button>
-            </Link>
+            <Button 
+              size="lg" 
+              className="shadow-lg shadow-primary/20" 
+              data-testid="button-new-project"
+              onClick={() => setLocation('/projects/new')}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              New Project
+            </Button>
           </div>
         </div>
       </header>
@@ -175,12 +180,14 @@ export default function ProjectsDashboard() {
                     Get started by creating your first client engagement project
                   </p>
                 </div>
-                <Link href="/projects/new">
-                  <Button size="lg" data-testid="button-create-first-project">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Your First Project
-                  </Button>
-                </Link>
+                <Button 
+                  size="lg" 
+                  data-testid="button-create-first-project"
+                  onClick={() => setLocation('/projects/new')}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Your First Project
+                </Button>
               </CardContent>
             </Card>
           ) : (
@@ -281,16 +288,15 @@ export default function ProjectsDashboard() {
                   </CardHeader>
 
                   <CardContent className="pt-0">
-                    <Link href={`/projects/${project.id}/${project.currentPhase}`}>
-                      <Button 
-                        className="w-full group-hover:shadow-lg transition-shadow" 
-                        variant="outline"
-                        data-testid={`button-open-project-${project.id}`}
-                      >
-                        Open Project
-                        <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                      </Button>
-                    </Link>
+                    <Button 
+                      className="w-full group-hover:shadow-lg transition-shadow" 
+                      variant="outline"
+                      data-testid={`button-open-project-${project.id}`}
+                      onClick={() => setLocation(`/projects/${project.id}/discovery`)}
+                    >
+                      Open Project
+                      <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                    </Button>
                   </CardContent>
                 </Card>
               ))}

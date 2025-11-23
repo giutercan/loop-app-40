@@ -4,35 +4,31 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import KPICard from "@/components/KPICard";
 import FinancialAppendix from "@/components/FinancialAppendix";
 import StatusBadge from "@/components/StatusBadge";
-import ProjectSelector from "@/components/ProjectSelector";
+import ProjectPhaseNav from "@/components/project-phase-nav";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Download, FileText, Clock, CheckCircle2 } from "lucide-react";
-import { Link, useLocation } from "wouter";
-import { useState } from "react";
+import { Link, useLocation, useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import type { Project, AnalyticsReview, Kpi } from "@shared/schema";
 
 export default function Realisation() {
-  const [location] = useLocation();
-  const urlParams = new URLSearchParams(location.split('?')[1]);
-  const projectIdParam = urlParams.get('project');
-  const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>(
-    projectIdParam ? parseInt(projectIdParam) : undefined
-  );
+  const [, params] = useRoute("/projects/:id/realisation");
+  const projectId = parseInt(params?.id || "0");
+  const [, setLocation] = useLocation();
 
   const { data: project } = useQuery<Project>({
-    queryKey: ["/api/projects", selectedProjectId],
-    enabled: !!selectedProjectId,
+    queryKey: [`/api/projects/${projectId}`],
+    enabled: !!projectId,
   });
 
   const { data: analyticsReviews = [] } = useQuery<AnalyticsReview[]>({
-    queryKey: ["/api/projects", selectedProjectId, "analytics-reviews"],
-    enabled: !!selectedProjectId,
+    queryKey: [`/api/projects/${projectId}/analytics-reviews`],
+    enabled: !!projectId,
   });
 
   const { data: kpis = [] } = useQuery<Kpi[]>({
-    queryKey: ["/api/projects", selectedProjectId, "kpis"],
-    enabled: !!selectedProjectId,
+    queryKey: [`/api/projects/${projectId}/kpis`],
+    enabled: !!projectId,
   });
 
   const analyticsReview = analyticsReviews[0];
@@ -60,10 +56,6 @@ export default function Realisation() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <ProjectSelector
-                currentProjectId={selectedProjectId}
-                onProjectChange={(p) => setSelectedProjectId(p.id)}
-              />
               <Button variant="outline" data-testid="button-export-draft">
                 <Download className="w-4 h-4 mr-2" />
                 Export Draft
@@ -76,6 +68,14 @@ export default function Realisation() {
           </div>
         </div>
       </header>
+
+      {project && (
+        <ProjectPhaseNav 
+          projectId={projectId}
+          projectName={project.companyName}
+          currentPhase="realisation"
+        />
+      )}
 
       {!analyticsSignedOff && (
         <div className="bg-[#8DC63F]/10 border-b border-[#8DC63F]/20">
