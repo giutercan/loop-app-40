@@ -73,15 +73,6 @@ export default function Landing() {
                     <ArrowRight className="ml-2 w-5 h-5" />
                   </Button>
                 </Link>
-                <a href="#features">
-                  <Button 
-                    size="lg" 
-                    variant="outline" 
-                    className="px-10 py-7 text-lg font-semibold hover:bg-accent/50 transition-all duration-300"
-                  >
-                    See How It Works
-                  </Button>
-                </a>
               </div>
               
               <div className="flex flex-wrap items-center gap-6 pt-2">
