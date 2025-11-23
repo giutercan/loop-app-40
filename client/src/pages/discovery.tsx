@@ -219,6 +219,176 @@ function JobThemeCard({ theme, rank, updateKPIMutation, isFinalized, onDeselect 
   );
 }
 
+// ============================================================================
+// Realization Tab Components
+// ============================================================================
+
+function RealizationBusinessReviewsSection({ projectId }: { projectId: number | undefined }) {
+  const { data: reviews = [] } = useQuery<any[]>({
+    queryKey: ["/api/projects", projectId, "business-reviews"],
+    enabled: !!projectId,
+  });
+
+  if (!projectId) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <p className="text-sm text-muted-foreground text-center">
+            Select a project to view business reviews
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const completedReviews = reviews.filter(r => r.status === "completed");
+  const upcomingReviews = reviews.filter(r => r.status === "scheduled");
+
+  return (
+    <Card data-testid="card-business-reviews">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Calendar className="w-5 h-5 text-primary" />
+          Business Reviews
+        </CardTitle>
+        <CardDescription>
+          Track client engagement and sentiment through regular business reviews
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="border rounded-md p-4">
+            <div className="text-sm text-muted-foreground mb-1">Completed</div>
+            <div className="text-2xl font-semibold" data-testid="text-completed-reviews-count">{completedReviews.length}</div>
+          </div>
+          <div className="border rounded-md p-4">
+            <div className="text-sm text-muted-foreground mb-1">Upcoming</div>
+            <div className="text-2xl font-semibold" data-testid="text-upcoming-reviews-count">{upcomingReviews.length}</div>
+          </div>
+        </div>
+        {reviews.length === 0 && (
+          <p className="text-sm text-muted-foreground text-center py-4" data-testid="text-no-reviews">
+            No business reviews scheduled yet. Switch to the full Realization page to create your first review.
+          </p>
+        )}
+        {reviews.length > 0 && (
+          <div className="space-y-2">
+            {reviews.slice(0, 3).map(review => (
+              <div key={review.id} className="border rounded-md p-3 text-sm">
+                <div className="font-medium">{review.reviewType} Review</div>
+                <div className="text-muted-foreground">
+                  {format(new Date(review.reviewDate), 'MMM d, yyyy')} • {review.status}
+                </div>
+              </div>
+            ))}
+            {reviews.length > 3 && (
+              <p className="text-xs text-muted-foreground text-center pt-2">
+                +{reviews.length - 3} more reviews
+              </p>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function RealizationProgressTrackingSection({ projectId }: { projectId: number | undefined }) {
+  const { data: finalizedData } = useQuery<{
+    finalized: boolean;
+    jobs: any[];
+    transferredAt: Date;
+  }>({
+    queryKey: ["/api/projects", projectId, "alignment", "finalized-jobs"],
+    enabled: !!projectId,
+  });
+
+  if (!projectId) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <p className="text-sm text-muted-foreground text-center">
+            Select a project to view progress tracking
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!finalizedData?.finalized) {
+    return (
+      <Card data-testid="card-progress-tracking">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingDown className="w-5 h-5 text-primary" />
+            Progress Tracking
+          </CardTitle>
+          <CardDescription>
+            Monitor KPI progress from baseline to target values
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center py-8">
+            <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mb-4">
+              <Target className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <p className="text-sm text-muted-foreground text-center max-w-md">
+              Discovery phase must be finalized before you can track KPI progress. Complete the "Jobs & Priorities" tab first.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const totalKPIs = finalizedData.jobs.reduce((sum, job) => sum + (job.kpis?.filter((k: any) => k.isSelected).length || 0), 0);
+  
+  return (
+    <Card data-testid="card-progress-tracking">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <TrendingDown className="w-5 h-5 text-primary" />
+          Progress Tracking
+        </CardTitle>
+        <CardDescription>
+          Monitor {totalKPIs} KPIs across {finalizedData.jobs.length} prioritized jobs
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div className="grid grid-cols-3 gap-4">
+            <div className="border rounded-md p-4">
+              <div className="text-sm text-muted-foreground mb-1">Jobs</div>
+              <div className="text-2xl font-semibold">{finalizedData.jobs.length}</div>
+            </div>
+            <div className="border rounded-md p-4">
+              <div className="text-sm text-muted-foreground mb-1">Total KPIs</div>
+              <div className="text-2xl font-semibold">{totalKPIs}</div>
+            </div>
+            <div className="border rounded-md p-4">
+              <div className="text-sm text-muted-foreground mb-1">Finalized</div>
+              <div className="text-2xl font-semibold">
+                {format(new Date(finalizedData.transferredAt), 'MMM d')}
+              </div>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {finalizedData.jobs.map(job => {
+              const selectedKPIs = job.kpis?.filter((k: any) => k.isSelected) || [];
+              return (
+                <div key={job.id} className="border rounded-md p-3 text-sm">
+                  <div className="font-medium">{job.jobName}</div>
+                  <div className="text-muted-foreground">{selectedKPIs.length} KPIs selected</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Discovery() {
   const [location] = useLocation();
   const { toast } = useToast();
@@ -2218,19 +2388,11 @@ export default function Discovery() {
 
           {/* Realization Tab */}
           <TabsContent value="realization" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Realization Phase</CardTitle>
-                <CardDescription>
-                  Track value delivery through business reviews and KPI progress monitoring
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Realization content will be displayed here
-                </p>
-              </CardContent>
-            </Card>
+            {/* Business Reviews Section */}
+            <RealizationBusinessReviewsSection projectId={selectedProjectId} />
+            
+            {/* Progress Tracking Section */}
+            <RealizationProgressTrackingSection projectId={selectedProjectId} />
           </TabsContent>
 
           {/* Success Stories Tab */}
