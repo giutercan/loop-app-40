@@ -120,7 +120,7 @@ IMPORTANT:
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
       max_completion_tokens: 8192,
@@ -227,7 +227,7 @@ IMPORTANT REQUIREMENTS:
     
     // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
     const response = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
       max_completion_tokens: 8192,
@@ -385,7 +385,7 @@ IMPORTANT:
     console.log(`[AI Enrichment] Analyzing notes for ${companyName}...`);
     
     const response = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
       max_completion_tokens: 6144,
@@ -469,7 +469,7 @@ For "Leadership & Development Journeys" with insight about leadership transition
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
       max_completion_tokens: 4096,
@@ -573,7 +573,7 @@ Make each story:
     console.log("Calling OpenAI API for success stories...");
     
     const response = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: "gpt-4o",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
@@ -765,7 +765,7 @@ Generate the agenda in this JSON format:
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
       max_completion_tokens: 2500,
@@ -842,7 +842,7 @@ Return JSON format:
     console.log(`[AI Benchmark] Generating for KPI: ${kpiName}, Industry: ${industry}`);
     
     const response = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
       max_completion_tokens: 500,
@@ -902,10 +902,11 @@ const valueCaseRecommendationSchema = z.object({
 
 interface JobThemeWithKPIs {
   id: number;
-  name: string;
-  description: string;
-  capability: string;
-  evidence: string[];
+  jobName: string;
+  capabilityName: string;
+  aggregationSummary: string | null;
+  sourceInsightIds: number[] | null;
+  evidenceCount: number;
   priorityRank: number | null;
   kpis: Array<{
     id: number;
@@ -925,11 +926,11 @@ export async function generateValueCaseRecommendations(
   const knowledgeBase = getSolutionSummary();
   
   const jobsSummary = finalizedJobs.map((job, idx) => `
-Priority ${idx + 1}: ${job.name}
-- Capability: ${job.capability}
-- Description: ${job.description}
-- Evidence: ${job.evidence.slice(0, 2).join('; ')}
-- KPIs: ${job.kpis.map(k => `${k.kpiName} (${k.baselineValue || 'TBD'} → ${k.targetValue || 'TBD'} ${k.unit})${k.isPrimary ? ' [PRIMARY]' : ''}`).join(', ')}
+Priority ${idx + 1}: ${job.jobName}
+- Capability: ${job.capabilityName}
+- Summary: ${job.aggregationSummary || 'No summary available'}
+- Evidence Count: ${job.evidenceCount} supporting insights
+- KPIs: ${(job.kpis || []).map(k => `${k.kpiName} (${k.baselineValue || 'TBD'} → ${k.targetValue || 'TBD'} ${k.unit})${k.isPrimary ? ' [PRIMARY]' : ''}`).join(', ') || 'No KPIs configured'}
 `).join('\n');
 
   const prompt = `You are a Korn Ferry consultant creating value case recommendations for ${companyName} in the ${industry} industry.
@@ -984,7 +985,7 @@ IMPORTANT:
     console.log(`[AI Value Cases] Generating recommendations for ${companyName}`);
     
     const response = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
       max_completion_tokens: 2000,

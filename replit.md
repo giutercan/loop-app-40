@@ -21,7 +21,7 @@ A full-stack web application for Korn Ferry consultants to manage client engagem
 - Responsive grid layouts with flex-wrap for mobile compatibility.
 
 ### Technical Implementations
-- **AI-Powered Company Research**: GPT-5 generates prioritized insights tagged with Korn Ferry pillars.
+- **AI-Powered Company Research**: GPT-4o generates prioritized insights tagged with Korn Ferry pillars.
 - **Automatic AI Classification**: Insights are classified into Korn Ferry capabilities with manual adjustment support.
 - **Value Calculation Framework**: Quantitative value case system with financial calculations (NPV, payback period, 3-year projections) for key capabilities, including KPI metadata and financial translation formulas.
 - **Korn Ferry Knowledge Structure Integration**: AI assigns solution areas and KPIs to insights based on Korn Ferry's knowledge base.
@@ -36,7 +36,7 @@ A full-stack web application for Korn Ferry consultants to manage client engagem
 - **Jobs & Priorities Value Build System**: Transforms discovery insights into actionable value-building priorities, including automatic job theme generation, job prioritization, KPI selection, baseline data input, and phase finalization.
 - **Interactive Alignment Page**: Visual interface for KPI configuration, gap visualization, and AI-powered benchmark generation with optimistic UI updates.
 - **Realization Phase - Phase 1**: Includes Business Review management, KPI Progress Tracking against baselines and targets, and Success Story linking.
-- **AI-Powered Value Case Recommendations**: GPT-5 generates strategic value case recommendations based on finalized Discovery data, including action-oriented names, descriptions, linked jobs, suggested KPIs, financial estimates, and strategic rationale.
+- **AI-Powered Value Case Recommendations**: GPT-4o analyzes finalized Discovery jobs and KPIs to generate 3-5 strategic value case recommendations with action-oriented names, descriptions, linked jobs, suggested KPIs, financial estimates (NPV, payback period), and strategic rationale. Supports both AI-generated and custom value case creation.
 
 ### Feature Specifications
 - **Discovery Phase**: Company research, data collection, note-taking, AI research, notes enrichment, collaborative questionnaires, and 360-degree discovery consolidation.
@@ -56,9 +56,16 @@ A full-stack web application for Korn Ferry consultants to manage client engagem
 ### Tech Stack
 - **Frontend**: React, TypeScript, Wouter, TanStack Query, Shadcn UI
 - **Backend**: Express.js, TypeScript
-- **AI**: OpenAI GPT-5
+- **AI**: OpenAI GPT-4o
 - **Storage**: In-memory storage (MemStorage)
 
 ## External Dependencies
-- **OpenAI GPT-5**: For AI-powered company research and insight generation.
+- **OpenAI GPT-4o**: For AI-powered company research, insight generation, and value case recommendations.
 - **Clearout API**: For real-time company autocomplete functionality.
+
+## Recent Technical Changes
+- **Value Case Terminology Refactor**: Renamed all "Value Hypothesis" references to "Value Case" across database, backend, and frontend for clarity.
+- **AI Recommendation Schema**: Added nullable fields (linkedJobThemeIds, suggestedKPIs, estimatedNPV, estimatedPaybackMonths) to support AI-generated value cases that may span multiple capabilities.
+- **Schema Flexibility**: Made capabilityName and solutionArea nullable to accommodate AI recommendations that don't fit rigid classification constraints.
+- **Frontend Response Parsing**: Fixed API response handling to properly parse JSON from apiRequest() Response objects.
+- **Known UI Limitation**: Alignment page displays "£NaN" for AI-generated value cases without calculationResults; future enhancement planned to show estimatedNPV/payback when full calculations are absent.

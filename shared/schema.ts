@@ -99,10 +99,10 @@ export const valueCases = pgTable("value_hypotheses", {
   
   // Basic information
   title: text("title").notNull(), // e.g., "Improve Quality of Hire in Tech Hiring"
-  capabilityName: text("capability_name").notNull(), // From knowledge.ts
+  capabilityName: text("capability_name"), // From knowledge.ts (nullable for AI recommendations)
   solutionArea: text("solution_area", {
     enum: ["ASSESS", "DEVELOP", "TRANSFORM", "REWARD", "COMMERCIAL", "ANALYTICS"]
-  }).notNull(),
+  }), // Nullable for AI recommendations that span multiple areas
   
   // Calculation data
   calculationInputs: jsonb("calculation_inputs").notNull(), // All inputs to calculation function
@@ -111,6 +111,12 @@ export const valueCases = pgTable("value_hypotheses", {
   // Supporting evidence
   linkedInsights: text("linked_insights").array(), // Array of data point IDs
   rationale: text("rationale"), // Why this case is valuable
+  
+  // AI-generated recommendation fields
+  linkedJobThemeIds: integer("linked_job_theme_ids").array(), // Jobs this case addresses
+  suggestedKPIs: text("suggested_kpis").array(), // KPIs this case will impact
+  estimatedNPV: text("estimated_npv"), // NPV estimate (e.g., "$2.5M over 3 years")
+  estimatedPaybackMonths: integer("estimated_payback_months"), // Payback period in months
   
   // Legacy fields (kept for compatibility)
   job: text("job"),

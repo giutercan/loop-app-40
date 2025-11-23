@@ -38,8 +38,9 @@ export function ValueCaseCreationDialog({ open, onOpenChange, projectId }: Value
         "POST",
         `/api/projects/${projectId}/value-cases/generate-recommendations`,
         {}
-      ) as unknown;
-      return response as { recommendations: ValueCaseRecommendation[] };
+      );
+      const data = await response.json();
+      return data as { recommendations: ValueCaseRecommendation[] };
     },
     enabled: open, // Only fetch when dialog is open
     retry: false, // Don't retry on error
@@ -134,11 +135,11 @@ export function ValueCaseCreationDialog({ open, onOpenChange, projectId }: Value
           </div>
         )}
 
-        {recommendationsData && !isLoading && (
+        {recommendationsData && !isLoading && !error && (
           <div className="space-y-4">
             <ScrollArea className="h-[500px] pr-4">
               <div className="space-y-3" data-testid="recommendations-list">
-                {recommendationsData.recommendations.map((rec, index) => (
+                {(recommendationsData.recommendations || []).map((rec, index) => (
                   <Card
                     key={index}
                     className={`cursor-pointer transition-all ${
