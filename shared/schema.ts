@@ -476,3 +476,57 @@ export const insertDiscoveryPhaseTransferSchema = createInsertSchema(discoveryPh
 });
 export type InsertDiscoveryPhaseTransfer = z.infer<typeof insertDiscoveryPhaseTransferSchema>;
 export type DiscoveryPhaseTransfer = typeof discoveryPhaseTransfers.$inferSelect;
+
+// API Request/Response Schemas for Jobs & Priorities
+
+// Prioritize Jobs Request
+export const prioritizeJobsRequestSchema = z.object({
+  prioritizedIds: z.array(z.number()).min(1).max(3), // Enforce top-3 constraint
+});
+export type PrioritizeJobsRequest = z.infer<typeof prioritizeJobsRequestSchema>;
+
+// Update KPI Request
+export const updateJobThemeKPIRequestSchema = z.object({
+  isSelected: z.boolean().optional(),
+  baselineValue: z.string().optional(),
+  baselineSource: z.string().optional(),
+});
+export type UpdateJobThemeKPIRequest = z.infer<typeof updateJobThemeKPIRequestSchema>;
+
+// Finalize Discovery Request (empty body, validation in backend)
+export const finalizeDiscoveryRequestSchema = z.object({});
+export type FinalizeDiscoveryRequest = z.infer<typeof finalizeDiscoveryRequestSchema>;
+
+// Job Theme Response (with nested KPIs for frontend) - matches backend SELECT response
+export const jobThemeWithKPIsSchema = z.object({
+  id: z.number(),
+  projectId: z.number(),
+  jobName: z.string(),
+  capabilityName: z.string(),
+  solutionArea: z.enum(["ASSESS", "DEVELOP", "TRANSFORM", "REWARD", "COMMERCIAL", "ANALYTICS"]).nullable().optional(),
+  priorityRank: z.number().nullable().optional(),
+  aggregationSummary: z.string().nullable().optional(),
+  sourceInsightIds: z.array(z.number()).nullable().optional(),
+  sourceQuestionIds: z.array(z.number()).nullable().optional(),
+  compositeScore: z.number(),
+  evidenceCount: z.number(),
+  createdAt: z.any(), // Date from DB, allow flexible parsing
+  updatedAt: z.any(), // Date from DB, allow flexible parsing
+  kpis: z.array(z.object({
+    id: z.number(),
+    jobThemeId: z.number(),
+    kpiName: z.string(),
+    kpiType: z.enum(["primary", "supporting"]),
+    unit: z.string(),
+    isSelected: z.boolean(),
+    baselineValue: z.string().nullable().optional(),
+    baselineSource: z.string().nullable().optional(),
+    benchmarkValue: z.string().nullable().optional(),
+    benchmarkSource: z.string().nullable().optional(),
+    definition: z.string().nullable().optional(),
+    measurementFrequency: z.string().nullable().optional(),
+    createdAt: z.any(), // Date from DB
+    updatedAt: z.any(), // Date from DB
+  })),
+});
+export type JobThemeWithKPIs = z.infer<typeof jobThemeWithKPIsSchema>;

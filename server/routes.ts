@@ -19,7 +19,10 @@ import {
   insertResponsibleAiChecklistSchema,
   insertDiscoveryQuestionSchema,
   updateDiscoveryQuestionSchema,
-  insertAttachmentSchema
+  insertAttachmentSchema,
+  prioritizeJobsRequestSchema,
+  updateJobThemeKPIRequestSchema,
+  finalizeDiscoveryRequestSchema
 } from "@shared/schema";
 
 export function registerRoutes(app: Express) {
@@ -1721,6 +1724,226 @@ export function registerRoutes(app: Express) {
       });
       
       res.json(response);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================
+  // JOB THEMES & VALUE BUILD PRIORITIZATION
+  // ============================================
+
+  // Get discovery phase transfer (finalize state)
+  app.get("/api/projects/:projectId/phase-transfer", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const transfer = await storage.getDiscoveryPhaseTransfer(projectId);
+      
+      if (!transfer) {
+        return res.json({ isFinalized: false });
+      }
+      
+      res.json(transfer);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get or generate job themes (aggregated insights by "Jobs We Do")
+  app.get("/api/projects/:projectId/job-themes", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      
+      // Check if project exists
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Get existing job themes
+      let jobThemes = await storage.getJobThemes(projectId);
+      
+      // If no job themes exist, generate them from insights
+      if (jobThemes.length === 0) {
+        // Aggregate insights by capability
+        const insights = await storage.getCompanyDataPoints(projectId);
+        const questions = await storage.getDiscoveryQuestions(projectId);
+        
+        const capabilityGroups = new Map<string, { insights: any[], questions: any[] }>();
+        
+        // Group insights by capability
+        insights.forEach(insight => {
+          if (insight.relevantCapability) {
+            if (!capabilityGroups.has(insight.relevantCapability)) {
+              capabilityGroups.set(insight.relevantCapability, { insights: [], questions: [] });
+            }
+            capabilityGroups.get(insight.relevantCapability)!.insights.push(insight);
+          }
+        });
+        
+        // Group questions by capability
+        questions.forEach(question => {
+          if (question.capabilityName) {
+            if (!capabilityGroups.has(question.capabilityName)) {
+              capabilityGroups.set(question.capabilityName, { insights: [], questions: [] });
+            }
+            capabilityGroups.get(question.capabilityName)!.questions.push(question);
+          }
+        });
+        
+        // Create job themes from capability groups
+        for (const [capabilityName, data] of Array.from(capabilityGroups.entries())) {
+          const { getCapabilityMetadata, getSolutionAreaForCapability } = await import("@shared/knowledge");
+          const capability = getCapabilityMetadata(capabilityName);
+          const solutionArea = getSolutionAreaForCapability(capabilityName);
+          
+          if (capability) {
+            // Calculate composite score (average of insight priority scores)
+            const avgScore = data.insights.length > 0
+              ? Math.round(data.insights.reduce((sum: number, i: any) => sum + (i.priorityScore || 3), 0) / data.insights.length)
+              : 3;
+            
+            const theme = await storage.createJobTheme({
+              projectId,
+              jobName: capability.jobs,
+              capabilityName: capability.name,
+              solutionArea: solutionArea as any,
+              sourceInsightIds: data.insights.map((i: any) => i.id),
+              sourceQuestionIds: data.questions.map((q: any) => q.id),
+              compositeScore: avgScore,
+              evidenceCount: data.insights.length + data.questions.length
+            });
+            
+            // Create KPIs for this job theme
+            const { getAllKPIsForCapability, getBenchmarkForKPI } = await import("@shared/knowledge");
+            const kpis = getAllKPIsForCapability(capabilityName);
+            
+            for (const kpi of kpis) {
+              const benchmark = getBenchmarkForKPI(kpi.name);
+              await storage.createJobThemeKPI({
+                jobThemeId: theme.id,
+                kpiName: kpi.name,
+                kpiType: kpi.type,
+                unit: kpi.unit,
+                definition: kpi.definition,
+                measurementFrequency: kpi.measurementFrequency,
+                benchmarkValue: benchmark?.benchmarkValue || null,
+                benchmarkSource: benchmark?.source || null
+              });
+            }
+          }
+        }
+        
+        // Fetch the newly created themes
+        jobThemes = await storage.getJobThemes(projectId);
+      }
+      
+      // Enrich with KPIs
+      const enrichedThemes = await Promise.all(
+        jobThemes.map(async (theme) => {
+          const kpis = await storage.getJobThemeKPIs(theme.id);
+          return { ...theme, kpis };
+        })
+      );
+      
+      res.json(enrichedThemes);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update job theme prioritization (set top 3)
+  app.post("/api/projects/:projectId/job-themes/prioritize", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      
+      // Validate request body with Zod schema (enforces top-3 constraint)
+      const validated = prioritizeJobsRequestSchema.parse(req.body);
+      const { prioritizedIds } = validated;
+      
+      // Clear existing priorities
+      const allThemes = await storage.getJobThemes(projectId);
+      for (const theme of allThemes) {
+        await storage.updateJobTheme(theme.id, { priorityRank: null });
+      }
+      
+      // Set new priorities
+      for (let i = 0; i < prioritizedIds.length; i++) {
+        await storage.updateJobTheme(prioritizedIds[i], { priorityRank: i + 1 });
+      }
+      
+      const updatedThemes = await storage.getJobThemes(projectId);
+      res.json(updatedThemes);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update KPI selection and baseline data
+  app.patch("/api/job-theme-kpis/:kpiId", async (req, res) => {
+    try {
+      const kpiId = parseInt(req.params.kpiId);
+      
+      // Validate request body with Zod schema
+      const validated = updateJobThemeKPIRequestSchema.parse(req.body);
+      
+      const updated = await storage.updateJobThemeKPI(kpiId, validated);
+      
+      if (!updated) {
+        return res.status(404).json({ error: "KPI not found" });
+      }
+      
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Finalize discovery phase and transfer to alignment
+  app.post("/api/projects/:projectId/finalize-discovery", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      
+      // Validate request body (empty body expected)
+      finalizeDiscoveryRequestSchema.parse(req.body);
+      
+      // Get prioritized job themes
+      const jobThemes = await storage.getJobThemes(projectId);
+      const prioritized = jobThemes
+        .filter(t => t.priorityRank !== null)
+        .sort((a, b) => (a.priorityRank || 999) - (b.priorityRank || 999));
+      
+      if (prioritized.length === 0) {
+        return res.status(400).json({ error: "No job themes have been prioritized" });
+      }
+      
+      // Check if already finalized (idempotent - return existing transfer)
+      let transfer = await storage.getDiscoveryPhaseTransfer(projectId);
+      
+      if (transfer && transfer.isFinalized) {
+        return res.json(transfer);
+      }
+      
+      // Create or update transfer record
+      if (transfer) {
+        transfer = await storage.updateDiscoveryPhaseTransfer(transfer.id, {
+          isFinalized: true,
+          finalizedJobThemeIds: prioritized.map(t => t.id),
+          transferredAt: new Date()
+        });
+      } else {
+        transfer = await storage.createDiscoveryPhaseTransfer({
+          projectId,
+          isFinalized: true,
+          finalizedJobThemeIds: prioritized.map(t => t.id),
+          transferredAt: new Date()
+        });
+      }
+      
+      // Update project phase to alignment
+      await storage.updateProject(projectId, { currentPhase: "alignment" });
+      
+      res.json(transfer);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

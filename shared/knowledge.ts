@@ -309,6 +309,38 @@ export function getSolutionSummary(): string {
   }).join('\n\n');
 }
 
+// Helper to get all KPIs for a capability (primary + supporting)
+export function getAllKPIsForCapability(capabilityName: string): Array<{ name: string; unit: string; type: 'primary' | 'supporting'; definition?: string; measurementFrequency?: string }> {
+  const capability = getCapabilityMetadata(capabilityName);
+  if (!capability) return [];
+  
+  const kpis = [
+    {
+      name: capability.primaryKPI.name,
+      unit: capability.primaryKPI.unit,
+      type: 'primary' as const,
+      definition: capability.primaryKPI.definition,
+      measurementFrequency: capability.primaryKPI.measurementFrequency
+    },
+    ...capability.supportingKPIs.map(kpi => ({
+      name: kpi.name,
+      unit: kpi.unit,
+      type: 'supporting' as const
+    }))
+  ];
+  
+  return kpis;
+}
+
+// Helper to get solution area for a capability
+export function getSolutionAreaForCapability(capabilityName: string): string | null {
+  for (const [solutionKey, solution] of Object.entries(KORN_FERRY_SOLUTIONS)) {
+    const capability = solution.capabilities.find(cap => cap.name === capabilityName);
+    if (capability) return solution.name;
+  }
+  return null;
+}
+
 // Discovery question templates for each capability
 export interface DiscoveryQuestionTemplate {
   question: string;
@@ -518,3 +550,136 @@ export const CAPABILITY_DISCOVERY_QUESTIONS: Record<string, DiscoveryQuestionTem
     }
   ]
 };
+
+// Korn Ferry Industry Benchmarks - Fallback values when client baseline data is unavailable
+export interface KPIBenchmark {
+  kpiName: string;
+  benchmarkValue: string;
+  source: string;
+  industry: string;
+  year: number;
+}
+
+export const KORN_FERRY_BENCHMARKS: KPIBenchmark[] = [
+  // ASSESS Benchmarks
+  {
+    kpiName: "Quality of Hire (QoH) at 6 months",
+    benchmarkValue: "65-70",
+    source: "Korn Ferry 2024 Talent Acquisition Study",
+    industry: "Cross-industry",
+    year: 2024
+  },
+  {
+    kpiName: "Time to Productivity",
+    benchmarkValue: "90-120",
+    source: "Korn Ferry 2024 Onboarding Effectiveness Study",
+    industry: "Cross-industry",
+    year: 2024
+  },
+  {
+    kpiName: "Predictive Validity (AUC or correlation r)",
+    benchmarkValue: "0.65-0.75",
+    source: "Korn Ferry Assessment Validation Meta-Analysis 2023",
+    industry: "Cross-industry",
+    year: 2023
+  },
+  {
+    kpiName: "Assessment Completion Rate",
+    benchmarkValue: "85-92",
+    source: "Korn Ferry Assessment Platform Benchmarks 2024",
+    industry: "Cross-industry",
+    year: 2024
+  },
+  
+  // DEVELOP Benchmarks
+  {
+    kpiName: "Business KPI Delta attributable to participants",
+    benchmarkValue: "8-15",
+    source: "Korn Ferry Leadership Development Impact Study 2023",
+    industry: "Cross-industry",
+    year: 2023
+  },
+  {
+    kpiName: "Competency Gain (assessment/360 delta)",
+    benchmarkValue: "12-18",
+    source: "Korn Ferry 360 Feedback Effectiveness Study 2024",
+    industry: "Cross-industry",
+    year: 2024
+  },
+  {
+    kpiName: "AI Readiness Index (0-100) OR Decision Lead Time (hours)",
+    benchmarkValue: "55-65",
+    source: "Korn Ferry AI Leadership Readiness Report 2024",
+    industry: "Cross-industry",
+    year: 2024
+  },
+  
+  // TRANSFORM Benchmarks
+  {
+    kpiName: "Productivity per FTE (or Process Cycle Time)",
+    benchmarkValue: "£85,000-£120,000",
+    source: "Korn Ferry Organizational Transformation Study 2023",
+    industry: "Cross-industry",
+    year: 2023
+  },
+  {
+    kpiName: "Cost per unit",
+    benchmarkValue: "Varies by industry",
+    source: "Industry-specific benchmarks available",
+    industry: "Cross-industry",
+    year: 2024
+  },
+  
+  // REWARD Benchmarks
+  {
+    kpiName: "Perceived Employee Value per £ Spend OR Retention rate (priority cohorts)",
+    benchmarkValue: "82-88",
+    source: "Korn Ferry Total Rewards Optimization Study 2024",
+    industry: "Cross-industry",
+    year: 2024
+  },
+  {
+    kpiName: "Voluntary Turnover Rate (critical roles)",
+    benchmarkValue: "8-12",
+    source: "Korn Ferry Retention and Engagement Study 2024",
+    industry: "Cross-industry",
+    year: 2024
+  },
+  
+  // COMMERCIAL Benchmarks
+  {
+    kpiName: "Revenue per Sales FTE OR Customer Satisfaction Score (CSAT)",
+    benchmarkValue: "£450,000-£750,000 OR 82-88",
+    source: "Korn Ferry Sales Effectiveness Benchmarks 2024",
+    industry: "Cross-industry",
+    year: 2024
+  },
+  {
+    kpiName: "Win Rate",
+    benchmarkValue: "25-35",
+    source: "Korn Ferry Sales Performance Study 2023",
+    industry: "Cross-industry",
+    year: 2023
+  },
+  
+  // ANALYTICS Benchmarks
+  {
+    kpiName: "Decision Accuracy OR Time to Insight",
+    benchmarkValue: "75-85 OR 3-7 days",
+    source: "Korn Ferry People Analytics Maturity Study 2024",
+    industry: "Cross-industry",
+    year: 2024
+  },
+  {
+    kpiName: "Analytics Adoption Rate",
+    benchmarkValue: "45-65",
+    source: "Korn Ferry Analytics Adoption Report 2024",
+    industry: "Cross-industry",
+    year: 2024
+  }
+];
+
+// Helper to get benchmark for a KPI
+export function getBenchmarkForKPI(kpiName: string): KPIBenchmark | null {
+  return KORN_FERRY_BENCHMARKS.find(b => b.kpiName === kpiName) || null;
+}

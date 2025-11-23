@@ -20,12 +20,204 @@ import OrganisationCard from "@/components/OrganisationCard";
 import ValueHypothesisBuilder from "@/components/ValueHypothesisBuilder";
 import ProjectSelector from "@/components/ProjectSelector";
 import StatusBadge from "@/components/StatusBadge";
-import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users } from "lucide-react";
+import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle } from "lucide-react";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { Link, useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Project, CompanyDataPoint, Headline, DiscoveryNotes, DiscoveryQuestion, Attachment, SharedQuestionnaire, QuestionResponse } from "@shared/schema";
+import type { Project, CompanyDataPoint, Headline, DiscoveryNotes, DiscoveryQuestion, Attachment, SharedQuestionnaire, QuestionResponse, JobThemeWithKPIs, DiscoveryPhaseTransfer } from "@shared/schema";
+import { Checkbox } from "@/components/ui/checkbox";
+
+// Job Theme Card Component - Displays prioritized job with KPIs and baseline input
+interface KPI {
+  id: number;
+  jobThemeId: number;
+  kpiName: string;
+  kpiType: "primary" | "supporting";
+  unit: string;
+  isSelected: boolean;
+  baselineValue: string | null;
+  baselineSource: string | null;
+  benchmarkValue: string | null;
+  benchmarkSource: string | null;
+  definition: string | null;
+  measurementFrequency: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface JobThemeCardProps {
+  theme: JobThemeWithKPIs;
+  rank: number;
+  updateKPIMutation: {
+    mutate: (params: { kpiId: number; data: { isSelected?: boolean; baselineValue?: string; baselineSource?: string } }) => void;
+    isPending: boolean;
+  };
+  isFinalized: boolean;
+  onDeselect: () => void;
+}
+
+function JobThemeCard({ theme, rank, updateKPIMutation, isFinalized, onDeselect }: JobThemeCardProps) {
+  const [baselineInputs, setBaselineInputs] = useState<Record<number, { value: string; source: string }>>({});
+  
+  const handleKPIToggle = (kpi: KPI) => {
+    updateKPIMutation.mutate({
+      kpiId: kpi.id,
+      data: { isSelected: !kpi.isSelected }
+    });
+  };
+  
+  const handleBaselineUpdate = (kpi: KPI) => {
+    const input = baselineInputs[kpi.id];
+    if (input) {
+      updateKPIMutation.mutate({
+        kpiId: kpi.id,
+        data: {
+          baselineValue: input.value,
+          baselineSource: input.source || "User input"
+        }
+      });
+      // Clear input
+      setBaselineInputs(prev => {
+        const newInputs = { ...prev };
+        delete newInputs[kpi.id];
+        return newInputs;
+      });
+    }
+  };
+  
+  return (
+    <div className={`border rounded-md p-4 space-y-4 ${isFinalized ? 'bg-muted/30' : ''}`}>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <Badge className="bg-primary text-primary-foreground">Priority #{rank}</Badge>
+            {theme.solutionArea && <Badge variant="outline">{theme.solutionArea}</Badge>}
+            {isFinalized && <Badge variant="secondary" className="bg-yellow-500 text-white">Locked</Badge>}
+          </div>
+          <div className="font-semibold text-lg">{theme.jobName}</div>
+          <div className="text-sm text-muted-foreground mt-1">{theme.capabilityName}</div>
+          <div className="flex items-center gap-2 mt-2">
+            <Badge variant="secondary">{theme.evidenceCount} insights</Badge>
+          </div>
+        </div>
+        {!isFinalized && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onDeselect}
+            data-testid={`button-deselect-${theme.id}`}
+          >
+            Deselect
+          </Button>
+        )}
+      </div>
+      
+      {/* KPIs Section */}
+      {theme.kpis && theme.kpis.length > 0 && (
+        <div className="space-y-3 mt-4 pt-4 border-t">
+          <div className="font-medium text-sm">Key Performance Indicators</div>
+          {theme.kpis.map((kpi: KPI) => (
+            <div key={kpi.id} className="border rounded-md p-3 space-y-3 bg-muted/30">
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  checked={kpi.isSelected}
+                  onCheckedChange={() => handleKPIToggle(kpi)}
+                  disabled={isFinalized}
+                  data-testid={`checkbox-kpi-${kpi.id}`}
+                />
+                <div className="flex-1 space-y-2">
+                  <div>
+                    <div className="font-medium text-sm">{kpi.kpiName}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {kpi.kpiType === 'primary' ? 'Primary KPI' : 'Supporting KPI'} • {kpi.unit}
+                    </div>
+                    {kpi.definition && (
+                      <p className="text-xs text-muted-foreground mt-1">{kpi.definition}</p>
+                    )}
+                  </div>
+                  
+                  {/* Baseline Data Input - Only show if KPI is selected */}
+                  {kpi.isSelected && (
+                    <div className="space-y-2 mt-3 p-3 bg-background rounded border">
+                      <div className="text-xs font-medium">Baseline Data</div>
+                      
+                      {/* Show existing baseline or Korn Ferry benchmark */}
+                      {kpi.baselineValue ? (
+                        <div className="flex items-center justify-between gap-2 p-2 bg-green-50 dark:bg-green-950/20 rounded border border-green-200 dark:border-green-900">
+                          <div>
+                            <div className="text-sm font-medium text-green-900 dark:text-green-100">{kpi.baselineValue}</div>
+                            <div className="text-xs text-green-700 dark:text-green-300">Source: {kpi.baselineSource}</div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setBaselineInputs({
+                                ...baselineInputs,
+                                [kpi.id]: { value: kpi.baselineValue, source: kpi.baselineSource }
+                              });
+                            }}
+                            data-testid={`button-edit-baseline-${kpi.id}`}
+                          >
+                            Edit
+                          </Button>
+                        </div>
+                      ) : kpi.benchmarkValue ? (
+                        <div className="p-2 bg-blue-50 dark:bg-blue-950/20 rounded border border-blue-200 dark:border-blue-900">
+                          <div className="text-xs font-medium text-blue-900 dark:text-blue-100 mb-1">
+                            Korn Ferry Benchmark: {kpi.benchmarkValue}
+                          </div>
+                          <div className="text-xs text-blue-700 dark:text-blue-300">{kpi.benchmarkSource}</div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="mt-2"
+                            onClick={() => {
+                              setBaselineInputs({
+                                ...baselineInputs,
+                                [kpi.id]: { value: kpi.benchmarkValue, source: kpi.benchmarkSource }
+                              });
+                            }}
+                          >
+                            Use as Baseline
+                          </Button>
+                        </div>
+                      ) : null}
+                      
+                      {/* Input form - disabled when finalized */}
+                      {!isFinalized && (
+                        <div className="flex gap-2 mt-2">
+                          <Input
+                            placeholder={`Enter ${kpi.kpiName.toLowerCase()}...`}
+                            value={baselineInputs[kpi.id]?.value || ''}
+                            onChange={(e) => setBaselineInputs({
+                              ...baselineInputs,
+                              [kpi.id]: { ...baselineInputs[kpi.id], value: e.target.value }
+                            })}
+                            data-testid={`input-baseline-${kpi.id}`}
+                          />
+                          <Button
+                            size="sm"
+                            onClick={() => handleBaselineUpdate(kpi)}
+                            disabled={!baselineInputs[kpi.id]?.value}
+                            data-testid={`button-save-baseline-${kpi.id}`}
+                          >
+                            Save
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Discovery() {
   const [location] = useLocation();
@@ -725,9 +917,10 @@ export default function Discovery() {
 
       <main className="container mx-auto max-w-7xl px-4 lg:px-8 py-8">
         <Tabs defaultValue="organisation" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 max-w-2xl" data-testid="tabs-discovery">
+          <TabsList className="grid w-full grid-cols-4 max-w-4xl" data-testid="tabs-discovery">
             <TabsTrigger value="organisation">Organisation</TabsTrigger>
             <TabsTrigger value="notes">Build Value Case</TabsTrigger>
+            <TabsTrigger value="jobs">Jobs & Priorities</TabsTrigger>
             <TabsTrigger value="hypothesis">Value Hypothesis</TabsTrigger>
           </TabsList>
 
@@ -1570,6 +1763,245 @@ export default function Discovery() {
                   </Card>
                 );
               })()}
+          </TabsContent>
+
+          <TabsContent value="jobs" className="space-y-6">
+            {(() => {
+              // Fetch job themes
+              const { data: jobThemesData, isLoading: jobThemesLoading } = useQuery<JobThemeWithKPIs[]>({
+                queryKey: ["/api/projects", selectedProjectId, "job-themes"],
+                enabled: !!selectedProjectId,
+              });
+
+              // Fetch finalize state
+              const { data: phaseTransfer } = useQuery<DiscoveryPhaseTransfer>({
+                queryKey: ["/api/projects", selectedProjectId, "phase-transfer"],
+                enabled: !!selectedProjectId,
+              });
+
+              const isFinalized = phaseTransfer?.isFinalized || false;
+
+              const prioritizeJobsMutation = useMutation({
+                mutationFn: async ({ prioritizedIds }: { prioritizedIds: number[] }) => {
+                  const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/job-themes/prioritize`, {
+                    prioritizedIds
+                  });
+                  if (!res.ok) throw new Error("Failed to prioritize");
+                  return await res.json();
+                },
+                onSuccess: () => {
+                  queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "job-themes"] });
+                  toast({ title: "Priorities updated successfully" });
+                },
+              });
+
+              const updateKPIMutation = useMutation({
+                mutationFn: async ({ kpiId, data }: { kpiId: number; data: any }) => {
+                  const res = await apiRequest("PATCH", `/api/job-theme-kpis/${kpiId}`, data);
+                  if (!res.ok) throw new Error("Failed to update KPI");
+                  return await res.json();
+                },
+                onSuccess: () => {
+                  queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "job-themes"] });
+                },
+              });
+
+              const finalizeDiscoveryMutation = useMutation({
+                mutationFn: async () => {
+                  const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/finalize-discovery`, {});
+                  if (!res.ok) {
+                    const error = await res.json();
+                    throw new Error(error.error || "Failed to finalize");
+                  }
+                  return await res.json();
+                },
+                onSuccess: () => {
+                  toast({
+                    title: "Discovery Finalized!",
+                    description: "Your priorities are now ready for hypothesis building in the Alignment phase.",
+                  });
+                  queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId] });
+                },
+                onError: (error: any) => {
+                  toast({
+                    title: "Finalization failed",
+                    description: error.message,
+                    variant: "destructive",
+                  });
+                },
+              });
+
+              if (jobThemesLoading) {
+                return (
+                  <Card>
+                    <CardContent className="pt-6 flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <p className="text-sm text-muted-foreground">Loading job themes...</p>
+                    </CardContent>
+                  </Card>
+                );
+              }
+
+              if (!jobThemesData || jobThemesData.length === 0) {
+                return (
+                  <Card>
+                    <CardContent className="pt-6">
+                      <p className="text-sm text-muted-foreground text-center">
+                        No job themes found. Complete your discovery research first to see aggregated Jobs We Do.
+                      </p>
+                    </CardContent>
+                  </Card>
+                );
+              }
+
+              const prioritizedThemes = jobThemesData.filter((t: any) => t.priorityRank !== null).sort((a: any, b: any) => (a.priorityRank || 999) - (b.priorityRank || 999));
+              const unprioritizedThemes = jobThemesData.filter((t: any) => t.priorityRank === null);
+              const canFinalize = prioritizedThemes.length > 0;
+
+              return (
+                <>
+                  {/* Header Instructions */}
+                  <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-background">
+                    <CardHeader>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground font-bold text-lg shrink-0">
+                          <Briefcase className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1">
+                          <CardTitle className="text-xl">Jobs We Do - Value Build Priorities</CardTitle>
+                          <CardDescription>
+                            Select your top 3 priority jobs, choose relevant KPIs, and provide baseline data to build your value hypothesis.
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                  </Card>
+
+                  {/* Prioritized Jobs (Top 3) */}
+                  {prioritizedThemes.length > 0 && (
+                    <Card className="border-primary/20">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <CheckCircle className="w-5 h-5 text-primary" />
+                          Top {prioritizedThemes.length} Priority Job{prioritizedThemes.length !== 1 ? 's' : ''}
+                        </CardTitle>
+                        <CardDescription>
+                          These are your selected priorities for value hypothesis building
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {prioritizedThemes.map((theme: JobThemeWithKPIs, idx: number) => (
+                          <JobThemeCard 
+                            key={theme.id} 
+                            theme={theme} 
+                            rank={idx + 1} 
+                            updateKPIMutation={updateKPIMutation}
+                            isFinalized={isFinalized}
+                            onDeselect={() => {
+                              if (!isFinalized) {
+                                const newPrioritized = prioritizedThemes.filter(t => t.id !== theme.id).map(t => t.id);
+                                prioritizeJobsMutation.mutate({ prioritizedIds: newPrioritized });
+                              }
+                            }}
+                          />
+                        ))}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Available Jobs for Selection */}
+                  {unprioritizedThemes.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Available Jobs ({unprioritizedThemes.length})</CardTitle>
+                        <CardDescription>
+                          {prioritizedThemes.length < 3 
+                            ? `Select ${3 - prioritizedThemes.length} more job${3 - prioritizedThemes.length !== 1 ? 's' : ''} to reach your top 3 priorities`
+                            : "You've selected 3 priorities. Deselect one above to add a different job."
+                          }
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {unprioritizedThemes.map((theme: any) => (
+                          <div key={theme.id} className="border rounded-md p-4 space-y-3">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <div className="font-semibold text-lg">{theme.jobName}</div>
+                                <div className="text-sm text-muted-foreground mt-1">{theme.capabilityName}</div>
+                                <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
+                                  <Badge variant="secondary">{theme.evidenceCount} insights</Badge>
+                                  {theme.solutionArea && <Badge variant="outline">{theme.solutionArea}</Badge>}
+                                </div>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const newPrioritized = [...prioritizedThemes.map((t: JobThemeWithKPIs) => t.id), theme.id].slice(0, 3);
+                                  prioritizeJobsMutation.mutate({ prioritizedIds: newPrioritized });
+                                }}
+                                disabled={isFinalized || prioritizedThemes.length >= 3 || prioritizeJobsMutation.isPending}
+                                data-testid={`button-prioritize-${theme.id}`}
+                              >
+                                Select as Priority
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Finalize Discovery Button or Locked State */}
+                  {canFinalize && (
+                    isFinalized ? (
+                      <Card className="border-yellow-500/30 bg-yellow-50 dark:bg-yellow-950/20">
+                        <CardContent className="pt-6">
+                          <div className="flex items-center gap-3">
+                            <CheckCircle className="w-6 h-6 text-yellow-600" />
+                            <div>
+                              <p className="font-semibold text-yellow-900 dark:text-yellow-100">Discovery Phase Locked</p>
+                              <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                                Your priorities have been finalized and locked. Visit the Alignment page to build value hypotheses.
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <Card className="border-primary/30 bg-primary/5">
+                        <CardContent className="pt-6 flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold">Ready to Build Value Hypotheses?</p>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Finalize your discovery phase and move to Alignment to build detailed value cases.
+                            </p>
+                          </div>
+                          <Button
+                            size="lg"
+                            onClick={() => finalizeDiscoveryMutation.mutate()}
+                            disabled={finalizeDiscoveryMutation.isPending}
+                            data-testid="button-finalize-discovery"
+                          >
+                            {finalizeDiscoveryMutation.isPending ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Finalizing...
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                Finalize Discovery
+                              </>
+                            )}
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    )
+                  )}
+                </>
+              );
+            })()}
           </TabsContent>
 
           <TabsContent value="hypothesis" className="space-y-6">
