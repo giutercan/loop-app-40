@@ -570,6 +570,10 @@ Make each story:
 - Realistic and professionally written`;
 
   try {
+    console.log("Calling OpenAI API for success stories...");
+    console.log("System prompt:", systemPrompt);
+    console.log("User prompt (first 500 chars):", userPrompt.substring(0, 500));
+    
     const response = await openai.chat.completions.create({
       model: "gpt-5",
       messages: [
@@ -580,7 +584,12 @@ Make each story:
       max_completion_tokens: 3000,
     });
 
+    console.log("OpenAI API response received");
+    console.log("Finish reason:", response.choices[0]?.finish_reason);
+    console.log("Model used:", response.model);
+    
     const content = response.choices[0]?.message?.content || "{}";
+    console.log("Raw AI response content:", content);
     
     // Parse and validate AI response with Zod
     let parsedContent;
