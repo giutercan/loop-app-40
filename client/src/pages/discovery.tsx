@@ -20,7 +20,7 @@ import OrganisationCard from "@/components/OrganisationCard";
 import ValueHypothesisBuilder from "@/components/ValueHypothesisBuilder";
 import ProjectSelector from "@/components/ProjectSelector";
 import StatusBadge from "@/components/StatusBadge";
-import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle } from "lucide-react";
+import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown } from "lucide-react";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { Link, useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -281,6 +281,40 @@ export default function Discovery() {
 
   const { data: phaseTransfer } = useQuery<DiscoveryPhaseTransfer>({
     queryKey: ["/api/projects", selectedProjectId, "phase-transfer"],
+    enabled: !!selectedProjectId,
+  });
+
+  // Alignment phase data (finalized jobs with KPIs)
+  const { data: finalizedData } = useQuery<{
+    finalized: boolean;
+    jobs: Array<{
+      id: number;
+      jobName: string;
+      capabilityName: string;
+      solutionArea: string | null;
+      priorityRank: number | null;
+      aggregationSummary: string | null;
+      evidenceCount: number;
+      kpis: Array<{
+        id: number;
+        jobThemeId: number;
+        kpiName: string;
+        kpiType: "primary" | "supporting";
+        unit: string;
+        isSelected: boolean;
+        baselineValue: string | null;
+        baselineSource: string | null;
+        targetValue: string | null;
+        targetSource: string | null;
+        benchmarkValue: string | null;
+        benchmarkSource: string | null;
+        definition: string | null;
+        measurementFrequency: string | null;
+      }>;
+    }>;
+    transferredAt: string | null;
+  }>({
+    queryKey: [`/api/projects/${selectedProjectId}/alignment/finalized-jobs`],
     enabled: !!selectedProjectId,
   });
 
@@ -763,13 +797,18 @@ export default function Discovery() {
   });
 
   const updateKPIMutation = useMutation({
-    mutationFn: async ({ kpiId, data }: { kpiId: number; data: { isSelected?: boolean; baselineValue?: string; baselineSource?: string } }) => {
+    mutationFn: async ({ kpiId, data }: { kpiId: number; data: { isSelected?: boolean; baselineValue?: string; baselineSource?: string; targetValue?: string; targetSource?: string } }) => {
       const res = await apiRequest("PATCH", `/api/job-theme-kpis/${kpiId}`, data);
       if (!res.ok) throw new Error("Failed to update KPI");
       return await res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "job-themes"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${selectedProjectId}/alignment/finalized-jobs`] });
+      toast({
+        title: "KPI updated",
+        description: "KPI has been updated successfully.",
+      });
     },
   });
 
@@ -984,7 +1023,7 @@ export default function Discovery() {
             <TabsTrigger value="organisation">Organisation</TabsTrigger>
             <TabsTrigger value="notes">Build Value Case</TabsTrigger>
             <TabsTrigger value="jobs">Jobs & Priorities</TabsTrigger>
-            <TabsTrigger value="hypothesis">Value Hypothesis</TabsTrigger>
+            <TabsTrigger value="alignment">Alignment</TabsTrigger>
           </TabsList>
 
           <TabsContent value="organisation" className="space-y-6">
@@ -2006,55 +2045,172 @@ export default function Discovery() {
             })()}
           </TabsContent>
 
-          <TabsContent value="hypothesis" className="space-y-6">
-            {valueHypotheses.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Saved Value Hypotheses</CardTitle>
-                  <CardDescription>
-                    {valueHypotheses.length} hypothesis{valueHypotheses.length !== 1 ? 'es' : ''} created
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {valueHypotheses.map((hyp: any, idx: number) => (
-                      <div
-                        key={hyp.id}
-                        className="p-4 border rounded-md space-y-2"
-                        data-testid={`hypothesis-${idx}`}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="font-medium">Job: {hyp.job}</div>
-                            <div className="text-sm text-muted-foreground mt-1">
-                              KPI: {hyp.primaryKpi} | Exposure: {hyp.exposure} | Target: {hyp.target}
+          <TabsContent value="alignment" className="space-y-6">
+            {/* Finalized Discovery Jobs */}
+            {finalizedData && finalizedData.finalized && finalizedData.jobs.length > 0 ? (
+              <div className="space-y-4">
+                <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-background">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground font-bold text-lg shrink-0">
+                        <Briefcase className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1">
+                        <CardTitle className="text-xl">Finalized Discovery Priorities</CardTitle>
+                        <CardDescription>
+                          Top {finalizedData.jobs.length} jobs from Discovery phase with baseline and target values
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                </Card>
+
+                {finalizedData.jobs.map((job, idx) => (
+                  <Card key={job.id} className="border-l-4 border-l-primary">
+                    <CardHeader>
+                      <div className="flex items-start gap-3">
+                        <Badge variant="default" className="text-lg px-3 py-1 shrink-0" data-testid={`badge-job-rank-${idx + 1}`}>
+                          #{idx + 1}
+                        </Badge>
+                        <div className="flex-1">
+                          <CardTitle className="text-lg" data-testid={`text-job-name-${job.id}`}>{job.jobName}</CardTitle>
+                          <CardDescription className="mt-1">
+                            {job.capabilityName} {job.solutionArea && `• ${job.solutionArea}`}
+                          </CardDescription>
+                          {job.aggregationSummary && (
+                            <p className="text-sm text-muted-foreground mt-2">{job.aggregationSummary}</p>
+                          )}
+                        </div>
+                        <Badge variant="secondary" className="shrink-0">
+                          {job.evidenceCount} insight{job.evidenceCount !== 1 ? 's' : ''}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+
+                    <CardContent className="space-y-4">
+                      {job.kpis.filter(kpi => kpi.isSelected).length > 0 ? (
+                        job.kpis.filter(kpi => kpi.isSelected).map(kpi => (
+                          <div key={kpi.id} className="border rounded-md p-4 space-y-4 bg-card" data-testid={`kpi-card-${kpi.id}`}>
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-semibold" data-testid={`text-kpi-name-${kpi.id}`}>{kpi.kpiName}</h4>
+                                  <Badge variant={kpi.kpiType === "primary" ? "default" : "secondary"} className="text-xs">
+                                    {kpi.kpiType}
+                                  </Badge>
+                                </div>
+                                {kpi.definition && (
+                                  <p className="text-sm text-muted-foreground mt-1">{kpi.definition}</p>
+                                )}
+                                <p className="text-xs text-muted-foreground mt-1">Unit: {kpi.unit}</p>
+                              </div>
                             </div>
-                            {hyp.researchDesign && (
-                              <div className="text-sm text-muted-foreground mt-2">
-                                Research Design: {hyp.researchDesign}
+
+                            <div className="grid grid-cols-2 gap-4">
+                              {/* Baseline Value */}
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <TrendingDown className="w-4 h-4 text-orange-600" />
+                                  <Label htmlFor={`baseline-${kpi.id}`} className="font-semibold">Baseline (Current)</Label>
+                                </div>
+                                <Input
+                                  id={`baseline-${kpi.id}`}
+                                  type="text"
+                                  placeholder={kpi.benchmarkValue ? `Benchmark: ${kpi.benchmarkValue}` : "Enter baseline"}
+                                  value={kpi.baselineValue || ""}
+                                  onChange={(e) => {
+                                    updateKPIMutation.mutate({
+                                      kpiId: kpi.id,
+                                      data: { baselineValue: e.target.value }
+                                    });
+                                  }}
+                                  data-testid={`input-baseline-${kpi.id}`}
+                                />
+                                <Input
+                                  type="text"
+                                  placeholder="Source (e.g., HRIS, Client data)"
+                                  value={kpi.baselineSource || ""}
+                                  onChange={(e) => {
+                                    updateKPIMutation.mutate({
+                                      kpiId: kpi.id,
+                                      data: { baselineSource: e.target.value }
+                                    });
+                                  }}
+                                  className="text-sm"
+                                  data-testid={`input-baseline-source-${kpi.id}`}
+                                />
+                              </div>
+
+                              {/* Target Value */}
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <Target className="w-4 h-4 text-emerald-600" />
+                                  <Label htmlFor={`target-${kpi.id}`} className="font-semibold">Target (Outcome)</Label>
+                                </div>
+                                <Input
+                                  id={`target-${kpi.id}`}
+                                  type="text"
+                                  placeholder="Enter target value"
+                                  value={kpi.targetValue || ""}
+                                  onChange={(e) => {
+                                    updateKPIMutation.mutate({
+                                      kpiId: kpi.id,
+                                      data: { targetValue: e.target.value }
+                                    });
+                                  }}
+                                  data-testid={`input-target-${kpi.id}`}
+                                />
+                                <Input
+                                  type="text"
+                                  placeholder="Source (e.g., Industry best practice)"
+                                  value={kpi.targetSource || ""}
+                                  onChange={(e) => {
+                                    updateKPIMutation.mutate({
+                                      kpiId: kpi.id,
+                                      data: { targetSource: e.target.value }
+                                    });
+                                  }}
+                                  className="text-sm"
+                                  data-testid={`input-target-source-${kpi.id}`}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Benchmark Reference (if available) */}
+                            {kpi.benchmarkValue && (
+                              <div className="bg-muted/50 rounded-md p-3 text-sm">
+                                <p className="font-medium">Korn Ferry Benchmark</p>
+                                <p className="text-muted-foreground">
+                                  {kpi.benchmarkValue} {kpi.benchmarkSource && `(${kpi.benchmarkSource})`}
+                                </p>
                               </div>
                             )}
                           </div>
-                          <StatusBadge status={hyp.status || "draft"} />
-                        </div>
-                      </div>
-                    ))}
+                        ))
+                      ) : (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          No KPIs selected for this job in Discovery phase
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card className="max-w-2xl mx-auto">
+                <CardHeader>
+                  <div className="flex justify-center mb-4">
+                    <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Briefcase className="h-8 w-8 text-primary" />
+                    </div>
                   </div>
-                </CardContent>
+                  <CardTitle className="text-center">Finalize Discovery First</CardTitle>
+                  <CardDescription className="text-center">
+                    Complete the Discovery phase by selecting top-3 jobs and their KPIs in the "Jobs & Priorities" tab, then click "Finalize Discovery" to unlock the Alignment phase.
+                  </CardDescription>
+                </CardHeader>
               </Card>
             )}
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Create Value Hypothesis</CardTitle>
-                <CardDescription>Build quantitative value hypotheses based on insights and discovery question answers</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Value hypothesis builder will be available once you've captured discovery question answers.
-                </p>
-              </CardContent>
-            </Card>
           </TabsContent>
         </Tabs>
       </main>
