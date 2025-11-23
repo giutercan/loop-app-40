@@ -143,8 +143,11 @@ function BusinessReviewsTab({ projectId, reviews }: { projectId: number; reviews
     mutationFn: async (data: any) => {
       return await apiRequest("POST", `/api/projects/${projectId}/business-reviews`, data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "business-reviews"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ 
+        queryKey: ["/api/projects", projectId, "business-reviews"],
+        refetchType: 'active'
+      });
       setIsCreating(false);
       toast({ title: "Business review created successfully" });
     },
@@ -157,8 +160,11 @@ function BusinessReviewsTab({ projectId, reviews }: { projectId: number; reviews
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
       return await apiRequest("PATCH", `/api/business-reviews/${id}`, data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "business-reviews"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ 
+        queryKey: ["/api/projects", projectId, "business-reviews"],
+        refetchType: 'active'
+      });
       setEditingId(null);
       toast({ title: "Business review updated successfully" });
     },
@@ -171,8 +177,11 @@ function BusinessReviewsTab({ projectId, reviews }: { projectId: number; reviews
     mutationFn: async (id: number) => {
       return await apiRequest("DELETE", `/api/business-reviews/${id}`);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "business-reviews"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ 
+        queryKey: ["/api/projects", projectId, "business-reviews"],
+        refetchType: 'active'
+      });
       toast({ title: "Business review deleted successfully" });
     },
     onError: (error: Error) => {
