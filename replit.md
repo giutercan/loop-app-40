@@ -37,12 +37,14 @@ A full-stack web application for Korn Ferry consultants to manage client engagem
 - **Interactive Alignment Page**: Visual interface for KPI configuration, gap visualization, and AI-powered benchmark generation with optimistic UI updates.
 - **Realization Phase - Phase 1**: Includes Business Review management, KPI Progress Tracking against baselines and targets, and Success Story linking.
 - **AI-Powered Value Case Recommendations**: GPT-4o analyzes finalized Discovery jobs and KPIs to generate 3-5 strategic value case recommendations with action-oriented names, descriptions, linked jobs, suggested KPIs, financial estimates (NPV, payback period), and strategic rationale. Supports both AI-generated and custom value case creation.
+- **Success Story Library**: Global repository of verified Korn Ferry success stories with approval workflow, industry/capability filtering, and metrics tracking. Stories include challenge, solution, results, and verified metrics to provide credible proof points for value narratives.
+- **AI-Generated Value Narratives**: GPT-4o transforms value cases into stakeholder-specific narratives (CEO/CFO/CTO) using verified success stories. Each narrative is tailored with strategic focus (CEO), financial focus (CFO), or implementation focus (CTO), incorporating real Korn Ferry client outcomes as proof points. Includes copy-to-clipboard and export functionality.
 
 ### Feature Specifications
 - **Discovery Phase**: Company research, data collection, note-taking, AI research, notes enrichment, collaborative questionnaires, and 360-degree discovery consolidation.
-- **Alignment Phase**: Value case building and management, client collaboration, Jobs & Priorities system, and AI-powered value case recommendations.
+- **Alignment Phase**: Value case building and management, client collaboration, Jobs & Priorities system, AI-powered value case recommendations, and AI-generated value narratives with stakeholder customization.
 - **Realization Phase**: Value tracking and continuous client engagement, including Business Review management, KPI Progress Tracking, and Success Story linking.
-- **Data Model**: Simple schema with essential fields, including JSON provenance for AI data, confidence, priority, Korn Ferry pillar, solution area, related KPIs, and tables for Realization phase entities.
+- **Data Model**: Simple schema with essential fields, including JSON provenance for AI data, confidence, priority, Korn Ferry pillar, solution area, related KPIs, tables for Realization phase entities, and success_story_library table for verified case studies with approval workflow.
 
 ### System Design Choices
 - **AI Research Strategy**: Prioritizes strategic and actionable insights.
@@ -60,7 +62,7 @@ A full-stack web application for Korn Ferry consultants to manage client engagem
 - **Storage**: In-memory storage (MemStorage)
 
 ## External Dependencies
-- **OpenAI GPT-4o**: For AI-powered company research, insight generation, and value case recommendations.
+- **OpenAI GPT-4o**: For AI-powered company research, insight generation, value case recommendations, and stakeholder-specific value narrative generation.
 - **Clearout API**: For real-time company autocomplete functionality.
 
 ## Recent Technical Changes
@@ -68,4 +70,7 @@ A full-stack web application for Korn Ferry consultants to manage client engagem
 - **AI Recommendation Schema**: Added nullable fields (linkedJobThemeIds, suggestedKPIs, estimatedNPV, estimatedPaybackMonths) to support AI-generated value cases that may span multiple capabilities.
 - **Schema Flexibility**: Made capabilityName and solutionArea nullable to accommodate AI recommendations that don't fit rigid classification constraints.
 - **Frontend Response Parsing**: Fixed API response handling to properly parse JSON from apiRequest() Response objects.
+- **Success Story Library Implementation**: Added success_story_library table with approval workflow (pending/approved/archived), verification fields (source, approval_status), and comprehensive CRUD operations via storage interface and REST API.
+- **AI Narrative Generation Service**: Implemented generateValueNarrative() function with strict Zod validation ensuring CEO/CFO/CTO narratives meet quality standards (minimum content lengths, required sections, success story integration).
+- **Stakeholder-Specific Narratives**: ValueNarrativeDialog component provides tabbed interface for viewing CEO (strategic), CFO (financial), and CTO (implementation) narratives with copy-to-clipboard functionality and generation key-based stale data prevention.
 - **Known UI Limitation**: Alignment page displays "£NaN" for AI-generated value cases without calculationResults; future enhancement planned to show estimatedNPV/payback when full calculations are absent.

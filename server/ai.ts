@@ -1026,6 +1026,41 @@ IMPORTANT:
 // AI Narrative Generation
 // ============================
 
+// Zod schema for validating AI narrative responses
+const narrativeSectionSchema = z.object({
+  title: z.string().min(10, "Title must be at least 10 characters"),
+  executiveSummary: z.string().min(50, "Executive summary must be at least 50 characters"),
+  strategicImperative: z.string().optional(),
+  businessImpact: z.string().optional(),
+  financialCaseOverview: z.string().optional(),
+  roiBreakdown: z.string().optional(),
+  riskMitigation: z.string().optional(),
+  implementationApproach: z.string().optional(),
+  capabilityBuild: z.string().optional(),
+  changeManagement: z.string().optional(),
+  successStoryHighlight: z.string().min(50, "Success story highlight required"),
+  callToAction: z.string().min(20, "Call to action required"),
+});
+
+const valueNarrativeOutputSchema = z.object({
+  ceoNarrative: narrativeSectionSchema.extend({
+    strategicImperative: z.string().min(50, "Strategic imperative required for CEO"),
+    businessImpact: z.string().min(50, "Business impact required for CEO"),
+  }),
+  cfoNarrative: narrativeSectionSchema.extend({
+    financialCaseOverview: z.string().min(50, "Financial case overview required for CFO"),
+    roiBreakdown: z.string().min(50, "ROI breakdown required for CFO"),
+    riskMitigation: z.string().min(40, "Risk mitigation required for CFO"),
+  }),
+  ctoNarrative: narrativeSectionSchema.extend({
+    implementationApproach: z.string().min(50, "Implementation approach required for CTO"),
+    capabilityBuild: z.string().min(50, "Capability build required for CTO"),
+    changeManagement: z.string().min(40, "Change management required for CTO"),
+  }),
+});
+
+export type ValueNarrativeOutput = z.infer<typeof valueNarrativeOutputSchema>;
+
 export interface ValueNarrativeInput {
   valueCaseName: string;
   capabilityName: string;
@@ -1061,34 +1096,6 @@ export interface ValueNarrativeInput {
   }>;
 }
 
-export interface ValueNarrativeOutput {
-  ceoNarrative: {
-    title: string;
-    executiveSummary: string;
-    strategicImperative: string;
-    businessImpact: string;
-    successStoryHighlight: string;
-    callToAction: string;
-  };
-  cfoNarrative: {
-    title: string;
-    executiveSummary: string;
-    financialCaseOverview: string;
-    roiBreakdown: string;
-    riskMitigation: string;
-    successStoryHighlight: string;
-    callToAction: string;
-  };
-  ctoNarrative: {
-    title: string;
-    executiveSummary: string;
-    implementationApproach: string;
-    capabilityBuild: string;
-    changeManagement: string;
-    successStoryHighlight: string;
-    callToAction: string;
-  };
-}
 
 export async function generateValueNarrative(
   input: ValueNarrativeInput
@@ -1249,17 +1256,16 @@ IMPORTANT:
 
     const parsedContent = JSON.parse(content);
 
-    // Validate structure (basic check)
-    if (
-      !parsedContent.ceoNarrative ||
-      !parsedContent.cfoNarrative ||
-      !parsedContent.ctoNarrative
-    ) {
-      throw new Error("AI response missing required narrative sections");
+    // Strict Zod validation to ensure all required stakeholder sections and fields are present
+    const validationResult = valueNarrativeOutputSchema.safeParse(parsedContent);
+    if (!validationResult.success) {
+      console.error("[AI Narrative] Validation failed:", validationResult.error);
+      console.error("[AI Narrative] Received data:", parsedContent);
+      throw new Error(`AI narrative validation failed: ${validationResult.error.message}. Response does not meet CEO/CFO/CTO section requirements.`);
     }
 
-    console.log(`[AI Narrative] Success! Generated narratives for all stakeholders`);
-    return parsedContent as ValueNarrativeOutput;
+    console.log(`[AI Narrative] Success! Generated and validated narratives for all stakeholders`);
+    return validationResult.data;
   } catch (error) {
     console.error("[AI Narrative] Error:", error);
     throw error;

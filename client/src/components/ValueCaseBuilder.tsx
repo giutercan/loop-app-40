@@ -16,7 +16,8 @@ import {
   Save,
   Target,
   TrendingUp,
-  Calendar 
+  Calendar,
+  Sparkles
 } from "lucide-react";
 import type { ValueCase, CompanyDataPoint } from "@shared/schema";
 import type { SolutionArea } from "@shared/knowledge";
@@ -32,6 +33,7 @@ import {
   formatCurrency,
   type ValueCalculationResult
 } from "@shared/valueCalculations";
+import { ValueNarrativeDialog } from "./ValueNarrativeDialog";
 
 export interface ValueCaseBuilderProps {
   projectId: number;
@@ -59,6 +61,7 @@ export default function ValueCaseBuilder({
 }: ValueCaseBuilderProps) {
   const { toast } = useToast();
   const [step, setStep] = useState<Step>("basic");
+  const [narrativeDialogOpen, setNarrativeDialogOpen] = useState(false);
   
   // Form state
   const [title, setTitle] = useState(valueCase?.title || "");
@@ -434,18 +437,41 @@ export default function ValueCaseBuilder({
               <Button variant="outline" onClick={() => setStep("inputs")} data-testid="button-back-results">
                 Back to Inputs
               </Button>
-              <Button 
-                onClick={() => saveMutation.mutate()}
-                disabled={saveMutation.isPending}
-                data-testid="button-save-value-case"
-              >
-                <Save className="h-4 w-4 mr-2" />
-                {saveMutation.isPending ? "Saving..." : "Save Value Case"}
-              </Button>
+              <div className="flex gap-2">
+                {valueCase?.id && (
+                  <Button 
+                    variant="outline"
+                    onClick={() => setNarrativeDialogOpen(true)}
+                    data-testid="button-generate-narrative"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Generate Value Narrative
+                  </Button>
+                )}
+                <Button 
+                  onClick={() => saveMutation.mutate()}
+                  disabled={saveMutation.isPending}
+                  data-testid="button-save-value-case"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {saveMutation.isPending ? "Saving..." : "Save Value Case"}
+                </Button>
+              </div>
             </div>
           </div>
         )}
       </DialogContent>
+      
+      {/* Value Narrative Dialog */}
+      {valueCase?.id && (
+        <ValueNarrativeDialog
+          open={narrativeDialogOpen}
+          onOpenChange={setNarrativeDialogOpen}
+          projectId={projectId}
+          valueCaseId={valueCase.id}
+          valueCaseName={title}
+        />
+      )}
     </Dialog>
   );
 }
