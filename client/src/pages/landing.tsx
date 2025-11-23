@@ -8,25 +8,25 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto max-w-7xl px-4 lg:px-8">
           <div className="flex h-16 lg:h-20 items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/70 rounded-lg flex items-center justify-center shadow-lg">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary via-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
                 <TrendingUp className="w-6 h-6 text-primary-foreground" />
               </div>
               <div>
-                <span className="text-xl lg:text-2xl font-bold">Korn Ferry</span>
+                <span className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">Korn Ferry</span>
                 <p className="text-xs text-muted-foreground hidden lg:block">Value Lifecycle</p>
               </div>
             </div>
-            <nav className="hidden md:flex items-center gap-6">
+            <nav className="hidden md:flex items-center gap-8">
               <a href="#features" className="text-sm font-medium hover:text-primary transition-colors">Features</a>
               <a href="#how-it-works" className="text-sm font-medium hover:text-primary transition-colors">How It Works</a>
               <a href="#capabilities" className="text-sm font-medium hover:text-primary transition-colors">Capabilities</a>
             </nav>
             <Link href="/discovery">
-              <Button size="lg" className="shadow-lg" data-testid="button-start-discovery">
+              <Button size="lg" className="shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all" data-testid="button-start-discovery">
                 Get Started
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
@@ -36,98 +36,126 @@ export default function Landing() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative py-20 lg:py-32 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-background" />
+      <section className="relative py-24 lg:py-36 overflow-hidden">
+        {/* Layered Gradients */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-primary/5 to-background" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
+        
         <div className="container mx-auto max-w-7xl px-4 lg:px-8 relative">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-            <div className="space-y-8">
-              <div className="space-y-4">
-                <Badge variant="secondary" className="text-sm px-4 py-1.5">
-                  <Sparkles className="w-3 h-3 mr-1.5" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-20 items-center">
+            {/* Left: Content */}
+            <div className="space-y-10">
+              <div className="space-y-6">
+                <Badge variant="secondary" className="text-sm px-4 py-2 shadow-md">
+                  <Sparkles className="w-3.5 h-3.5 mr-2" />
                   Powered by AI
                 </Badge>
-                <h1 className="text-5xl lg:text-7xl font-bold tracking-tight leading-tight">
-                  Unlock <span className="text-primary">Client Value</span> at Scale
+                <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1]">
+                  Unlock <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">Client Value</span> at Scale
                 </h1>
-                <p className="text-xl lg:text-2xl text-muted-foreground leading-relaxed">
+                <p className="text-xl lg:text-2xl text-muted-foreground leading-relaxed max-w-xl">
                   Transform client engagements from discovery to realization. AI-powered insights, strategic job mapping, and measurable outcomes—all in one platform.
                 </p>
               </div>
-              <div className="flex flex-wrap gap-4 pt-4">
+              
+              <div className="flex flex-wrap gap-4 pt-2">
                 <Link href="/discovery">
-                  <Button size="lg" className="px-8 py-6 text-lg shadow-xl" data-testid="button-hero-start">
+                  <Button 
+                    size="lg" 
+                    className="px-10 py-7 text-lg font-semibold shadow-2xl shadow-primary/30 hover:shadow-primary/40 hover:scale-105 transition-all duration-300" 
+                    data-testid="button-hero-start"
+                  >
                     Start Discovery
                     <ArrowRight className="ml-2 w-5 h-5" />
                   </Button>
                 </Link>
                 <a href="#features">
-                  <Button size="lg" variant="outline" className="px-8 py-6 text-lg">
+                  <Button 
+                    size="lg" 
+                    variant="outline" 
+                    className="px-10 py-7 text-lg font-semibold hover:bg-accent/50 transition-all duration-300"
+                  >
                     See How It Works
                   </Button>
                 </a>
               </div>
-              <div className="flex flex-wrap items-center gap-6 pt-4">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-primary" />
-                  <span className="text-sm text-muted-foreground">AI-Powered Research</span>
+              
+              <div className="flex flex-wrap items-center gap-6 pt-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
+                  </div>
+                  <span className="text-sm font-medium text-muted-foreground">AI-Powered Research</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-primary" />
-                  <span className="text-sm text-muted-foreground">Strategic Job Mapping</span>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
+                  </div>
+                  <span className="text-sm font-medium text-muted-foreground">Strategic Job Mapping</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-primary" />
-                  <span className="text-sm text-muted-foreground">Measurable KPIs</span>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
+                  </div>
+                  <span className="text-sm font-medium text-muted-foreground">Measurable KPIs</span>
                 </div>
               </div>
             </div>
             
-            {/* Visual Feature Preview */}
+            {/* Right: Feature Preview Cards - FIXED: All Same Size */}
             <div className="relative">
-              <div className="grid grid-cols-2 gap-4">
-                <Card className="hover-elevate transition-all duration-300 border-2">
+              <div className="grid grid-cols-2 gap-5">
+                <Card className="hover-elevate transition-all duration-300 border-2 hover:border-primary/20 group">
                   <CardHeader className="pb-3">
-                    <Brain className="w-8 h-8 text-primary mb-2" />
-                    <CardTitle className="text-lg">AI Research</CardTitle>
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                      <Brain className="w-6 h-6 text-primary" />
+                    </div>
+                    <CardTitle className="text-lg font-bold">AI Research</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground leading-relaxed">
                       GPT-5 powered company insights with priority scoring
                     </p>
                   </CardContent>
                 </Card>
                 
-                <Card className="hover-elevate transition-all duration-300 border-2 mt-8">
+                <Card className="hover-elevate transition-all duration-300 border-2 hover:border-primary/20 group">
                   <CardHeader className="pb-3">
-                    <Target className="w-8 h-8 text-primary mb-2" />
-                    <CardTitle className="text-lg">Jobs Mapping</CardTitle>
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                      <Target className="w-6 h-6 text-primary" />
+                    </div>
+                    <CardTitle className="text-lg font-bold">Jobs Mapping</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground leading-relaxed">
                       Aggregate insights to strategic "Jobs We Do" themes
                     </p>
                   </CardContent>
                 </Card>
                 
-                <Card className="hover-elevate transition-all duration-300 border-2">
+                <Card className="hover-elevate transition-all duration-300 border-2 hover:border-primary/20 group">
                   <CardHeader className="pb-3">
-                    <MessageSquare className="w-8 h-8 text-primary mb-2" />
-                    <CardTitle className="text-lg">Client Collaboration</CardTitle>
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                      <MessageSquare className="w-6 h-6 text-primary" />
+                    </div>
+                    <CardTitle className="text-lg font-bold">Client Collaboration</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground leading-relaxed">
                       Share questionnaires and gather responses seamlessly
                     </p>
                   </CardContent>
                 </Card>
                 
-                <Card className="hover-elevate transition-all duration-300 border-2 mt-8">
+                <Card className="hover-elevate transition-all duration-300 border-2 hover:border-primary/20 group">
                   <CardHeader className="pb-3">
-                    <BarChart3 className="w-8 h-8 text-primary mb-2" />
-                    <CardTitle className="text-lg">Value Metrics</CardTitle>
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                      <BarChart3 className="w-6 h-6 text-primary" />
+                    </div>
+                    <CardTitle className="text-lg font-bold">Value Metrics</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground leading-relaxed">
                       Baseline to target KPIs with benchmark data
                     </p>
                   </CardContent>
@@ -139,45 +167,60 @@ export default function Landing() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 lg:py-32 bg-muted/30">
-        <div className="container mx-auto max-w-7xl px-4 lg:px-8">
-          <div className="text-center mb-16">
-            <Badge variant="secondary" className="mb-4">
-              <Zap className="w-3 h-3 mr-1.5" />
+      <section id="features" className="py-24 lg:py-36 bg-gradient-to-b from-muted/30 to-background relative overflow-hidden">
+        {/* Subtle accent gradient */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent" />
+        
+        <div className="container mx-auto max-w-7xl px-4 lg:px-8 relative">
+          <div className="text-center mb-20">
+            <Badge variant="secondary" className="mb-6 shadow-md">
+              <Zap className="w-3.5 h-3.5 mr-2" />
               Platform Capabilities
             </Badge>
-            <h2 className="text-4xl lg:text-5xl font-bold mb-4">Everything You Need to Drive Value</h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+            <h2 className="text-4xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+              Everything You Need to Drive Value
+            </h2>
+            <p className="text-xl lg:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
               From AI-powered discovery to measurable outcomes, every feature is designed to accelerate client engagements
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {/* AI Research */}
-            <Card className="hover-elevate">
-              <CardHeader>
-                <Brain className="w-12 h-12 text-primary mb-4" />
-                <CardTitle className="text-2xl">AI-Powered Research</CardTitle>
+            <Card className="hover-elevate transition-all duration-300 hover:shadow-2xl hover:shadow-primary/10 group border-2">
+              <CardHeader className="pb-6">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                  <Brain className="w-7 h-7 text-primary" />
+                </div>
+                <CardTitle className="text-2xl font-bold">AI-Powered Research</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <CardDescription className="text-base">
+              <CardContent className="space-y-5">
+                <CardDescription className="text-base leading-relaxed">
                   GPT-5 generates strategic, prioritized insights tagged with Korn Ferry consulting pillars and capabilities
                 </CardDescription>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                <ul className="space-y-3 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
                     <span>Up to 8 high-quality insights per research</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
                     <span>Priority scoring: Critical, High, Supporting</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
                     <span>Follow-up questions for deeper investigation</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
                     <span>Automatic KPI and solution area assignment</span>
                   </li>
                 </ul>
@@ -185,30 +228,40 @@ export default function Landing() {
             </Card>
 
             {/* Jobs & Priorities */}
-            <Card className="hover-elevate">
-              <CardHeader>
-                <Target className="w-12 h-12 text-primary mb-4" />
-                <CardTitle className="text-2xl">Jobs & Priorities</CardTitle>
+            <Card className="hover-elevate transition-all duration-300 hover:shadow-2xl hover:shadow-primary/10 group border-2">
+              <CardHeader className="pb-6">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                  <Target className="w-7 h-7 text-primary" />
+                </div>
+                <CardTitle className="text-2xl font-bold">Jobs & Priorities</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <CardDescription className="text-base">
+              <CardContent className="space-y-5">
+                <CardDescription className="text-base leading-relaxed">
                   Transform insights into actionable priorities using Korn Ferry's "Jobs We Do" strategic framework
                 </CardDescription>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                <ul className="space-y-3 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
                     <span>Automatic job theme aggregation from insights</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
                     <span>Top-3 prioritization with drag-and-select</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
                     <span>KPI selection with primary/supporting types</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
                     <span>Baseline data with benchmark fallbacks</span>
                   </li>
                 </ul>
@@ -216,30 +269,40 @@ export default function Landing() {
             </Card>
 
             {/* Notes & Enrichment */}
-            <Card className="hover-elevate">
-              <CardHeader>
-                <FileText className="w-12 h-12 text-primary mb-4" />
-                <CardTitle className="text-2xl">Notes & Enrichment</CardTitle>
+            <Card className="hover-elevate transition-all duration-300 hover:shadow-2xl hover:shadow-primary/10 group border-2">
+              <CardHeader className="pb-6">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                  <FileText className="w-7 h-7 text-primary" />
+                </div>
+                <CardTitle className="text-2xl font-bold">Notes & Enrichment</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <CardDescription className="text-base">
+              <CardContent className="space-y-5">
+                <CardDescription className="text-base leading-relaxed">
                   Capture meeting notes, upload documents, and let AI extract strategic insights automatically
                 </CardDescription>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                <ul className="space-y-3 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
                     <span>Freeform note-taking during discovery calls</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
                     <span>File uploads (PDF, Word, Excel, images)</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
                     <span>AI extracts metrics, challenges, opportunities</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
                     <span>Auto-classification to capabilities</span>
                   </li>
                 </ul>
@@ -247,30 +310,40 @@ export default function Landing() {
             </Card>
 
             {/* Voice Notes */}
-            <Card className="hover-elevate">
-              <CardHeader>
-                <Mic className="w-12 h-12 text-primary mb-4" />
-                <CardTitle className="text-2xl">Voice Notes</CardTitle>
+            <Card className="hover-elevate transition-all duration-300 hover:shadow-2xl hover:shadow-primary/10 group border-2">
+              <CardHeader className="pb-6">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                  <Mic className="w-7 h-7 text-primary" />
+                </div>
+                <CardTitle className="text-2xl font-bold">Voice Notes</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <CardDescription className="text-base">
+              <CardContent className="space-y-5">
+                <CardDescription className="text-base leading-relaxed">
                   Record voice notes during meetings using browser speech recognition for instant transcription
                 </CardDescription>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                <ul className="space-y-3 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
                     <span>Real-time speech-to-text conversion</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
                     <span>No audio storage for privacy compliance</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
                     <span>Transcriptions included in AI enrichment</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
                     <span>Perfect for capturing live conversations</span>
                   </li>
                 </ul>
@@ -278,30 +351,40 @@ export default function Landing() {
             </Card>
 
             {/* Client Collaboration */}
-            <Card className="hover-elevate">
-              <CardHeader>
-                <Users className="w-12 h-12 text-primary mb-4" />
-                <CardTitle className="text-2xl">Client Collaboration</CardTitle>
+            <Card className="hover-elevate transition-all duration-300 hover:shadow-2xl hover:shadow-primary/10 group border-2">
+              <CardHeader className="pb-6">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                  <Users className="w-7 h-7 text-primary" />
+                </div>
+                <CardTitle className="text-2xl font-bold">Client Collaboration</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <CardDescription className="text-base">
+              <CardContent className="space-y-5">
+                <CardDescription className="text-base leading-relaxed">
                   Share discovery questionnaires with clients via secure links and track response attribution
                 </CardDescription>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                <ul className="space-y-3 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
                     <span>Shareable questionnaire links (no login)</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
                     <span>Visual distinction: consultant vs. client responses</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
                     <span>One-click link copying and sharing</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
                     <span>All responses organized by capability</span>
                   </li>
                 </ul>
@@ -309,30 +392,40 @@ export default function Landing() {
             </Card>
 
             {/* Alignment & Targets */}
-            <Card className="hover-elevate">
-              <CardHeader>
-                <BarChart3 className="w-12 h-12 text-primary mb-4" />
-                <CardTitle className="text-2xl">Alignment & Targets</CardTitle>
+            <Card className="hover-elevate transition-all duration-300 hover:shadow-2xl hover:shadow-primary/10 group border-2">
+              <CardHeader className="pb-6">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                  <BarChart3 className="w-7 h-7 text-primary" />
+                </div>
+                <CardTitle className="text-2xl font-bold">Alignment & Targets</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <CardDescription className="text-base">
+              <CardContent className="space-y-5">
+                <CardDescription className="text-base leading-relaxed">
                   Set baseline and target values for KPIs to establish the value gap and build hypotheses
                 </CardDescription>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                <ul className="space-y-3 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
                     <span>Baseline values with source attribution</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
                     <span>Target values for desired outcomes</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
                     <span>Korn Ferry benchmark comparisons</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
                     <span>Value gap visualization and tracking</span>
                   </li>
                 </ul>
@@ -343,58 +436,70 @@ export default function Landing() {
       </section>
 
       {/* How It Works */}
-      <section id="how-it-works" className="py-20 lg:py-32">
-        <div className="container mx-auto max-w-7xl px-4 lg:px-8">
-          <div className="text-center mb-16">
-            <Badge variant="secondary" className="mb-4">
+      <section id="how-it-works" className="py-24 lg:py-36 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-t from-muted/20 to-transparent" />
+        
+        <div className="container mx-auto max-w-7xl px-4 lg:px-8 relative">
+          <div className="text-center mb-20">
+            <Badge variant="secondary" className="mb-6 shadow-md">
               The Process
             </Badge>
-            <h2 className="text-4xl lg:text-5xl font-bold mb-4">Three Phases to Value Realization</h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+            <h2 className="text-4xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+              Three Phases to Value Realization
+            </h2>
+            <p className="text-xl lg:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
               A structured approach from initial discovery to measurable outcomes
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
             {/* Phase 1: Discovery */}
-            <div className="relative">
-              <div className="absolute -top-4 -left-4 w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-                <span className="text-2xl font-bold text-primary">1</span>
+            <div className="relative group">
+              <div className="absolute -top-6 -left-6 w-20 h-20 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform duration-300">
+                <span className="text-3xl font-bold text-primary">1</span>
               </div>
-              <Card className="pt-8 hover-elevate h-full">
-                <CardHeader>
-                  <CardTitle className="text-2xl">Discovery</CardTitle>
-                  <CardDescription className="text-base">
+              <Card className="pt-12 hover-elevate h-full border-2 hover:border-primary/20 transition-all duration-300">
+                <CardHeader className="pb-6">
+                  <CardTitle className="text-2xl font-bold">Discovery</CardTitle>
+                  <CardDescription className="text-base leading-relaxed">
                     Gather comprehensive insights through AI research, notes, and client collaboration
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex items-start gap-3">
-                      <Brain className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-accent/50 transition-colors">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Brain className="w-5 h-5 text-primary" />
+                      </div>
                       <div>
-                        <p className="font-medium text-sm">AI Company Research</p>
+                        <p className="font-semibold text-sm">AI Company Research</p>
                         <p className="text-xs text-muted-foreground">Strategic insights with priority scoring</p>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <FileText className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-accent/50 transition-colors">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
+                        <FileText className="w-5 h-5 text-primary" />
+                      </div>
                       <div>
-                        <p className="font-medium text-sm">Notes & Documents</p>
+                        <p className="font-semibold text-sm">Notes & Documents</p>
                         <p className="text-xs text-muted-foreground">Capture and enrich with AI analysis</p>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <MessageSquare className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-accent/50 transition-colors">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
+                        <MessageSquare className="w-5 h-5 text-primary" />
+                      </div>
                       <div>
-                        <p className="font-medium text-sm">Client Questionnaires</p>
+                        <p className="font-semibold text-sm">Client Questionnaires</p>
                         <p className="text-xs text-muted-foreground">Collaborative discovery responses</p>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <Target className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-accent/50 transition-colors">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Target className="w-5 h-5 text-primary" />
+                      </div>
                       <div>
-                        <p className="font-medium text-sm">Jobs Prioritization</p>
+                        <p className="font-semibold text-sm">Jobs Prioritization</p>
                         <p className="text-xs text-muted-foreground">Top-3 strategic themes with KPIs</p>
                       </div>
                     </div>
@@ -404,44 +509,52 @@ export default function Landing() {
             </div>
 
             {/* Phase 2: Alignment */}
-            <div className="relative">
-              <div className="absolute -top-4 -left-4 w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-                <span className="text-2xl font-bold text-primary">2</span>
+            <div className="relative group">
+              <div className="absolute -top-6 -left-6 w-20 h-20 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform duration-300">
+                <span className="text-3xl font-bold text-primary">2</span>
               </div>
-              <Card className="pt-8 hover-elevate h-full">
-                <CardHeader>
-                  <CardTitle className="text-2xl">Alignment</CardTitle>
-                  <CardDescription className="text-base">
+              <Card className="pt-12 hover-elevate h-full border-2 hover:border-primary/20 transition-all duration-300">
+                <CardHeader className="pb-6">
+                  <CardTitle className="text-2xl font-bold">Alignment</CardTitle>
+                  <CardDescription className="text-base leading-relaxed">
                     Establish baseline and target values to quantify the value gap
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex items-start gap-3">
-                      <BarChart3 className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-accent/50 transition-colors">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
+                        <BarChart3 className="w-5 h-5 text-primary" />
+                      </div>
                       <div>
-                        <p className="font-medium text-sm">Baseline Values</p>
+                        <p className="font-semibold text-sm">Baseline Values</p>
                         <p className="text-xs text-muted-foreground">Current state with source attribution</p>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <Target className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-accent/50 transition-colors">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Target className="w-5 h-5 text-primary" />
+                      </div>
                       <div>
-                        <p className="font-medium text-sm">Target Outcomes</p>
+                        <p className="font-semibold text-sm">Target Outcomes</p>
                         <p className="text-xs text-muted-foreground">Desired state with benchmarks</p>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <TrendingUp className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-accent/50 transition-colors">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
+                        <TrendingUp className="w-5 h-5 text-primary" />
+                      </div>
                       <div>
-                        <p className="font-medium text-sm">Value Gap Analysis</p>
+                        <p className="font-semibold text-sm">Value Gap Analysis</p>
                         <p className="text-xs text-muted-foreground">Baseline to target measurement</p>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-accent/50 transition-colors">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
+                        <CheckCircle2 className="w-5 h-5 text-primary" />
+                      </div>
                       <div>
-                        <p className="font-medium text-sm">Hypothesis Building</p>
+                        <p className="font-semibold text-sm">Hypothesis Building</p>
                         <p className="text-xs text-muted-foreground">Foundation for value case</p>
                       </div>
                     </div>
@@ -451,44 +564,52 @@ export default function Landing() {
             </div>
 
             {/* Phase 3: Realization */}
-            <div className="relative">
-              <div className="absolute -top-4 -left-4 w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-                <span className="text-2xl font-bold text-primary">3</span>
+            <div className="relative group">
+              <div className="absolute -top-6 -left-6 w-20 h-20 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform duration-300">
+                <span className="text-3xl font-bold text-primary">3</span>
               </div>
-              <Card className="pt-8 hover-elevate h-full">
-                <CardHeader>
-                  <CardTitle className="text-2xl">Realization</CardTitle>
-                  <CardDescription className="text-base">
+              <Card className="pt-12 hover-elevate h-full border-2 hover:border-primary/20 transition-all duration-300">
+                <CardHeader className="pb-6">
+                  <CardTitle className="text-2xl font-bold">Realization</CardTitle>
+                  <CardDescription className="text-base leading-relaxed">
                     Track progress and measure outcomes throughout delivery
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex items-start gap-3">
-                      <BarChart3 className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-accent/50 transition-colors">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
+                        <BarChart3 className="w-5 h-5 text-primary" />
+                      </div>
                       <div>
-                        <p className="font-medium text-sm">KPI Tracking</p>
+                        <p className="font-semibold text-sm">KPI Tracking</p>
                         <p className="text-xs text-muted-foreground">Real-time progress monitoring</p>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <TrendingUp className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-accent/50 transition-colors">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
+                        <TrendingUp className="w-5 h-5 text-primary" />
+                      </div>
                       <div>
-                        <p className="font-medium text-sm">Value Measurement</p>
+                        <p className="font-semibold text-sm">Value Measurement</p>
                         <p className="text-xs text-muted-foreground">Quantified impact reporting</p>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-accent/50 transition-colors">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
+                        <CheckCircle2 className="w-5 h-5 text-primary" />
+                      </div>
                       <div>
-                        <p className="font-medium text-sm">Outcome Validation</p>
+                        <p className="font-semibold text-sm">Outcome Validation</p>
                         <p className="text-xs text-muted-foreground">Achievement verification</p>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <FileText className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-accent/50 transition-colors">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
+                        <FileText className="w-5 h-5 text-primary" />
+                      </div>
                       <div>
-                        <p className="font-medium text-sm">Executive Reporting</p>
+                        <p className="font-semibold text-sm">Executive Reporting</p>
                         <p className="text-xs text-muted-foreground">Board-ready deliverables</p>
                       </div>
                     </div>
@@ -501,20 +622,27 @@ export default function Landing() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 lg:py-32 bg-gradient-to-br from-primary/10 via-primary/5 to-background">
-        <div className="container mx-auto max-w-7xl px-4 lg:px-8">
-          <div className="max-w-4xl mx-auto text-center space-y-8">
-            <h2 className="text-4xl lg:text-6xl font-bold">
+      <section className="py-28 lg:py-40 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-primary/8 to-background" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
+        
+        <div className="container mx-auto max-w-7xl px-4 lg:px-8 relative">
+          <div className="max-w-4xl mx-auto text-center space-y-10">
+            <h2 className="text-5xl lg:text-7xl font-bold leading-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
               Ready to Transform Your Client Engagements?
             </h2>
-            <p className="text-xl lg:text-2xl text-muted-foreground">
+            <p className="text-xl lg:text-2xl text-muted-foreground leading-relaxed">
               Start your first discovery project today and experience the power of AI-driven value lifecycle management
             </p>
-            <div className="flex flex-wrap gap-4 justify-center pt-4">
+            <div className="flex flex-wrap gap-6 justify-center pt-6">
               <Link href="/discovery">
-                <Button size="lg" className="px-10 py-7 text-lg shadow-2xl" data-testid="button-cta-start">
+                <Button 
+                  size="lg" 
+                  className="px-12 py-8 text-xl font-bold shadow-2xl shadow-primary/40 hover:shadow-primary/50 hover:scale-105 transition-all duration-300" 
+                  data-testid="button-cta-start"
+                >
                   Get Started Now
-                  <ArrowRight className="ml-2 w-5 h-5" />
+                  <ArrowRight className="ml-3 w-6 h-6" />
                 </Button>
               </Link>
             </div>
@@ -523,44 +651,46 @@ export default function Landing() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-12 bg-muted/30">
+      <footer className="border-t py-16 bg-gradient-to-b from-muted/30 to-muted/10">
         <div className="container mx-auto max-w-7xl px-4 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
             <div className="md:col-span-2">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/70 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-primary-foreground" />
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 bg-gradient-to-br from-primary via-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg">
+                  <TrendingUp className="w-7 h-7 text-primary-foreground" />
                 </div>
-                <span className="text-xl font-bold">Korn Ferry</span>
+                <span className="text-2xl font-bold">Korn Ferry</span>
               </div>
-              <p className="text-sm text-muted-foreground max-w-md">
+              <p className="text-base text-muted-foreground max-w-md leading-relaxed">
                 Empowering consultants to unlock client value through AI-powered discovery, strategic job mapping, and measurable outcomes.
               </p>
             </div>
             <div>
-              <h3 className="font-semibold mb-4">Platform</h3>
-              <ul className="space-y-2 text-sm">
-                <li><Link href="/discovery" className="text-muted-foreground hover:text-primary">Get Started</Link></li>
-                <li><a href="#features" className="text-muted-foreground hover:text-primary">Features</a></li>
-                <li><a href="#how-it-works" className="text-muted-foreground hover:text-primary">How It Works</a></li>
+              <h3 className="font-bold mb-5 text-lg">Platform</h3>
+              <ul className="space-y-3 text-sm">
+                <li><Link href="/discovery" className="text-muted-foreground hover:text-primary transition-colors">Get Started</Link></li>
+                <li><a href="#features" className="text-muted-foreground hover:text-primary transition-colors">Features</a></li>
+                <li><a href="#how-it-works" className="text-muted-foreground hover:text-primary transition-colors">How It Works</a></li>
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold mb-4">Company</h3>
-              <ul className="space-y-2 text-sm">
-                <li><a href="https://www.kornferry.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">Korn Ferry</a></li>
-                <li><a href="https://www.kornferry.com/insights" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">Insights</a></li>
-                <li><a href="https://www.kornferry.com/about-us" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">About Us</a></li>
+              <h3 className="font-bold mb-5 text-lg">Company</h3>
+              <ul className="space-y-3 text-sm">
+                <li><a href="https://www.kornferry.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">Korn Ferry</a></li>
+                <li><a href="https://www.kornferry.com/insights" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">Insights</a></li>
+                <li><a href="https://www.kornferry.com/about-us" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">About Us</a></li>
               </ul>
             </div>
           </div>
-          <div className="pt-8 border-t">
+          <div className="pt-10 border-t">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
-              <p>© 2024 Korn Ferry. All rights reserved.</p>
-              <p className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-primary" />
-                Powered by AI
-              </p>
+              <p className="font-medium">© 2024 Korn Ferry. All rights reserved.</p>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-primary/15 flex items-center justify-center">
+                  <Sparkles className="w-3.5 h-3.5 text-primary" />
+                </div>
+                <span className="font-medium">Powered by AI</span>
+              </div>
             </div>
           </div>
         </div>
