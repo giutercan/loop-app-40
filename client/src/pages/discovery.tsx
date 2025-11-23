@@ -20,12 +20,12 @@ import OrganisationCard from "@/components/OrganisationCard";
 import ValueHypothesisBuilder from "@/components/ValueHypothesisBuilder";
 import ProjectSelector from "@/components/ProjectSelector";
 import StatusBadge from "@/components/StatusBadge";
-import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File } from "lucide-react";
+import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users } from "lucide-react";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { Link, useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Project, CompanyDataPoint, Headline, DiscoveryNotes, DiscoveryQuestion, Attachment } from "@shared/schema";
+import type { Project, CompanyDataPoint, Headline, DiscoveryNotes, DiscoveryQuestion, Attachment, SharedQuestionnaire, QuestionResponse } from "@shared/schema";
 
 export default function Discovery() {
   const [location] = useLocation();
@@ -82,6 +82,20 @@ export default function Discovery() {
   const [isFollowUpDialogOpen, setIsFollowUpDialogOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [voiceTranscript, setVoiceTranscript] = useState("");
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [clientName, setClientName] = useState("");
+  const [clientEmail, setClientEmail] = useState("");
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const { data: sharedQuestionnaire } = useQuery<SharedQuestionnaire | null>({
+    queryKey: ["/api/projects", selectedProjectId, "shared-questionnaire"],
+    enabled: !!selectedProjectId,
+  });
+
+  const { data: questionResponses = [] } = useQuery<QuestionResponse[]>({
+    queryKey: ["/api/projects", selectedProjectId, "questionnaire-responses"],
+    enabled: !!selectedProjectId,
+  });
 
   useEffect(() => {
     if (notes) {
@@ -465,6 +479,35 @@ export default function Discovery() {
     },
   });
 
+  const shareQuestionnaireMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedProjectId) return;
+      const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/share-questionnaire`, {
+        clientName: clientName || null,
+        clientEmail: clientEmail || null,
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to share questionnaire");
+      }
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "shared-questionnaire"] });
+      toast({
+        title: "Questionnaire shared",
+        description: "A shareable link has been generated for your client.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Share failed",
+        description: error.message || "Failed to share questionnaire",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCapabilityChange = (id: number, capability: string | null) => {
     updateCapabilityMutation.mutate({ 
       id, 
@@ -564,6 +607,22 @@ export default function Discovery() {
       return;
     }
     saveVoiceNoteMutation.mutate(trimmedTranscript);
+  };
+
+  const handleCopyLink = () => {
+    if (!sharedQuestionnaire) return;
+    const shareUrl = `${window.location.origin}/questionnaire/${sharedQuestionnaire.shareToken}`;
+    navigator.clipboard.writeText(shareUrl);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+    toast({
+      title: "Link copied!",
+      description: "Share this link with your client.",
+    });
+  };
+
+  const handleShareQuestionnaire = () => {
+    shareQuestionnaireMutation.mutate();
   };
 
   if (!selectedProjectId) {
@@ -1092,6 +1151,7 @@ export default function Discovery() {
                       <CardTitle>Discovery Questions</CardTitle>
                       <CardDescription>AI-generated questions to investigate insights and capture data for KPI calculations</CardDescription>
                     </div>
+                    <div className="flex items-center gap-2">
                       <Button 
                         onClick={() => generateDiscoveryQuestionsMutation.mutate()}
                         disabled={generateDiscoveryQuestionsMutation.isPending}
@@ -1100,8 +1160,84 @@ export default function Discovery() {
                         <Sparkles className="w-4 h-4 mr-2" />
                         {generateDiscoveryQuestionsMutation.isPending ? "Generating..." : "Generate Questions"}
                       </Button>
+                      {discoveryQuestions.length > 0 && (
+                        <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" data-testid="button-share-with-client">
+                              <Share2 className="w-4 h-4 mr-2" />
+                              Share with Client
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-md">
+                            <DialogHeader>
+                              <DialogTitle className="flex items-center gap-2">
+                                <Users className="w-5 h-5 text-primary" />
+                                Share Questionnaire with Client
+                              </DialogTitle>
+                              <DialogDescription>
+                                Generate a shareable link for your client to answer discovery questions collaboratively.
+                              </DialogDescription>
+                            </DialogHeader>
+                            {!sharedQuestionnaire ? (
+                              <div className="space-y-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor="clientName">Client Name (Optional)</Label>
+                                  <Input
+                                    id="clientName"
+                                    placeholder="e.g., John Smith"
+                                    value={clientName}
+                                    onChange={(e) => setClientName(e.target.value)}
+                                    data-testid="input-client-name"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="clientEmail">Client Email (Optional)</Label>
+                                  <Input
+                                    id="clientEmail"
+                                    type="email"
+                                    placeholder="e.g., john@company.com"
+                                    value={clientEmail}
+                                    onChange={(e) => setClientEmail(e.target.value)}
+                                    data-testid="input-client-email"
+                                  />
+                                </div>
+                                <Button 
+                                  onClick={handleShareQuestionnaire} 
+                                  disabled={shareQuestionnaireMutation.isPending}
+                                  className="w-full"
+                                  data-testid="button-generate-link"
+                                >
+                                  <Share2 className="w-4 h-4 mr-2" />
+                                  {shareQuestionnaireMutation.isPending ? "Generating..." : "Generate Shareable Link"}
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="space-y-4">
+                                <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+                                  <Input
+                                    readOnly
+                                    value={`${window.location.origin}/questionnaire/${sharedQuestionnaire.shareToken}`}
+                                    className="flex-1 bg-background"
+                                    data-testid="input-share-link"
+                                  />
+                                  <Button onClick={handleCopyLink} size="icon" variant="outline" data-testid="button-copy-link">
+                                    {linkCopied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                                  </Button>
+                                </div>
+                                <div className="text-sm text-muted-foreground space-y-2">
+                                  <p>✓ Link generated and ready to share</p>
+                                  <p>• Send this link to your client via email or messaging</p>
+                                  <p>• They can answer questions without logging in</p>
+                                  <p>• You'll see their responses in real-time</p>
+                                </div>
+                              </div>
+                            )}
+                          </DialogContent>
+                        </Dialog>
+                      )}
                     </div>
-                  </CardHeader>
+                  </div>
+                </CardHeader>
                   <CardContent>
                     {discoveryQuestions.length === 0 ? (
                       <p className="text-sm text-muted-foreground">
