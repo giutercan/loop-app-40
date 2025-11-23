@@ -171,11 +171,24 @@ export interface IStorage {
   updateKPIActual(id: number, actual: Partial<InsertKPIActual>): Promise<KPIActual | undefined>;
   deleteKPIActual(id: number): Promise<void>;
   
-  // Success Stories
+  // Success Stories (project-specific case study links)
   getSuccessStories(projectId: number): Promise<SuccessStory[]>;
   createSuccessStory(story: InsertSuccessStory): Promise<SuccessStory>;
   updateSuccessStory(id: number, story: Partial<InsertSuccessStory>): Promise<SuccessStory | undefined>;
   deleteSuccessStory(id: number): Promise<void>;
+  
+  // Success Story Library (global verified stories for AI narrative generation)
+  getSuccessStoryLibrary(filters?: { 
+    industry?: string; 
+    capabilityName?: string; 
+    solutionArea?: string;
+    approvalStatus?: string;
+  }): Promise<schema.SuccessStoryLibraryItem[]>;
+  getSuccessStoryLibraryItem(id: number): Promise<schema.SuccessStoryLibraryItem | undefined>;
+  createSuccessStoryLibraryItem(story: schema.InsertSuccessStoryLibrary): Promise<schema.SuccessStoryLibraryItem>;
+  updateSuccessStoryLibraryItem(id: number, story: Partial<schema.InsertSuccessStoryLibrary>): Promise<schema.SuccessStoryLibraryItem | undefined>;
+  approveSuccessStoryLibraryItem(id: number, approvedBy: string): Promise<schema.SuccessStoryLibraryItem | undefined>;
+  deleteSuccessStoryLibraryItem(id: number): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -796,6 +809,75 @@ export class DbStorage implements IStorage {
   
   async deleteSuccessStory(id: number): Promise<void> {
     await db.delete(schema.successStories).where(eq(schema.successStories.id, id));
+  }
+  
+  // Success Story Library (global verified stories for AI narrative generation)
+  async getSuccessStoryLibrary(filters?: { 
+    industry?: string; 
+    capabilityName?: string; 
+    solutionArea?: string;
+    approvalStatus?: string;
+  }): Promise<schema.SuccessStoryLibraryItem[]> {
+    let query = db.select().from(schema.successStoryLibrary);
+    
+    const conditions = [];
+    if (filters?.industry) {
+      conditions.push(eq(schema.successStoryLibrary.industry, filters.industry));
+    }
+    if (filters?.capabilityName) {
+      conditions.push(eq(schema.successStoryLibrary.capabilityName, filters.capabilityName));
+    }
+    if (filters?.solutionArea) {
+      conditions.push(eq(schema.successStoryLibrary.solutionArea, filters.solutionArea as any));
+    }
+    if (filters?.approvalStatus) {
+      conditions.push(eq(schema.successStoryLibrary.approvalStatus, filters.approvalStatus as any));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    return await query.orderBy(
+      desc(schema.successStoryLibrary.isHighlighted),
+      desc(schema.successStoryLibrary.createdAt)
+    );
+  }
+  
+  async getSuccessStoryLibraryItem(id: number): Promise<schema.SuccessStoryLibraryItem | undefined> {
+    const results = await db.select().from(schema.successStoryLibrary)
+      .where(eq(schema.successStoryLibrary.id, id));
+    return results[0];
+  }
+  
+  async createSuccessStoryLibraryItem(story: schema.InsertSuccessStoryLibrary): Promise<schema.SuccessStoryLibraryItem> {
+    const results = await db.insert(schema.successStoryLibrary).values(story).returning();
+    return results[0];
+  }
+  
+  async updateSuccessStoryLibraryItem(id: number, story: Partial<schema.InsertSuccessStoryLibrary>): Promise<schema.SuccessStoryLibraryItem | undefined> {
+    const results = await db.update(schema.successStoryLibrary)
+      .set({ ...story, updatedAt: new Date() })
+      .where(eq(schema.successStoryLibrary.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async approveSuccessStoryLibraryItem(id: number, approvedBy: string): Promise<schema.SuccessStoryLibraryItem | undefined> {
+    const results = await db.update(schema.successStoryLibrary)
+      .set({ 
+        approvalStatus: 'approved',
+        approvedBy,
+        approvedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(schema.successStoryLibrary.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deleteSuccessStoryLibraryItem(id: number): Promise<void> {
+    await db.delete(schema.successStoryLibrary).where(eq(schema.successStoryLibrary.id, id));
   }
 }
 
