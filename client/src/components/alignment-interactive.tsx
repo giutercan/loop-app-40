@@ -9,6 +9,7 @@ import { Target, TrendingDown, ChevronDown, Sparkles, Briefcase, Loader2 } from 
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import KPIRecommendationDialog from "@/components/KPIRecommendationDialog";
 
 interface KPI {
   id: number;
@@ -158,6 +159,7 @@ interface JobCardProps {
 
 function JobCard({ job, jobIndex, selectedKPIs, updateKPIMutation }: JobCardProps) {
   const [isExpanded, setIsExpanded] = useState<boolean>(jobIndex === 0);
+  const [showRecommendations, setShowRecommendations] = useState(false);
   
   // Calculate completion percentage
   const completedKPIs = selectedKPIs.filter(kpi => 
@@ -173,12 +175,14 @@ function JobCard({ job, jobIndex, selectedKPIs, updateKPIMutation }: JobCardProp
     >
       {/* Clickable Header */}
       <CardHeader 
-        className="cursor-pointer hover-elevate active-elevate-2 rounded-t-md"
-        onClick={() => setIsExpanded(!isExpanded)}
+        className="hover-elevate active-elevate-2 rounded-t-md"
         data-testid={`header-job-${job.id}`}
       >
         <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div 
+            className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
+            onClick={() => setIsExpanded(!isExpanded)}
+          >
             <Badge variant="default" className="text-lg px-3 py-1.5 shrink-0">
               #{jobIndex + 1}
             </Badge>
@@ -193,44 +197,66 @@ function JobCard({ job, jobIndex, selectedKPIs, updateKPIMutation }: JobCardProp
             </div>
           </div>
           
-          {/* Progress Ring */}
-          <div className="flex items-center gap-4 shrink-0">
-            <div className="text-right">
-              <div className="text-sm font-semibold">
-                {completedKPIs}/{selectedKPIs.length} KPIs
+          {/* Progress Ring and Actions */}
+          <div className="flex items-center gap-3 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowRecommendations(true);
+              }}
+              className="gap-2"
+              data-testid={`button-recommend-kpis-${job.id}`}
+            >
+              <Sparkles className="h-4 w-4" />
+              Suggest KPIs
+            </Button>
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <div className="text-sm font-semibold">
+                  {completedKPIs}/{selectedKPIs.length} KPIs
+                </div>
+                <div className="text-xs text-muted-foreground">Configured</div>
               </div>
-              <div className="text-xs text-muted-foreground">Configured</div>
-            </div>
-            <div className="relative w-14 h-14">
-              <svg className="w-14 h-14 transform -rotate-90">
-                <circle
-                  cx="28"
-                  cy="28"
-                  r="24"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  fill="none"
-                  className="text-muted/20"
-                />
-                <circle
-                  cx="28"
-                  cy="28"
-                  r="24"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  fill="none"
-                  strokeDasharray={`${2 * Math.PI * 24}`}
-                  strokeDashoffset={`${2 * Math.PI * 24 * (1 - completionPercentage / 100)}`}
-                  className={completionPercentage === 100 ? "text-emerald-600" : "text-primary"}
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-xs font-bold">{completionPercentage}%</span>
+              <div className="relative w-14 h-14">
+                <svg className="w-14 h-14 transform -rotate-90">
+                  <circle
+                    cx="28"
+                    cy="28"
+                    r="24"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    fill="none"
+                    className="text-muted/20"
+                  />
+                  <circle
+                    cx="28"
+                    cy="28"
+                    r="24"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    fill="none"
+                    strokeDasharray={`${2 * Math.PI * 24}`}
+                    strokeDashoffset={`${2 * Math.PI * 24 * (1 - completionPercentage / 100)}`}
+                    className={completionPercentage === 100 ? "text-emerald-600" : "text-primary"}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-xs font-bold">{completionPercentage}%</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
+        
+        <KPIRecommendationDialog
+          jobThemeId={job.id}
+          jobName={job.jobName}
+          open={showRecommendations}
+          onOpenChange={setShowRecommendations}
+        />
       </CardHeader>
 
       {/* Expandable Content */}
