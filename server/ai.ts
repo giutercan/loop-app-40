@@ -571,8 +571,6 @@ Make each story:
 
   try {
     console.log("Calling OpenAI API for success stories...");
-    console.log("System prompt:", systemPrompt);
-    console.log("User prompt (first 500 chars):", userPrompt.substring(0, 500));
     
     const response = await openai.chat.completions.create({
       model: "gpt-5",
@@ -580,16 +578,21 @@ Make each story:
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
       ],
-      response_format: { type: "json_object" },
-      max_completion_tokens: 3000,
+      max_completion_tokens: 4000,
+      temperature: 0.7,
     });
 
     console.log("OpenAI API response received");
     console.log("Finish reason:", response.choices[0]?.finish_reason);
-    console.log("Model used:", response.model);
     
-    const content = response.choices[0]?.message?.content || "{}";
-    console.log("Raw AI response content:", content);
+    let content = response.choices[0]?.message?.content || "";
+    console.log("Raw AI response (first 500 chars):", content.substring(0, 500));
+    
+    // Extract JSON from response (might have markdown code blocks)
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      content = jsonMatch[0];
+    }
     
     // Parse and validate AI response with Zod
     let parsedContent;
