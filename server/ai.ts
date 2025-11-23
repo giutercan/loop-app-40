@@ -886,3 +886,137 @@ Return JSON format:
     };
   }
 }
+
+// Value Case Recommendation Schema
+const valueCaseRecommendationSchema = z.object({
+  recommendations: z.array(z.object({
+    name: z.string(),
+    description: z.string(),
+    linkedJobThemeIds: z.array(z.number()),
+    suggestedKPIs: z.array(z.string()),
+    estimatedNPV: z.string(),
+    estimatedPaybackMonths: z.number(),
+    rationale: z.string(),
+  })).min(3).max(5),
+});
+
+interface JobThemeWithKPIs {
+  id: number;
+  name: string;
+  description: string;
+  capability: string;
+  evidence: string[];
+  priorityRank: number | null;
+  kpis: Array<{
+    id: number;
+    kpiName: string;
+    unit: string;
+    baselineValue: string | null;
+    targetValue: string | null;
+    isPrimary: boolean;
+  }>;
+}
+
+export async function generateValueCaseRecommendations(
+  companyName: string,
+  industry: string,
+  finalizedJobs: JobThemeWithKPIs[]
+): Promise<z.infer<typeof valueCaseRecommendationSchema>> {
+  const knowledgeBase = getSolutionSummary();
+  
+  const jobsSummary = finalizedJobs.map((job, idx) => `
+Priority ${idx + 1}: ${job.name}
+- Capability: ${job.capability}
+- Description: ${job.description}
+- Evidence: ${job.evidence.slice(0, 2).join('; ')}
+- KPIs: ${job.kpis.map(k => `${k.kpiName} (${k.baselineValue || 'TBD'} → ${k.targetValue || 'TBD'} ${k.unit})${k.isPrimary ? ' [PRIMARY]' : ''}`).join(', ')}
+`).join('\n');
+
+  const prompt = `You are a Korn Ferry consultant creating value case recommendations for ${companyName} in the ${industry} industry.
+
+FINALIZED DISCOVERY JOBS & PRIORITIES:
+${jobsSummary}
+
+KORN FERRY SOLUTIONS & CAPABILITIES:
+${knowledgeBase}
+
+TASK: Generate 3-5 strategic value case recommendations that tie directly to the finalized Discovery jobs above.
+
+REQUIREMENTS:
+1. Each value case should address 1-3 of the prioritized jobs
+2. Link to specific KPIs from the jobs (use exact KPI names)
+3. Provide realistic financial estimates (NPV and payback period)
+4. Include clear rationale showing how Discovery insights support this case
+5. Focus on high-impact, executable initiatives
+
+VALUE CASE STRUCTURE:
+- Name: Clear, action-oriented title (e.g., "Executive Leadership Development Program", "Sales Excellence Transformation")
+- Description: 2-3 sentences describing the initiative and expected outcomes
+- LinkedJobThemeIds: Array of job IDs this case addresses (use IDs: ${finalizedJobs.map(j => j.id).join(', ')})
+- SuggestedKPIs: Exact KPI names from the jobs that this case will impact
+- EstimatedNPV: Conservative NPV estimate as string (e.g., "$2.5M over 3 years")
+- EstimatedPaybackMonths: Realistic payback period in months (12-36 typical)
+- Rationale: How this case connects to Discovery findings and why it's high-priority
+
+Return JSON format:
+{
+  "recommendations": [
+    {
+      "name": "Value case name",
+      "description": "Detailed description of the initiative and outcomes",
+      "linkedJobThemeIds": [1, 2],
+      "suggestedKPIs": ["KPI name 1", "KPI name 2"],
+      "estimatedNPV": "$X.XM over 3 years",
+      "estimatedPaybackMonths": 18,
+      "rationale": "Why this case is strategic based on Discovery data"
+    }
+  ]
+}
+
+IMPORTANT:
+- Generate 3-5 recommendations (prioritize quality over quantity)
+- Use ONLY the job IDs provided: ${finalizedJobs.map(j => j.id).join(', ')}
+- Use EXACT KPI names from the jobs listed above
+- Be realistic with financial estimates - conservative is better
+- Each case should clearly tie back to Discovery evidence`;
+
+  try {
+    console.log(`[AI Value Cases] Generating recommendations for ${companyName}`);
+    
+    const response = await openai.chat.completions.create({
+      model: "gpt-5",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 2000,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    console.log(`[AI Value Cases] Raw response:`, content);
+    
+    if (!content) {
+      throw new Error("AI returned empty response");
+    }
+    
+    let parsedContent;
+    try {
+      parsedContent = JSON.parse(content);
+      console.log(`[AI Value Cases] Parsed content:`, parsedContent);
+    } catch (parseError) {
+      console.error("[AI Value Cases] Failed to parse AI response:", parseError);
+      throw new Error("AI returned invalid JSON for value case recommendations");
+    }
+    
+    const validationResult = valueCaseRecommendationSchema.safeParse(parsedContent);
+    if (!validationResult.success) {
+      console.error("[AI Value Cases] Validation failed:", validationResult.error);
+      console.error("[AI Value Cases] Received data:", parsedContent);
+      throw new Error(`AI value case validation failed: ${validationResult.error.message}`);
+    }
+    
+    console.log(`[AI Value Cases] Success! Generated ${validationResult.data.recommendations.length} recommendations`);
+    return validationResult.data;
+  } catch (error) {
+    console.error("[AI Value Cases] Error:", error);
+    throw error; // Don't provide fallback for value cases - frontend should handle error
+  }
+}

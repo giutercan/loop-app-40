@@ -2,12 +2,12 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Edit, TrendingUp, Calendar, Target } from "lucide-react";
-import type { ValueHypothesis } from "@shared/schema";
+import type { ValueCase } from "@shared/schema";
 import { formatCurrency } from "@shared/valueCalculations";
 
-interface ValueHypothesisCardProps {
-  hypothesis: ValueHypothesis;
-  onEdit: (hypothesis: ValueHypothesis) => void;
+interface ValueCaseCardProps {
+  valueCase: ValueCase;
+  onEdit: (valueCase: ValueCase) => void;
 }
 
 const SOLUTION_COLORS: Record<string, string> = {
@@ -25,30 +25,30 @@ const STATUS_COLORS: Record<string, string> = {
   approved: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800",
 };
 
-export default function ValueHypothesisCard({ hypothesis, onEdit }: ValueHypothesisCardProps) {
-  const results = hypothesis.calculationResults as any;
+export default function ValueCaseCard({ valueCase, onEdit }: ValueCaseCardProps) {
+  const results = valueCase.calculationResults as any;
   
   return (
-    <Card className="hover-elevate" data-testid={`card-hypothesis-${hypothesis.id}`}>
+    <Card className="hover-elevate" data-testid={`card-value-case-${valueCase.id}`}>
       <CardHeader>
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
-              <Badge className={SOLUTION_COLORS[hypothesis.solutionArea || "ASSESS"]}>
-                {hypothesis.solutionArea}
+              <Badge className={SOLUTION_COLORS[valueCase.solutionArea || "ASSESS"]}>
+                {valueCase.solutionArea}
               </Badge>
-              <Badge className={STATUS_COLORS[hypothesis.status]}>
-                {hypothesis.status.charAt(0).toUpperCase() + hypothesis.status.slice(1)}
+              <Badge className={STATUS_COLORS[valueCase.status]}>
+                {valueCase.status.charAt(0).toUpperCase() + valueCase.status.slice(1)}
               </Badge>
             </div>
-            <h3 className="text-lg font-semibold mb-1">{hypothesis.title}</h3>
-            <p className="text-sm text-muted-foreground">{hypothesis.capabilityName}</p>
+            <h3 className="text-lg font-semibold mb-1">{valueCase.title}</h3>
+            <p className="text-sm text-muted-foreground">{valueCase.capabilityName}</p>
           </div>
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => onEdit(hypothesis)}
-            data-testid={`button-edit-hypothesis-${hypothesis.id}`}
+            onClick={() => onEdit(valueCase)}
+            data-testid={`button-edit-value-case-${valueCase.id}`}
           >
             <Edit className="h-4 w-4 mr-1" />
             Edit
@@ -90,9 +90,9 @@ export default function ValueHypothesisCard({ hypothesis, onEdit }: ValueHypothe
           </div>
         )}
         
-        {hypothesis.rationale && (
+        {valueCase.rationale && (
           <div className="mt-4 pt-4 border-t">
-            <p className="text-sm text-muted-foreground">{hypothesis.rationale}</p>
+            <p className="text-sm text-muted-foreground">{valueCase.rationale}</p>
           </div>
         )}
       </CardContent>

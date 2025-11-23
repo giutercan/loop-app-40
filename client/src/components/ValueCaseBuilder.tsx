@@ -18,7 +18,7 @@ import {
   TrendingUp,
   Calendar 
 } from "lucide-react";
-import type { ValueHypothesis, CompanyDataPoint } from "@shared/schema";
+import type { ValueCase, CompanyDataPoint } from "@shared/schema";
 import type { SolutionArea } from "@shared/knowledge";
 import { KORN_FERRY_SOLUTIONS } from "@shared/knowledge";
 import {
@@ -33,10 +33,10 @@ import {
   type ValueCalculationResult
 } from "@shared/valueCalculations";
 
-export interface ValueHypothesisBuilderProps {
+export interface ValueCaseBuilderProps {
   projectId: number;
   insights: CompanyDataPoint[];
-  hypothesis: ValueHypothesis | null;
+  valueCase: ValueCase | null;
   onClose: () => void;
 }
 
@@ -51,32 +51,32 @@ const SOLUTION_COLORS: Record<string, string> = {
 
 type Step = "basic" | "capability" | "inputs" | "results";
 
-export default function ValueHypothesisBuilder({ 
+export default function ValueCaseBuilder({ 
   projectId, 
   insights,
-  hypothesis, 
+  valueCase, 
   onClose 
-}: ValueHypothesisBuilderProps) {
+}: ValueCaseBuilderProps) {
   const { toast } = useToast();
   const [step, setStep] = useState<Step>("basic");
   
   // Form state
-  const [title, setTitle] = useState(hypothesis?.title || "");
-  const [rationale, setRationale] = useState(hypothesis?.rationale || "");
+  const [title, setTitle] = useState(valueCase?.title || "");
+  const [rationale, setRationale] = useState(valueCase?.rationale || "");
   const [selectedSolution, setSelectedSolution] = useState<SolutionArea | null>(
-    hypothesis?.solutionArea as SolutionArea || null
+    valueCase?.solutionArea as SolutionArea || null
   );
   const [selectedCapability, setSelectedCapability] = useState<string | null>(
-    hypothesis?.capabilityName || null
+    valueCase?.capabilityName || null
   );
   const [linkedInsightIds, setLinkedInsightIds] = useState<string[]>(
-    hypothesis?.linkedInsights || []
+    valueCase?.linkedInsights || []
   );
   const [calculationInputs, setCalculationInputs] = useState<any>(
-    hypothesis?.calculationInputs || {}
+    valueCase?.calculationInputs || {}
   );
   const [calculationResults, setCalculationResults] = useState<ValueCalculationResult | null>(
-    hypothesis?.calculationResults as ValueCalculationResult || null
+    valueCase?.calculationResults as ValueCalculationResult || null
   );
 
   // Only show capabilities that have calculation functions implemented
@@ -177,19 +177,19 @@ export default function ValueHypothesisBuilder({
         confidence: "medium" as const,
       };
 
-      if (hypothesis) {
-        const res = await apiRequest("PATCH", `/api/value-hypotheses/${hypothesis.id}`, data);
+      if (valueCase) {
+        const res = await apiRequest("PATCH", `/api/value-cases/${valueCase.id}`, data);
         return res.json();
       } else {
-        const res = await apiRequest("POST", `/api/projects/${projectId}/value-hypotheses`, data);
+        const res = await apiRequest("POST", `/api/projects/${projectId}/value-cases`, data);
         return res.json();
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/value-hypotheses`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/value-cases`] });
       toast({
         title: "Success",
-        description: `Value hypothesis ${hypothesis ? "updated" : "created"} successfully`,
+        description: `Value case ${valueCase ? "updated" : "created"} successfully`,
       });
       onClose();
     },
@@ -228,7 +228,7 @@ export default function ValueHypothesisBuilder({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {hypothesis ? "Edit Value Hypothesis" : "Create Value Hypothesis"}
+            {valueCase ? "Edit Value Case" : "Create Value Case"}
           </DialogTitle>
         </DialogHeader>
 
@@ -236,13 +236,13 @@ export default function ValueHypothesisBuilder({
         {step === "basic" && (
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="title">Hypothesis Title</Label>
+              <Label htmlFor="title">Value Case Title</Label>
               <Input
                 id="title"
                 placeholder="e.g., Improve Quality of Hire in Sales Organization"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                data-testid="input-hypothesis-title"
+                data-testid="input-value-case-title"
               />
             </div>
 
@@ -250,7 +250,7 @@ export default function ValueHypothesisBuilder({
               <Label htmlFor="rationale">Rationale (Optional)</Label>
               <Textarea
                 id="rationale"
-                placeholder="Why is this hypothesis valuable for the client?"
+                placeholder="Why is this value case important for the client?"
                 value={rationale}
                 onChange={(e) => setRationale(e.target.value)}
                 rows={3}
@@ -437,10 +437,10 @@ export default function ValueHypothesisBuilder({
               <Button 
                 onClick={() => saveMutation.mutate()}
                 disabled={saveMutation.isPending}
-                data-testid="button-save-hypothesis"
+                data-testid="button-save-value-case"
               >
                 <Save className="h-4 w-4 mr-2" />
-                {saveMutation.isPending ? "Saving..." : "Save Hypothesis"}
+                {saveMutation.isPending ? "Saving..." : "Save Value Case"}
               </Button>
             </div>
           </div>

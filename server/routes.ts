@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "./storage";
-import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark } from "./ai";
+import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations } from "./ai";
 import { z } from "zod";
 
 // Track in-flight success story generations per project (prevents concurrent requests)
@@ -1224,6 +1224,62 @@ export function registerRoutes(app: Express) {
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // AI-powered Value Case Recommendations
+  app.post("/api/projects/:projectId/value-cases/generate-recommendations", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      
+      // Get project info
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Get discovery phase transfer
+      const transfer = await storage.getDiscoveryPhaseTransfer(projectId);
+      if (!transfer || !transfer.isFinalized) {
+        return res.status(400).json({ 
+          error: "Discovery phase must be finalized before generating value case recommendations" 
+        });
+      }
+      
+      // Get finalized job themes with KPIs
+      const finalizedJobIds = transfer.finalizedJobThemeIds || [];
+      if (finalizedJobIds.length === 0) {
+        return res.status(400).json({ 
+          error: "No finalized jobs found. Please complete the Discovery phase first." 
+        });
+      }
+      
+      const jobsWithKPIs = [];
+      for (const jobId of finalizedJobIds) {
+        const job = await storage.getJobTheme(jobId);
+        if (job) {
+          const kpis = await storage.getJobThemeKPIs(jobId);
+          jobsWithKPIs.push({
+            ...job,
+            kpis: kpis
+          });
+        }
+      }
+      
+      // Sort by priority rank
+      jobsWithKPIs.sort((a, b) => (a.priorityRank || 999) - (b.priorityRank || 999));
+      
+      // Generate AI recommendations
+      const recommendations = await generateValueCaseRecommendations(
+        project.companyName,
+        project.sector || "General Business",
+        jobsWithKPIs
+      );
+      
+      res.json(recommendations);
+    } catch (error: any) {
+      console.error("[Value Case Recommendations] Error:", error);
+      res.status(500).json({ error: error.message || "Failed to generate value case recommendations" });
     }
   });
 

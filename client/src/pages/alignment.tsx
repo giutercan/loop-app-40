@@ -18,9 +18,10 @@ import {
   Briefcase,
   TrendingDown
 } from "lucide-react";
-import type { Project, ValueHypothesis, CompanyDataPoint, JobThemeKPI } from "@shared/schema";
-import ValueHypothesisBuilder from "@/components/ValueHypothesisBuilder";
-import ValueHypothesisCard from "@/components/ValueHypothesisCard";
+import type { Project, ValueCase, CompanyDataPoint, JobThemeKPI } from "@shared/schema";
+import ValueCaseBuilder from "@/components/ValueCaseBuilder";
+import ValueCaseCard from "@/components/ValueCaseCard";
+import { ValueCaseCreationDialog } from "@/components/value-case-creation-dialog";
 import { AlignmentInteractive } from "@/components/alignment-interactive";
 import ProjectPhaseNav from "@/components/project-phase-nav";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -48,15 +49,16 @@ export default function AlignmentPage() {
   const projectId = parseInt(params?.id || "0");
   const { toast } = useToast();
   
+  const [isCreationDialogOpen, setIsCreationDialogOpen] = useState(false);
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
-  const [editingHypothesis, setEditingHypothesis] = useState<ValueHypothesis | null>(null);
+  const [editingValueCase, setEditingValueCase] = useState<ValueCase | null>(null);
 
   const { data: project } = useQuery<Project>({
     queryKey: [`/api/projects/${projectId}`],
   });
 
-  const { data: hypotheses = [] } = useQuery<ValueHypothesis[]>({
-    queryKey: [`/api/projects/${projectId}/value-hypotheses`],
+  const { data: valueCases = [] } = useQuery<ValueCase[]>({
+    queryKey: [`/api/projects/${projectId}/value-cases`],
   });
 
   const { data: insights = [] } = useQuery<CompanyDataPoint[]>({
@@ -68,9 +70,9 @@ export default function AlignmentPage() {
     enabled: !!projectId,
   });
 
-  const draftHypotheses = hypotheses.filter(h => h.status === "draft");
-  const sentHypotheses = hypotheses.filter(h => h.status === "sent");
-  const approvedHypotheses = hypotheses.filter(h => h.status === "approved");
+  const draftValueCases = valueCases.filter(h => h.status === "draft");
+  const sentValueCases = valueCases.filter(h => h.status === "sent");
+  const approvedValueCases = valueCases.filter(h => h.status === "approved");
 
   // Mutation to update KPI baseline/target values
   const updateKPIMutation = useMutation({
@@ -95,18 +97,17 @@ export default function AlignmentPage() {
   });
 
   const handleCreate = () => {
-    setEditingHypothesis(null);
-    setIsBuilderOpen(true);
+    setIsCreationDialogOpen(true);
   };
 
-  const handleEdit = (hypothesis: ValueHypothesis) => {
-    setEditingHypothesis(hypothesis);
+  const handleEdit = (valueCase: ValueCase) => {
+    setEditingValueCase(valueCase);
     setIsBuilderOpen(true);
   };
 
   const handleClose = () => {
     setIsBuilderOpen(false);
-    setEditingHypothesis(null);
+    setEditingValueCase(null);
   };
 
   if (!project) {
@@ -132,16 +133,16 @@ export default function AlignmentPage() {
                 Alignment Phase
               </h1>
               <p className="text-sm text-muted-foreground">
-                Build and refine value hypotheses with {project.companyName}
+                Build and refine value cases with {project.companyName}
               </p>
             </div>
             <Button 
               onClick={handleCreate}
               size="default"
-              data-testid="button-create-hypothesis"
+              data-testid="button-create-value-case"
             >
               <Plus className="h-4 w-4 mr-2" />
-              New Value Hypothesis
+              New Value Case
             </Button>
           </div>
 
@@ -151,8 +152,8 @@ export default function AlignmentPage() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Hypotheses</p>
-                    <p className="text-2xl font-bold mt-1">{hypotheses.length}</p>
+                    <p className="text-sm text-muted-foreground">Total Value Cases</p>
+                    <p className="text-2xl font-bold mt-1">{valueCases.length}</p>
                   </div>
                   <FileText className="h-8 w-8 text-muted-foreground" />
                 </div>
@@ -164,7 +165,7 @@ export default function AlignmentPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Draft</p>
-                    <p className="text-2xl font-bold mt-1">{draftHypotheses.length}</p>
+                    <p className="text-2xl font-bold mt-1">{draftValueCases.length}</p>
                   </div>
                   <Lightbulb className="h-8 w-8 text-muted-foreground" />
                 </div>
@@ -176,7 +177,7 @@ export default function AlignmentPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Sent</p>
-                    <p className="text-2xl font-bold mt-1">{sentHypotheses.length}</p>
+                    <p className="text-2xl font-bold mt-1">{sentValueCases.length}</p>
                   </div>
                   <Send className="h-8 w-8 text-muted-foreground" />
                 </div>
@@ -188,7 +189,7 @@ export default function AlignmentPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Approved</p>
-                    <p className="text-2xl font-bold mt-1">{approvedHypotheses.length}</p>
+                    <p className="text-2xl font-bold mt-1">{approvedValueCases.length}</p>
                   </div>
                   <CheckCircle2 className="h-8 w-8 text-emerald-600" />
                 </div>
@@ -203,8 +204,8 @@ export default function AlignmentPage() {
         {/* Finalized Discovery Jobs with Interactive KPI Management */}
         <AlignmentInteractive projectId={projectId} />
 
-        {/* Value Hypotheses Section */}
-        {hypotheses.length === 0 ? (
+        {/* Value Cases Section */}
+        {valueCases.length === 0 ? (
           <Card className="max-w-2xl mx-auto mt-12">
             <CardHeader>
               <div className="flex justify-center mb-4">
@@ -212,16 +213,16 @@ export default function AlignmentPage() {
                   <TrendingUp className="h-8 w-8 text-primary" />
                 </div>
               </div>
-              <CardTitle className="text-center">Build Your First Value Hypothesis</CardTitle>
+              <CardTitle className="text-center">Build Your First Value Case</CardTitle>
               <CardDescription className="text-center">
-                Use insights from Discovery to create quantified value hypotheses.
-                Select a Korn Ferry capability, input assumptions, and calculate financial impact.
+                Use insights from Discovery to create quantified value cases.
+                AI will recommend cases based on your finalized jobs and KPIs.
               </CardDescription>
             </CardHeader>
             <CardContent className="flex justify-center pb-6">
-              <Button onClick={handleCreate} data-testid="button-create-first-hypothesis">
+              <Button onClick={handleCreate} data-testid="button-create-first-value-case">
                 <Plus className="h-4 w-4 mr-2" />
-                Create Value Hypothesis
+                Create Value Case
               </Button>
             </CardContent>
           </Card>
@@ -229,25 +230,25 @@ export default function AlignmentPage() {
           <Tabs defaultValue="all" className="w-full">
             <TabsList>
               <TabsTrigger value="all" data-testid="tab-all">
-                All ({hypotheses.length})
+                All ({valueCases.length})
               </TabsTrigger>
               <TabsTrigger value="draft" data-testid="tab-draft">
-                Draft ({draftHypotheses.length})
+                Draft ({draftValueCases.length})
               </TabsTrigger>
               <TabsTrigger value="sent" data-testid="tab-sent">
-                Sent ({sentHypotheses.length})
+                Sent ({sentValueCases.length})
               </TabsTrigger>
               <TabsTrigger value="approved" data-testid="tab-approved">
-                Approved ({approvedHypotheses.length})
+                Approved ({approvedValueCases.length})
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="all" className="mt-6">
               <div className="grid gap-4">
-                {hypotheses.map(hypothesis => (
-                  <ValueHypothesisCard
-                    key={hypothesis.id}
-                    hypothesis={hypothesis}
+                {valueCases.map(valueCase => (
+                  <ValueCaseCard
+                    key={valueCase.id}
+                    valueCase={valueCase}
                     onEdit={handleEdit}
                   />
                 ))}
@@ -256,15 +257,15 @@ export default function AlignmentPage() {
 
             <TabsContent value="draft" className="mt-6">
               <div className="grid gap-4">
-                {draftHypotheses.length === 0 ? (
+                {draftValueCases.length === 0 ? (
                   <p className="text-center text-muted-foreground py-12">
-                    No draft hypotheses
+                    No draft value cases
                   </p>
                 ) : (
-                  draftHypotheses.map(hypothesis => (
-                    <ValueHypothesisCard
-                      key={hypothesis.id}
-                      hypothesis={hypothesis}
+                  draftValueCases.map(valueCase => (
+                    <ValueCaseCard
+                      key={valueCase.id}
+                      valueCase={valueCase}
                       onEdit={handleEdit}
                     />
                   ))
@@ -274,15 +275,15 @@ export default function AlignmentPage() {
 
             <TabsContent value="sent" className="mt-6">
               <div className="grid gap-4">
-                {sentHypotheses.length === 0 ? (
+                {sentValueCases.length === 0 ? (
                   <p className="text-center text-muted-foreground py-12">
-                    No sent hypotheses
+                    No sent value cases
                   </p>
                 ) : (
-                  sentHypotheses.map(hypothesis => (
-                    <ValueHypothesisCard
-                      key={hypothesis.id}
-                      hypothesis={hypothesis}
+                  sentValueCases.map(valueCase => (
+                    <ValueCaseCard
+                      key={valueCase.id}
+                      valueCase={valueCase}
                       onEdit={handleEdit}
                     />
                   ))
@@ -292,15 +293,15 @@ export default function AlignmentPage() {
 
             <TabsContent value="approved" className="mt-6">
               <div className="grid gap-4">
-                {approvedHypotheses.length === 0 ? (
+                {approvedValueCases.length === 0 ? (
                   <p className="text-center text-muted-foreground py-12">
-                    No approved hypotheses
+                    No approved value cases
                   </p>
                 ) : (
-                  approvedHypotheses.map(hypothesis => (
-                    <ValueHypothesisCard
-                      key={hypothesis.id}
-                      hypothesis={hypothesis}
+                  approvedValueCases.map(valueCase => (
+                    <ValueCaseCard
+                      key={valueCase.id}
+                      valueCase={valueCase}
                       onEdit={handleEdit}
                     />
                   ))
@@ -311,12 +312,19 @@ export default function AlignmentPage() {
         )}
       </div>
 
-      {/* Value Hypothesis Builder Dialog */}
+      {/* Value Case Creation Dialog (AI-powered) */}
+      <ValueCaseCreationDialog 
+        open={isCreationDialogOpen}
+        onOpenChange={setIsCreationDialogOpen}
+        projectId={projectId}
+      />
+
+      {/* Value Case Builder Dialog (for editing) */}
       {isBuilderOpen && (
-        <ValueHypothesisBuilder
+        <ValueCaseBuilder
           projectId={projectId}
           insights={insights}
-          hypothesis={editingHypothesis}
+          valueCase={editingValueCase}
           onClose={handleClose}
         />
       )}

@@ -17,7 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import OrganisationCard from "@/components/OrganisationCard";
-import ValueHypothesisBuilder from "@/components/ValueHypothesisBuilder";
+import ValueCaseBuilder from "@/components/ValueCaseBuilder";
 import ProjectSelector from "@/components/ProjectSelector";
 import StatusBadge from "@/components/StatusBadge";
 import ProjectPhaseNav from "@/components/project-phase-nav";
@@ -420,8 +420,8 @@ export default function Discovery() {
     enabled: !!projectId,
   });
 
-  const { data: valueHypotheses = [] } = useQuery<any[]>({
-    queryKey: [`/api/projects/${projectId}/value-hypotheses`],
+  const { data: valueCases = [] } = useQuery<any[]>({
+    queryKey: [`/api/projects/${projectId}/value-cases`],
     enabled: !!projectId,
   });
 
@@ -2092,7 +2092,7 @@ export default function Discovery() {
                         <div className="flex-1">
                           <CardTitle className="text-xl">Jobs We Do - Value Build Priorities</CardTitle>
                           <CardDescription>
-                            Select your top 3 priority jobs, choose relevant KPIs, and provide baseline data to build your value hypothesis.
+                            Select your top 3 priority jobs, choose relevant KPIs, and provide baseline data to build your value case.
                           </CardDescription>
                         </div>
                       </div>
@@ -2108,7 +2108,7 @@ export default function Discovery() {
                           Top {prioritizedThemes.length} Priority Job{prioritizedThemes.length !== 1 ? 's' : ''}
                         </CardTitle>
                         <CardDescription>
-                          These are your selected priorities for value hypothesis building
+                          These are your selected priorities for value case building
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-4">

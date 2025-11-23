@@ -1201,7 +1201,7 @@ export default function Landing() {
                         <CheckCircle2 className="w-5 h-5 text-primary" />
                       </div>
                       <div>
-                        <p className="font-semibold text-sm">Hypothesis Building</p>
+                        <p className="font-semibold text-sm">Value Case Building</p>
                         <p className="text-xs text-muted-foreground">Foundation for value case</p>
                       </div>
                     </div>

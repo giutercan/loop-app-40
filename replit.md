@@ -1,7 +1,7 @@
 # Korn Ferry Value Lifecycle Application
 
 ## Overview
-A full-stack web application designed to empower Korn Ferry consultants in managing client engagements across the Discovery, Alignment, and Realization phases. The application integrates AI-powered company research to deliver strategic insights, aiding consultants in preparing for client meetings and building robust value hypotheses. Its purpose is to streamline client engagement tracking, enhance company research with AI, facilitate the creation and management of value hypotheses, and enable collaborative client interactions.
+A full-stack web application for Korn Ferry consultants to manage client engagements across Discovery, Alignment, and Realization phases. It integrates AI for company research and strategic insights, streamlines client tracking, enhances value case creation, and facilitates collaborative client interactions to empower consultants in preparing for client meetings and building robust value cases.
 
 ## User Preferences
 - Consultants prefer strategic, actionable insights over basic company facts.
@@ -10,50 +10,55 @@ A full-stack web application designed to empower Korn Ferry consultants in manag
 
 ## System Architecture
 
-### Tech Stack
-- **Frontend**: React, TypeScript, Wouter (routing), TanStack Query, Shadcn UI
-- **Backend**: Express.js, TypeScript
-- **AI**: OpenAI GPT-5 via Replit AI Integrations
-- **Storage**: In-memory storage (MemStorage), designed for easy migration to a persistent database.
-
 ### UI/UX Decisions
-- Pastel badge backgrounds for readability in data-dense interfaces.
+- Pastel badge backgrounds for readability.
 - Visual hierarchy for insights: Priority → Confidence → Pillar → Solution Area → KPIs.
 - Prominent display for follow-up research with primary-colored highlighting and "New" badges.
-- Optimistic UI updates for instant feedback on user actions (e.g., capability changes, data point selection).
+- Optimistic UI updates for instant feedback.
+- Interactive Alignment page features collapsible job cards, circular progress rings for KPI completion, dynamic KPI gap visualization, and percentage improvement badges.
+- Enhanced header displays summary statistics with iconography.
+- Korn Ferry Benchmark Callouts are highlighted.
+- Responsive grid layouts with flex-wrap for mobile compatibility.
 
 ### Technical Implementations
-- **AI-Powered Company Research with Prioritization**: GPT-5 generates up to 8 high-quality, prioritized insights (Critical, High, Supporting) tagged with Korn Ferry consulting pillars. Follow-up questions generate targeted additional insights. All AI responses are validated server-side for type safety and quality.
-- **Automatic AI Classification of Insights to Korn Ferry Capabilities**: Insights are automatically classified into 9 Korn Ferry capabilities and grouped accordingly in the UI. Manual adjustment of capabilities is supported.
-- **Value Calculation Framework**: A quantitative value hypothesis system with financial calculations (NPV, payback period, 3-year projections) is implemented for 7 key capabilities. This includes detailed KPI metadata and translation formulas to financial value.
-- **Korn Ferry Knowledge Structure Integration**: Comprehensive knowledge mapping Korn Ferry's solutions, capabilities, jobs, and KPIs. AI integrates this structure by assigning solution areas and relevant KPIs to insights.
-- **Company Search & Autocomplete**: Real-time company name autocomplete with logos using Clearout's API, with manual entry fallback.
+- **AI-Powered Company Research**: GPT-5 generates prioritized insights tagged with Korn Ferry pillars.
+- **Automatic AI Classification**: Insights are classified into Korn Ferry capabilities with manual adjustment support.
+- **Value Calculation Framework**: Quantitative value case system with financial calculations (NPV, payback period, 3-year projections) for key capabilities, including KPI metadata and financial translation formulas.
+- **Korn Ferry Knowledge Structure Integration**: AI assigns solution areas and KPIs to insights based on Korn Ferry's knowledge base.
+- **Company Search & Autocomplete**: Real-time company name autocomplete with logos via Clearout's API.
 - **Engagement Management**: Structured three-phase (Discovery, Alignment, Realization) workflow.
-- **Project Management**: Full project lifecycle management with Projects Dashboard (/projects) showing all projects with stats (Total Projects, Active Engagements filtered by status, This Month), phase badges highlighting currentPhase, and navigation to current phase. New Project page (/projects/new) with Clearout API company search, autocomplete, manual entry fallback, and logo auto-population. Complete routing: /projects (dashboard), /projects/new (create), /discovery (legacy SPA redirect), /projects/:id/:phase (phase pages).
-- **Notes & Evidence System**: Users can select insights via checkbox, organizing them in a dedicated tab grouped by their AI-classified Korn Ferry capability.
-- **File Upload & Voice Notes**: Consultants can attach supporting documents (PDF, Word, Excel, images, text files up to 10MB) and record voice notes using browser speech recognition. Attachments are stored with base64 encoding and displayed in the Build Value Case tab. Backend validates file types, sizes, and prevents empty voice transcriptions. All mutations include comprehensive error handling with user-visible toasts.
-- **AI-Powered Notes Enrichment**: Consultants can trigger AI analysis of their notes and attachments to extract strategic insights. The AI analyzes freeform notes, text files (.txt, .csv, .json), and voice transcriptions to identify new data points, metrics, challenges, and opportunities. Extracted insights are automatically classified to Korn Ferry capabilities and solution areas, then added to the Organization tab with "notes_enrichment" provenance. Token limit protection (50k chars per attachment) prevents AI failures. Discovery questions can be regenerated with enriched data for deeper client investigations. (Note: PDF support planned for future release)
-- **Collaborative Questionnaire System**: Consultants can share discovery questions with clients via a secure, shareable link. The system tracks response attribution (consultant vs. client) with visual distinction (blue badges for clients, green for consultants). Client-facing questionnaire page requires no login, enabling seamless collaboration. Consultants and clients can both answer questions, with all responses visible in the Discovery tab organized by capability. Share functionality includes optional client name/email capture and one-click link copying.
-- **360-Degree Discovery View**: Comprehensive consolidation of all discovery data sources appears automatically when insights exist from multiple sources (research, notes enrichment, questionnaire responses). The view provides overall statistics, capability-by-capability breakdowns showing research insights, enriched insights, and questionnaire completion rates. This consolidated summary ensures consultants have a complete picture before transitioning to the Alignment phase for Job mapping and hypothesis building.
-- **Jobs & Priorities Value Build System**: Transforms discovery insights into actionable value-building priorities by aggregating insights to "Jobs We Do" (Korn Ferry's strategic job framework). Features include: (1) Automatic job theme generation from capability-classified insights with evidence tracking, (2) Top-3 job prioritization with drag-and-select interface and backend constraint enforcement via Zod validation, (3) KPI selection system with checkbox controls for primary and supporting KPIs per job, (4) Baseline data input with Korn Ferry benchmark fallback values when client data unavailable, (5) Discovery phase finalization that locks selections and creates transfer record for Alignment phase, (6) Complete type safety with TypeScript interfaces and Zod schemas throughout the stack, (7) Idempotent finalize endpoint that returns existing transfer without errors for already-finalized projects. UI provides locked state visualization post-finalization with disabled inputs and clear status messaging.
-- **Interactive Alignment Page**: A highly visual and interactive interface (`client/src/components/alignment-interactive.tsx`) replacing the basic form-based Alignment tab. Key features include: (1) **Collapsible Job Cards** with expand/collapse functionality (first job auto-expanded), reducing visual clutter while maintaining full data access, (2) **Circular Progress Rings** showing KPI configuration completion (0-100%) based on baseline/target value entry, color-coded (primary for incomplete, emerald for 100% complete), (3) **Dynamic KPI Gap Visualization** with proportional progress bars that calculate actual baseline→target positions using zero as reference point, handling both "higher is better" and "lower is better" scenarios with directional arrows, color gradients (orange=baseline, emerald=target), and numeric gap displays, (4) **Percentage Improvement Badges** showing calculated change (e.g., ↑ 25.5%) from baseline to target, (5) **Enhanced Header** displaying summary statistics (total priority jobs, total KPIs tracked) with prominent iconography, (6) **Korn Ferry Benchmark Callouts** highlighted with Sparkles icon when available, (7) **Responsive Grid Layouts** with flex-wrap for mobile compatibility on all interactive elements, (8) **Interactive Baseline Mode Toggle** with switch controls for each KPI allowing consultants to select between "Client Data" (manual entry) and "Industry" (AI-generated benchmark) modes, (9) **AI-Powered Benchmark Generation** with one-click "Generate AI Benchmark" buttons that leverage GPT-5 to produce industry-specific baseline values with confidence scores and rationale, automatically populating baseline fields with AI source attribution. The component fetches its own data via useQuery and includes defensive loading/empty states. Baseline and target values with source attribution remain fully editable with optimistic UI updates via TanStack Query mutations. Schema includes `targetValue` and `targetSource` fields in `jobThemeKPIs` table. Backend route GET `/api/projects/:projectId/alignment/finalized-jobs` fetches discovery transfer with nested jobs and KPIs, and POST `/api/job-theme-kpis/:kpiId/generate-benchmark` generates AI benchmarks using company/industry context with proper cache invalidation for immediate UI synchronization.
-- **Realization Phase - Phase 1 Implementation**: Complete value tracking and continuous engagement monitoring through three integrated tabs accessible at `/projects/:id/realisation`: (1) **Business Reviews** - Schedule, track, and manage client business reviews (Quarterly, Monthly, Ad-hoc types) with status workflow (Scheduled → Completed/Cancelled), client sentiment tracking, key outcomes documentation, action items, decisions, and next review scheduling. Reviews are filtered into Completed/Upcoming sections with proper cache invalidation for immediate UI updates. (2) **Progress Tracking** - Monitor KPI progress against baseline and target values for finalized discovery jobs. Displays actual values over time with historical tracking, showing movement from baseline → actual → target. Handles date serialization safely with z.coerce.date() and defensive new Date() wrapping. (3) **Success Stories** - Link relevant Korn Ferry client case studies to projects by title, URL, industry, and impact summary. Enables consultants to reference proven outcomes when building value cases. All features include complete CRUD operations with Zod validation, proper TypeScript typing, and comprehensive error handling with user-visible toasts.
+- **Project Management**: Full project lifecycle management with a dashboard, creation, and phase-specific navigation.
+- **Notes & Evidence System**: Users can select and organize insights grouped by AI-classified capabilities.
+- **File Upload & Voice Notes**: Support for various document types (PDF, Word, Excel, images, text) and voice recordings with AI validation and error handling.
+- **AI-Powered Notes Enrichment**: AI analyzes notes and attachments to extract strategic insights, classified into Korn Ferry capabilities and solution areas.
+- **Collaborative Questionnaire System**: Secure, shareable links for client collaboration on discovery questions, tracking response attribution.
+- **360-Degree Discovery View**: Consolidates all discovery data sources (research, enriched notes, questionnaire responses) for a comprehensive overview.
+- **Jobs & Priorities Value Build System**: Transforms discovery insights into actionable value-building priorities, including automatic job theme generation, job prioritization, KPI selection, baseline data input, and phase finalization.
+- **Interactive Alignment Page**: Visual interface for KPI configuration, gap visualization, and AI-powered benchmark generation with optimistic UI updates.
+- **Realization Phase - Phase 1**: Includes Business Review management, KPI Progress Tracking against baselines and targets, and Success Story linking.
+- **AI-Powered Value Case Recommendations**: GPT-5 generates strategic value case recommendations based on finalized Discovery data, including action-oriented names, descriptions, linked jobs, suggested KPIs, financial estimates, and strategic rationale.
 
 ### Feature Specifications
-- **Discovery Phase**: Focuses on company research, data collection, and initial note-taking. Includes AI-powered research, notes enrichment, collaborative questionnaires, and 360-degree discovery consolidation.
-- **Alignment Phase**: Dedicated to building and managing value hypotheses, enabling client collaboration. Features Jobs & Priorities value build system with top-3 job prioritization and KPI baseline/target setting.
-- **Realization Phase**: Tracks value delivery and continuous client engagement. Phase 1 implements: (1) Business Review management with status workflows and client sentiment tracking, (2) KPI Progress Tracking showing actual values against baselines/targets for finalized jobs, (3) Success Story linkage referencing proven Korn Ferry client outcomes.
-- **Data Model**: Simple schema with essential fields, including JSON provenance for AI-generated data, confidence levels, priority scores (1-5), Korn Ferry pillar enum, solution area enum, and related KPIs array. Realization phase adds businessReviews, kpiActuals, and successStories tables with proper date handling and foreign key relationships.
+- **Discovery Phase**: Company research, data collection, note-taking, AI research, notes enrichment, collaborative questionnaires, and 360-degree discovery consolidation.
+- **Alignment Phase**: Value case building and management, client collaboration, Jobs & Priorities system, and AI-powered value case recommendations.
+- **Realization Phase**: Value tracking and continuous client engagement, including Business Review management, KPI Progress Tracking, and Success Story linking.
+- **Data Model**: Simple schema with essential fields, including JSON provenance for AI data, confidence, priority, Korn Ferry pillar, solution area, related KPIs, and tables for Realization phase entities.
 
 ### System Design Choices
-- **AI Research Strategy**: Prioritizes quality over quantity, focusing on strategic and actionable insights. Existing research provides context for follow-up questions.
-- **Data Sorting**: Insights are sorted by priority (descending) then confidence (descending).
-- **Storage Architecture**: Interface-based design to allow for future migration from in-memory to persistent storage.
-- **Date Serialization**: Backend uses z.coerce.date() to automatically convert ISO string dates from fetch requests to Date instances. Frontend defensively wraps API-returned dates in new Date() before passing to date-fns format() to prevent "Invalid time value" crashes.
-- **Cache Invalidation & Query Keys**: All TanStack Query operations use string-first query keys (`/api/projects/${projectId}/...`) for consistency and reliable cache invalidation. All mutations call `queryClient.invalidateQueries` with matching string-first keys to ensure immediate UI updates. This pattern eliminates cache desynchronization and is applied consistently across all mutations (15+ in Discovery alone).
-- **Security Architecture**: Write-time XSS protection via `sanitizeInput()` helper function in server/routes.ts. Loop-based removal of script/style tags with content, HTML tag stripping, javascript: URL removal, and event handler sanitization. Applied to all POST/PATCH endpoints for companyName, name, and sector fields. React's default JSX escaping provides output protection - no additional read-time sanitization needed.
-- **SPA Navigation & Breadcrumbs**: Uses Wouter's `<Redirect>` component for client-side redirects (e.g., /discovery → /projects) and Link component for breadcrumb navigation. ProjectPhaseNav component enables free bidirectional navigation between Discovery, Alignment, and Realization phases using Link directly (no nested Button/Link patterns). All pages use route params directly via `useRoute` hook instead of local state to prevent desynchronization. ProjectSelector navigates programmatically via `setLocation` to maintain URL-driven state. Defensive rendering guards (`{project && <ProjectPhaseNav />}`) prevent runtime errors when navigating directly to phase pages.
+- **AI Research Strategy**: Prioritizes strategic and actionable insights.
+- **Data Sorting**: Insights sorted by priority then confidence.
+- **Storage Architecture**: Interface-based for future migration to persistent storage.
+- **Date Serialization**: Robust handling of date formats between frontend and backend.
+- **Cache Invalidation & Query Keys**: Consistent string-first query keys and `invalidateQueries` for reliable TanStack Query cache management.
+- **Security Architecture**: Server-side XSS protection via `sanitizeInput()` for input fields and React's default JSX escaping for output.
+- **SPA Navigation & Breadcrumbs**: Wouter for routing and navigation, ensuring URL-driven state and defensive rendering.
+
+### Tech Stack
+- **Frontend**: React, TypeScript, Wouter, TanStack Query, Shadcn UI
+- **Backend**: Express.js, TypeScript
+- **AI**: OpenAI GPT-5
+- **Storage**: In-memory storage (MemStorage)
 
 ## External Dependencies
-- **OpenAI GPT-5**: Utilized for AI-powered company research and insight generation.
-- **Clearout API**: Used for real-time company autocomplete functionality (free tier, no API key required).
+- **OpenAI GPT-5**: For AI-powered company research and insight generation.
+- **Clearout API**: For real-time company autocomplete functionality.
