@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { getSolutionSummary } from "@shared/knowledge";
+import { z } from "zod";
 
 const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
@@ -481,5 +482,142 @@ For "Leadership & Development Journeys" with insight about leadership transition
   } catch (error) {
     console.error("Error generating discovery questions:", error);
     throw new Error("Failed to generate discovery questions with AI");
+  }
+}
+
+// ============================================================================
+// Success Story Recommendations
+// ============================================================================
+
+interface SuccessStoryRecommendation {
+  title: string;
+  url: string;
+  category: string;
+  relevanceReason: string;
+  industry: string;
+  capabilityName: string;
+  solutionArea: "ASSESS" | "DEVELOP" | "TRANSFORM" | "REWARD" | "COMMERCIAL" | "ANALYTICS";
+  impactSummary: string;
+}
+
+// Zod schema for validating AI response
+const successStoryRecommendationSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  url: z.string().url("Must be a valid URL"),
+  category: z.string().min(1, "Category is required"),
+  relevanceReason: z.string().min(1, "Relevance reason is required"),
+  industry: z.string().min(1, "Industry is required"),
+  capabilityName: z.string().min(1, "Capability name is required"),
+  solutionArea: z.enum(["ASSESS", "DEVELOP", "TRANSFORM", "REWARD", "COMMERCIAL", "ANALYTICS"]),
+  impactSummary: z.string().min(1, "Impact summary is required"),
+});
+
+const aiSuccessStoriesResponseSchema = z.object({
+  recommendations: z.array(successStoryRecommendationSchema).min(1, "At least one recommendation required").max(10, "Too many recommendations"),
+});
+
+export async function generateSuccessStoryRecommendations(
+  projectContext: {
+    companyName: string;
+    industry?: string;
+    discoveryInsights: Array<{ label: string; value: string; capability: string; solutionArea: string }>;
+    alignedKPIs: Array<{ kpiName: string; baseline: string; target: string }>;
+    notesContent?: string;
+  }
+): Promise<{ recommendations: SuccessStoryRecommendation[] }> {
+  const knowledgeBase = getSolutionSummary();
+  
+  const insightsContext = projectContext.discoveryInsights.length > 0
+    ? `Discovery Insights:\n${projectContext.discoveryInsights.slice(0, 10).map(i => `- [${i.capability}] ${i.label}: ${i.value}`).join('\n')}`
+    : 'No discovery insights available yet.';
+  
+  const kpisContext = projectContext.alignedKPIs.length > 0
+    ? `Key Performance Indicators:\n${projectContext.alignedKPIs.slice(0, 8).map(k => `- ${k.kpiName}: Baseline ${k.baseline} → Target ${k.target}`).join('\n')}`
+    : 'No KPIs defined yet.';
+  
+  const notesContext = projectContext.notesContent 
+    ? `Consultant Notes:\n${projectContext.notesContent.slice(0, 1000)}`
+    : '';
+
+  const prompt = `You are an expert Korn Ferry consultant tasked with identifying relevant client success stories and case studies.
+
+CLIENT CONTEXT:
+Company: ${projectContext.companyName}
+${projectContext.industry ? `Industry: ${projectContext.industry}` : ''}
+
+${insightsContext}
+
+${kpisContext}
+
+${notesContext}
+
+KORN FERRY SOLUTIONS & CAPABILITIES:
+${knowledgeBase}
+
+TASK: Generate 3-5 highly relevant Korn Ferry client success stories that would strengthen the value proposition for this engagement.
+
+REQUIREMENTS:
+1. Each story must be realistic and plausible for a consulting firm of Korn Ferry's caliber
+2. Stories should align with the discovery insights and target KPIs
+3. Include specific industries and measurable outcomes
+4. Focus on transformation initiatives similar to this client's needs
+5. Tie each story to a specific Korn Ferry capability and solution area
+
+Generate realistic case study recommendations in the following JSON format:
+
+{
+  "recommendations": [
+    {
+      "title": "Descriptive case study title (e.g., 'Global Tech Company Transforms Sales Organization')",
+      "url": "https://www.kornferry.com/insights/case-studies/[relevant-slug]",
+      "category": "Category like 'Sales Transformation', 'Leadership Development', 'Organizational Design'",
+      "relevanceReason": "2-3 sentences explaining why this case study is relevant to the current engagement",
+      "industry": "Industry of the case study client (e.g., 'Technology', 'Financial Services', 'Healthcare')",
+      "capabilityName": "One of the 9 Korn Ferry capabilities",
+      "solutionArea": "ASSESS, DEVELOP, TRANSFORM, REWARD, COMMERCIAL, or ANALYTICS",
+      "impactSummary": "1-2 sentences describing measurable outcomes (e.g., '25% increase in sales productivity, $50M revenue impact')"
+    }
+  ]
+}
+
+Ensure all recommendations are:
+- Strategically relevant to the client's context
+- Backed by specific, measurable outcomes
+- Aligned with Korn Ferry's capabilities
+- Diverse in approach (don't repeat the same capability/solution area)`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-5",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 3000,
+    });
+
+    const content = response.choices[0]?.message?.content || "{}";
+    
+    // Parse and validate AI response with Zod
+    let parsedContent;
+    try {
+      parsedContent = JSON.parse(content);
+    } catch (parseError) {
+      console.error("Failed to parse AI response as JSON:", parseError);
+      throw new Error("AI returned invalid JSON response");
+    }
+    
+    // Validate with Zod schema
+    const validationResult = aiSuccessStoriesResponseSchema.safeParse(parsedContent);
+    if (!validationResult.success) {
+      console.error("AI response validation failed:", validationResult.error);
+      throw new Error(`AI response validation failed: ${validationResult.error.message}`);
+    }
+    
+    return validationResult.data;
+  } catch (error) {
+    console.error("Error generating success story recommendations:", error);
+    if (error instanceof Error && error.message.includes("AI")) {
+      throw error; // Re-throw AI-specific errors with original message
+    }
+    throw new Error("Failed to generate success story recommendations with AI");
   }
 }

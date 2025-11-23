@@ -394,9 +394,34 @@ function RealizationProgressTrackingSection({ projectId }: { projectId: number |
 // ============================================================================
 
 function SuccessStoriesSection({ projectId }: { projectId: number | undefined }) {
+  const { toast } = useToast();
+  
   const { data: stories = [] } = useQuery<SuccessStory[]>({
     queryKey: [`/api/projects/${projectId}/success-stories`],
     enabled: !!projectId,
+  });
+
+  const generateMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", `/api/projects/${projectId}/success-stories/generate`, {});
+    },
+    onSuccess: async (data: any) => {
+      await queryClient.invalidateQueries({ 
+        queryKey: [`/api/projects/${projectId}/success-stories`],
+        refetchType: 'active'
+      });
+      toast({ 
+        title: `${data.count} success stories generated`,
+        description: "AI recommendations added to your project"
+      });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Failed to generate success stories", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    },
   });
 
   if (!projectId) {
@@ -430,11 +455,24 @@ function SuccessStoriesSection({ projectId }: { projectId: number | undefined })
             </div>
             <h3 className="font-semibold mb-2">No Success Stories Yet</h3>
             <p className="text-sm text-muted-foreground text-center max-w-md mb-6">
-              AI-powered recommendations coming soon. Generate relevant Korn Ferry case studies based on your project's insights and value hypotheses.
+              Generate relevant Korn Ferry case studies based on your project's insights and value hypotheses using AI.
             </p>
-            <Button disabled data-testid="button-generate-stories">
-              <Sparkles className="w-4 h-4 mr-2" />
-              Generate Recommendations (Coming Soon)
+            <Button 
+              onClick={() => generateMutation.mutate()}
+              disabled={generateMutation.isPending}
+              data-testid="button-generate-stories"
+            >
+              {generateMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Generate Recommendations
+                </>
+              )}
             </Button>
           </div>
         </CardContent>
@@ -454,9 +492,22 @@ function SuccessStoriesSection({ projectId }: { projectId: number | undefined })
             Korn Ferry case studies relevant to this engagement
           </p>
         </div>
-        <Button disabled data-testid="button-generate-more-stories">
-          <Sparkles className="w-4 h-4 mr-2" />
-          Generate More (Coming Soon)
+        <Button 
+          onClick={() => generateMutation.mutate()}
+          disabled={generateMutation.isPending}
+          data-testid="button-generate-more-stories"
+        >
+          {generateMutation.isPending ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Generating...
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-4 h-4 mr-2" />
+              Generate More
+            </>
+          )}
         </Button>
       </div>
 

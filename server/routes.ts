@@ -1,7 +1,10 @@
 import type { Express } from "express";
 import { storage } from "./storage";
-import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes } from "./ai";
+import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations } from "./ai";
 import { z } from "zod";
+
+// Track in-flight success story generations per project (prevents concurrent requests)
+const generationLocks = new Set<number>();
 import { 
   insertProjectSchema,
   insertCompanyDataPointSchema,
@@ -2143,6 +2146,113 @@ export function registerRoutes(app: Express) {
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // AI-powered Success Story Generation
+  app.post("/api/projects/:projectId/success-stories/generate", async (req, res) => {
+    const projectId = parseInt(req.params.projectId);
+    
+    try {
+      // Server-side lock: Reject if generation already in flight for this project
+      if (generationLocks.has(projectId)) {
+        return res.status(409).json({ error: "Success story generation already in progress for this project" });
+      }
+      
+      // Acquire lock
+      generationLocks.add(projectId);
+      
+      // Load project context
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        generationLocks.delete(projectId); // Release lock
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Load discovery insights
+      const dataPoints = await storage.getCompanyDataPoints(projectId);
+      const discoveryInsights = dataPoints
+        .filter(dp => dp.relevantCapability && dp.solutionArea)
+        .map(dp => ({
+          label: dp.label,
+          value: dp.value,
+          capability: dp.relevantCapability!,
+          solutionArea: dp.solutionArea!
+        }));
+
+      // Load aligned KPIs from finalized discovery
+      const transfer = await storage.getDiscoveryPhaseTransfer(projectId);
+      const alignedKPIs: Array<{ kpiName: string; baseline: string; target: string }> = [];
+      
+      if (transfer?.isFinalized) {
+        const jobs = await storage.getJobThemes(projectId);
+        for (const job of jobs) {
+          const kpis = await storage.getJobThemeKPIs(job.id);
+          for (const kpi of kpis.filter(k => k.isSelected)) {
+            alignedKPIs.push({
+              kpiName: kpi.kpiName,
+              baseline: kpi.baselineValue || 'Not set',
+              target: kpi.targetValue || 'Not set'
+            });
+          }
+        }
+      }
+
+      // Load notes content
+      const notes = await storage.getDiscoveryNotes(projectId);
+      const notesContent = notes?.freeformNotes || '';
+
+      // Generate AI recommendations
+      const { recommendations } = await generateSuccessStoryRecommendations({
+        companyName: project.companyName,
+        industry: project.sector || undefined,
+        discoveryInsights,
+        alignedKPIs,
+        notesContent
+      });
+
+      // Load existing stories for deduplication
+      const existingStories = await storage.getSuccessStories(projectId);
+      const existingUrls = new Set(existingStories.map(s => s.url.toLowerCase()));
+      const existingTitles = new Set(existingStories.map(s => s.title.toLowerCase()));
+
+      // Store each recommendation as a new success story (with deduplication)
+      const createdStories = [];
+      for (const rec of recommendations) {
+        // Skip if duplicate URL or title already exists
+        if (existingUrls.has(rec.url.toLowerCase()) || existingTitles.has(rec.title.toLowerCase())) {
+          continue;
+        }
+        
+        const story = await storage.createSuccessStory({
+          projectId,
+          title: rec.title,
+          url: rec.url,
+          category: rec.category,
+          relevanceReason: rec.relevanceReason,
+          industry: rec.industry,
+          capabilityName: rec.capabilityName,
+          solutionArea: rec.solutionArea,
+          excerpt: rec.impactSummary
+        });
+        createdStories.push(story);
+        
+        // Add to deduplication sets to prevent duplicates within this batch
+        existingUrls.add(rec.url.toLowerCase());
+        existingTitles.add(rec.title.toLowerCase());
+      }
+
+      res.json({ 
+        success: true, 
+        count: createdStories.length,
+        stories: createdStories 
+      });
+    } catch (error: any) {
+      console.error("Error generating success stories:", error);
+      res.status(500).json({ error: error.message || "Failed to generate success stories" });
+    } finally {
+      // Always release lock
+      generationLocks.delete(projectId);
     }
   });
 }
