@@ -20,12 +20,12 @@ import OrganisationCard from "@/components/OrganisationCard";
 import ValueHypothesisBuilder from "@/components/ValueHypothesisBuilder";
 import ProjectSelector from "@/components/ProjectSelector";
 import StatusBadge from "@/components/StatusBadge";
-import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, Activity } from "lucide-react";
+import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, Activity, Award, Building, Calendar } from "lucide-react";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { Link, useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Project, CompanyDataPoint, Headline, DiscoveryNotes, DiscoveryQuestion, Attachment, SharedQuestionnaire, QuestionResponse, JobThemeWithKPIs, DiscoveryPhaseTransfer } from "@shared/schema";
+import type { Project, CompanyDataPoint, Headline, DiscoveryNotes, DiscoveryQuestion, Attachment, SharedQuestionnaire, QuestionResponse, JobThemeWithKPIs, DiscoveryPhaseTransfer, SuccessStory } from "@shared/schema";
 import { Checkbox } from "@/components/ui/checkbox";
 
 // Job Theme Card Component - Displays prioritized job with KPIs and baseline input
@@ -386,6 +386,128 @@ function RealizationProgressTrackingSection({ projectId }: { projectId: number |
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+// ============================================================================
+// Success Stories Tab Component
+// ============================================================================
+
+function SuccessStoriesSection({ projectId }: { projectId: number | undefined }) {
+  const { data: stories = [] } = useQuery<SuccessStory[]>({
+    queryKey: [`/api/projects/${projectId}/success-stories`],
+    enabled: !!projectId,
+  });
+
+  if (!projectId) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <p className="text-sm text-muted-foreground text-center">
+            Select a project to view success stories
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (stories.length === 0) {
+    return (
+      <Card data-testid="card-success-stories-empty">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Award className="w-5 h-5 text-primary" />
+            Success Stories
+          </CardTitle>
+          <CardDescription>
+            Link relevant Korn Ferry client case studies to strengthen your value proposition
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center py-12">
+            <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mb-4">
+              <Sparkles className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h3 className="font-semibold mb-2">No Success Stories Yet</h3>
+            <p className="text-sm text-muted-foreground text-center max-w-md mb-6">
+              AI-powered recommendations coming soon. Generate relevant Korn Ferry case studies based on your project's insights and value hypotheses.
+            </p>
+            <Button disabled data-testid="button-generate-stories">
+              <Sparkles className="w-4 h-4 mr-2" />
+              Generate Recommendations (Coming Soon)
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6" data-testid="container-success-stories">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <Award className="w-5 h-5 text-primary" />
+            Success Stories
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Korn Ferry case studies relevant to this engagement
+          </p>
+        </div>
+        <Button disabled data-testid="button-generate-more-stories">
+          <Sparkles className="w-4 h-4 mr-2" />
+          Generate More (Coming Soon)
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {stories.map((story) => (
+          <Card key={story.id} className="hover-elevate" data-testid={`card-story-${story.id}`}>
+            <CardHeader>
+              <CardTitle className="text-base">{story.title}</CardTitle>
+              <CardDescription className="space-y-2">
+                {story.industry && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <Building className="w-3 h-3" />
+                    {story.industry}
+                  </div>
+                )}
+                {story.category && (
+                  <Badge variant="outline" className="text-xs">
+                    {story.category}
+                  </Badge>
+                )}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {story.relevanceReason && (
+                <p className="text-sm text-muted-foreground">
+                  {story.relevanceReason}
+                </p>
+              )}
+              {story.capabilityName && (
+                <div className="flex items-center gap-2 text-xs">
+                  <Badge variant="secondary">{story.capabilityName}</Badge>
+                  {story.solutionArea && (
+                    <Badge variant="outline">{story.solutionArea}</Badge>
+                  )}
+                </div>
+              )}
+              <a
+                href={story.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center text-sm text-primary hover:underline"
+                data-testid={`link-story-${story.id}`}
+              >
+                View Case Study
+                <ExternalLink className="w-3 h-3 ml-1" />
+              </a>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -2397,19 +2519,7 @@ export default function Discovery() {
 
           {/* Success Stories Tab */}
           <TabsContent value="successStories" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Success Stories</CardTitle>
-                <CardDescription>
-                  AI-powered recommendations of relevant Korn Ferry case studies based on your project context
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Success Stories content will be displayed here
-                </p>
-              </CardContent>
-            </Card>
+            <SuccessStoriesSection projectId={selectedProjectId} />
           </TabsContent>
         </Tabs>
       </main>
