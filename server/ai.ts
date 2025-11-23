@@ -1271,3 +1271,136 @@ IMPORTANT:
     throw error;
   }
 }
+
+// KPI Recommendation Schema
+const kpiRecommendationSchema = z.object({
+  kpiName: z.string().min(5, "KPI name must be at least 5 characters"),
+  kpiType: z.enum(["primary", "supporting"]),
+  unit: z.string().min(1, "Unit is required"),
+  definition: z.string().min(20, "Definition must be at least 20 characters"),
+  strategicRationale: z.string().min(50, "Strategic rationale must be at least 50 characters"),
+  achievabilityScore: z.number().int().min(1).max(10),
+  valueImpactScore: z.number().int().min(1).max(10),
+  kornFerryBenchmark: z.string().min(10, "Benchmark must be at least 10 characters"),
+  measurementFrequency: z.string().min(3, "Measurement frequency required"),
+});
+
+const kpiRecommendationsOutputSchema = z.object({
+  recommendations: z.array(kpiRecommendationSchema).min(3).max(5),
+});
+
+export type KPIRecommendation = z.infer<typeof kpiRecommendationSchema>;
+
+interface GenerateKPIRecommendationsParams {
+  jobName: string;
+  capabilityName: string;
+  solutionArea: string;
+  aggregationSummary?: string;
+  companyName: string;
+  industry?: string;
+}
+
+export async function generateKPIRecommendations(
+  params: GenerateKPIRecommendationsParams
+): Promise<KPIRecommendation[]> {
+  const { jobName, capabilityName, solutionArea, aggregationSummary, companyName, industry } = params;
+  
+  const knowledgeBase = getSolutionSummary();
+
+  const prompt = `You are a Korn Ferry strategic consultant helping identify the most valuable and achievable KPIs for measuring value realization with a client.
+
+CLIENT CONTEXT:
+Company: ${companyName}${industry ? `\nIndustry: ${industry}` : ''}
+
+JOB THEME DETAILS:
+Job Name: ${jobName}
+Korn Ferry Capability: ${capabilityName}
+Solution Area: ${solutionArea}
+${aggregationSummary ? `Context: ${aggregationSummary}` : ''}
+
+KORN FERRY KNOWLEDGE BASE:
+${knowledgeBase}
+
+YOUR MISSION:
+Recommend 3-5 strategic KPIs that:
+1. DIFFERENTIATE Korn Ferry's approach - focus on leading indicators and behavioral metrics, not just lagging business outcomes
+2. Are ACHIEVABLE within a 6-12 month engagement timeframe
+3. Have HIGH VALUE IMPACT on client business outcomes
+4. Align with Korn Ferry's proven measurement frameworks and benchmarks
+5. Can be measured with data the client likely has or can easily collect
+
+KORN FERRY STRATEGIC DIFFERENTIATION:
+- Prioritize people/talent metrics over pure business metrics (e.g., "Leadership Pipeline Strength Index" vs "Revenue Growth")
+- Include behavioral and capability metrics (e.g., "AI Readiness Index", "Decision Lead Time")
+- Combine quantitative and qualitative indicators
+- Focus on transformation enablers, not just end results
+
+SCORING GUIDANCE:
+- achievabilityScore (1-10): How realistic is it to measure and improve this KPI in 6-12 months?
+  * 8-10: Client likely has data already, easy to measure
+  * 5-7: May require some data setup or process changes
+  * 1-4: Requires significant infrastructure or cultural change
+
+- valueImpactScore (1-10): How much business value will improving this KPI deliver?
+  * 8-10: Direct impact on revenue, cost, or critical business outcomes
+  * 5-7: Meaningful impact on operational efficiency or employee experience
+  * 1-4: Supporting metric with indirect impact
+
+Provide your recommendations in JSON format:
+{
+  "recommendations": [
+    {
+      "kpiName": "Specific, measurable KPI name (e.g., 'Quality of Hire Index (0-100)')",
+      "kpiType": "primary" or "supporting",
+      "unit": "Index 0-100", "Percent (%)", "Days", "Score", etc.,
+      "definition": "Clear definition of what this KPI measures and how it's calculated",
+      "strategicRationale": "Why this KPI is strategically valuable for this client - connect to business outcomes and Korn Ferry differentiation (50-100 words)",
+      "achievabilityScore": 8,
+      "valueImpactScore": 9,
+      "kornFerryBenchmark": "Typical Korn Ferry client range or target (e.g., 'Top quartile: 75-85, Industry average: 55-65')",
+      "measurementFrequency": "6 months", "Quarterly", "Monthly", etc.
+    }
+  ]
+}
+
+IMPORTANT:
+- Recommend exactly 3-5 KPIs total
+- At least 2 must be "primary" KPIs (high impact, direct business outcome)
+- Include at least 1 behavioral/capability metric that differentiates Korn Ferry
+- Each KPI must have a clear Korn Ferry benchmark or typical range
+- Strategic rationale must explain WHY this KPI matters for THIS client
+- Prioritize KPIs with achievabilityScore >= 6 AND valueImpactScore >= 7`;
+
+  try {
+    console.log(`[AI KPI Recommendations] Generating for job: ${jobName}`);
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 2000,
+    });
+
+    const content = response.choices[0]?.message?.content;
+
+    if (!content) {
+      throw new Error("AI returned empty response");
+    }
+
+    const parsedContent = JSON.parse(content);
+
+    // Strict Zod validation
+    const validationResult = kpiRecommendationsOutputSchema.safeParse(parsedContent);
+    if (!validationResult.success) {
+      console.error("[AI KPI Recommendations] Validation failed:", validationResult.error);
+      console.error("[AI KPI Recommendations] Received data:", parsedContent);
+      throw new Error(`AI KPI recommendation validation failed: ${validationResult.error.message}`);
+    }
+
+    console.log(`[AI KPI Recommendations] Success! Generated ${validationResult.data.recommendations.length} KPIs`);
+    return validationResult.data.recommendations;
+  } catch (error) {
+    console.error("[AI KPI Recommendations] Error:", error);
+    throw error;
+  }
+}

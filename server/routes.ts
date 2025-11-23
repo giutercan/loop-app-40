@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "./storage";
-import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations } from "./ai";
+import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations } from "./ai";
 import { z } from "zod";
 
 // Track in-flight success story generations per project (prevents concurrent requests)
@@ -2119,6 +2119,61 @@ export function registerRoutes(app: Express) {
     } catch (error: any) {
       console.error("Error generating AI benchmark:", error);
       res.status(500).json({ error: error.message || "Failed to generate benchmark" });
+    }
+  });
+
+  // Generate AI-powered KPI recommendations for a job theme
+  app.post("/api/job-themes/:jobThemeId/recommend-kpis", async (req, res) => {
+    try {
+      const jobThemeId = parseInt(req.params.jobThemeId);
+      
+      // Get the job theme details
+      const jobTheme = await storage.getJobTheme(jobThemeId);
+      if (!jobTheme) {
+        return res.status(404).json({ error: "Job theme not found" });
+      }
+      
+      // Get project details for company context
+      const project = await storage.getProject(jobTheme.projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Generate AI recommendations
+      const recommendations = await generateKPIRecommendations({
+        jobName: jobTheme.jobName,
+        capabilityName: jobTheme.capabilityName,
+        solutionArea: jobTheme.solutionArea || "ASSESS",
+        aggregationSummary: jobTheme.aggregationSummary || undefined,
+        companyName: project.companyName,
+        industry: project.sector || undefined,
+      });
+      
+      // Save recommendations as new KPIs for this job theme
+      const createdKPIs = [];
+      for (const rec of recommendations) {
+        const newKPI = await storage.createJobThemeKPI({
+          jobThemeId: jobTheme.id,
+          kpiName: rec.kpiName,
+          kpiType: rec.kpiType,
+          unit: rec.unit,
+          definition: rec.definition,
+          measurementFrequency: rec.measurementFrequency,
+          isAIRecommended: true,
+          aiStrategicRationale: rec.strategicRationale,
+          aiAchievabilityScore: rec.achievabilityScore,
+          aiValueImpactScore: rec.valueImpactScore,
+          aiKornFerryBenchmark: rec.kornFerryBenchmark,
+          isSelected: false, // Not selected by default - consultant chooses
+        });
+        createdKPIs.push(newKPI);
+      }
+      
+      console.log(`[AI KPI Recommendations] Created ${createdKPIs.length} recommendations for job theme ${jobTheme.id}`);
+      res.json(createdKPIs);
+    } catch (error: any) {
+      console.error("Error generating KPI recommendations:", error);
+      res.status(500).json({ error: error.message || "Failed to generate KPI recommendations" });
     }
   });
 
