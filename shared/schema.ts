@@ -627,3 +627,54 @@ export const insertSuccessStorySchema = createInsertSchema(successStories).omit(
 });
 export type InsertSuccessStory = z.infer<typeof insertSuccessStorySchema>;
 export type SuccessStory = typeof successStories.$inferSelect;
+
+// Success Story Library - Global repository of verified Korn Ferry success stories for AI narrative generation
+export const successStoryLibrary = pgTable("success_story_library", {
+  id: serial("id").primaryKey(),
+  
+  // Basic Information
+  title: text("title").notNull(), // e.g., "Global Bank Reduces Payment Failures by 94%"
+  industry: text("industry").notNull(), // e.g., "Financial Services", "Healthcare"
+  clientType: text("client_type"), // e.g., "Fortune 500", "Mid-market", "Public Sector"
+  
+  // Korn Ferry Classification
+  capabilityName: text("capability_name").notNull(), // From knowledge.ts
+  solutionArea: text("solution_area", {
+    enum: ["ASSESS", "DEVELOP", "TRANSFORM", "REWARD", "COMMERCIAL", "ANALYTICS"]
+  }).notNull(),
+  relatedKPIs: text("related_kpis").array(), // KPIs this story demonstrates
+  
+  // Story Content
+  challenge: text("challenge").notNull(), // The client's problem/challenge
+  solution: text("solution").notNull(), // What Korn Ferry implemented
+  results: text("results").notNull(), // The outcomes achieved
+  
+  // Metrics & Proof Points
+  metrics: jsonb("metrics"), // Structured metrics: { "roi": "2.3x", "timeframe": "18 months", "improvement": "94%" }
+  timeframeMonths: integer("timeframe_months"), // How long to achieve results
+  
+  // Verification & Approval
+  verificationSource: text("verification_source").notNull(), // e.g., "Published case study", "Internal project records"
+  sourceUrl: text("source_url"), // Link to published case study if available
+  approvalStatus: text("approval_status", { 
+    enum: ["pending", "approved", "archived"] 
+  }).notNull().default("pending"),
+  approvedBy: text("approved_by"), // Admin who approved this story
+  approvedAt: timestamp("approved_at"),
+  
+  // Metadata
+  tags: text("tags").array(), // For filtering: ["digital-transformation", "payments", "reliability"]
+  isHighlighted: boolean("is_highlighted").notNull().default(false), // Feature this story
+  createdBy: text("created_by").notNull(), // Consultant/admin who created this
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertSuccessStoryLibrarySchema = createInsertSchema(successStoryLibrary).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  approvedAt: true,
+});
+export type InsertSuccessStoryLibrary = z.infer<typeof insertSuccessStoryLibrarySchema>;
+export type SuccessStoryLibraryItem = typeof successStoryLibrary.$inferSelect;
