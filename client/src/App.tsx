@@ -8,6 +8,7 @@ import Landing from "@/pages/landing";
 import Discovery from "@/pages/discovery";
 import Alignment from "@/pages/alignment";
 import Realisation from "@/pages/realisation";
+import Questionnaire from "@/pages/questionnaire";
 
 function Router() {
   return (
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/projects/:id/alignment" component={Alignment} />
       <Route path="/alignment" component={Alignment} />
       <Route path="/realisation" component={Realisation} />
+      <Route path="/questionnaire/:token" component={Questionnaire} />
       <Route component={NotFound} />
     </Switch>
   );

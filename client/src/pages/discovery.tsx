@@ -71,6 +71,16 @@ export default function Discovery() {
     enabled: !!selectedProjectId,
   });
 
+  const { data: questionResponses = [] } = useQuery<QuestionResponse[]>({
+    queryKey: ["/api/projects", selectedProjectId, "questionnaire-responses"],
+    enabled: !!selectedProjectId,
+  });
+
+  const { data: sharedQuestionnaire } = useQuery<SharedQuestionnaire | null>({
+    queryKey: ["/api/projects", selectedProjectId, "shared-questionnaire"],
+    enabled: !!selectedProjectId,
+  });
+
   const [localNotes, setLocalNotes] = useState({
     freeformNotes: "",
     keyStakeholder: "",
@@ -86,16 +96,7 @@ export default function Discovery() {
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
   const [linkCopied, setLinkCopied] = useState(false);
-
-  const { data: sharedQuestionnaire } = useQuery<SharedQuestionnaire | null>({
-    queryKey: ["/api/projects", selectedProjectId, "shared-questionnaire"],
-    enabled: !!selectedProjectId,
-  });
-
-  const { data: questionResponses = [] } = useQuery<QuestionResponse[]>({
-    queryKey: ["/api/projects", selectedProjectId, "questionnaire-responses"],
-    enabled: !!selectedProjectId,
-  });
+  const [consultantAnswers, setConsultantAnswers] = useState<Record<number, string>>({});
 
   useEffect(() => {
     if (notes) {
@@ -503,6 +504,40 @@ export default function Discovery() {
       toast({
         title: "Share failed",
         description: error.message || "Failed to share questionnaire",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const submitConsultantResponseMutation = useMutation({
+    mutationFn: async ({ questionId, response }: { questionId: number; response: string }) => {
+      if (!selectedProjectId) return;
+      const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/consultant-response`, {
+        questionId,
+        response,
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to submit response");
+      }
+      return await res.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "questionnaire-responses"] });
+      setConsultantAnswers(prev => {
+        const newAnswers = { ...prev };
+        delete newAnswers[variables.questionId];
+        return newAnswers;
+      });
+      toast({
+        title: "Response submitted",
+        description: "Your answer has been saved.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Submission failed",
+        description: error.message || "Failed to submit response",
         variant: "destructive",
       });
     },
@@ -1268,43 +1303,97 @@ export default function Discovery() {
                                 <Badge variant="secondary" className="text-xs">{capabilityQuestions.length} question{capabilityQuestions.length !== 1 ? 's' : ''}</Badge>
                               </div>
                               <div className="space-y-3 pl-6">
-                                {capabilityQuestions.map((question) => (
-                                  <div 
-                                    key={question.id} 
-                                    className="bg-muted/30 rounded-md p-3 space-y-2.5"
-                                    data-testid={`question-${question.id}`}
-                                  >
-                                    <div className="flex items-start gap-2">
-                                      <p className="text-sm font-medium flex-1">{question.question}</p>
-                                      <Badge 
-                                        variant={question.questionType === 'quantitative' ? 'default' : question.questionType === 'qualitative' ? 'secondary' : 'outline'}
-                                        className="text-xs shrink-0"
-                                      >
-                                        {question.questionType}
-                                      </Badge>
+                                {capabilityQuestions.map((question) => {
+                                  const responses = questionResponses.filter(r => r.questionId === question.id);
+                                  const consultantResponse = responses.find(r => r.respondentType === 'consultant');
+                                  const clientResponse = responses.find(r => r.respondentType === 'client');
+
+                                  return (
+                                    <div 
+                                      key={question.id} 
+                                      className="bg-muted/30 rounded-md p-3 space-y-2.5"
+                                      data-testid={`question-${question.id}`}
+                                    >
+                                      <div className="flex items-start gap-2">
+                                        <p className="text-sm font-medium flex-1">{question.question}</p>
+                                        <Badge 
+                                          variant={question.questionType === 'quantitative' ? 'default' : question.questionType === 'qualitative' ? 'secondary' : 'outline'}
+                                          className="text-xs shrink-0"
+                                        >
+                                          {question.questionType}
+                                        </Badge>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground italic">{question.purpose}</p>
+                                      {question.relatedKPI && (
+                                        <p className="text-xs text-primary font-medium">
+                                          Related KPI: {question.relatedKPI}
+                                        </p>
+                                      )}
+
+                                      {/* Existing Responses */}
+                                      {responses.length > 0 && (
+                                        <div className="space-y-2 pt-2">
+                                          {clientResponse && (
+                                            <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-md p-3 space-y-1.5">
+                                              <div className="flex items-center gap-2">
+                                                <Badge className="bg-blue-600 text-white text-xs">
+                                                  <Users className="w-3 h-3 mr-1" />
+                                                  Client
+                                                </Badge>
+                                                {clientResponse.respondentName && (
+                                                  <span className="text-xs text-muted-foreground">{clientResponse.respondentName}</span>
+                                                )}
+                                              </div>
+                                              <p className="text-sm text-blue-900 dark:text-blue-100">{clientResponse.answer}</p>
+                                            </div>
+                                          )}
+                                          {consultantResponse && (
+                                            <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-md p-3 space-y-1.5">
+                                              <Badge className="bg-green-600 text-white text-xs">
+                                                <Briefcase className="w-3 h-3 mr-1" />
+                                                Consultant
+                                              </Badge>
+                                              <p className="text-sm text-green-900 dark:text-green-100">{consultantResponse.answer}</p>
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+
+                                      {/* Consultant Input (if not answered yet) */}
+                                      {!consultantResponse && (
+                                        <div className="pt-2 space-y-2">
+                                          <Label className="text-xs text-muted-foreground">Your Answer (Consultant)</Label>
+                                          <Textarea
+                                            placeholder="Enter your answer..."
+                                            className="min-h-[80px] resize-none text-sm"
+                                            value={consultantAnswers[question.id] || ''}
+                                            onChange={(e) => setConsultantAnswers({ ...consultantAnswers, [question.id]: e.target.value })}
+                                            data-testid={`input-consultant-answer-${question.id}`}
+                                          />
+                                          <Button
+                                            size="sm"
+                                            onClick={() => {
+                                              const answer = consultantAnswers[question.id]?.trim();
+                                              if (!answer) {
+                                                toast({
+                                                  title: "Empty answer",
+                                                  description: "Please provide an answer before submitting.",
+                                                  variant: "destructive",
+                                                });
+                                                return;
+                                              }
+                                              submitConsultantResponseMutation.mutate({ questionId: question.id, response: answer });
+                                            }}
+                                            disabled={!consultantAnswers[question.id]?.trim() || submitConsultantResponseMutation.isPending}
+                                            data-testid={`button-submit-consultant-${question.id}`}
+                                          >
+                                            {submitConsultantResponseMutation.isPending ? "Submitting..." : "Submit Answer"}
+                                          </Button>
+                                        </div>
+                                      )}
                                     </div>
-                                    <p className="text-xs text-muted-foreground italic">{question.purpose}</p>
-                                    {question.relatedKPI && (
-                                      <p className="text-xs text-primary font-medium">
-                                        Related KPI: {question.relatedKPI}
-                                      </p>
-                                    )}
-                                    <div className="pt-2">
-                                      <Textarea
-                                        placeholder="Enter your answer or client's response..."
-                                        className="min-h-[80px] resize-none text-sm"
-                                        value={question.answer || ''}
-                                        onChange={(e) => {
-                                          updateQuestionAnswerMutation.mutate({
-                                            id: question.id,
-                                            answer: e.target.value
-                                          });
-                                        }}
-                                        data-testid={`answer-${question.id}`}
-                                      />
-                                    </div>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             </div>
                           );
@@ -1314,6 +1403,173 @@ export default function Discovery() {
                   </CardContent>
                 </Card>
               )}
+
+              {/* 360 Discovery Summary - Consolidated View */}
+              {(() => {
+                const researchInsights = dataPoints.filter(dp => !(dp.provenance as any)?.type);
+                const enrichedInsights = dataPoints.filter(dp => (dp.provenance as any)?.type === 'notes_enrichment');
+                const totalQuestions = discoveryQuestions.length;
+                
+                // Count unique questions answered (deduped across all respondent types)
+                const answeredQuestions = questionResponses.length > 0 
+                  ? new Set(questionResponses.map(r => r.questionId)).size 
+                  : 0;
+                  
+                // Count responses by respondent type
+                const consultantResponses = questionResponses.filter(r => r.respondentType === 'consultant').length;
+                const clientResponses = questionResponses.filter(r => r.respondentType === 'client').length;
+                
+                const hasMultipleSources = (researchInsights.length > 0 ? 1 : 0) +
+                                          (enrichedInsights.length > 0 ? 1 : 0) +
+                                          (answeredQuestions > 0 ? 1 : 0) >= 2;
+
+                if (!hasMultipleSources) return null;
+
+                // Aggregate by capability
+                const capabilitySummary = [
+                  'Success Profiles & Role Design',
+                  'Standardised Assessments & Assessments at Scale',
+                  'Leadership & Development Journeys',
+                  'AI-Ready Leader (within L&D)',
+                  'Organisation Strategy & Transformation',
+                  'Total Rewards Optimisation (TRO)',
+                  'Sales & Service (KF Sell)',
+                  'People Analytics / KFI Analytics',
+                  'Value Management / Client Success & Talent Suite',
+                ].map(capability => {
+                  const research = researchInsights.filter(dp => dp.relevantCapability === capability).length;
+                  const enriched = enrichedInsights.filter(dp => dp.relevantCapability === capability).length;
+                  const questions = discoveryQuestions.filter(q => q.capabilityName === capability).length;
+                  const answered = discoveryQuestions
+                    .filter(q => q.capabilityName === capability)
+                    .filter(q => questionResponses.some(r => r.questionId === q.id)).length;
+                  
+                  const total = research + enriched;
+                  if (total === 0 && questions === 0) return null;
+
+                  return { capability, research, enriched, total, questions, answered };
+                }).filter(Boolean);
+
+                return (
+                  <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-background">
+                    <CardHeader>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground font-bold text-lg shrink-0">
+                          360°
+                        </div>
+                        <div className="flex-1">
+                          <CardTitle className="text-xl">Discovery Insights Summary</CardTitle>
+                          <CardDescription>
+                            Comprehensive view combining AI research, notes enrichment, and questionnaire responses
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {/* Overall Stats */}
+                      <div className="grid grid-cols-3 gap-4">
+                        <Card className="bg-card/50">
+                          <CardHeader className="pb-3">
+                            <div className="flex items-center justify-between">
+                              <CardDescription className="text-xs">Research Insights</CardDescription>
+                              <Sparkles className="w-4 h-4 text-primary" />
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-2xl font-bold">{researchInsights.length}</div>
+                            <p className="text-xs text-muted-foreground mt-1">AI-generated findings</p>
+                          </CardContent>
+                        </Card>
+                        <Card className="bg-card/50">
+                          <CardHeader className="pb-3">
+                            <div className="flex items-center justify-between">
+                              <CardDescription className="text-xs">Enriched Insights</CardDescription>
+                              <FileText className="w-4 h-4 text-primary" />
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-2xl font-bold">{enrichedInsights.length}</div>
+                            <p className="text-xs text-muted-foreground mt-1">From notes & files</p>
+                          </CardContent>
+                        </Card>
+                        <Card className="bg-card/50">
+                          <CardHeader className="pb-3">
+                            <div className="flex items-center justify-between">
+                              <CardDescription className="text-xs">Questions Answered</CardDescription>
+                              <Users className="w-4 h-4 text-primary" />
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-2xl font-bold">{answeredQuestions}/{totalQuestions}</div>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                              {consultantResponses > 0 && (
+                                <span className="flex items-center gap-1">
+                                  <span className="w-2 h-2 rounded-full bg-green-600"></span>
+                                  {consultantResponses} consultant
+                                </span>
+                              )}
+                              {clientResponses > 0 && (
+                                <span className="flex items-center gap-1">
+                                  <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                                  {clientResponses} client
+                                </span>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+
+                      {/* Capability Breakdown */}
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 pb-2 border-b">
+                          <Briefcase className="w-4 h-4 text-primary" />
+                          <h3 className="font-semibold text-sm">Insights by Capability</h3>
+                        </div>
+                        <div className="space-y-2">
+                          {capabilitySummary.map((item: any) => (
+                            <div key={item.capability} className="bg-muted/30 rounded-md p-3">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium">{item.capability}</span>
+                                <Badge variant="secondary" className="text-xs">
+                                  {item.total} insight{item.total !== 1 ? 's' : ''}
+                                </Badge>
+                              </div>
+                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                {item.research > 0 && (
+                                  <span className="flex items-center gap-1">
+                                    <Sparkles className="w-3 h-3" />
+                                    {item.research} research
+                                  </span>
+                                )}
+                                {item.enriched > 0 && (
+                                  <span className="flex items-center gap-1">
+                                    <FileText className="w-3 h-3" />
+                                    {item.enriched} enriched
+                                  </span>
+                                )}
+                                {item.questions > 0 && (
+                                  <span className="flex items-center gap-1">
+                                    <MessageSquarePlus className="w-3 h-3" />
+                                    {item.answered}/{item.questions} answered
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Next Steps */}
+                      <div className="bg-primary/10 border border-primary/30 rounded-md p-4 space-y-2">
+                        <p className="text-sm font-medium text-primary">✓ Discovery Complete</p>
+                        <p className="text-sm text-muted-foreground">
+                          You've gathered comprehensive insights from multiple sources. Ready to move to the Alignment phase to map these findings to Korn Ferry Jobs and build value hypotheses.
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })()}
           </TabsContent>
 
           <TabsContent value="hypothesis" className="space-y-6">

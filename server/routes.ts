@@ -1680,10 +1680,24 @@ export function registerRoutes(app: Express) {
   app.post("/api/projects/:projectId/consultant-response", async (req, res) => {
     try {
       const projectId = parseInt(req.params.projectId);
-      const { questionId, answer } = req.body;
       
-      if (!questionId || !answer) {
-        return res.status(400).json({ error: "Question ID and answer are required" });
+      // Validate request body
+      const bodySchema = z.object({
+        questionId: z.number(),
+        response: z.string().min(1)
+      });
+      
+      const validated = bodySchema.safeParse(req.body);
+      if (!validated.success) {
+        return res.status(400).json({ error: "Invalid request body", details: validated.error });
+      }
+      
+      const { questionId, response: answer } = validated.data;
+      
+      // Verify the question belongs to this project (security check)
+      const question = await storage.getDiscoveryQuestionById(questionId);
+      if (!question || question.projectId !== projectId) {
+        return res.status(403).json({ error: "Question does not belong to this project" });
       }
       
       // Get or create shared questionnaire

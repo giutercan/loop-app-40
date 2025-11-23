@@ -110,6 +110,7 @@ export interface IStorage {
   
   // Discovery Questions
   getDiscoveryQuestions(projectId: number): Promise<DiscoveryQuestion[]>;
+  getDiscoveryQuestionById(id: number): Promise<DiscoveryQuestion | undefined>;
   createDiscoveryQuestion(question: InsertDiscoveryQuestion): Promise<DiscoveryQuestion>;
   updateDiscoveryQuestion(id: number, question: Partial<InsertDiscoveryQuestion>): Promise<DiscoveryQuestion | undefined>;
   deleteDiscoveryQuestion(id: number): Promise<void>;
@@ -475,6 +476,12 @@ export class DbStorage implements IStorage {
     return await db.select().from(schema.discoveryQuestions)
       .where(eq(schema.discoveryQuestions.projectId, projectId))
       .orderBy(schema.discoveryQuestions.sortOrder, schema.discoveryQuestions.createdAt);
+  }
+  
+  async getDiscoveryQuestionById(id: number): Promise<DiscoveryQuestion | undefined> {
+    const results = await db.select().from(schema.discoveryQuestions)
+      .where(eq(schema.discoveryQuestions.id, id));
+    return results[0];
   }
   
   async createDiscoveryQuestion(question: InsertDiscoveryQuestion): Promise<DiscoveryQuestion> {
