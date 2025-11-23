@@ -534,3 +534,82 @@ export const jobThemeWithKPIsSchema = z.object({
   })),
 });
 export type JobThemeWithKPIs = z.infer<typeof jobThemeWithKPIsSchema>;
+
+// ============================================================================
+// PHASE 1: VALUE REALIZATION FEATURES
+// ============================================================================
+
+// Business Reviews - Regular meetings to validate alignment and track progress
+export const businessReviews = pgTable("business_reviews", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  reviewDate: timestamp("review_date").notNull(),
+  reviewType: text("review_type", { enum: ["monthly", "quarterly", "milestone", "ad_hoc"] }).notNull().default("monthly"),
+  attendees: text("attendees"), // Comma-separated list of attendees
+  agenda: text("agenda"), // Meeting agenda
+  notes: text("notes"), // Meeting notes and discussion points
+  actionItems: jsonb("action_items"), // Array of {task: string, owner: string, dueDate: string, status: string}
+  clientSentiment: integer("client_sentiment"), // 1-10 score
+  sentimentNotes: text("sentiment_notes"), // Qualitative feedback on client mood
+  keyDecisions: text("key_decisions"), // Important decisions made
+  nextReviewDate: timestamp("next_review_date"), // Scheduled next review
+  status: text("status", { enum: ["scheduled", "completed", "cancelled"] }).notNull().default("scheduled"),
+  createdBy: text("created_by"), // Consultant who created the review
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertBusinessReviewSchema = createInsertSchema(businessReviews).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertBusinessReview = z.infer<typeof insertBusinessReviewSchema>;
+export type BusinessReview = typeof businessReviews.$inferSelect;
+
+// KPI Actuals - Track actual KPI values over time (for progress tracking)
+export const kpiActuals = pgTable("kpi_actuals", {
+  id: serial("id").primaryKey(),
+  jobThemeKPIId: integer("job_theme_kpi_id").notNull().references(() => jobThemeKPIs.id, { onDelete: "cascade" }),
+  actualValue: text("actual_value").notNull(), // Actual measured value (stored as text for flexibility)
+  actualDate: timestamp("actual_date").notNull(), // When this value was measured
+  actualSource: text("actual_source"), // Where this data came from (e.g., "Client HRIS", "Survey results")
+  notes: text("notes"), // Additional context about this measurement
+  validatedBy: text("validated_by"), // Who validated this data (consultant or client name)
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertKPIActualSchema = createInsertSchema(kpiActuals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertKPIActual = z.infer<typeof insertKPIActualSchema>;
+export type KPIActual = typeof kpiActuals.$inferSelect;
+
+// Success Stories - Link relevant Korn Ferry case studies to projects
+export const successStories = pgTable("success_stories", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  title: text("title").notNull(), // Case study title
+  url: text("url").notNull(), // Link to Korn Ferry case study
+  category: text("category"), // e.g., "Sales Transformation", "Employee Experience"
+  relevanceReason: text("relevance_reason"), // Why this is relevant to current project
+  industry: text("industry"), // Industry of the case study client
+  capabilityName: text("capability_name"), // Related Korn Ferry capability
+  solutionArea: text("solution_area", {
+    enum: ["ASSESS", "DEVELOP", "TRANSFORM", "REWARD", "COMMERCIAL", "ANALYTICS"]
+  }),
+  excerpt: text("excerpt"), // Brief excerpt from the case study
+  isHighlighted: boolean("is_highlighted").notNull().default(false), // Feature this story
+  addedBy: text("added_by"), // Consultant who added this
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertSuccessStorySchema = createInsertSchema(successStories).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertSuccessStory = z.infer<typeof insertSuccessStorySchema>;
+export type SuccessStory = typeof successStories.$inferSelect;
