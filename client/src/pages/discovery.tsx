@@ -273,6 +273,17 @@ export default function Discovery() {
     enabled: !!selectedProjectId,
   });
 
+  // Jobs & Priorities queries (must be at top level, not inside TabsContent)
+  const { data: jobThemesData, isLoading: jobThemesLoading } = useQuery<JobThemeWithKPIs[]>({
+    queryKey: ["/api/projects", selectedProjectId, "job-themes"],
+    enabled: !!selectedProjectId,
+  });
+
+  const { data: phaseTransfer } = useQuery<DiscoveryPhaseTransfer>({
+    queryKey: ["/api/projects", selectedProjectId, "phase-transfer"],
+    enabled: !!selectedProjectId,
+  });
+
   const [localNotes, setLocalNotes] = useState({
     freeformNotes: "",
     keyStakeholder: "",
@@ -336,6 +347,7 @@ export default function Discovery() {
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "data-points"] });
       queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "headlines"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "job-themes"] });
       toast({
         title: "Company research complete",
         description: data?.summary || "AI has populated company data and headlines.",
@@ -730,6 +742,57 @@ export default function Discovery() {
       toast({
         title: "Submission failed",
         description: error.message || "Failed to submit response",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Jobs & Priorities mutations (must be at top level, not inside TabsContent)
+  const prioritizeJobsMutation = useMutation({
+    mutationFn: async ({ prioritizedIds }: { prioritizedIds: number[] }) => {
+      const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/job-themes/prioritize`, {
+        prioritizedIds
+      });
+      if (!res.ok) throw new Error("Failed to prioritize");
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "job-themes"] });
+      toast({ title: "Priorities updated successfully" });
+    },
+  });
+
+  const updateKPIMutation = useMutation({
+    mutationFn: async ({ kpiId, data }: { kpiId: number; data: { isSelected?: boolean; baselineValue?: string; baselineSource?: string } }) => {
+      const res = await apiRequest("PATCH", `/api/job-theme-kpis/${kpiId}`, data);
+      if (!res.ok) throw new Error("Failed to update KPI");
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "job-themes"] });
+    },
+  });
+
+  const finalizeDiscoveryMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/finalize-discovery`, {});
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to finalize");
+      }
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "phase-transfer"] });
+      toast({
+        title: "Discovery phase finalized",
+        description: "Your selections have been locked and transferred to Alignment phase.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Finalize failed",
+        description: error.message || "Failed to finalize discovery",
         variant: "destructive",
       });
     },
@@ -1767,69 +1830,8 @@ export default function Discovery() {
 
           <TabsContent value="jobs" className="space-y-6">
             {(() => {
-              // Fetch job themes
-              const { data: jobThemesData, isLoading: jobThemesLoading } = useQuery<JobThemeWithKPIs[]>({
-                queryKey: ["/api/projects", selectedProjectId, "job-themes"],
-                enabled: !!selectedProjectId,
-              });
-
-              // Fetch finalize state
-              const { data: phaseTransfer } = useQuery<DiscoveryPhaseTransfer>({
-                queryKey: ["/api/projects", selectedProjectId, "phase-transfer"],
-                enabled: !!selectedProjectId,
-              });
-
+              // Use hooks from top level (already declared above)
               const isFinalized = phaseTransfer?.isFinalized || false;
-
-              const prioritizeJobsMutation = useMutation({
-                mutationFn: async ({ prioritizedIds }: { prioritizedIds: number[] }) => {
-                  const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/job-themes/prioritize`, {
-                    prioritizedIds
-                  });
-                  if (!res.ok) throw new Error("Failed to prioritize");
-                  return await res.json();
-                },
-                onSuccess: () => {
-                  queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "job-themes"] });
-                  toast({ title: "Priorities updated successfully" });
-                },
-              });
-
-              const updateKPIMutation = useMutation({
-                mutationFn: async ({ kpiId, data }: { kpiId: number; data: any }) => {
-                  const res = await apiRequest("PATCH", `/api/job-theme-kpis/${kpiId}`, data);
-                  if (!res.ok) throw new Error("Failed to update KPI");
-                  return await res.json();
-                },
-                onSuccess: () => {
-                  queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "job-themes"] });
-                },
-              });
-
-              const finalizeDiscoveryMutation = useMutation({
-                mutationFn: async () => {
-                  const res = await apiRequest("POST", `/api/projects/${selectedProjectId}/finalize-discovery`, {});
-                  if (!res.ok) {
-                    const error = await res.json();
-                    throw new Error(error.error || "Failed to finalize");
-                  }
-                  return await res.json();
-                },
-                onSuccess: () => {
-                  toast({
-                    title: "Discovery Finalized!",
-                    description: "Your priorities are now ready for hypothesis building in the Alignment phase.",
-                  });
-                  queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId] });
-                },
-                onError: (error: any) => {
-                  toast({
-                    title: "Finalization failed",
-                    description: error.message,
-                    variant: "destructive",
-                  });
-                },
-              });
 
               if (jobThemesLoading) {
                 return (
