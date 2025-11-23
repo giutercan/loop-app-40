@@ -27,6 +27,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Project, CompanyDataPoint, Headline, DiscoveryNotes, DiscoveryQuestion, Attachment, SharedQuestionnaire, QuestionResponse, JobThemeWithKPIs, DiscoveryPhaseTransfer, SuccessStory } from "@shared/schema";
 import { Checkbox } from "@/components/ui/checkbox";
+import { format } from "date-fns";
 
 // Job Theme Card Component - Displays prioritized job with KPIs and baseline input
 interface KPI {

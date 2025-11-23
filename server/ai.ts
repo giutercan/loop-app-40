@@ -621,3 +621,178 @@ Ensure all recommendations are:
     throw new Error("Failed to generate success story recommendations with AI");
   }
 }
+
+// ============================================================================
+// AI-Powered Business Review Agenda Generation
+// ============================================================================
+
+interface BusinessReviewAgendaInput {
+  companyName: string;
+  reviewType: "quarterly" | "monthly" | "ad-hoc";
+  projectPhase: "discovery" | "alignment" | "realisation";
+  kpiProgress?: Array<{
+    kpiName: string;
+    baseline: string;
+    target: string;
+    actual?: string;
+    trend: "improving" | "declining" | "stagnant" | "unknown";
+  }>;
+  previousReviewNotes?: string;
+  openActionItems?: Array<{
+    description: string;
+    owner?: string;
+    dueDate?: string;
+  }>;
+  discoveryInsights?: string[];
+}
+
+interface BusinessReviewAgenda {
+  suggestedTitle: string;
+  objectives: string[];
+  topics: Array<{
+    title: string;
+    duration: string; // e.g., "15 min"
+    keyQuestions: string[];
+    focusArea: string; // What this topic aims to achieve
+  }>;
+  actionItems: Array<{
+    description: string;
+    suggestedOwner?: string;
+    rationale: string;
+  }>;
+  successMetrics: string[]; // What defines a successful review
+}
+
+const businessReviewAgendaSchema = z.object({
+  suggestedTitle: z.string().min(10),
+  objectives: z.array(z.string()).min(2).max(5),
+  topics: z.array(z.object({
+    title: z.string(),
+    duration: z.string(),
+    keyQuestions: z.array(z.string()).min(1),
+    focusArea: z.string()
+  })).min(3).max(8),
+  actionItems: z.array(z.object({
+    description: z.string(),
+    suggestedOwner: z.string().optional(),
+    rationale: z.string()
+  })).max(6),
+  successMetrics: z.array(z.string()).min(2).max(4)
+});
+
+export async function generateBusinessReviewAgenda(
+  input: BusinessReviewAgendaInput
+): Promise<BusinessReviewAgenda> {
+  const kpiContext = input.kpiProgress && input.kpiProgress.length > 0 
+    ? `
+KPI PROGRESS SINCE LAST REVIEW:
+${input.kpiProgress.map(kpi => 
+  `- ${kpi.kpiName}: Baseline ${kpi.baseline} → ${kpi.actual ? `Current ${kpi.actual}` : 'Not measured yet'} → Target ${kpi.target} (Trend: ${kpi.trend})`
+).join('\n')}`
+    : 'No KPI progress data available yet.';
+
+  const previousNotesContext = input.previousReviewNotes 
+    ? `
+PREVIOUS REVIEW KEY TAKEAWAYS:
+${input.previousReviewNotes}`
+    : 'This is the first business review for this engagement.';
+
+  const actionItemsContext = input.openActionItems && input.openActionItems.length > 0
+    ? `
+OPEN ACTION ITEMS TO REVIEW:
+${input.openActionItems.map(item => 
+  `- ${item.description}${item.owner ? ` (Owner: ${item.owner})` : ''}${item.dueDate ? ` (Due: ${item.dueDate})` : ''}`
+).join('\n')}`
+    : 'No open action items from previous reviews.';
+
+  const insightsContext = input.discoveryInsights && input.discoveryInsights.length > 0
+    ? `
+KEY DISCOVERY INSIGHTS:
+${input.discoveryInsights.slice(0, 5).map(insight => `- ${insight}`).join('\n')}`
+    : '';
+
+  const prompt = `You are an expert Korn Ferry consultant preparing a structured business review meeting for ${input.companyName}.
+
+ENGAGEMENT CONTEXT:
+- Review Type: ${input.reviewType}
+- Current Phase: ${input.projectPhase}
+
+${kpiContext}
+
+${previousNotesContext}
+
+${actionItemsContext}
+
+${insightsContext}
+
+TASK: Generate a professional, focused business review agenda that:
+1. Maximizes value for both the client and Korn Ferry team
+2. Addresses current performance trends and concerns
+3. Builds on previous discussions and open items
+4. Creates clear next steps and accountability
+
+BEST PRACTICES:
+- Start with wins and progress before challenges
+- Focus on data-driven discussions (reference specific KPIs)
+- Include time for client feedback and concerns
+- Balance strategic discussion with tactical execution
+- End with clear action items and next steps
+- Keep total meeting to 60-90 minutes
+
+Generate the agenda in this JSON format:
+
+{
+  "suggestedTitle": "Descriptive title for the review meeting",
+  "objectives": ["Primary goal 1", "Primary goal 2", ...],
+  "topics": [
+    {
+      "title": "Topic name",
+      "duration": "15 min",
+      "keyQuestions": ["Question to guide discussion", ...],
+      "focusArea": "What this topic aims to achieve"
+    }
+  ],
+  "actionItems": [
+    {
+      "description": "Suggested follow-up action",
+      "suggestedOwner": "Role who should own this (e.g., 'Korn Ferry Lead', 'Client CHRO')",
+      "rationale": "Why this action is important"
+    }
+  ],
+  "successMetrics": ["How we'll know this review was successful", ...]
+}`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-5",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 2500,
+    });
+
+    const content = response.choices[0]?.message?.content || "{}";
+    
+    // Parse and validate
+    let parsedContent;
+    try {
+      parsedContent = JSON.parse(content);
+    } catch (parseError) {
+      console.error("Failed to parse AI agenda response:", parseError);
+      throw new Error("AI returned invalid JSON for business review agenda");
+    }
+    
+    const validationResult = businessReviewAgendaSchema.safeParse(parsedContent);
+    if (!validationResult.success) {
+      console.error("AI agenda validation failed:", validationResult.error);
+      throw new Error(`AI agenda validation failed: ${validationResult.error.message}`);
+    }
+    
+    return validationResult.data;
+  } catch (error) {
+    console.error("Error generating business review agenda:", error);
+    if (error instanceof Error && error.message.includes("AI")) {
+      throw error;
+    }
+    throw new Error("Failed to generate business review agenda with AI");
+  }
+}

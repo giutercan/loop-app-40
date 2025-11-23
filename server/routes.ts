@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "./storage";
-import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations } from "./ai";
+import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda } from "./ai";
 import { z } from "zod";
 
 // Track in-flight success story generations per project (prevents concurrent requests)
@@ -2049,6 +2049,114 @@ export function registerRoutes(app: Express) {
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // AI-Powered Business Review Agenda Generation
+  app.post("/api/projects/:projectId/business-reviews/generate-agenda", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      
+      // Validate request body
+      const requestSchema = z.object({
+        reviewType: z.enum(["quarterly", "monthly", "ad-hoc"]).default("monthly")
+      });
+      const validated = requestSchema.parse(req.body);
+      const { reviewType } = validated;
+
+      // Load project context
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Load discovery insights for context
+      const dataPoints = await storage.getCompanyDataPoints(projectId);
+      const discoveryInsights = dataPoints
+        .filter(dp => dp.priorityScore >= 4) // High priority insights
+        .slice(0, 5)
+        .map(dp => `${dp.label}: ${dp.value}`);
+
+      // Load finalized jobs and KPIs for progress tracking
+      const transfer = await storage.getDiscoveryPhaseTransfer(projectId);
+      let kpiProgress: Array<{
+        kpiName: string;
+        baseline: string;
+        target: string;
+        actual?: string;
+        trend: "improving" | "declining" | "stagnant" | "unknown";
+      }> = [];
+
+      if (transfer?.finalizedJobThemeIds && transfer.finalizedJobThemeIds.length > 0) {
+        // Get all finalized jobs with their KPIs
+        const jobs = await Promise.all(
+          transfer.finalizedJobThemeIds.map(id => storage.getJobTheme(id))
+        );
+        
+        for (const job of jobs.filter(j => j !== undefined)) {
+          const kpis = await storage.getJobThemeKPIs(job!.id);
+          const selectedKPIs = kpis.filter(kpi => kpi.isSelected);
+          
+          for (const kpi of selectedKPIs) {
+            // Get actual values to determine trend
+            const actuals = await storage.getKPIActuals(kpi.id);
+            const latestActual = actuals[0]; // Most recent
+            
+            let trend: "improving" | "declining" | "stagnant" | "unknown" = "unknown";
+            if (latestActual && kpi.baselineValue && kpi.targetValue) {
+              const baseline = parseFloat(kpi.baselineValue);
+              const target = parseFloat(kpi.targetValue);
+              const actual = parseFloat(latestActual.actualValue);
+              
+              if (!isNaN(baseline) && !isNaN(target) && !isNaN(actual)) {
+                const targetDirection = target > baseline ? "up" : "down";
+                if (targetDirection === "up") {
+                  trend = actual > baseline ? "improving" : (actual < baseline ? "declining" : "stagnant");
+                } else {
+                  trend = actual < baseline ? "improving" : (actual > baseline ? "declining" : "stagnant");
+                }
+              }
+            }
+            
+            kpiProgress.push({
+              kpiName: kpi.kpiName,
+              baseline: kpi.baselineValue || "Not set",
+              target: kpi.targetValue || "Not set",
+              actual: latestActual?.actualValue,
+              trend
+            });
+          }
+        }
+      }
+
+      // Load previous reviews for context
+      const previousReviews = await storage.getBusinessReviews(projectId);
+      const lastCompletedReview = previousReviews
+        .filter(r => r.status === "completed")
+        .sort((a, b) => new Date(b.reviewDate).getTime() - new Date(a.reviewDate).getTime())[0];
+
+      const previousReviewNotes = lastCompletedReview?.notes || undefined;
+
+      // Extract open action items from last review
+      const openActionItems = lastCompletedReview?.actionItems 
+        ? (lastCompletedReview.actionItems as any[]).filter((item: any) => !item.completed)
+        : [];
+
+      // Generate agenda using AI
+      const agenda = await generateBusinessReviewAgenda({
+        companyName: project.companyName,
+        reviewType: reviewType || "monthly",
+        projectPhase: project.currentPhase,
+        kpiProgress: kpiProgress.length > 0 ? kpiProgress : undefined,
+        previousReviewNotes,
+        openActionItems: openActionItems.length > 0 ? openActionItems : undefined,
+        discoveryInsights: discoveryInsights.length > 0 ? discoveryInsights : undefined
+      });
+
+      res.json(agenda);
+    } catch (error: any) {
+      console.error("Error generating business review agenda:", error);
+      res.status(500).json({ error: error.message || "Failed to generate agenda" });
     }
   });
 
