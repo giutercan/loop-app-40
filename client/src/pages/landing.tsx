@@ -1,10 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Brain, Target, Users, FileText, Mic, CheckCircle2, ArrowRight, Zap, TrendingUp, MessageSquare, BarChart3, Calendar, Award, Activity } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Sparkles, Brain, Target, Users, FileText, Mic, CheckCircle2, ArrowRight, Zap, TrendingUp, MessageSquare, BarChart3, Calendar, Award, Activity, Search, Lightbulb, LineChart, Play } from "lucide-react";
 import { Link } from "wouter";
+import { useState } from "react";
 
 export default function Landing() {
+  const [activePhase, setActivePhase] = useState("discovery");
+  
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -162,6 +166,530 @@ export default function Landing() {
                 </Card>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Interactive Process Demo */}
+      <section id="how-it-works" className="py-24 lg:py-36 bg-background relative">
+        <div className="container mx-auto max-w-7xl px-4 lg:px-8">
+          <div className="text-center mb-16">
+            <Badge variant="secondary" className="mb-6 shadow-md">
+              <Play className="w-3.5 h-3.5 mr-2" />
+              See It In Action
+            </Badge>
+            <h2 className="text-4xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+              Complete Value Lifecycle Demo
+            </h2>
+            <p className="text-xl lg:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+              Follow a sample engagement from initial research to measurable outcomes
+            </p>
+          </div>
+
+          {/* Phase Tabs */}
+          <Tabs value={activePhase} onValueChange={setActivePhase} className="w-full">
+            <TabsList className="grid w-full grid-cols-3 mb-12 h-auto p-2 bg-muted/50" data-testid="tabs-demo-phases">
+              <TabsTrigger 
+                value="discovery" 
+                className="text-base lg:text-lg py-4 data-[state=active]:bg-background data-[state=active]:shadow-lg"
+                data-testid="tab-discovery"
+              >
+                <Search className="w-5 h-5 mr-2" />
+                <div className="flex flex-col items-start">
+                  <span className="font-bold">Discovery</span>
+                  <span className="text-xs text-muted-foreground hidden sm:block">AI Research & Insights</span>
+                </div>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="alignment" 
+                className="text-base lg:text-lg py-4 data-[state=active]:bg-background data-[state=active]:shadow-lg"
+                data-testid="tab-alignment"
+              >
+                <Target className="w-5 h-5 mr-2" />
+                <div className="flex flex-col items-start">
+                  <span className="font-bold">Alignment</span>
+                  <span className="text-xs text-muted-foreground hidden sm:block">Jobs & KPI Targets</span>
+                </div>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="realization" 
+                className="text-base lg:text-lg py-4 data-[state=active]:bg-background data-[state=active]:shadow-lg"
+                data-testid="tab-realization"
+              >
+                <TrendingUp className="w-5 h-5 mr-2" />
+                <div className="flex flex-col items-start">
+                  <span className="font-bold">Realization</span>
+                  <span className="text-xs text-muted-foreground hidden sm:block">Track & Measure</span>
+                </div>
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Discovery Phase Demo */}
+            <TabsContent value="discovery" className="space-y-8" data-testid="demo-discovery">
+              <Card className="border-2 border-primary/20 shadow-2xl">
+                <CardHeader className="border-b bg-gradient-to-r from-primary/5 to-primary/10">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg">
+                      <Brain className="w-7 h-7 text-primary-foreground" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-2xl">AI-Powered Company Research</CardTitle>
+                      <CardDescription className="text-base mt-1">
+                        GPT-5 analyzes TechCorp Industries and generates strategic insights
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-6 space-y-6">
+                  {/* Sample Insights */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Lightbulb className="w-5 h-5 text-primary" />
+                      <h3 className="font-bold text-lg">Generated Insights (Sample)</h3>
+                    </div>
+                    
+                    <Card className="bg-muted/30 border-l-4 border-l-red-500" data-testid="demo-insight-1">
+                      <CardContent className="pt-6">
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          <Badge variant="destructive" className="text-xs">Critical Priority</Badge>
+                          <Badge variant="secondary" className="text-xs">Growth Strategy</Badge>
+                          <Badge variant="outline" className="text-xs">95% Confidence</Badge>
+                        </div>
+                        <p className="text-base font-medium mb-2">
+                          Current market share declining in core segments
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          TechCorp's flagship product line has lost 12% market share over 18 months to emerging competitors leveraging AI-driven customization. Revenue impact estimated at $45M annually.
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Badge variant="outline" className="text-xs bg-primary/5">
+                            <BarChart3 className="w-3 h-3 mr-1" />
+                            Revenue Growth Rate
+                          </Badge>
+                          <Badge variant="outline" className="text-xs bg-primary/5">
+                            <Target className="w-3 h-3 mr-1" />
+                            Market Share %
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-muted/30 border-l-4 border-l-orange-500" data-testid="demo-insight-2">
+                      <CardContent className="pt-6">
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          <Badge className="bg-orange-500 text-white text-xs">High Priority</Badge>
+                          <Badge variant="secondary" className="text-xs">Operating Model</Badge>
+                          <Badge variant="outline" className="text-xs">88% Confidence</Badge>
+                        </div>
+                        <p className="text-base font-medium mb-2">
+                          Operational inefficiencies in supply chain management
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Manufacturing cycle time 40% higher than industry benchmark due to legacy systems and siloed data. Opportunity to reduce costs by $18M through digital transformation.
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Badge variant="outline" className="text-xs bg-primary/5">
+                            <Activity className="w-3 h-3 mr-1" />
+                            Cycle Time Reduction
+                          </Badge>
+                          <Badge variant="outline" className="text-xs bg-primary/5">
+                            <TrendingUp className="w-3 h-3 mr-1" />
+                            Operating Margin %
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-muted/30 border-l-4 border-l-blue-500" data-testid="demo-insight-3">
+                      <CardContent className="pt-6">
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          <Badge className="bg-blue-500 text-white text-xs">Supporting</Badge>
+                          <Badge variant="secondary" className="text-xs">Talent & Culture</Badge>
+                          <Badge variant="outline" className="text-xs">82% Confidence</Badge>
+                        </div>
+                        <p className="text-base font-medium mb-2">
+                          High turnover in critical technical roles
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Employee retention in engineering and data science roles 25% below industry average. Exit interviews cite limited career development and outdated tech stack.
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Badge variant="outline" className="text-xs bg-primary/5">
+                            <Users className="w-3 h-3 mr-1" />
+                            Employee Retention Rate
+                          </Badge>
+                          <Badge variant="outline" className="text-xs bg-primary/5">
+                            <Award className="w-3 h-3 mr-1" />
+                            Employee Engagement Score
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <div className="bg-primary/5 border-l-4 border-l-primary p-4 rounded-r-lg">
+                    <div className="flex items-start gap-3">
+                      <Sparkles className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold mb-1">AI Capabilities</p>
+                        <p className="text-sm text-muted-foreground">
+                          Insights automatically classified into 9 Korn Ferry capabilities, tagged with solution areas, 
+                          and linked to relevant KPIs. Consultants can ask follow-up questions for deeper investigation.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Alignment Phase Demo */}
+            <TabsContent value="alignment" className="space-y-8" data-testid="demo-alignment">
+              <Card className="border-2 border-primary/20 shadow-2xl">
+                <CardHeader className="border-b bg-gradient-to-r from-primary/5 to-primary/10">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg">
+                      <Target className="w-7 h-7 text-primary-foreground" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-2xl">Jobs & Value Building</CardTitle>
+                      <CardDescription className="text-base mt-1">
+                        Transform insights into prioritized jobs with measurable KPI targets
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-6 space-y-6">
+                  {/* Priority Jobs */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <Target className="w-5 h-5 text-primary" />
+                        <h3 className="font-bold text-lg">Top 3 Priority Jobs</h3>
+                      </div>
+                      <Badge variant="secondary" className="text-xs">
+                        3 Jobs Selected
+                      </Badge>
+                    </div>
+
+                    {/* Job 1 */}
+                    <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-2 border-primary/30" data-testid="demo-job-1">
+                      <CardContent className="pt-6">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge className="bg-primary text-primary-foreground">Priority #1</Badge>
+                              <Badge variant="outline">Growth Strategy</Badge>
+                            </div>
+                            <h4 className="text-lg font-bold mb-2">Accelerate Revenue Growth Through Market Expansion</h4>
+                            <p className="text-sm text-muted-foreground mb-4">
+                              Based on 3 critical insights about market share decline and competitive positioning
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {/* KPIs */}
+                        <div className="space-y-3 bg-background/60 rounded-lg p-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <BarChart3 className="w-4 h-4 text-primary" />
+                            <span className="font-semibold text-sm">Key Performance Indicators</span>
+                          </div>
+                          
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex-1">
+                                <p className="text-sm font-medium mb-1">Revenue Growth Rate</p>
+                                <div className="flex items-center gap-4">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-muted-foreground">Baseline:</span>
+                                    <Badge variant="outline" className="text-xs bg-orange-500/10">3.2%</Badge>
+                                  </div>
+                                  <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-muted-foreground">Target:</span>
+                                    <Badge variant="outline" className="text-xs bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">12.5%</Badge>
+                                  </div>
+                                  <Badge className="bg-emerald-500 text-white text-xs">↑ 290%</Badge>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex-1">
+                                <p className="text-sm font-medium mb-1">Market Share %</p>
+                                <div className="flex items-center gap-4">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-muted-foreground">Baseline:</span>
+                                    <Badge variant="outline" className="text-xs bg-orange-500/10">18.5%</Badge>
+                                  </div>
+                                  <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-muted-foreground">Target:</span>
+                                    <Badge variant="outline" className="text-xs bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">25.0%</Badge>
+                                  </div>
+                                  <Badge className="bg-emerald-500 text-white text-xs">↑ 35%</Badge>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Job 2 */}
+                    <Card className="bg-muted/30 border-2" data-testid="demo-job-2">
+                      <CardContent className="pt-6">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge variant="secondary">Priority #2</Badge>
+                              <Badge variant="outline">Operating Model</Badge>
+                            </div>
+                            <h4 className="text-lg font-bold mb-2">Optimize Supply Chain Operations</h4>
+                            <p className="text-sm text-muted-foreground mb-4">
+                              Based on 2 high-priority insights about operational inefficiencies
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-background/60 rounded-lg p-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <BarChart3 className="w-4 h-4 text-primary" />
+                            <span className="font-semibold text-sm">2 Primary KPIs • 1 Supporting</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Cycle Time Reduction, Operating Margin %, Cost per Unit
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Job 3 */}
+                    <Card className="bg-muted/30 border-2" data-testid="demo-job-3">
+                      <CardContent className="pt-6">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge variant="secondary">Priority #3</Badge>
+                              <Badge variant="outline">Talent & Culture</Badge>
+                            </div>
+                            <h4 className="text-lg font-bold mb-2">Enhance Technical Talent Retention</h4>
+                            <p className="text-sm text-muted-foreground mb-4">
+                              Based on supporting insights about employee turnover
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-background/60 rounded-lg p-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <BarChart3 className="w-4 h-4 text-primary" />
+                            <span className="font-semibold text-sm">2 Primary KPIs</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Employee Retention Rate, Employee Engagement Score
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <div className="bg-primary/5 border-l-4 border-l-primary p-4 rounded-r-lg">
+                    <div className="flex items-start gap-3">
+                      <Sparkles className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold mb-1">AI-Powered Benchmarks</p>
+                        <p className="text-sm text-muted-foreground">
+                          Consultants can toggle between client data and industry benchmarks. AI generates baseline values 
+                          with confidence scores when client data is unavailable, accelerating the alignment process.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Realization Phase Demo */}
+            <TabsContent value="realization" className="space-y-8" data-testid="demo-realization">
+              <Card className="border-2 border-primary/20 shadow-2xl">
+                <CardHeader className="border-b bg-gradient-to-r from-primary/5 to-primary/10">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg">
+                      <TrendingUp className="w-7 h-7 text-primary-foreground" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-2xl">Progress Tracking & Business Reviews</CardTitle>
+                      <CardDescription className="text-base mt-1">
+                        Monitor KPI progress and manage ongoing client engagement
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-6 space-y-6">
+                  {/* KPI Progress Tracking */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <LineChart className="w-5 h-5 text-primary" />
+                      <h3 className="font-bold text-lg">KPI Progress (6 Months)</h3>
+                    </div>
+
+                    <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/20 dark:to-emerald-900/10 border-2 border-emerald-500/30" data-testid="demo-kpi-progress">
+                      <CardContent className="pt-6">
+                        <div className="space-y-4">
+                          <div>
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-bold">Revenue Growth Rate</h4>
+                              <Badge className="bg-emerald-500 text-white">On Track</Badge>
+                            </div>
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-3">
+                                <span className="text-sm text-muted-foreground w-20">Baseline</span>
+                                <div className="flex-1 bg-orange-500/20 h-2 rounded-full overflow-hidden">
+                                  <div className="bg-orange-500 h-full" style={{width: '25.6%'}} />
+                                </div>
+                                <Badge variant="outline" className="text-xs bg-orange-500/10">3.2%</Badge>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-sm font-medium w-20">Actual (Q2)</span>
+                                <div className="flex-1 bg-primary/20 h-2 rounded-full overflow-hidden">
+                                  <div className="bg-primary h-full" style={{width: '56%'}} />
+                                </div>
+                                <Badge variant="outline" className="text-xs bg-primary/10">7.0%</Badge>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-sm text-muted-foreground w-20">Target</span>
+                                <div className="flex-1 bg-emerald-500/20 h-2 rounded-full overflow-hidden">
+                                  <div className="bg-emerald-500 h-full" style={{width: '100%'}} />
+                                </div>
+                                <Badge variant="outline" className="text-xs bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">12.5%</Badge>
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              ✓ Progress: 41% of gap closed • Trajectory: Ahead of schedule
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-muted/30 border-2" data-testid="demo-kpi-progress-2">
+                      <CardContent className="pt-6">
+                        <div className="space-y-4">
+                          <div>
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-bold">Market Share %</h4>
+                              <Badge variant="secondary">In Progress</Badge>
+                            </div>
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-3">
+                                <span className="text-sm text-muted-foreground w-20">Baseline</span>
+                                <div className="flex-1 bg-orange-500/20 h-2 rounded-full overflow-hidden">
+                                  <div className="bg-orange-500 h-full" style={{width: '74%'}} />
+                                </div>
+                                <Badge variant="outline" className="text-xs bg-orange-500/10">18.5%</Badge>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-sm font-medium w-20">Actual (Q2)</span>
+                                <div className="flex-1 bg-primary/20 h-2 rounded-full overflow-hidden">
+                                  <div className="bg-primary h-full" style={{width: '80%'}} />
+                                </div>
+                                <Badge variant="outline" className="text-xs bg-primary/10">20.0%</Badge>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-sm text-muted-foreground w-20">Target</span>
+                                <div className="flex-1 bg-emerald-500/20 h-2 rounded-full overflow-hidden">
+                                  <div className="bg-emerald-500 h-full" style={{width: '100%'}} />
+                                </div>
+                                <Badge variant="outline" className="text-xs bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">25.0%</Badge>
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              ✓ Progress: 23% of gap closed • Trajectory: On schedule
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Business Reviews */}
+                  <div className="space-y-4 pt-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Calendar className="w-5 h-5 text-primary" />
+                      <h3 className="font-bold text-lg">Business Review Timeline</h3>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Card className="bg-muted/30 border-l-4 border-l-emerald-500" data-testid="demo-review-1">
+                        <CardContent className="pt-4">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Badge className="bg-emerald-500 text-white text-xs">Completed</Badge>
+                                <Badge variant="outline" className="text-xs">Quarterly</Badge>
+                                <span className="text-xs text-muted-foreground">Apr 15, 2025</span>
+                              </div>
+                              <p className="font-semibold mb-1">Q1 2025 Business Review</p>
+                              <p className="text-sm text-muted-foreground">
+                                Client Sentiment: Positive • 3 Action Items • 2 Key Decisions
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="bg-primary/5 border-l-4 border-l-primary" data-testid="demo-review-2">
+                        <CardContent className="pt-4">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Badge variant="secondary" className="text-xs">Scheduled</Badge>
+                                <Badge variant="outline" className="text-xs">Quarterly</Badge>
+                                <span className="text-xs text-muted-foreground">Jul 22, 2025</span>
+                              </div>
+                              <p className="font-semibold mb-1">Q2 2025 Business Review</p>
+                              <p className="text-sm text-muted-foreground">
+                                Review KPI progress and alignment on growth initiatives
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+
+                  <div className="bg-primary/5 border-l-4 border-l-primary p-4 rounded-r-lg">
+                    <div className="flex items-start gap-3">
+                      <Sparkles className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold mb-1">Continuous Engagement</p>
+                        <p className="text-sm text-muted-foreground">
+                          Track actual KPI values over time, manage business reviews with sentiment tracking, 
+                          and link success stories to demonstrate proven outcomes to clients.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+
+          {/* CTA */}
+          <div className="text-center mt-16">
+            <Link href="/projects">
+              <Button 
+                size="lg" 
+                className="px-12 py-7 text-lg font-semibold shadow-2xl shadow-primary/30 hover:shadow-primary/40 hover:scale-105 transition-all duration-300"
+                data-testid="button-demo-cta"
+              >
+                Try It Yourself
+                <ArrowRight className="ml-2 w-5 h-5" />
+              </Button>
+            </Link>
+            <p className="text-sm text-muted-foreground mt-4">
+              Start with a real engagement in under 2 minutes
+            </p>
           </div>
         </div>
       </section>
