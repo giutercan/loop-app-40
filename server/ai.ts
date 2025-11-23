@@ -797,3 +797,77 @@ Generate the agenda in this JSON format:
     throw new Error("Failed to generate business review agenda with AI");
   }
 }
+
+// Schema for industry benchmark response
+const industryBenchmarkSchema = z.object({
+  benchmarkValue: z.string(),
+  rationale: z.string(),
+  source: z.string(),
+  confidence: z.enum(["high", "medium", "low"]),
+});
+
+export async function generateIndustryBenchmark(
+  kpiName: string,
+  unit: string,
+  industry: string,
+  companyName: string
+): Promise<z.infer<typeof industryBenchmarkSchema>> {
+  const prompt = `You are a Korn Ferry industry expert providing realistic benchmark data for management consulting engagements.
+
+CONTEXT:
+- Client Company: ${companyName}
+- Industry: ${industry}
+- KPI: ${kpiName}
+- Unit: ${unit}
+
+TASK: Provide a realistic industry benchmark baseline value for this KPI.
+
+GUIDELINES:
+1. Use actual industry data ranges when possible
+2. Be conservative and realistic - avoid aspirational targets
+3. Consider the industry sector and typical company performance
+4. Provide a specific numeric value (not a range)
+5. Include brief rationale explaining the benchmark
+6. Cite credible sources (industry reports, research firms, etc.)
+
+Return JSON format:
+{
+  "benchmarkValue": "numeric value only (e.g., '45' or '12.5')",
+  "rationale": "Brief explanation of why this is a realistic baseline for this industry/KPI",
+  "source": "Credible source (e.g., 'Industry average per Gartner 2024', 'McKinsey benchmark data')",
+  "confidence": "high|medium|low"
+}`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-5",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 500,
+    });
+
+    const content = response.choices[0]?.message?.content || "{}";
+    
+    let parsedContent;
+    try {
+      parsedContent = JSON.parse(content);
+    } catch (parseError) {
+      console.error("Failed to parse AI benchmark response:", parseError);
+      throw new Error("AI returned invalid JSON for industry benchmark");
+    }
+    
+    const validationResult = industryBenchmarkSchema.safeParse(parsedContent);
+    if (!validationResult.success) {
+      console.error("AI benchmark validation failed:", validationResult.error);
+      throw new Error(`AI benchmark validation failed: ${validationResult.error.message}`);
+    }
+    
+    return validationResult.data;
+  } catch (error) {
+    console.error("Error generating industry benchmark:", error);
+    if (error instanceof Error && error.message.includes("AI")) {
+      throw error;
+    }
+    throw new Error("Failed to generate industry benchmark with AI");
+  }
+}

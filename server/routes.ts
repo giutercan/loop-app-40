@@ -1908,6 +1908,45 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // Generate AI industry benchmark for a KPI
+  app.post("/api/job-theme-kpis/:kpiId/generate-benchmark", async (req, res) => {
+    try {
+      const kpiId = parseInt(req.params.kpiId);
+      
+      // Get the KPI details
+      const kpis = await storage.getJobThemeKPIs(kpiId);
+      if (!kpis || kpis.length === 0) {
+        return res.status(404).json({ error: "KPI not found" });
+      }
+      
+      const kpiData = kpis[0];
+      
+      // Get project details for industry context
+      const jobTheme = await storage.getJobTheme(kpiData.jobThemeId);
+      if (!jobTheme) {
+        return res.status(404).json({ error: "Job theme not found" });
+      }
+      
+      const project = await storage.getProject(jobTheme.projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Generate AI benchmark
+      const benchmark = await ai.generateIndustryBenchmark(
+        kpiData.kpiName,
+        kpiData.unit,
+        project.sector || "General Business",
+        project.companyName
+      );
+      
+      res.json(benchmark);
+    } catch (error: any) {
+      console.error("Error generating AI benchmark:", error);
+      res.status(500).json({ error: error.message || "Failed to generate benchmark" });
+    }
+  });
+
   // Finalize discovery phase and transfer to alignment
   app.post("/api/projects/:projectId/finalize-discovery", async (req, res) => {
     try {
