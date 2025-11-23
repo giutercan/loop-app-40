@@ -13,7 +13,7 @@ import {
   insertCompanyDataPointSchema,
   insertHeadlineSchema,
   insertDiscoveryNotesSchema,
-  insertValueHypothesisSchema,
+  insertValueCaseSchema,
   insertStrategicChallengeSchema,
   insertBaselineSchema,
   insertKpiSchema,
@@ -1170,57 +1170,57 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  // Value Hypotheses
-  app.get("/api/projects/:projectId/value-hypotheses", async (req, res) => {
+  // Value Cases
+  app.get("/api/projects/:projectId/value-cases", async (req, res) => {
     try {
-      const hypotheses = await storage.getValueHypotheses(parseInt(req.params.projectId));
-      res.json(hypotheses);
+      const valueCases = await storage.getValueCases(parseInt(req.params.projectId));
+      res.json(valueCases);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  app.get("/api/value-hypotheses/:id", async (req, res) => {
+  app.get("/api/value-cases/:id", async (req, res) => {
     try {
-      const hypothesis = await storage.getValueHypothesis(parseInt(req.params.id));
-      if (!hypothesis) {
-        return res.status(404).json({ error: "Value hypothesis not found" });
+      const valueCase = await storage.getValueCase(parseInt(req.params.id));
+      if (!valueCase) {
+        return res.status(404).json({ error: "Value case not found" });
       }
-      res.json(hypothesis);
+      res.json(valueCase);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  app.post("/api/projects/:projectId/value-hypotheses", async (req, res) => {
+  app.post("/api/projects/:projectId/value-cases", async (req, res) => {
     try {
-      const validated = insertValueHypothesisSchema.parse({
+      const validated = insertValueCaseSchema.parse({
         ...req.body,
         projectId: parseInt(req.params.projectId)
       });
-      const hypothesis = await storage.createValueHypothesis(validated);
-      res.json(hypothesis);
+      const valueCase = await storage.createValueCase(validated);
+      res.json(valueCase);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
   });
 
-  app.patch("/api/value-hypotheses/:id", async (req, res) => {
+  app.patch("/api/value-cases/:id", async (req, res) => {
     try {
-      const validated = insertValueHypothesisSchema.partial().parse(req.body);
-      const hypothesis = await storage.updateValueHypothesis(parseInt(req.params.id), validated);
-      if (!hypothesis) {
-        return res.status(404).json({ error: "Value hypothesis not found" });
+      const validated = insertValueCaseSchema.partial().parse(req.body);
+      const valueCase = await storage.updateValueCase(parseInt(req.params.id), validated);
+      if (!valueCase) {
+        return res.status(404).json({ error: "Value case not found" });
       }
-      res.json(hypothesis);
+      res.json(valueCase);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
   });
 
-  app.delete("/api/value-hypotheses/:id", async (req, res) => {
+  app.delete("/api/value-cases/:id", async (req, res) => {
     try {
-      await storage.deleteValueHypothesis(parseInt(req.params.id));
+      await storage.deleteValueCase(parseInt(req.params.id));
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
