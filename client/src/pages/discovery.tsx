@@ -26,7 +26,7 @@ import ValueCaseBuilder from "@/components/ValueCaseBuilder";
 import ProjectSelector from "@/components/ProjectSelector";
 import StatusBadge from "@/components/StatusBadge";
 import ProjectPhaseNav from "@/components/project-phase-nav";
-import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, Activity, Award, Building, Calendar, AlertCircle, ChevronDown } from "lucide-react";
+import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, TrendingUp, Activity, Award, Building, Calendar, AlertCircle, ChevronDown } from "lucide-react";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { Link, useLocation, useRoute } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -1711,7 +1711,7 @@ export default function Discovery() {
                 }
                 
                 return (
-                  <CardContent className="space-y-6">
+                  <CardContent className="space-y-4">
                     {[
                         'Success Profiles & Role Design',
                         'Standardised Assessments & Assessments at Scale',
@@ -1732,50 +1732,57 @@ export default function Discovery() {
                         const capabilityLabel = capabilityKey || 'Not Identified';
 
                         return (
-                          <div key={capabilityKey || 'not-identified'} className="space-y-3">
-                            <div className="flex items-center gap-2 pb-2 border-b">
-                              <Briefcase className="w-4 h-4 text-primary" />
-                              <h3 className="font-semibold text-sm">{capabilityLabel}</h3>
-                              <Badge variant="secondary" className="text-xs">{capabilityPoints.length}</Badge>
-                            </div>
-                            <div className="space-y-2 pl-6">
-                              {capabilityPoints.map((point, idx) => {
-                                const isEnriched = (point.provenance as any)?.type === 'notes_enrichment';
-                                
-                                return (
-                                  <div 
-                                    key={point.id} 
-                                    className={`rounded-md p-3 space-y-1.5 ${
-                                      isEnriched 
-                                        ? 'bg-primary/10 border-2 border-primary/30' 
-                                        : 'bg-muted/30'
-                                    }`}
-                                    data-testid={`selected-point-${point.id}`}
-                                  >
-                                    <div className="flex items-start justify-between gap-2">
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        <p className="text-xs font-medium text-muted-foreground">{point.label}</p>
-                                        {isEnriched && (
-                                          <Badge className="bg-primary text-primary-foreground text-xs px-2 py-0">
-                                            <Sparkles className="w-3 h-3 mr-1" />
-                                            New from enrichment
-                                          </Badge>
-                                        )}
+                          <Collapsible key={capabilityKey || 'not-identified'} defaultOpen={true}>
+                            <CollapsibleTrigger className="w-full p-4 rounded-lg border bg-muted/30 hover-elevate group">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <Briefcase className="w-4 h-4 text-primary" />
+                                  <h3 className="font-semibold text-sm">{capabilityLabel}</h3>
+                                  <Badge variant="secondary" className="text-xs">{capabilityPoints.length}</Badge>
+                                </div>
+                                <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                              </div>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <div className="space-y-2 mt-2">
+                                {capabilityPoints.map((point, idx) => {
+                                  const isEnriched = (point.provenance as any)?.type === 'notes_enrichment';
+                                  
+                                  return (
+                                    <div 
+                                      key={point.id} 
+                                      className={`rounded-md p-3 space-y-1.5 ${
+                                        isEnriched 
+                                          ? 'bg-primary/10 border-2 border-primary/30' 
+                                          : 'bg-muted/30'
+                                      }`}
+                                      data-testid={`selected-point-${point.id}`}
+                                    >
+                                      <div className="flex items-start justify-between gap-2">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <p className="text-xs font-medium text-muted-foreground">{point.label}</p>
+                                          {isEnriched && (
+                                            <Badge className="bg-primary text-primary-foreground text-xs px-2 py-0">
+                                              <Sparkles className="w-3 h-3 mr-1" />
+                                              New from enrichment
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        <ConfidenceBadge level={point.confidence as "high" | "medium" | "low"} />
                                       </div>
-                                      <ConfidenceBadge level={point.confidence as "high" | "medium" | "low"} />
+                                      <p className="text-sm leading-relaxed">{point.value}</p>
+                                      {point.source && (
+                                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                          <ExternalLink className="w-3 h-3" />
+                                          {point.source}
+                                        </p>
+                                      )}
                                     </div>
-                                    <p className="text-sm leading-relaxed">{point.value}</p>
-                                    {point.source && (
-                                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                        <ExternalLink className="w-3 h-3" />
-                                        {point.source}
-                                      </p>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
+                                  );
+                                })}
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
                         );
                       })}
                   </CardContent>
@@ -2013,166 +2020,199 @@ export default function Discovery() {
                 </Card>
               )}
 
-              {/* 360 Discovery Summary - Consolidated View */}
+              {/* Key Discovery Insights - Actionable Summary */}
               {(() => {
                 const researchInsights = dataPoints.filter(dp => !(dp.provenance as any)?.type);
                 const enrichedInsights = dataPoints.filter(dp => (dp.provenance as any)?.type === 'notes_enrichment');
-                const totalQuestions = discoveryQuestions.length;
                 
-                // Count unique questions answered (deduped across all respondent types)
-                const answeredQuestions = questionResponses.length > 0 
-                  ? new Set(questionResponses.map(r => r.questionId)).size 
-                  : 0;
-                  
-                // Count responses by respondent type
-                const consultantResponses = questionResponses.filter(r => r.respondentType === 'consultant').length;
-                const clientResponses = questionResponses.filter(r => r.respondentType === 'client').length;
+                // Get top priority insights for client discussions
+                const topResearch = researchInsights
+                  .filter(dp => dp.priorityScore && dp.priorityScore >= 8)
+                  .sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0))
+                  .slice(0, 3);
                 
-                const hasMultipleSources = (researchInsights.length > 0 ? 1 : 0) +
-                                          (enrichedInsights.length > 0 ? 1 : 0) +
-                                          (answeredQuestions > 0 ? 1 : 0) >= 2;
-
-                if (!hasMultipleSources) return null;
-
-                // Aggregate by capability
-                const capabilitySummary = [
-                  'Success Profiles & Role Design',
-                  'Standardised Assessments & Assessments at Scale',
-                  'Leadership & Development Journeys',
-                  'AI-Ready Leader (within L&D)',
-                  'Organisation Strategy & Transformation',
-                  'Total Rewards Optimisation (TRO)',
-                  'Sales & Service (KF Sell)',
-                  'People Analytics / KFI Analytics',
-                  'Value Management / Client Success & Talent Suite',
-                ].map(capability => {
-                  const research = researchInsights.filter(dp => dp.relevantCapability === capability).length;
-                  const enriched = enrichedInsights.filter(dp => dp.relevantCapability === capability).length;
-                  const questions = discoveryQuestions.filter(q => q.capabilityName === capability).length;
-                  const answered = discoveryQuestions
-                    .filter(q => q.capabilityName === capability)
-                    .filter(q => questionResponses.some(r => r.questionId === q.id)).length;
-                  
-                  const total = research + enriched;
-                  if (total === 0 && questions === 0) return null;
-
-                  return { capability, research, enriched, total, questions, answered };
-                }).filter(Boolean);
+                const topEnriched = enrichedInsights
+                  .filter(dp => dp.confidence === 'high')
+                  .slice(0, 3);
+                
+                // Get answered questions with responses
+                const answeredQuestionsWithResponses = discoveryQuestions
+                  .filter(q => questionResponses.some(r => r.questionId === q.id))
+                  .slice(0, 3)
+                  .map(q => ({
+                    question: q,
+                    responses: questionResponses.filter(r => r.questionId === q.id)
+                  }));
+                
+                const hasInsights = topResearch.length > 0 || topEnriched.length > 0 || answeredQuestionsWithResponses.length > 0;
+                if (!hasInsights) return null;
 
                 return (
                   <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-background">
                     <CardHeader>
                       <div className="flex items-center gap-3">
                         <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground font-bold text-lg shrink-0">
-                          360°
+                          ✓
                         </div>
                         <div className="flex-1">
-                          <CardTitle className="text-xl">Discovery Insights Summary</CardTitle>
+                          <CardTitle className="text-xl">Key Discovery Insights</CardTitle>
                           <CardDescription>
-                            Comprehensive view combining AI research, notes enrichment, and questionnaire responses
+                            Top findings from your research - ready to discuss with client
                           </CardDescription>
                         </div>
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                      {/* Overall Stats */}
-                      <div className="grid grid-cols-3 gap-4">
-                        <Card className="bg-card/50">
-                          <CardHeader className="pb-3">
-                            <div className="flex items-center justify-between">
-                              <CardDescription className="text-xs">Research Insights</CardDescription>
-                              <Sparkles className="w-4 h-4 text-primary" />
-                            </div>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="text-2xl font-bold">{researchInsights.length}</div>
-                            <p className="text-xs text-muted-foreground mt-1">AI-generated findings</p>
-                          </CardContent>
-                        </Card>
-                        <Card className="bg-card/50">
-                          <CardHeader className="pb-3">
-                            <div className="flex items-center justify-between">
-                              <CardDescription className="text-xs">Enriched Insights</CardDescription>
-                              <FileText className="w-4 h-4 text-primary" />
-                            </div>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="text-2xl font-bold">{enrichedInsights.length}</div>
-                            <p className="text-xs text-muted-foreground mt-1">From notes & files</p>
-                          </CardContent>
-                        </Card>
-                        <Card className="bg-card/50">
-                          <CardHeader className="pb-3">
-                            <div className="flex items-center justify-between">
-                              <CardDescription className="text-xs">Questions Answered</CardDescription>
-                              <Users className="w-4 h-4 text-primary" />
-                            </div>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="text-2xl font-bold">{answeredQuestions}/{totalQuestions}</div>
-                            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                              {consultantResponses > 0 && (
-                                <span className="flex items-center gap-1">
-                                  <span className="w-2 h-2 rounded-full bg-green-600"></span>
-                                  {consultantResponses} consultant
-                                </span>
-                              )}
-                              {clientResponses > 0 && (
-                                <span className="flex items-center gap-1">
-                                  <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-                                  {clientResponses} client
-                                </span>
-                              )}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
+                      {/* Top Research Insights */}
+                      {topResearch.length > 0 && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 pb-2 border-b">
+                            <Sparkles className="w-4 h-4 text-primary" />
+                            <h3 className="font-semibold text-sm">High-Priority Research Findings</h3>
+                          </div>
+                          <div className="space-y-2">
+                            {topResearch.map(insight => (
+                              <div key={insight.id} className="bg-card rounded-md p-3 space-y-2">
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className="text-xs font-medium text-muted-foreground">{insight.label}</p>
+                                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                                    {insight.priorityScore && (
+                                      <Badge variant="default" className="text-xs">
+                                        Priority: {insight.priorityScore}/10
+                                      </Badge>
+                                    )}
+                                    {insight.relevantCapability && (
+                                      <Badge variant="outline" className="text-xs">
+                                        {insight.relevantCapability}
+                                      </Badge>
+                                    )}
+                                    <ConfidenceBadge level={insight.confidence as "high" | "medium" | "low"} />
+                                  </div>
+                                </div>
+                                <p className="text-sm leading-relaxed">{insight.value}</p>
+                                {(insight.solutionArea || (insight.relatedKPIs && insight.relatedKPIs.length > 0)) && (
+                                  <div className="flex items-start gap-3 text-xs text-muted-foreground border-t pt-2">
+                                    {insight.solutionArea && (
+                                      <span className="flex items-center gap-1">
+                                        <Target className="w-3 h-3" />
+                                        {insight.solutionArea}
+                                      </span>
+                                    )}
+                                    {insight.relatedKPIs && insight.relatedKPIs.length > 0 && (
+                                      <span className="flex items-center gap-1">
+                                        <TrendingUp className="w-3 h-3" />
+                                        {insight.relatedKPIs.slice(0, 2).join(', ')}
+                                        {insight.relatedKPIs.length > 2 && ` +${insight.relatedKPIs.length - 2} more`}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
-                      {/* Capability Breakdown */}
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2 pb-2 border-b">
-                          <Briefcase className="w-4 h-4 text-primary" />
-                          <h3 className="font-semibold text-sm">Insights by Capability</h3>
-                        </div>
-                        <div className="space-y-2">
-                          {capabilitySummary.map((item: any) => (
-                            <div key={item.capability} className="bg-muted/30 rounded-md p-3">
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-medium">{item.capability}</span>
-                                <Badge variant="secondary" className="text-xs">
-                                  {item.total} insight{item.total !== 1 ? 's' : ''}
-                                </Badge>
+                      {/* Top Enriched Insights */}
+                      {topEnriched.length > 0 && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 pb-2 border-b">
+                            <FileText className="w-4 h-4 text-primary" />
+                            <h3 className="font-semibold text-sm">High-Confidence Notes Insights</h3>
+                          </div>
+                          <div className="space-y-2">
+                            {topEnriched.map(insight => (
+                              <div key={insight.id} className="bg-primary/10 border-2 border-primary/30 rounded-md p-3 space-y-2">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="text-xs font-medium text-muted-foreground">{insight.label}</p>
+                                    <Badge className="bg-primary text-primary-foreground text-xs px-2 py-0">
+                                      <Sparkles className="w-3 h-3 mr-1" />
+                                      From notes
+                                    </Badge>
+                                  </div>
+                                  {insight.relevantCapability && (
+                                    <Badge variant="outline" className="text-xs shrink-0">
+                                      {insight.relevantCapability}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-sm leading-relaxed">{insight.value}</p>
+                                {(insight.solutionArea || (insight.relatedKPIs && insight.relatedKPIs.length > 0)) && (
+                                  <div className="flex items-start gap-3 text-xs text-muted-foreground border-t border-primary/20 pt-2">
+                                    {insight.solutionArea && (
+                                      <span className="flex items-center gap-1">
+                                        <Target className="w-3 h-3" />
+                                        {insight.solutionArea}
+                                      </span>
+                                    )}
+                                    {insight.relatedKPIs && insight.relatedKPIs.length > 0 && (
+                                      <span className="flex items-center gap-1">
+                                        <TrendingUp className="w-3 h-3" />
+                                        {insight.relatedKPIs.slice(0, 2).join(', ')}
+                                        {insight.relatedKPIs.length > 2 && ` +${insight.relatedKPIs.length - 2} more`}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                {item.research > 0 && (
-                                  <span className="flex items-center gap-1">
-                                    <Sparkles className="w-3 h-3" />
-                                    {item.research} research
-                                  </span>
-                                )}
-                                {item.enriched > 0 && (
-                                  <span className="flex items-center gap-1">
-                                    <FileText className="w-3 h-3" />
-                                    {item.enriched} enriched
-                                  </span>
-                                )}
-                                {item.questions > 0 && (
-                                  <span className="flex items-center gap-1">
-                                    <MessageSquarePlus className="w-3 h-3" />
-                                    {item.answered}/{item.questions} answered
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                      )}
+
+                      {/* Key Questionnaire Responses */}
+                      {answeredQuestionsWithResponses.length > 0 && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 pb-2 border-b">
+                            <Users className="w-4 h-4 text-primary" />
+                            <h3 className="font-semibold text-sm">Key Questionnaire Insights</h3>
+                          </div>
+                          <div className="space-y-3">
+                            {answeredQuestionsWithResponses.map(({ question, responses }) => (
+                              <div key={question.id} className="bg-card rounded-md p-3 space-y-3">
+                                <div className="space-y-1">
+                                  <p className="text-sm font-medium">{question.questionText}</p>
+                                  {question.capabilityName && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {question.capabilityName}
+                                    </Badge>
+                                  )}
+                                </div>
+                                {responses.map((response, idx) => {
+                                  const responseDate = response.createdAt ? new Date(response.createdAt) : null;
+                                  return (
+                                    <div key={idx} className="pl-3 border-l-2 border-primary/30 space-y-1">
+                                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                                        <Badge 
+                                          variant={response.respondentType === 'client' ? 'default' : 'secondary'} 
+                                          className="text-xs"
+                                        >
+                                          {response.respondentType === 'client' 
+                                            ? (response.clientName ? `Client: ${response.clientName}` : 'Client') 
+                                            : 'Consultant'}
+                                        </Badge>
+                                        {responseDate && (
+                                          <span className="text-xs text-muted-foreground">
+                                            {responseDate.toLocaleDateString()}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <p className="text-sm text-muted-foreground italic">"{response.response}"</p>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Next Steps */}
                       <div className="bg-primary/10 border border-primary/30 rounded-md p-4 space-y-2">
-                        <p className="text-sm font-medium text-primary">✓ Discovery Complete</p>
+                        <p className="text-sm font-medium text-primary">✓ Ready for Client Discussion</p>
                         <p className="text-sm text-muted-foreground">
-                          You've gathered comprehensive insights from multiple sources. Ready to move to the Alignment phase to map these findings to Korn Ferry Jobs and build value hypotheses.
+                          Use these key insights to discuss value opportunities with your client. Move to Jobs & Priorities to select top 3 focus areas.
                         </p>
                       </div>
                     </CardContent>
