@@ -1,6 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ExecutivePulse from "@/components/ExecutivePulse";
+import KPITraction from "@/components/KPITraction";
+import MomentumTimeline from "@/components/MomentumTimeline";
 import KPIProgressTracker from "@/components/KPIProgressTracker";
 import FinancialAppendix from "@/components/FinancialAppendix";
 import StatusBadge from "@/components/StatusBadge";
@@ -104,14 +107,21 @@ export default function Realisation() {
 
       <main className="container mx-auto max-w-7xl px-4 lg:px-8 py-8">
         <Tabs defaultValue="dashboard" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 max-w-3xl" data-testid="tabs-realisation">
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-5 max-w-4xl" data-testid="tabs-realisation">
+            <TabsTrigger value="dashboard">Executive Pulse</TabsTrigger>
+            <TabsTrigger value="kpis">KPI Tracking</TabsTrigger>
             <TabsTrigger value="financial">Financial</TabsTrigger>
             <TabsTrigger value="attribution">Attribution</TabsTrigger>
             <TabsTrigger value="report">Final Report</TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
+            <ExecutivePulse projectId={projectId} />
+            <KPITraction projectId={projectId} />
+            <MomentumTimeline projectId={projectId} />
+          </TabsContent>
+
+          <TabsContent value="kpis" className="space-y-6">
             <KPIProgressTracker projectId={projectId} />
           </TabsContent>
 
