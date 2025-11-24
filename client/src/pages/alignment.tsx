@@ -24,7 +24,7 @@ import ProjectPhaseNav from "@/components/project-phase-nav";
 import { ShareAlignmentDialog } from "@/components/ShareAlignmentDialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 
 type JobWithKPIs = {
   id: number;
@@ -47,6 +47,7 @@ export default function AlignmentPage() {
   const [, params] = useRoute("/projects/:id/alignment");
   const projectId = parseInt(params?.id || "0");
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   
   const [isCreationDialogOpen, setIsCreationDialogOpen] = useState(false);
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
@@ -113,8 +114,8 @@ export default function AlignmentPage() {
         title: "Value Realization Started",
         description: "You can now track KPI progress and measure value delivered.",
       });
-      // Navigate to realization page
-      window.location.href = `/projects/${projectId}/realisation`;
+      // Navigate to realization page using wouter
+      setLocation(`/projects/${projectId}/realisation`);
     },
     onError: (error: any) => {
       toast({
