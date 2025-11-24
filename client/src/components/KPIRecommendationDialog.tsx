@@ -3,8 +3,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sparkles, TrendingUp, Target, Award, Check } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Sparkles, TrendingUp, Target, Award, Check, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { JobThemeKPI } from "@shared/schema";
@@ -97,51 +97,67 @@ export default function KPIRecommendationDialog({ jobThemeId, jobName, projectId
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 8) return "text-green-600 dark:text-green-400";
-    if (score >= 6) return "text-yellow-600 dark:text-yellow-400";
+    if (score >= 8) return "text-emerald-600 dark:text-emerald-400";
+    if (score >= 6) return "text-amber-600 dark:text-amber-400";
     return "text-orange-600 dark:text-orange-400";
   };
 
-  const getScoreBadge = (score: number) => {
-    if (score >= 8) return "bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300";
-    if (score >= 6) return "bg-yellow-50 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-300";
-    return "bg-orange-50 dark:bg-orange-950 text-orange-700 dark:text-orange-300";
+  const getScoreBackground = (score: number) => {
+    if (score >= 8) return "bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-950/30 dark:to-green-950/30";
+    if (score >= 6) return "bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950/30 dark:to-yellow-950/30";
+    return "bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/30";
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" data-testid="dialog-kpi-recommendations">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
-            AI-Powered KPI Recommendations
-          </DialogTitle>
-          <DialogDescription>
-            Strategic KPIs for "{jobName}" - curated by Korn Ferry's knowledge base
-          </DialogDescription>
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto" data-testid="dialog-kpi-recommendations">
+        <DialogHeader className="space-y-3 pb-4 border-b">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-blue-600">
+              <Sparkles className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <DialogTitle className="text-2xl">AI-Powered KPI Recommendations</DialogTitle>
+              <DialogDescription className="text-base mt-1">
+                Strategic metrics for <span className="font-medium text-foreground">"{jobName}"</span> curated by Korn Ferry AI
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 pt-2">
           {isLoading && (
-            <div className="text-center py-8 text-muted-foreground">
-              Loading recommendations...
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary border-t-transparent"></div>
+              <p className="text-sm text-muted-foreground">Loading strategic insights...</p>
             </div>
           )}
 
           {error && (
-            <Card className="border-destructive">
+            <Card className="border-destructive/50 bg-destructive/5">
               <CardContent className="pt-6">
-                <p className="text-destructive">Failed to load recommendations</p>
+                <p className="text-destructive font-medium">Failed to load recommendations</p>
+                <p className="text-sm text-muted-foreground mt-1">Please try again or contact support</p>
               </CardContent>
             </Card>
           )}
 
           {!isLoading && !error && recommendations.length === 0 && (
-            <div className="text-center py-8 space-y-4">
-              <p className="text-muted-foreground">No recommendations generated yet</p>
+            <div className="flex flex-col items-center justify-center py-16 gap-4">
+              <div className="p-4 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30">
+                <Sparkles className="h-8 w-8 text-primary" />
+              </div>
+              <div className="text-center space-y-2">
+                <p className="text-lg font-medium">No recommendations yet</p>
+                <p className="text-sm text-muted-foreground max-w-sm">
+                  Generate AI-powered KPI suggestions tailored to this job theme
+                </p>
+              </div>
               <Button 
                 onClick={handleGenerateRecommendations} 
                 disabled={generateMutation.isPending}
+                size="lg"
+                className="mt-2"
                 data-testid="button-generate-recommendations"
               >
                 <Sparkles className="mr-2 h-4 w-4" />
@@ -152,10 +168,14 @@ export default function KPIRecommendationDialog({ jobThemeId, jobName, projectId
 
           {recommendations.length > 0 && (
             <>
-              <div className="flex items-center justify-between border-b pb-3">
-                <p className="text-sm text-muted-foreground">
-                  {recommendations.length} strategic KPI{recommendations.length > 1 ? 's' : ''} recommended
-                </p>
+              {/* Header with count and regenerate */}
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="px-3 py-1">
+                    {recommendations.length} recommendation{recommendations.length > 1 ? 's' : ''}
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">Powered by Korn Ferry AI</span>
+                </div>
                 <Button 
                   variant="outline" 
                   size="sm"
@@ -163,121 +183,168 @@ export default function KPIRecommendationDialog({ jobThemeId, jobName, projectId
                   disabled={generateMutation.isPending}
                   data-testid="button-regenerate-recommendations"
                 >
-                  <Sparkles className="mr-2 h-3 w-3" />
+                  <Zap className="mr-2 h-3 w-3" />
                   {generateMutation.isPending ? "Regenerating..." : "Regenerate"}
                 </Button>
               </div>
 
-              <div className="space-y-3">
-                {recommendations.map((kpi) => (
-                  <Card 
-                    key={kpi.id} 
-                    className={selectedKPIs.has(kpi.id) ? "border-primary bg-primary/5" : ""}
-                    data-testid={`card-recommended-kpi-${kpi.id}`}
-                  >
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2 flex-wrap">
-                            <Badge variant="default" className="bg-primary">
-                              <Award className="mr-1 h-3 w-3" />
-                              Korn Ferry Recommended
-                            </Badge>
-                            <Badge variant="outline">
-                              {kpi.kpiType === "primary" ? "Primary KPI" : "Supporting KPI"}
-                            </Badge>
+              {/* KPI Cards */}
+              <div className="grid gap-4">
+                {recommendations.map((kpi) => {
+                  const isSelected = selectedKPIs.has(kpi.id);
+                  const achievabilityScore = kpi.aiAchievabilityScore || 0;
+                  const impactScore = kpi.aiValueImpactScore || 0;
+                  
+                  return (
+                    <Card 
+                      key={kpi.id} 
+                      className={`relative overflow-hidden transition-all ${
+                        isSelected 
+                          ? "border-primary/50 bg-primary/5 shadow-sm" 
+                          : "hover-elevate"
+                      }`}
+                      data-testid={`card-recommended-kpi-${kpi.id}`}
+                    >
+                      {/* Gradient accent bar */}
+                      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500" />
+                      
+                      <CardContent className="pt-6 space-y-4">
+                        {/* Header */}
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge className="bg-gradient-to-r from-purple-600 to-blue-600 text-white border-0">
+                                <Award className="mr-1 h-3 w-3" />
+                                Korn Ferry Recommended
+                              </Badge>
+                              <Badge variant="outline" className="text-xs">
+                                {kpi.kpiType === "primary" ? "Primary" : "Supporting"}
+                              </Badge>
+                            </div>
+                            <h3 className="text-lg font-semibold leading-tight">{kpi.kpiName}</h3>
+                            <p className="text-sm text-muted-foreground leading-relaxed">{kpi.definition}</p>
                           </div>
-                          <CardTitle className="text-lg">{kpi.kpiName}</CardTitle>
-                          <CardDescription className="mt-1">{kpi.definition}</CardDescription>
+                          
+                          {/* Action Button */}
+                          <Button
+                            onClick={() => handleSelectKPI(kpi.id)}
+                            disabled={isSelected || selectMutation.isPending}
+                            variant={isSelected ? "outline" : "default"}
+                            size="sm"
+                            className="shrink-0"
+                            data-testid={`button-select-kpi-${kpi.id}`}
+                          >
+                            {isSelected ? (
+                              <>
+                                <Check className="mr-2 h-4 w-4" />
+                                Added
+                              </>
+                            ) : (
+                              <>
+                                <Target className="mr-2 h-4 w-4" />
+                                Select
+                              </>
+                            )}
+                          </Button>
                         </div>
-                      </div>
-                    </CardHeader>
 
-                    <CardContent className="space-y-4">
-                      {/* Strategic Rationale */}
-                      <div className="bg-muted/50 rounded-md p-3">
-                        <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
-                          <TrendingUp className="h-4 w-4 text-primary" />
-                          Strategic Value
-                        </h4>
-                        <p className="text-sm text-muted-foreground">
-                          {kpi.aiStrategicRationale}
-                        </p>
-                      </div>
+                        {/* Scores - Modern horizontal layout */}
+                        <div className="grid grid-cols-2 gap-3">
+                          {/* Achievability Score */}
+                          <div className={`rounded-lg p-3 ${getScoreBackground(achievabilityScore)}`}>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-medium text-muted-foreground">Achievability</span>
+                              <Target className={`h-4 w-4 ${getScoreColor(achievabilityScore)}`} />
+                            </div>
+                            <div className="flex items-baseline gap-1">
+                              <span className={`text-3xl font-bold ${getScoreColor(achievabilityScore)}`}>
+                                {achievabilityScore}
+                              </span>
+                              <span className="text-sm text-muted-foreground">/10</span>
+                            </div>
+                            {/* Progress bar */}
+                            <div className="mt-2 h-1.5 bg-white/50 dark:bg-black/20 rounded-full overflow-hidden">
+                              <div 
+                                className={`h-full transition-all ${
+                                  achievabilityScore >= 8 
+                                    ? "bg-emerald-500" 
+                                    : achievabilityScore >= 6 
+                                    ? "bg-amber-500" 
+                                    : "bg-orange-500"
+                                }`}
+                                style={{ width: `${achievabilityScore * 10}%` }}
+                              />
+                            </div>
+                          </div>
 
-                      {/* Scores */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground">Achievability</p>
-                          <div className="flex items-center gap-2">
-                            <Target className={`h-4 w-4 ${getScoreColor(kpi.aiAchievabilityScore || 0)}`} />
-                            <span className={`text-2xl font-bold ${getScoreColor(kpi.aiAchievabilityScore || 0)}`}>
-                              {kpi.aiAchievabilityScore}/10
-                            </span>
-                            <Badge className={getScoreBadge(kpi.aiAchievabilityScore || 0)}>
-                              {(kpi.aiAchievabilityScore || 0) >= 8 ? "High" : (kpi.aiAchievabilityScore || 0) >= 6 ? "Medium" : "Low"}
-                            </Badge>
+                          {/* Value Impact Score */}
+                          <div className={`rounded-lg p-3 ${getScoreBackground(impactScore)}`}>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-medium text-muted-foreground">Value Impact</span>
+                              <TrendingUp className={`h-4 w-4 ${getScoreColor(impactScore)}`} />
+                            </div>
+                            <div className="flex items-baseline gap-1">
+                              <span className={`text-3xl font-bold ${getScoreColor(impactScore)}`}>
+                                {impactScore}
+                              </span>
+                              <span className="text-sm text-muted-foreground">/10</span>
+                            </div>
+                            {/* Progress bar */}
+                            <div className="mt-2 h-1.5 bg-white/50 dark:bg-black/20 rounded-full overflow-hidden">
+                              <div 
+                                className={`h-full transition-all ${
+                                  impactScore >= 8 
+                                    ? "bg-emerald-500" 
+                                    : impactScore >= 6 
+                                    ? "bg-amber-500" 
+                                    : "bg-orange-500"
+                                }`}
+                                style={{ width: `${impactScore * 10}%` }}
+                              />
+                            </div>
                           </div>
                         </div>
 
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground">Value Impact</p>
-                          <div className="flex items-center gap-2">
-                            <TrendingUp className={`h-4 w-4 ${getScoreColor(kpi.aiValueImpactScore || 0)}`} />
-                            <span className={`text-2xl font-bold ${getScoreColor(kpi.aiValueImpactScore || 0)}`}>
-                              {kpi.aiValueImpactScore}/10
-                            </span>
-                            <Badge className={getScoreBadge(kpi.aiValueImpactScore || 0)}>
-                              {(kpi.aiValueImpactScore || 0) >= 8 ? "High" : (kpi.aiValueImpactScore || 0) >= 6 ? "Medium" : "Low"}
-                            </Badge>
+                        {/* Strategic Rationale */}
+                        <div className="rounded-lg bg-muted/50 p-3 space-y-1">
+                          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                            <TrendingUp className="h-3 w-3" />
+                            Strategic Value
                           </div>
-                        </div>
-                      </div>
-
-                      {/* Korn Ferry Benchmark */}
-                      {kpi.aiKornFerryBenchmark && (
-                        <div className="bg-primary/5 border border-primary/20 rounded-md p-3">
-                          <h4 className="text-sm font-medium mb-1 flex items-center gap-2 text-primary">
-                            <Award className="h-4 w-4" />
-                            Korn Ferry Benchmark
-                          </h4>
-                          <p className="text-sm">
-                            {kpi.aiKornFerryBenchmark}
+                          <p className="text-sm leading-relaxed">
+                            {kpi.aiStrategicRationale}
                           </p>
                         </div>
-                      )}
 
-                      {/* Measurement Details */}
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>Unit: <strong>{kpi.unit}</strong></span>
-                        <span className="text-muted-foreground/50">•</span>
-                        <span>Frequency: <strong>{kpi.measurementFrequency}</strong></span>
-                      </div>
-                    </CardContent>
-
-                    <CardFooter>
-                      <Button
-                        onClick={() => handleSelectKPI(kpi.id)}
-                        disabled={selectedKPIs.has(kpi.id) || selectMutation.isPending}
-                        className="w-full"
-                        variant={selectedKPIs.has(kpi.id) ? "outline" : "default"}
-                        data-testid={`button-select-kpi-${kpi.id}`}
-                      >
-                        {selectedKPIs.has(kpi.id) ? (
-                          <>
-                            <Check className="mr-2 h-4 w-4" />
-                            Added to Tracking
-                          </>
-                        ) : (
-                          <>
-                            <Target className="mr-2 h-4 w-4" />
-                            Select for Tracking
-                          </>
+                        {/* Korn Ferry Benchmark */}
+                        {kpi.aiKornFerryBenchmark && (
+                          <div className="rounded-lg bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 border border-blue-200/50 dark:border-blue-800/50 p-3 space-y-1">
+                            <div className="flex items-center gap-2 text-xs font-medium text-blue-900 dark:text-blue-100">
+                              <Award className="h-3 w-3" />
+                              Korn Ferry Benchmark
+                            </div>
+                            <p className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">
+                              {kpi.aiKornFerryBenchmark}
+                            </p>
+                          </div>
                         )}
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                ))}
+
+                        {/* Measurement Details */}
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 border-t">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-medium">Unit:</span>
+                            <Badge variant="secondary" className="text-xs">{kpi.unit}</Badge>
+                          </div>
+                          <div className="w-px h-3 bg-border" />
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-medium">Frequency:</span>
+                            <Badge variant="secondary" className="text-xs">{kpi.measurementFrequency}</Badge>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             </>
           )}
