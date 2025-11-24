@@ -138,6 +138,7 @@ export interface IStorage {
   // Question Responses (consultant and client answers)
   getQuestionResponses(questionId: number): Promise<QuestionResponse[]>;
   getQuestionResponsesByQuestionnaire(sharedQuestionnaireId: number): Promise<QuestionResponse[]>;
+  getQuestionResponsesByProject(projectId: number): Promise<Array<QuestionResponse & { questionCapability: string | null }>>;
   createQuestionResponse(response: InsertQuestionResponse): Promise<QuestionResponse>;
   updateQuestionResponse(id: number, response: Partial<InsertQuestionResponse>): Promise<QuestionResponse | undefined>;
   
@@ -639,6 +640,26 @@ export class DbStorage implements IStorage {
     return await db.select().from(schema.questionResponses)
       .where(eq(schema.questionResponses.sharedQuestionnaireId, sharedQuestionnaireId))
       .orderBy(schema.questionResponses.createdAt);
+  }
+  
+  async getQuestionResponsesByProject(projectId: number): Promise<Array<QuestionResponse & { questionCapability: string | null }>> {
+    const results = await db.select({
+      id: schema.questionResponses.id,
+      questionId: schema.questionResponses.questionId,
+      sharedQuestionnaireId: schema.questionResponses.sharedQuestionnaireId,
+      respondentType: schema.questionResponses.respondentType,
+      respondentName: schema.questionResponses.respondentName,
+      answer: schema.questionResponses.answer,
+      createdAt: schema.questionResponses.createdAt,
+      updatedAt: schema.questionResponses.updatedAt,
+      questionCapability: schema.discoveryQuestions.capabilityName,
+    })
+    .from(schema.questionResponses)
+    .innerJoin(schema.discoveryQuestions, eq(schema.questionResponses.questionId, schema.discoveryQuestions.id))
+    .where(eq(schema.discoveryQuestions.projectId, projectId))
+    .orderBy(schema.questionResponses.createdAt);
+    
+    return results;
   }
   
   async createQuestionResponse(response: InsertQuestionResponse): Promise<QuestionResponse> {

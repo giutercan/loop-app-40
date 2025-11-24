@@ -2163,17 +2163,22 @@ export function registerRoutes(app: Express) {
         // Aggregate insights by capability
         const insights = await storage.getCompanyDataPoints(projectId);
         const questions = await storage.getDiscoveryQuestions(projectId);
+        const responses = await storage.getQuestionResponsesByProject(projectId);
         
-        console.log(`[Job Theme Generation] Project ${projectId}: Found ${insights.length} insights, ${questions.length} questions`);
+        console.log(`[Job Theme Generation] Project ${projectId}: Found ${insights.length} insights, ${questions.length} questions, ${responses.length} responses`);
         console.log(`[Job Theme Generation] Insights with capability:`, insights.filter(i => i.relevantCapability).map(i => ({ id: i.id, capability: i.relevantCapability, label: i.label })));
+        console.log(`[Job Theme Generation] Responses by type:`, {
+          client: responses.filter(r => r.respondentType === 'client').length,
+          consultant: responses.filter(r => r.respondentType === 'consultant').length
+        });
         
-        const capabilityGroups = new Map<string, { insights: any[], questions: any[] }>();
+        const capabilityGroups = new Map<string, { insights: any[], questions: any[], responses: any[] }>();
         
         // Group insights by capability
         insights.forEach(insight => {
           if (insight.relevantCapability) {
             if (!capabilityGroups.has(insight.relevantCapability)) {
-              capabilityGroups.set(insight.relevantCapability, { insights: [], questions: [] });
+              capabilityGroups.set(insight.relevantCapability, { insights: [], questions: [], responses: [] });
             }
             capabilityGroups.get(insight.relevantCapability)!.insights.push(insight);
           }
@@ -2183,9 +2188,19 @@ export function registerRoutes(app: Express) {
         questions.forEach(question => {
           if (question.capabilityName) {
             if (!capabilityGroups.has(question.capabilityName)) {
-              capabilityGroups.set(question.capabilityName, { insights: [], questions: [] });
+              capabilityGroups.set(question.capabilityName, { insights: [], questions: [], responses: [] });
             }
             capabilityGroups.get(question.capabilityName)!.questions.push(question);
+          }
+        });
+        
+        // Group responses by capability (via their linked question's capability)
+        responses.forEach(response => {
+          if (response.questionCapability) {
+            if (!capabilityGroups.has(response.questionCapability)) {
+              capabilityGroups.set(response.questionCapability, { insights: [], questions: [], responses: [] });
+            }
+            capabilityGroups.get(response.questionCapability)!.responses.push(response);
           }
         });
         
@@ -2197,7 +2212,7 @@ export function registerRoutes(app: Express) {
           const capability = getCapabilityMetadata(capabilityName);
           const solutionArea = getSolutionAreaForCapability(capabilityName);
           
-          console.log(`[Job Theme Generation] Processing capability "${capabilityName}": found=${!!capability}, insights=${data.insights.length}, questions=${data.questions.length}`);
+          console.log(`[Job Theme Generation] Processing capability "${capabilityName}": found=${!!capability}, insights=${data.insights.length}, questions=${data.questions.length}, responses=${data.responses.length}`);
           
           if (capability) {
             // Calculate composite score (average of insight priority scores)
@@ -2212,8 +2227,9 @@ export function registerRoutes(app: Express) {
               solutionArea: solutionArea as any,
               sourceInsightIds: data.insights.map((i: any) => i.id),
               sourceQuestionIds: data.questions.map((q: any) => q.id),
+              sourceResponseIds: data.responses.map((r: any) => r.id),
               compositeScore: avgScore,
-              evidenceCount: data.insights.length + data.questions.length
+              evidenceCount: data.insights.length + data.questions.length + data.responses.length
             });
             
             // Create KPIs for this job theme

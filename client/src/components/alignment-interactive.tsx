@@ -35,6 +35,7 @@ interface KPI {
   benchmarkValue: string | null;
   benchmarkSource: string | null;
   customerComment: string | null;
+  aiStrategicRationale: string | null;
   isSelected: boolean;
 }
 
@@ -111,38 +112,116 @@ export function AlignmentInteractive({ projectId }: AlignmentInteractiveProps) {
     );
   }
 
+  // Calculate executive metrics
+  const allKPIs = jobs.flatMap(job => job.kpis.filter(k => k.isSelected));
+  const completedKPIs = allKPIs.filter(k => k.baselineValue && k.targetValue);
+  const completionPercentage = allKPIs.length > 0 ? Math.round((completedKPIs.length / allKPIs.length) * 100) : 0;
+  
+  // Calculate estimated value (sum of improvements)
+  const estimatedValue = allKPIs.reduce((sum, kpi) => {
+    if (kpi.baselineValue && kpi.targetValue) {
+      const baseline = parseFloat(kpi.baselineValue);
+      const target = parseFloat(kpi.targetValue);
+      const improvement = Math.abs(target - baseline);
+      return sum + improvement;
+    }
+    return sum;
+  }, 0);
+  
+  // Data source breakdown
+  const clientInputKPIs = allKPIs.filter(k => k.baselineEnteredBy === "customer" || k.targetEnteredBy === "customer").length;
+  const consultantInputKPIs = allKPIs.filter(k => k.customerComment || k.aiStrategicRationale).length;
+
   return (
     <div className="space-y-6">
-      {/* Header with Summary Stats */}
-      <Card className="border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-background">
-        <CardHeader>
-          <div className="flex items-center justify-between gap-6 flex-wrap">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary text-primary-foreground shrink-0">
-                <Target className="w-6 h-6" />
-              </div>
+      {/* Executive Value Overview Dashboard */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Completion Progress Card */}
+        <Card className="border-l-4 border-l-primary bg-gradient-to-br from-primary/5 to-background">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between mb-4">
               <div>
-                <CardTitle className="text-2xl">Value Alignment</CardTitle>
-                <CardDescription>
-                  Define baseline → target to quantify transformation value
-                </CardDescription>
+                <p className="text-sm font-medium text-muted-foreground mb-1">Alignment Progress</p>
+                <p className="text-3xl font-bold text-primary">{completionPercentage}%</p>
+              </div>
+              <div className="rounded-full p-3 bg-primary/10">
+                <Target className="w-6 h-6 text-primary" />
               </div>
             </div>
-            <div className="flex gap-4">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-primary" data-testid="stat-priority-jobs">{jobs.length}</div>
-                <div className="text-xs text-muted-foreground uppercase">Priority Jobs</div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">KPIs Ready</span>
+                <span className="font-semibold">{completedKPIs.length} / {allKPIs.length}</span>
               </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-emerald-600" data-testid="stat-kpis-tracked">
-                  {jobs.reduce((sum, job) => sum + job.kpis.filter(k => k.isSelected).length, 0)}
-                </div>
-                <div className="text-xs text-muted-foreground uppercase">KPIs Tracked</div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-primary to-emerald-500 transition-all duration-500"
+                  style={{ width: `${completionPercentage}%` }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                {allKPIs.length - completedKPIs.length > 0 
+                  ? `${allKPIs.length - completedKPIs.length} KPIs need baseline/target values`
+                  : "All KPIs configured! Ready to build value cases."
+                }
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Value at Stake Card */}
+        <Card className="border-l-4 border-l-emerald-500 bg-gradient-to-br from-emerald-500/5 to-background">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-1">Estimated Impact</p>
+                <p className="text-3xl font-bold text-emerald-600">{completedKPIs.length}</p>
+              </div>
+              <div className="rounded-full p-3 bg-emerald-500/10">
+                <TrendingUp className="w-6 h-6 text-emerald-600" />
               </div>
             </div>
-          </div>
-        </CardHeader>
-      </Card>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Priority Jobs</p>
+              <p className="text-2xl font-bold">{jobs.length}</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Across {jobs.length} strategic capabilities
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Collaboration Status Card */}
+        <Card className="border-l-4 border-l-amber-500 bg-gradient-to-br from-amber-500/5 to-background">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-1">Client Engagement</p>
+                <p className="text-3xl font-bold text-amber-600">{clientInputKPIs}</p>
+              </div>
+              <div className="rounded-full p-3 bg-amber-500/10">
+                <Award className="w-6 h-6 text-amber-600" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Client Inputs</span>
+                <span className="font-semibold">{clientInputKPIs}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Total KPIs</span>
+                <span className="font-semibold">{allKPIs.length}</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                {clientInputKPIs > 0 
+                  ? `Client has contributed to ${clientInputKPIs} KPI${clientInputKPIs > 1 ? 's' : ''}`
+                  : "Awaiting client input on KPIs"
+                }
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Job Cards with Comprehensive Table */}
       {jobs.map((job, idx) => {

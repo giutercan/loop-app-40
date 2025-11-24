@@ -16,13 +16,15 @@ import {
   Lightbulb,
   Target,
   Briefcase,
-  TrendingDown
+  TrendingDown,
+  RefreshCw
 } from "lucide-react";
 import type { Project, ValueCase, CompanyDataPoint, JobThemeKPI } from "@shared/schema";
 import ValueCaseBuilder from "@/components/ValueCaseBuilder";
 import ValueCaseCard from "@/components/ValueCaseCard";
 import { ValueCaseCreationDialog } from "@/components/value-case-creation-dialog";
 import { AlignmentInteractive } from "@/components/alignment-interactive";
+import { ReprioritizeDialog } from "@/components/ReprioritizeDialog";
 import ProjectPhaseNav from "@/components/project-phase-nav";
 import { ShareAlignmentDialog } from "@/components/ShareAlignmentDialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -52,6 +54,7 @@ export default function AlignmentPage() {
   
   const [isCreationDialogOpen, setIsCreationDialogOpen] = useState(false);
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
+  const [isReprioritizeOpen, setIsReprioritizeOpen] = useState(false);
   const [editingValueCase, setEditingValueCase] = useState<ValueCase | null>(null);
 
   const { data: project } = useQuery<Project>({
@@ -68,6 +71,11 @@ export default function AlignmentPage() {
 
   const { data: finalizedData } = useQuery<FinalizedJobsResponse>({
     queryKey: [`/api/projects/${projectId}/alignment/finalized-jobs`],
+    enabled: !!projectId,
+  });
+
+  const { data: allJobThemes = [] } = useQuery<JobWithKPIs[]>({
+    queryKey: [`/api/projects/${projectId}/job-themes`],
     enabled: !!projectId,
   });
 
@@ -138,6 +146,17 @@ export default function AlignmentPage() {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              {finalizedData && finalizedData.jobs.length > 0 && (
+                <Button 
+                  onClick={() => setIsReprioritizeOpen(true)}
+                  size="default"
+                  variant="outline"
+                  data-testid="button-reprioritize-jobs"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Re-prioritize Jobs
+                </Button>
+              )}
               <ShareAlignmentDialog projectId={projectId} />
               <Button 
                 onClick={handleCreate}
@@ -332,6 +351,15 @@ export default function AlignmentPage() {
           onClose={handleClose}
         />
       )}
+
+      {/* Re-prioritize Dialog */}
+      <ReprioritizeDialog
+        open={isReprioritizeOpen}
+        onOpenChange={setIsReprioritizeOpen}
+        projectId={projectId}
+        currentJobs={finalizedData?.jobs || []}
+        allJobs={allJobThemes}
+      />
     </div>
   );
 }

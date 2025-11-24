@@ -429,6 +429,7 @@ export const jobThemes = pgTable("job_themes", {
   aggregationSummary: text("aggregation_summary"), // AI-generated summary of all insights for this job
   sourceInsightIds: integer("source_insight_ids").array(), // IDs of companyDataPoints that contribute to this job
   sourceQuestionIds: integer("source_question_ids").array(), // IDs of discoveryQuestions that contribute
+  sourceResponseIds: integer("source_response_ids").array(), // IDs of questionResponses (client/consultant answers)
   compositeScore: integer("composite_score").notNull().default(3), // Weighted score from constituent insights
   evidenceCount: integer("evidence_count").notNull().default(0), // Total number of supporting insights
   createdAt: timestamp("created_at").defaultNow().notNull(),
