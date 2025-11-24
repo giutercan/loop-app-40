@@ -55,6 +55,23 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
   const [targetInputs, setTargetInputs] = useState<Record<number, { value: string; source: string }>>({});
   const [showRecommendations, setShowRecommendations] = useState(false);
   
+  // Helper function to get current value (from input state or KPI props)
+  const getBaselineValue = (kpi: JobThemeKPI) => {
+    return baselineInputs[kpi.id]?.value ?? kpi.baselineValue ?? '';
+  };
+  
+  const getBaselineSource = (kpi: JobThemeKPI) => {
+    return baselineInputs[kpi.id]?.source ?? kpi.baselineSource ?? '';
+  };
+  
+  const getTargetValue = (kpi: JobThemeKPI) => {
+    return targetInputs[kpi.id]?.value ?? kpi.targetValue ?? '';
+  };
+  
+  const getTargetSource = (kpi: JobThemeKPI) => {
+    return targetInputs[kpi.id]?.source ?? kpi.targetSource ?? '';
+  };
+  
   const handleKPIToggle = (kpi: JobThemeKPI) => {
     updateKPIMutation.mutate({
       kpiId: kpi.id,
@@ -63,63 +80,69 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
   };
   
   const handleBaselineUpdate = (kpi: JobThemeKPI) => {
-    const input = baselineInputs[kpi.id];
-    if (input) {
-      // Validate that the value is numeric
-      const numericValue = parseFloat(input.value);
-      if (isNaN(numericValue)) {
-        toast({
-          title: "Invalid Input",
-          description: "Baseline value must be a valid number",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      updateKPIMutation.mutate({
-        kpiId: kpi.id,
-        data: {
-          baselineValue: input.value,
-          baselineSource: input.source || "User input"
-        }
+    const value = getBaselineValue(kpi);
+    const source = getBaselineSource(kpi) || "User input";
+    
+    if (!value) return;
+    
+    // Validate that the value is numeric
+    const numericValue = parseFloat(value);
+    if (isNaN(numericValue)) {
+      toast({
+        title: "Invalid Input",
+        description: "Baseline value must be a valid number",
+        variant: "destructive",
       });
-      // Clear input
-      setBaselineInputs(prev => {
-        const newInputs = { ...prev };
-        delete newInputs[kpi.id];
-        return newInputs;
-      });
+      return;
     }
+    
+    updateKPIMutation.mutate({
+      kpiId: kpi.id,
+      data: {
+        baselineValue: value,
+        baselineSource: source
+      }
+    });
+    
+    // Clear input state after mutation - inputs will fall back to KPI props after refetch
+    setBaselineInputs(prev => {
+      const newInputs = { ...prev };
+      delete newInputs[kpi.id];
+      return newInputs;
+    });
   };
   
   const handleTargetUpdate = (kpi: JobThemeKPI) => {
-    const input = targetInputs[kpi.id];
-    if (input) {
-      // Validate that the value is numeric
-      const numericValue = parseFloat(input.value);
-      if (isNaN(numericValue)) {
-        toast({
-          title: "Invalid Input",
-          description: "Target value must be a valid number",
-          variant: "destructive",
+    const value = getTargetValue(kpi);
+    const source = getTargetSource(kpi) || "User input";
+    
+    if (!value) return;
+    
+    // Validate that the value is numeric
+    const numericValue = parseFloat(value);
+    if (isNaN(numericValue)) {
+      toast({
+        title: "Invalid Input",
+        description: "Target value must be a valid number",
+        variant: "destructive",
         });
-        return;
-      }
-      
-      updateKPIMutation.mutate({
-        kpiId: kpi.id,
-        data: {
-          targetValue: input.value,
-          targetSource: input.source || "User input"
-        }
-      });
-      // Clear input
-      setTargetInputs(prev => {
-        const newInputs = { ...prev };
-        delete newInputs[kpi.id];
-        return newInputs;
-      });
+      return;
     }
+    
+    updateKPIMutation.mutate({
+      kpiId: kpi.id,
+      data: {
+        targetValue: value,
+        targetSource: source
+      }
+    });
+    
+    // Clear input state after mutation - inputs will fall back to KPI props after refetch
+    setTargetInputs(prev => {
+      const newInputs = { ...prev };
+      delete newInputs[kpi.id];
+      return newInputs;
+    });
   };
   
   return (
@@ -178,286 +201,374 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
               return "bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/30";
             };
 
+            // Calculate delta if both baseline and target exist
+            const baselineNum = parseFloat(kpi.baselineValue || '0');
+            const targetNum = parseFloat(kpi.targetValue || '0');
+            const hasDelta = kpi.baselineValue && kpi.targetValue && baselineNum > 0;
+            const deltaPercent = hasDelta ? ((targetNum - baselineNum) / baselineNum * 100) : 0;
+            
             return (
             <div 
               key={kpi.id} 
-              className={`relative overflow-hidden rounded-lg border space-y-3 transition-all ${
+              className={`group relative overflow-visible rounded-xl transition-all duration-300 ${
                 kpi.isSelected 
-                  ? "border-primary/50 bg-primary/5 shadow-sm" 
-                  : "bg-gradient-to-br from-background to-muted/20 hover-elevate"
+                  ? "shadow-lg shadow-primary/10 ring-2 ring-primary/30" 
+                  : "hover-elevate shadow-md"
               }`}
             >
-              {/* Gradient accent bar for AI recommendations */}
+              {/* Glassmorphism background with gradient */}
+              <div className={`absolute inset-0 rounded-xl transition-all duration-300 ${
+                kpi.isSelected
+                  ? "bg-gradient-to-br from-primary/10 via-primary/5 to-background backdrop-blur-sm"
+                  : "bg-gradient-to-br from-background via-muted/30 to-background"
+              }`} />
+              
+              {/* Animated gradient accent bar */}
               {isAIRecommended && (
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500" />
+                <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 rounded-t-xl opacity-90 animate-pulse" />
               )}
               
-              <div className="p-4 space-y-3">
-                <div className="flex items-start gap-3">
-                  <Checkbox
-                    checked={kpi.isSelected}
-                    onCheckedChange={() => handleKPIToggle(kpi)}
-                    disabled={isFinalized}
-                    className="mt-1"
-                    data-testid={`checkbox-kpi-${kpi.id}`}
-                  />
+              <div className="relative p-6 space-y-5">
+                {/* BAND 1: HEADLINE BAR with Checkbox and Title */}
+                <div className="flex items-start gap-4">
+                  <div className={`flex-shrink-0 mt-1 transition-transform duration-200 ${
+                    kpi.isSelected ? 'scale-110' : 'group-hover:scale-105'
+                  }`}>
+                    <Checkbox
+                      checked={kpi.isSelected}
+                      onCheckedChange={() => handleKPIToggle(kpi as any)}
+                      disabled={isFinalized}
+                      className="h-5 w-5"
+                      data-testid={`checkbox-kpi-${kpi.id}`}
+                    />
+                  </div>
+                  
                   <div className="flex-1 space-y-3">
-                    {/* Header */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {isAIRecommended && (
-                          <Badge className="bg-gradient-to-r from-purple-600 to-blue-600 text-white border-0 text-xs">
-                            <Award className="mr-1 h-3 w-3" />
-                            Korn Ferry Recommended
-                          </Badge>
-                        )}
-                        <Badge variant="outline" className="text-xs">
-                          {kpi.kpiType === "primary" ? "Primary" : "Supporting"}
+                    {/* Badges and metadata */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {isAIRecommended && (
+                        <Badge className="bg-gradient-to-r from-purple-600 via-purple-500 to-blue-600 text-white border-0 shadow-sm">
+                          <Award className="mr-1 h-3.5 w-3.5" />
+                          Korn Ferry Recommended
                         </Badge>
-                      </div>
-                      <h3 className="text-base font-semibold leading-tight">{kpi.kpiName}</h3>
-                      {kpi.definition && (
-                        <p className="text-sm text-muted-foreground leading-relaxed">{kpi.definition}</p>
                       )}
+                      <Badge variant="outline" className="font-medium">
+                        {kpi.kpiType === "primary" ? "Primary" : "Supporting"}
+                      </Badge>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground ml-auto">
+                        <Badge variant="secondary" className="font-mono">{kpi.unit}</Badge>
+                        <div className="w-px h-3 bg-border" />
+                        <span>{kpi.measurementFrequency}</span>
+                      </div>
                     </div>
-
-                    {/* AI Scores - Show only if AI recommended AND scores exist */}
-                    {isAIRecommended && achievabilityScore && impactScore && (
-                      <div className="grid grid-cols-2 gap-3">
-                        {achievabilityScore > 0 && (
-                          <div className={`rounded-lg p-3 ${getScoreBackground(achievabilityScore)}`}>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-xs font-medium text-muted-foreground">Achievability</span>
-                              <Target className={`h-4 w-4 ${getScoreColor(achievabilityScore)}`} />
-                            </div>
-                            <div className="flex items-baseline gap-1">
-                              <span className={`text-2xl font-bold ${getScoreColor(achievabilityScore)}`}>
-                                {achievabilityScore}
-                              </span>
-                              <span className="text-sm text-muted-foreground">/10</span>
-                            </div>
-                            <div className="mt-2 h-1.5 bg-white/50 dark:bg-black/20 rounded-full overflow-hidden">
-                              <div 
-                                className={`h-full transition-all ${
-                                  achievabilityScore >= 8 ? "bg-emerald-500" : achievabilityScore >= 6 ? "bg-amber-500" : "bg-orange-500"
-                                }`}
-                                style={{ width: `${achievabilityScore * 10}%` }}
-                              />
-                            </div>
-                          </div>
-                        )}
-                        
-                        {impactScore > 0 && (
-                          <div className={`rounded-lg p-3 ${getScoreBackground(impactScore)}`}>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-xs font-medium text-muted-foreground">Value Impact</span>
-                              <TrendingUp className={`h-4 w-4 ${getScoreColor(impactScore)}`} />
-                            </div>
-                            <div className="flex items-baseline gap-1">
-                              <span className={`text-2xl font-bold ${getScoreColor(impactScore)}`}>
-                                {impactScore}
-                              </span>
-                              <span className="text-sm text-muted-foreground">/10</span>
-                            </div>
-                            <div className="mt-2 h-1.5 bg-white/50 dark:bg-black/20 rounded-full overflow-hidden">
-                              <div 
-                                className={`h-full transition-all ${
-                                  impactScore >= 8 ? "bg-emerald-500" : impactScore >= 6 ? "bg-amber-500" : "bg-orange-500"
-                                }`}
-                                style={{ width: `${impactScore * 10}%` }}
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Strategic Rationale */}
-                    {kpi.aiStrategicRationale && (
-                      <div className="rounded-lg bg-muted/50 p-3 space-y-1">
-                        <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                          <TrendingUp className="h-3 w-3" />
-                          Strategic Value
-                        </div>
-                        <p className="text-sm leading-relaxed">
-                          {kpi.aiStrategicRationale}
+                    
+                    {/* KPI Name - Larger, bolder */}
+                    <div>
+                      <h3 className="text-xl font-bold leading-tight tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text">
+                        {kpi.kpiName}
+                      </h3>
+                      {kpi.definition && (
+                        <p className="text-sm text-muted-foreground leading-relaxed mt-1.5">
+                          {kpi.definition}
                         </p>
-                      </div>
-                    )}
-
-                    {/* Korn Ferry Benchmark */}
-                    {kpi.aiKornFerryBenchmark && (
-                      <div className="rounded-lg bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 border border-blue-200/50 dark:border-blue-800/50 p-3 space-y-1">
-                        <div className="flex items-center gap-2 text-xs font-medium text-blue-900 dark:text-blue-100">
-                          <Award className="h-3 w-3" />
-                          Korn Ferry Benchmark
-                        </div>
-                        <p className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">
-                          {kpi.aiKornFerryBenchmark}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Measurement Details */}
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 border-t">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-medium">Unit:</span>
-                        <Badge variant="secondary" className="text-xs">{kpi.unit}</Badge>
-                      </div>
-                      <div className="w-px h-3 bg-border" />
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-medium">Frequency:</span>
-                        <Badge variant="secondary" className="text-xs">{kpi.measurementFrequency}</Badge>
-                      </div>
+                      )}
                     </div>
                   </div>
                 </div>
+
+                {/* BAND 2: METRIC CANVAS - Baseline & Target Visualization */}
+                {kpi.isSelected && (kpi.baselineValue || kpi.targetValue) && (
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Baseline Metric Tile */}
+                    {kpi.baselineValue && (
+                      <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/20 p-4 hover-elevate group/baseline">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl" />
+                        <div className="relative space-y-2">
+                          <div className="flex items-center gap-2 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                            BASELINE
+                          </div>
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-3xl font-bold text-emerald-900 dark:text-emerald-100 font-mono">
+                              {kpi.baselineValue}
+                            </span>
+                            <span className="text-sm text-muted-foreground">{kpi.unit}</span>
+                          </div>
+                          <div className="text-xs text-emerald-700/70 dark:text-emerald-400/70">
+                            {kpi.baselineSource}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Target Metric Tile */}
+                    {kpi.targetValue && (
+                      <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500/10 via-purple-500/5 to-transparent border border-purple-500/20 p-4 hover-elevate group/target">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl" />
+                        <div className="relative space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-xs font-medium text-purple-700 dark:text-purple-400">
+                              <div className="h-1.5 w-1.5 rounded-full bg-purple-500" />
+                              TARGET
+                            </div>
+                            {hasDelta && (
+                              <Badge className={`${
+                                deltaPercent > 0 
+                                  ? 'bg-gradient-to-r from-emerald-600 to-green-600' 
+                                  : 'bg-gradient-to-r from-orange-600 to-red-600'
+                              } text-white border-0 text-xs font-bold`}>
+                                {deltaPercent > 0 ? '+' : ''}{deltaPercent.toFixed(1)}%
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-3xl font-bold text-purple-900 dark:text-purple-100 font-mono">
+                              {kpi.targetValue}
+                            </span>
+                            <span className="text-sm text-muted-foreground">{kpi.unit}</span>
+                          </div>
+                          <div className="text-xs text-purple-700/70 dark:text-purple-400/70">
+                            {kpi.targetSource}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* AI Scores - Show only if AI recommended AND scores exist */}
+                {isAIRecommended && achievabilityScore && impactScore && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-cyan-500/10 via-blue-500/5 to-transparent border border-cyan-500/20 p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-semibold text-cyan-700 dark:text-cyan-400 uppercase tracking-wider">Achievability</span>
+                        <Target className={`h-5 w-5 ${getScoreColor(achievabilityScore)}`} />
+                      </div>
+                      <div className="flex items-baseline gap-2 mb-3">
+                        <span className={`text-4xl font-bold ${getScoreColor(achievabilityScore)} font-mono`}>
+                          {achievabilityScore}
+                        </span>
+                        <span className="text-lg text-muted-foreground font-medium">/10</span>
+                      </div>
+                      <div className="h-2 bg-muted/50 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full transition-all duration-500 ${
+                            achievabilityScore >= 8 ? "bg-gradient-to-r from-emerald-500 to-green-500" : 
+                            achievabilityScore >= 6 ? "bg-gradient-to-r from-amber-500 to-yellow-500" : 
+                            "bg-gradient-to-r from-orange-500 to-red-500"
+                          }`}
+                          style={{ width: `${achievabilityScore * 10}%` }}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500/10 via-pink-500/5 to-transparent border border-purple-500/20 p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-semibold text-purple-700 dark:text-purple-400 uppercase tracking-wider">Value Impact</span>
+                        <TrendingUp className={`h-5 w-5 ${getScoreColor(impactScore)}`} />
+                      </div>
+                      <div className="flex items-baseline gap-2 mb-3">
+                        <span className={`text-4xl font-bold ${getScoreColor(impactScore)} font-mono`}>
+                          {impactScore}
+                        </span>
+                        <span className="text-lg text-muted-foreground font-medium">/10</span>
+                      </div>
+                      <div className="h-2 bg-muted/50 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full transition-all duration-500 ${
+                            impactScore >= 8 ? "bg-gradient-to-r from-emerald-500 to-green-500" : 
+                            impactScore >= 6 ? "bg-gradient-to-r from-amber-500 to-yellow-500" : 
+                            "bg-gradient-to-r from-orange-500 to-red-500"
+                          }`}
+                          style={{ width: `${impactScore * 10}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* BAND 3: INTELLIGENCE BAND - AI Insights */}
+                {(kpi.aiStrategicRationale || kpi.aiKornFerryBenchmark) && (
+                  <div className="space-y-3">
+                    {kpi.aiStrategicRationale && (
+                      <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-indigo-500/10 via-blue-500/5 to-transparent border border-indigo-500/20 p-4">
+                        <div className="absolute top-0 left-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl" />
+                        <div className="relative space-y-2">
+                          <div className="flex items-center gap-2 text-xs font-semibold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider">
+                            <TrendingUp className="h-4 w-4" />
+                            Strategic Value
+                          </div>
+                          <p className="text-sm leading-relaxed text-foreground/90">
+                            {kpi.aiStrategicRationale}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {kpi.aiKornFerryBenchmark && (
+                      <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500/10 via-cyan-500/5 to-transparent border border-blue-500/20 p-4">
+                        <div className="absolute top-0 left-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-3xl" />
+                        <div className="relative space-y-2">
+                          <div className="flex items-center gap-2 text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider">
+                            <Award className="h-4 w-4" />
+                            Korn Ferry Benchmark
+                          </div>
+                          <p className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">
+                            {kpi.aiKornFerryBenchmark}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
                   
-                  {/* Baseline Data Input - Only show if KPI is selected */}
-                  {kpi.isSelected && (
-                    <div className="space-y-2 mt-3 p-3 bg-background rounded border">
-                      <div className="text-xs font-medium">Baseline Data</div>
+                {/* BAND 4: ACTION RAIL - Baseline Data Input/Edit */}
+                {kpi.isSelected && (
+                  <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-muted/50 to-muted/20 border-2 border-dashed border-muted-foreground/20 p-5">
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-sm font-semibold text-foreground">
+                          {kpi.baselineValue ? 'Edit Baseline Data' : 'Add Baseline Data'}
+                        </span>
+                      </div>
                       
-                      {/* Show existing baseline or Korn Ferry benchmark */}
-                      {kpi.baselineValue ? (
-                        <div className="flex items-center justify-between gap-2 p-2 bg-green-50 dark:bg-green-950/20 rounded border border-green-200 dark:border-green-900">
-                          <div>
-                            <div className="text-sm font-medium text-green-900 dark:text-green-100">{kpi.baselineValue}</div>
-                            <div className="text-xs text-green-700 dark:text-green-300">Source: {kpi.baselineSource}</div>
+                      {/* Show Korn Ferry benchmark if available and no baseline set */}
+                      {!kpi.baselineValue && kpi.benchmarkValue && (
+                        <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-blue-500/10 via-cyan-500/5 to-transparent border border-blue-500/30 p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 text-xs font-semibold text-blue-700 dark:text-blue-400 mb-1">
+                                <Award className="h-3.5 w-3.5" />
+                                Korn Ferry Benchmark Available
+                              </div>
+                              <div className="text-sm font-bold text-blue-900 dark:text-blue-100">{kpi.benchmarkValue} {kpi.unit}</div>
+                              <div className="text-xs text-blue-700/70 dark:text-blue-300/70 mt-0.5">{kpi.benchmarkSource}</div>
+                            </div>
+                            <Button
+                              size="sm"
+                              className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white border-0 shadow-sm hover:shadow-md transition-shadow"
+                              onClick={() => {
+                                setBaselineInputs({
+                                  ...baselineInputs,
+                                  [kpi.id]: { value: kpi.benchmarkValue || '', source: kpi.benchmarkSource || '' }
+                                });
+                              }}
+                            >
+                              Use as Baseline
+                            </Button>
                           </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              setBaselineInputs({
-                                ...baselineInputs,
-                                [kpi.id]: { value: kpi.baselineValue || '', source: kpi.baselineSource || '' }
-                              });
-                            }}
-                            data-testid={`button-edit-baseline-${kpi.id}`}
-                          >
-                            Edit
-                          </Button>
                         </div>
-                      ) : kpi.benchmarkValue ? (
-                        <div className="p-2 bg-blue-50 dark:bg-blue-950/20 rounded border border-blue-200 dark:border-blue-900">
-                          <div className="text-xs font-medium text-blue-900 dark:text-blue-100 mb-1">
-                            Korn Ferry Benchmark: {kpi.benchmarkValue}
-                          </div>
-                          <div className="text-xs text-blue-700 dark:text-blue-300">{kpi.benchmarkSource}</div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="mt-2"
-                            onClick={() => {
-                              setBaselineInputs({
-                                ...baselineInputs,
-                                [kpi.id]: { value: kpi.benchmarkValue || '', source: kpi.benchmarkSource || '' }
-                              });
-                            }}
-                          >
-                            Use as Baseline
-                          </Button>
-                        </div>
-                      ) : null}
+                      )}
                       
-                      {/* Input form - disabled when finalized */}
+                      {/* Input form - Pre-fill with existing values or show empty */}
                       {!isFinalized && (
-                        <div className="flex gap-2 mt-2">
-                          <Input
-                            placeholder={`Enter ${kpi.kpiName.toLowerCase()}...`}
-                            value={baselineInputs[kpi.id]?.value || ''}
-                            onChange={(e) => setBaselineInputs({
-                              ...baselineInputs,
-                              [kpi.id]: { ...baselineInputs[kpi.id], value: e.target.value }
-                            })}
-                            data-testid={`input-baseline-${kpi.id}`}
-                          />
-                          <Input
-                            placeholder="Source..."
-                            value={baselineInputs[kpi.id]?.source || ''}
-                            onChange={(e) => setBaselineInputs({
-                              ...baselineInputs,
-                              [kpi.id]: { ...baselineInputs[kpi.id], source: e.target.value }
-                            })}
-                            data-testid={`input-baseline-source-${kpi.id}`}
-                            className="w-48"
-                          />
-                          <Button
-                            size="sm"
-                            onClick={() => handleBaselineUpdate(kpi)}
-                            disabled={!baselineInputs[kpi.id]?.value}
-                            data-testid={`button-save-baseline-${kpi.id}`}
-                          >
-                            Save
-                          </Button>
+                        <div className="flex flex-col gap-3">
+                          <div className="grid grid-cols-[1fr,auto] gap-2">
+                            <Input
+                              placeholder={`Enter ${kpi.kpiName.toLowerCase()}...`}
+                              value={baselineInputs[kpi.id]?.value || kpi.baselineValue || ''}
+                              onChange={(e) => setBaselineInputs({
+                                ...baselineInputs,
+                                [kpi.id]: { 
+                                  value: e.target.value, 
+                                  source: baselineInputs[kpi.id]?.source || kpi.baselineSource || '' 
+                                }
+                              })}
+                              className="text-base font-medium"
+                              data-testid={`input-baseline-${kpi.id}`}
+                            />
+                            <div className="flex items-center text-sm text-muted-foreground font-medium px-2">
+                              {kpi.unit}
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-[1fr,auto] gap-2">
+                            <Input
+                              placeholder="Data source (e.g., Q4 2024 Report)..."
+                              value={baselineInputs[kpi.id]?.source || kpi.baselineSource || ''}
+                              onChange={(e) => setBaselineInputs({
+                                ...baselineInputs,
+                                [kpi.id]: { 
+                                  value: baselineInputs[kpi.id]?.value || kpi.baselineValue || '', 
+                                  source: e.target.value 
+                                }
+                              })}
+                              data-testid={`input-baseline-source-${kpi.id}`}
+                            />
+                            <Button
+                              onClick={() => handleBaselineUpdate(kpi as any)}
+                              disabled={!baselineInputs[kpi.id]?.value && !kpi.baselineValue}
+                              className="bg-gradient-to-r from-emerald-600 to-green-600 text-white shadow-sm hover:shadow-md transition-shadow"
+                              data-testid={`button-save-baseline-${kpi.id}`}
+                            >
+                              {kpi.baselineValue ? 'Update' : 'Save'} Baseline
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </div>
-                  )}
+                  </div>
+                )}
                   
-                  {/* Target Data Input - Only show if KPI is selected and baseline is set */}
-                  {kpi.isSelected && kpi.baselineValue && (
-                    <div className="space-y-2 mt-3 p-3 bg-background rounded border">
-                      <div className="text-xs font-medium">Target Value</div>
+                {/* Target Data Input/Edit - Only show if baseline is set */}
+                {kpi.isSelected && kpi.baselineValue && (
+                  <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-muted/50 to-muted/20 border-2 border-dashed border-muted-foreground/20 p-5">
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <div className="h-2 w-2 rounded-full bg-purple-500 animate-pulse" />
+                        <span className="text-sm font-semibold text-foreground">
+                          {kpi.targetValue ? 'Edit Target Value' : 'Set Target Value'}
+                        </span>
+                      </div>
                       
-                      {/* Show existing target */}
-                      {kpi.targetValue ? (
-                        <div className="flex items-center justify-between gap-2 p-2 bg-purple-50 dark:bg-purple-950/20 rounded border border-purple-200 dark:border-purple-900">
-                          <div>
-                            <div className="text-sm font-medium text-purple-900 dark:text-purple-100">{kpi.targetValue}</div>
-                            <div className="text-xs text-purple-700 dark:text-purple-300">Source: {kpi.targetSource}</div>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              setTargetInputs({
+                      {/* Input form - Pre-fill with existing values or show empty */}
+                      {!isFinalized && (
+                        <div className="flex flex-col gap-3">
+                          <div className="grid grid-cols-[1fr,auto] gap-2">
+                            <Input
+                              placeholder={`Enter target ${kpi.kpiName.toLowerCase()}...`}
+                              value={targetInputs[kpi.id]?.value || kpi.targetValue || ''}
+                              onChange={(e) => setTargetInputs({
                                 ...targetInputs,
-                                [kpi.id]: { value: kpi.targetValue || '', source: kpi.targetSource || '' }
-                              });
-                            }}
-                            data-testid={`button-edit-target-${kpi.id}`}
-                          >
-                            Edit
-                          </Button>
-                        </div>
-                      ) : null}
-                      
-                      {/* Input form - disabled when finalized */}
-                      {!isFinalized && (
-                        <div className="flex gap-2 mt-2">
-                          <Input
-                            placeholder={`Enter target ${kpi.kpiName.toLowerCase()}...`}
-                            value={targetInputs[kpi.id]?.value || ''}
-                            onChange={(e) => setTargetInputs({
-                              ...targetInputs,
-                              [kpi.id]: { ...targetInputs[kpi.id], value: e.target.value }
-                            })}
-                            data-testid={`input-target-${kpi.id}`}
-                          />
-                          <Input
-                            placeholder="Source..."
-                            value={targetInputs[kpi.id]?.source || ''}
-                            onChange={(e) => setTargetInputs({
-                              ...targetInputs,
-                              [kpi.id]: { ...targetInputs[kpi.id], source: e.target.value }
-                            })}
-                            data-testid={`input-target-source-${kpi.id}`}
-                            className="w-48"
-                          />
-                          <Button
-                            size="sm"
-                            onClick={() => handleTargetUpdate(kpi)}
-                            disabled={!targetInputs[kpi.id]?.value}
-                            data-testid={`button-save-target-${kpi.id}`}
-                          >
-                            Save
-                          </Button>
+                                [kpi.id]: { 
+                                  value: e.target.value, 
+                                  source: targetInputs[kpi.id]?.source || kpi.targetSource || '' 
+                                }
+                              })}
+                              className="text-base font-medium"
+                              data-testid={`input-target-${kpi.id}`}
+                            />
+                            <div className="flex items-center text-sm text-muted-foreground font-medium px-2">
+                              {kpi.unit}
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-[1fr,auto] gap-2">
+                            <Input
+                              placeholder="Data source (e.g., Strategic Plan 2025)..."
+                              value={targetInputs[kpi.id]?.source || kpi.targetSource || ''}
+                              onChange={(e) => setTargetInputs({
+                                ...targetInputs,
+                                [kpi.id]: { 
+                                  value: targetInputs[kpi.id]?.value || kpi.targetValue || '', 
+                                  source: e.target.value 
+                                }
+                              })}
+                              data-testid={`input-target-source-${kpi.id}`}
+                            />
+                            <Button
+                              onClick={() => handleTargetUpdate(kpi as any)}
+                              disabled={!targetInputs[kpi.id]?.value && !kpi.targetValue}
+                              className="bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-sm hover:shadow-md transition-shadow"
+                              data-testid={`button-save-target-${kpi.id}`}
+                            >
+                              {kpi.targetValue ? 'Update' : 'Save'} Target
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </div>
-                  )}
+                  </div>
+                )}
               </div>
             </div>
             );
