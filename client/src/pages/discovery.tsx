@@ -26,6 +26,7 @@ import ValueCaseBuilder from "@/components/ValueCaseBuilder";
 import ProjectSelector from "@/components/ProjectSelector";
 import StatusBadge from "@/components/StatusBadge";
 import ProjectPhaseNav from "@/components/project-phase-nav";
+import KPIRecommendationDialog from "@/components/KPIRecommendationDialog";
 import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, TrendingUp, Activity, Award, Building, Calendar, AlertCircle, ChevronDown, Lightbulb, BarChart3, MessageSquare } from "lucide-react";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { Link, useLocation, useRoute } from "wouter";
@@ -39,6 +40,7 @@ import { format } from "date-fns";
 interface JobThemeCardProps {
   theme: JobThemeWithKPIs;
   rank: number;
+  projectId: number;
   updateKPIMutation: {
     mutate: (params: { kpiId: number; data: UpdateJobThemeKPIRequest }) => void;
     isPending: boolean;
@@ -47,10 +49,11 @@ interface JobThemeCardProps {
   onDeselect: () => void;
 }
 
-function JobThemeCard({ theme, rank, updateKPIMutation, isFinalized, onDeselect }: JobThemeCardProps) {
+function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, onDeselect }: JobThemeCardProps) {
   const { toast } = useToast();
   const [baselineInputs, setBaselineInputs] = useState<Record<number, { value: string; source: string }>>({});
   const [targetInputs, setTargetInputs] = useState<Record<number, { value: string; source: string }>>({});
+  const [showRecommendations, setShowRecommendations] = useState(false);
   
   const handleKPIToggle = (kpi: JobThemeKPI) => {
     updateKPIMutation.mutate({
@@ -132,7 +135,27 @@ function JobThemeCard({ theme, rank, updateKPIMutation, isFinalized, onDeselect 
             {isFinalized && <Badge variant="secondary" className="bg-yellow-500 text-white text-xs">Locked</Badge>}
           </div>
         </div>
+        {!isFinalized && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowRecommendations(true)}
+            className="gap-2 shrink-0"
+            data-testid={`button-recommend-kpis-${theme.id}`}
+          >
+            <Sparkles className="h-4 w-4" />
+            Suggest KPIs
+          </Button>
+        )}
       </div>
+      
+      <KPIRecommendationDialog
+        jobThemeId={theme.id}
+        jobName={theme.jobName}
+        projectId={projectId}
+        open={showRecommendations}
+        onOpenChange={setShowRecommendations}
+      />
       
       {/* KPIs Section */}
       {theme.kpis && theme.kpis.length > 0 && (
@@ -2578,6 +2601,7 @@ export default function Discovery() {
                               <JobThemeCard 
                                 theme={theme} 
                                 rank={slot} 
+                                projectId={projectId}
                                 updateKPIMutation={updateKPIMutation}
                                 isFinalized={isFinalized}
                                 onDeselect={() => {}}
