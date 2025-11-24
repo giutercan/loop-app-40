@@ -21,7 +21,7 @@ import ValueCaseBuilder from "@/components/ValueCaseBuilder";
 import ProjectSelector from "@/components/ProjectSelector";
 import StatusBadge from "@/components/StatusBadge";
 import ProjectPhaseNav from "@/components/project-phase-nav";
-import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, Activity, Award, Building, Calendar } from "lucide-react";
+import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, Activity, Award, Building, Calendar, AlertCircle } from "lucide-react";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { Link, useLocation, useRoute } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
