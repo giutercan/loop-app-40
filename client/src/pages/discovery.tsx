@@ -222,7 +222,7 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
   const generateBenchmarkMutation = useMutation({
     mutationFn: async (kpiId: number): Promise<JobThemeKPI> => {
       const response = await apiRequest("POST", `/api/job-theme-kpis/${kpiId}/generate-benchmark`, {});
-      return response;
+      return await response.json();
     },
     onSuccess: async (updatedKPI: JobThemeKPI) => {
       await queryClient.invalidateQueries({ 
@@ -525,7 +525,7 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
                       )}
                       
                       {/* Generate AI industry benchmark if none exists */}
-                      {!kpi.baselineValue && !kpi.benchmarkValue && !isFinalized && (
+                      {!kpi.baselineValue && !kpi.benchmarkValue && (
                         <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-purple-500/10 via-indigo-500/5 to-transparent border border-purple-500/30 p-3">
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex-1">
@@ -562,8 +562,7 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
                       )}
                       
                       {/* Input form - Pre-fill with existing values or show empty */}
-                      {!isFinalized && (
-                        <div className="flex flex-col gap-3">
+                      <div className="flex flex-col gap-3">
                           <div className="grid grid-cols-[1fr,auto] gap-2">
                             <Input
                               placeholder={`Enter ${kpi.kpiName.toLowerCase()}...`}
@@ -613,7 +612,6 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
                             </Button>
                           </div>
                         </div>
-                      )}
                     </div>
                   </div>
                 )}
@@ -630,8 +628,7 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
                       </div>
                       
                       {/* Input form - Pre-fill with existing values or show empty */}
-                      {!isFinalized && (
-                        <div className="flex flex-col gap-3">
+                      <div className="flex flex-col gap-3">
                           <div className="grid grid-cols-[1fr,auto] gap-2">
                             <Input
                               placeholder={`Enter target ${kpi.kpiName.toLowerCase()}...`}
@@ -681,7 +678,6 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
                             </Button>
                           </div>
                         </div>
-                      )}
                     </div>
                   </div>
                 )}
@@ -712,7 +708,6 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
               <div className="flex items-center gap-2 mt-2 flex-wrap">
                 <Badge variant="secondary" className="text-xs">{theme.evidenceCount} insights</Badge>
                 {theme.solutionArea && <Badge variant="outline" className="text-xs">{theme.solutionArea}</Badge>}
-                {isFinalized && <Badge variant="secondary" className="bg-yellow-500 text-white text-xs">Locked</Badge>}
               </div>
             </div>
           </div>

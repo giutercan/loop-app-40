@@ -60,6 +60,7 @@ The system is built on a robust architecture incorporating AI and a structured w
 - **Cache Management**: Consistent string-first query keys and `invalidateQueries` for TanStack Query.
 - **Security**: Server-side XSS protection via `sanitizeInput()` and React's default JSX escaping.
 - **Navigation**: Wouter for routing and URL-driven state, ensuring defensive rendering.
+- **Discovery Finalization Behavior (November 2024)**: After Discovery is finalized, structural changes are locked (no adding/removing jobs or KPIs), but KPI value refinement remains available. Consultants can edit baseline values, baseline sources, target values, target sources, and generate AI industry benchmarks even after finalization, enabling iterative data refinement throughout the engagement. Job re-prioritization is handled through the dedicated Re-prioritize feature in the Alignment phase.
 
 ### Tech Stack
 - **Frontend**: React, TypeScript, Wouter, TanStack Query, Shadcn UI
