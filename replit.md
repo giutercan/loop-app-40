@@ -11,13 +11,22 @@ A full-stack web application for Korn Ferry consultants to manage client engagem
 ## System Architecture
 
 ### UI/UX Decisions
-The application prioritizes a modern, intuitive user interface with a consistent visual hierarchy. Key UI/UX decisions include:
+The application prioritizes a modern, intuitive user interface with a consistent visual hierarchy and official Korn Ferry branding. Key UI/UX decisions include:
+- **Korn Ferry Brand Identity (November 2024)**: Complete visual refresh applying official Korn Ferry brand palette throughout the application:
+  - Primary: Deep Forest Green (#00634F) for CTAs, navigation, key actions
+  - Secondary: Ocean Blue (#005971) for interactive elements and links
+  - Accent: Emerald (#009B77) for success states, Mint (#05C690) for highlights
+  - Supporting: Lime Green (#8DC63F), Cyan (#00ADBB), Purple (#A3238E), Navy (#00173B)
+  - Neutral: Gray (#929192), Light Gray (#DAD8D6) for backgrounds
+  - Typography: Aptos font family with Roboto Mono for data/code
+  - Professional Imagery: Strategic use of high-quality business photography on landing page hero and empty states
+  - Accessibility: All text meets WCAG AA contrast requirements (≥4.5:1)
 - **Visual Cues**: Pastel badge backgrounds, prominent primary-colored highlighting for follow-up research, "New" badges, and optimistic UI updates.
 - **Data Visualization**: Circular progress rings for KPI completion, dynamic KPI gap visualization, percentage improvement badges, and enhanced header displays with iconography.
 - **Information Hierarchy**: Prioritization of insights (Priority → Confidence → Pillar → Solution Area → KPIs), and prominent display of Korn Ferry Benchmark Callouts.
 - **Responsive Design**: Grid layouts with flex-wrap for mobile compatibility, 2-column KPI grid on desktop (single column on mobile).
 - **Terminology**: User-facing text uses "Highlighted priorities" instead of internal "jobTheme" for clarity.
-- **Modernized UI/UX**: Contemporary design with gradient accents, visual score representations, cleaner information hierarchy, and reduced text density for improved scannability in key areas like KPI recommendations and value case building.
+- **Modernized UI/UX**: Contemporary design with gradient accents using brand colors, visual score representations, cleaner information hierarchy, and reduced text density for improved scannability in key areas like KPI recommendations and value case building.
 - **Collapsible Priorities**: Job theme/priority cards feature collapsible sections using Radix UI Collapsible component with ChevronDown toggle for focused navigation.
 - **KPI Organization**: KPIs are visually grouped by type (Primary KPIs vs Supporting KPIs) with distinct section headers and visual dividers for improved scannability.
 
