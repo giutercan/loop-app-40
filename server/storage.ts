@@ -25,7 +25,8 @@ import type {
   DiscoveryPhaseTransfer, InsertDiscoveryPhaseTransfer,
   BusinessReview, InsertBusinessReview,
   KPIActual, InsertKPIActual,
-  SuccessStory, InsertSuccessStory
+  SuccessStory, InsertSuccessStory,
+  AlignmentShareLink, InsertAlignmentShareLink
 } from "@shared/schema";
 
 export interface IStorage {

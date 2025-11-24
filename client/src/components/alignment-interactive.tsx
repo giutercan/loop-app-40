@@ -26,10 +26,15 @@ interface KPI {
   definition: string | null;
   baselineValue: string | null;
   baselineSource: string | null;
+  baselineEnteredBy: string | null;
+  baselineEnteredByName: string | null;
   targetValue: string | null;
   targetSource: string | null;
+  targetEnteredBy: string | null;
+  targetEnteredByName: string | null;
   benchmarkValue: string | null;
   benchmarkSource: string | null;
+  customerComment: string | null;
   isSelected: boolean;
 }
 
@@ -431,6 +436,13 @@ function ComprehensiveKPIRow({ kpi, index, updateKPIMutation }: ComprehensiveKPI
             />
             <span className="text-xs text-muted-foreground whitespace-nowrap">{kpi.unit}</span>
           </div>
+          {kpi.baselineEnteredBy === "customer" && kpi.baselineEnteredByName && (
+            <div className="flex items-center gap-1">
+              <Badge variant="secondary" className="text-xs">
+                by {kpi.baselineEnteredByName}
+              </Badge>
+            </div>
+          )}
           <Button
             onClick={generateAIBenchmark}
             disabled={isGeneratingBenchmark}
@@ -482,6 +494,19 @@ function ComprehensiveKPIRow({ kpi, index, updateKPIMutation }: ComprehensiveKPI
             />
             <span className="text-xs text-muted-foreground whitespace-nowrap">{kpi.unit}</span>
           </div>
+          {kpi.targetEnteredBy === "customer" && kpi.targetEnteredByName && (
+            <div className="flex items-center gap-1">
+              <Badge variant="secondary" className="text-xs">
+                by {kpi.targetEnteredByName}
+              </Badge>
+            </div>
+          )}
+          {kpi.customerComment && (
+            <div className="bg-muted/50 p-2 rounded-md mt-2">
+              <p className="text-xs font-medium mb-0.5">Customer Note:</p>
+              <p className="text-xs text-muted-foreground">{kpi.customerComment}</p>
+            </div>
+          )}
           <Input
             type="text"
             placeholder="Rationale..."
