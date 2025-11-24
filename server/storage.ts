@@ -189,6 +189,13 @@ export interface IStorage {
   updateSuccessStoryLibraryItem(id: number, story: Partial<schema.InsertSuccessStoryLibrary>): Promise<schema.SuccessStoryLibraryItem | undefined>;
   approveSuccessStoryLibraryItem(id: number, approvedBy: string): Promise<schema.SuccessStoryLibraryItem | undefined>;
   deleteSuccessStoryLibraryItem(id: number): Promise<void>;
+  
+  // Alignment Share Links (customer collaboration on KPIs)
+  getAlignmentShareLink(projectId: number): Promise<schema.AlignmentShareLink | undefined>;
+  getAlignmentShareLinkByToken(token: string): Promise<schema.AlignmentShareLink | undefined>;
+  createAlignmentShareLink(link: schema.InsertAlignmentShareLink): Promise<schema.AlignmentShareLink>;
+  updateAlignmentShareLink(id: number, link: Partial<schema.InsertAlignmentShareLink>): Promise<schema.AlignmentShareLink | undefined>;
+  deleteAlignmentShareLink(id: number): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -878,6 +885,37 @@ export class DbStorage implements IStorage {
   
   async deleteSuccessStoryLibraryItem(id: number): Promise<void> {
     await db.delete(schema.successStoryLibrary).where(eq(schema.successStoryLibrary.id, id));
+  }
+  
+  // Alignment Share Links (customer collaboration on KPIs)
+  async getAlignmentShareLink(projectId: number): Promise<schema.AlignmentShareLink | undefined> {
+    const results = await db.select().from(schema.alignmentShareLinks)
+      .where(eq(schema.alignmentShareLinks.projectId, projectId))
+      .orderBy(desc(schema.alignmentShareLinks.createdAt));
+    return results[0];
+  }
+  
+  async getAlignmentShareLinkByToken(token: string): Promise<schema.AlignmentShareLink | undefined> {
+    const results = await db.select().from(schema.alignmentShareLinks)
+      .where(eq(schema.alignmentShareLinks.shareToken, token));
+    return results[0];
+  }
+  
+  async createAlignmentShareLink(link: schema.InsertAlignmentShareLink): Promise<schema.AlignmentShareLink> {
+    const results = await db.insert(schema.alignmentShareLinks).values(link).returning();
+    return results[0];
+  }
+  
+  async updateAlignmentShareLink(id: number, link: Partial<schema.InsertAlignmentShareLink>): Promise<schema.AlignmentShareLink | undefined> {
+    const results = await db.update(schema.alignmentShareLinks)
+      .set(link)
+      .where(eq(schema.alignmentShareLinks.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deleteAlignmentShareLink(id: number): Promise<void> {
+    await db.delete(schema.alignmentShareLinks).where(eq(schema.alignmentShareLinks.id, id));
   }
 }
 

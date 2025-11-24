@@ -452,6 +452,13 @@ export const jobThemeKPIs = pgTable("job_theme_kpis", {
   benchmarkSource: text("benchmark_source"), // e.g., "Korn Ferry 2024 Study", "Industry average"
   definition: text("definition"), // KPI definition from knowledge base
   measurementFrequency: text("measurement_frequency"), // e.g., "6 months", "Quarterly"
+  // Attribution tracking for customer collaboration
+  baselineEnteredBy: text("baseline_entered_by", { enum: ["consultant", "customer"] }), // Who entered baseline value
+  baselineEnteredByName: text("baseline_entered_by_name"), // Name of person who entered baseline
+  targetEnteredBy: text("target_entered_by", { enum: ["consultant", "customer"] }), // Who entered target value
+  targetEnteredByName: text("target_entered_by_name"), // Name of person who entered target
+  customerComment: text("customer_comment"), // Customer's rationale/notes
+  customerCommentedAt: timestamp("customer_commented_at"), // When customer commented
   // AI Recommendation fields - Korn Ferry strategic differentiation
   isAIRecommended: boolean("is_ai_recommended").notNull().default(false), // True if suggested by AI
   aiStrategicRationale: text("ai_strategic_rationale"), // Why this KPI is strategically valuable
@@ -684,3 +691,24 @@ export const insertSuccessStoryLibrarySchema = createInsertSchema(successStoryLi
 });
 export type InsertSuccessStoryLibrary = z.infer<typeof insertSuccessStoryLibrarySchema>;
 export type SuccessStoryLibraryItem = typeof successStoryLibrary.$inferSelect;
+
+// Alignment Share Links - For customer collaboration on KPI baselines/targets
+export const alignmentShareLinks = pgTable("alignment_share_links", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  shareToken: text("share_token").notNull().unique(), // Unique token for shareable link
+  customerName: text("customer_name"), // Optional: customer contact name
+  customerEmail: text("customer_email"), // Optional: customer contact email
+  permissions: text("permissions", { enum: ["view", "edit", "comment"] }).notNull().default("edit"), // What customers can do
+  status: text("status", { enum: ["active", "expired", "revoked"] }).notNull().default("active"),
+  expiresAt: timestamp("expires_at"), // Optional: link expiration
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastAccessedAt: timestamp("last_accessed_at"), // Track when customer last viewed
+});
+
+export const insertAlignmentShareLinkSchema = createInsertSchema(alignmentShareLinks).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertAlignmentShareLink = z.infer<typeof insertAlignmentShareLinkSchema>;
+export type AlignmentShareLink = typeof alignmentShareLinks.$inferSelect;

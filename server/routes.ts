@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { storage } from "./storage";
 import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations } from "./ai";
 import { z } from "zod";
+import crypto from "crypto";
 
 // Track in-flight success story generations per project (prevents concurrent requests)
 // NOTE: This in-memory Set is sufficient for single-instance Replit deployment.
@@ -2894,6 +2895,198 @@ export function registerRoutes(app: Express) {
     } catch (error: any) {
       console.error("Error generating value narrative:", error);
       res.status(500).json({ error: error.message || "Failed to generate value narrative" });
+    }
+  });
+  
+  // ============================
+  // Alignment Share Links Routes (Customer Collaboration)
+  // ============================
+  
+  // Generate shareable link for customer collaboration
+  app.post("/api/projects/:projectId/alignment/share", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const { customerName, customerEmail, expiresInDays } = req.body;
+      
+      // Verify project exists
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Generate unique share token
+      const shareToken = crypto.randomUUID();
+      
+      // Calculate expiration date if provided
+      const expiresAt = expiresInDays 
+        ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000)
+        : null;
+      
+      // Create share link with edit + comment permissions by default
+      const shareLink = await storage.createAlignmentShareLink({
+        projectId,
+        shareToken,
+        customerName: customerName ? sanitizeInput(customerName) : null,
+        customerEmail: customerEmail ? sanitizeInput(customerEmail) : null,
+        permissions: "edit", // Customers can edit baseline/target and add comments
+        status: "active",
+        expiresAt
+      });
+      
+      res.json({
+        success: true,
+        shareLink,
+        shareUrl: `/shared/alignment/${shareToken}`
+      });
+    } catch (error: any) {
+      console.error("Error creating alignment share link:", error);
+      res.status(500).json({ error: error.message || "Failed to create share link" });
+    }
+  });
+  
+  // Get alignment data by share token (public access)
+  app.get("/api/alignment/shared/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      
+      // Find share link
+      const shareLink = await storage.getAlignmentShareLinkByToken(token);
+      if (!shareLink) {
+        return res.status(404).json({ error: "Share link not found" });
+      }
+      
+      // Check if link is active and not expired
+      if (shareLink.status !== "active") {
+        return res.status(403).json({ error: "This link has been revoked" });
+      }
+      if (shareLink.expiresAt && new Date(shareLink.expiresAt) < new Date()) {
+        return res.status(403).json({ error: "This link has expired" });
+      }
+      
+      // Update last accessed timestamp
+      await storage.updateAlignmentShareLink(shareLink.id, {
+        lastAccessedAt: new Date()
+      });
+      
+      // Get project with job themes and KPIs
+      const project = await storage.getProject(shareLink.projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const jobThemes = await storage.getJobThemes(shareLink.projectId);
+      const jobThemesWithKPIs = await Promise.all(
+        jobThemes.map(async (theme) => {
+          const kpis = await storage.getJobThemeKPIs(theme.id);
+          return { ...theme, kpis };
+        })
+      );
+      
+      res.json({
+        project: {
+          name: project.name,
+          companyName: project.companyName,
+        },
+        jobThemes: jobThemesWithKPIs,
+        permissions: shareLink.permissions,
+        customerName: shareLink.customerName
+      });
+    } catch (error: any) {
+      console.error("Error fetching shared alignment:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch alignment data" });
+    }
+  });
+  
+  // Update KPI with customer input (public endpoint for shared link)
+  app.patch("/api/alignment/shared/:token/kpis/:kpiId", async (req, res) => {
+    try {
+      const { token, kpiId } = req.params;
+      const { baselineValue, targetValue, customerComment, customerName } = req.body;
+      
+      // Find share link
+      const shareLink = await storage.getAlignmentShareLinkByToken(token);
+      if (!shareLink) {
+        return res.status(404).json({ error: "Share link not found" });
+      }
+      
+      // Verify permissions
+      if (shareLink.status !== "active") {
+        return res.status(403).json({ error: "This link has been revoked" });
+      }
+      if (shareLink.expiresAt && new Date(shareLink.expiresAt) < new Date()) {
+        return res.status(403).json({ error: "This link has expired" });
+      }
+      if (shareLink.permissions === "view") {
+        return res.status(403).json({ error: "You do not have permission to edit" });
+      }
+      
+      // Build update object with attribution
+      const updateData: any = {};
+      
+      if (baselineValue !== undefined) {
+        updateData.baselineValue = baselineValue;
+        updateData.baselineEnteredBy = "customer";
+        updateData.baselineEnteredByName = customerName ? sanitizeInput(customerName) : "Customer";
+      }
+      
+      if (targetValue !== undefined) {
+        updateData.targetValue = targetValue;
+        updateData.targetEnteredBy = "customer";
+        updateData.targetEnteredByName = customerName ? sanitizeInput(customerName) : "Customer";
+      }
+      
+      if (customerComment !== undefined) {
+        updateData.customerComment = sanitizeInput(customerComment);
+        updateData.customerCommentedAt = new Date();
+      }
+      
+      // Update KPI
+      const updatedKPI = await storage.updateJobThemeKPI(parseInt(kpiId), updateData);
+      
+      if (!updatedKPI) {
+        return res.status(404).json({ error: "KPI not found" });
+      }
+      
+      res.json(updatedKPI);
+    } catch (error: any) {
+      console.error("Error updating KPI from shared link:", error);
+      res.status(500).json({ error: error.message || "Failed to update KPI" });
+    }
+  });
+  
+  // Get existing share link for a project
+  app.get("/api/projects/:projectId/alignment/share", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const shareLink = await storage.getAlignmentShareLink(projectId);
+      
+      if (!shareLink) {
+        return res.json({ shareLink: null });
+      }
+      
+      res.json({
+        shareLink,
+        shareUrl: `/shared/alignment/${shareLink.shareToken}`
+      });
+    } catch (error: any) {
+      console.error("Error fetching alignment share link:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch share link" });
+    }
+  });
+  
+  // Revoke a share link
+  app.delete("/api/projects/:projectId/alignment/share/:linkId", async (req, res) => {
+    try {
+      const linkId = parseInt(req.params.linkId);
+      
+      await storage.updateAlignmentShareLink(linkId, {
+        status: "revoked"
+      });
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error revoking alignment share link:", error);
+      res.status(500).json({ error: error.message || "Failed to revoke share link" });
     }
   });
 }
