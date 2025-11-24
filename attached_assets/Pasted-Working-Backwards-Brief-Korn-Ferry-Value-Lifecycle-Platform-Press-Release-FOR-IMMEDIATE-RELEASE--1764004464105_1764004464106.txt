@@ -1,0 +1,87 @@
+Working Backwards Brief: Korn Ferry Value Lifecycle Platform
+Press Release
+FOR IMMEDIATE RELEASE
+
+Korn Ferry Launches Value Lifecycle Platform: Transforming Consulting Engagements with AI-Powered Value Tracking from Discovery to Realization
+New platform enables consultants to build quantified business cases in minutes, track actual value delivered, and prove ROI throughout entire client engagement
+
+Korn Ferry today announced the Value Lifecycle Platform, a breakthrough application that revolutionizes how management consultants demonstrate and deliver measurable business value to clients. For the first time, consultants can seamlessly track the complete value journey—from initial discovery insights through alignment on priorities to realized business outcomes—all in a single integrated platform.
+
+"Our consultants were spending countless hours manually aggregating client data, building value cases in spreadsheets, and struggling to prove the actual impact of our work," said [Leader Name], [Title] at Korn Ferry. "The Value Lifecycle Platform transforms weeks of work into minutes, while giving us unprecedented visibility into the real value we're delivering to clients."
+
+The Challenge: Proving Consulting Value Has Been Too Hard
+
+Management consultants face a persistent challenge: demonstrating tangible business value. Traditional approaches involve scattered data across emails, spreadsheets, and notes; manual value case creation that takes weeks; generic industry benchmarks that don't reflect client reality; and no systematic way to track whether promised improvements actually materialized.
+
+The Solution: Three Connected Phases, One Continuous Value Story
+
+The Value Lifecycle Platform introduces three integrated phases:
+
+Discovery Phase – AI automatically analyzes company research, client conversations, and uploaded documents to identify strategic priorities. Instead of consultants spending days synthesizing insights, GPT-4o surfaces the most impactful "jobs to be done" and recommends relevant KPIs with Korn Ferry benchmark data. Consultants can collaborate with clients through secure questionnaires, with AI extracting key metrics and themes from responses.
+
+Alignment Phase – Consultants and clients work together to set baselines and targets for selected KPIs. The platform calculates financial impact automatically, generates stakeholder-specific value narratives using proven Korn Ferry success stories, and creates shareable alignment views that clients can edit directly—no login required. Re-prioritization features allow dynamic adjustment as client needs evolve.
+
+Realization Phase – Track actual KPI progress against agreed baselines and targets. Link business reviews to success stories. Demonstrate concrete value delivery with real numbers, not promises.
+
+What Makes This Different
+
+AI that understands consulting context: Not generic AI—trained on Korn Ferry's methodologies, solution areas, and verified success stories
+Quantified from day one: Every insight connects to measurable KPIs with financial translation
+Client collaboration built in: Secure sharing links let clients contribute data without complex logins
+Iterative refinement: Even after finalization, consultants can refine KPI values as better data emerges
+Complete audit trail: Source attribution tracks whether data came from AI research, client input, or consultant analysis
+Early Results
+
+Beta consultants report:
+
+90% reduction in time to create quantified value cases (weeks → hours)
+3x more client engagement through collaborative questionnaires vs. email
+100% visibility into which promised improvements actually delivered results
+"For the first time, I can walk into an executive meeting with a complete, quantified story of the value we've delivered—backed by the client's own data," said [Beta User Name], Senior Consultant. "The platform does the heavy lifting so I can focus on strategic guidance."
+
+Availability
+
+The Korn Ferry Value Lifecycle Platform is available now to Korn Ferry consultants globally.
+
+Frequently Asked Questions
+Q: Who is this for?
+
+A: Korn Ferry management consultants working on client engagements where demonstrating measurable business value is critical. Particularly valuable for strategic transformation, organizational effectiveness, and capability-building engagements.
+
+Q: How is this different from CRM or project management tools?
+
+A: CRMs track relationships and activities. Project management tools track tasks and timelines. The Value Lifecycle Platform tracks business value—the actual measurable outcomes that matter to clients. It's purpose-built for the consulting value creation process, not adapted from generic software.
+
+Q: What if clients don't have baseline data for KPIs?
+
+A: The platform includes AI-powered industry baseline generation. For any KPI, consultants can request AI to generate a defensible industry-standard baseline with sources. Clients can also contribute data through simple questionnaires, and the platform attributes all data sources for credibility.
+
+Q: Can clients access the platform?
+
+A: Clients receive secure, shareable links to view and edit KPI baselines/targets without creating accounts. This reduces friction and increases collaboration. All client contributions are attributed by name for transparency.
+
+Q: What happens if priorities change mid-engagement?
+
+A: The platform supports re-prioritization in the Alignment phase. Consultants can adjust which "jobs" are prioritized while maintaining data integrity. The system locks structural changes after Discovery finalization but allows continuous refinement of KPI values as better data emerges.
+
+Q: How does AI ensure recommendations are relevant to Korn Ferry's approach?
+
+A: The AI is integrated with Korn Ferry's knowledge base—solution areas, capability frameworks, and a verified library of success stories. Recommendations align with proven Korn Ferry methodologies, not generic consulting advice.
+
+Q: What if I prefer to work in spreadsheets?
+
+A: You can export data, but the platform eliminates most spreadsheet work through intelligent automation. Consultants report the AI does in minutes what previously took them days in Excel.
+
+Q: How do I prove the value was actually delivered?
+
+A: The Realization phase tracks actual KPI performance against baselines and targets. You can link business reviews to specific KPIs and success stories, creating an evidence-based narrative of delivered value with real numbers.
+
+Q: Is my client data secure?
+
+A: Yes. The platform includes secure authentication, encrypted shareable tokens for client access, and comprehensive audit trails showing who contributed what data and when.
+
+Q: What's the learning curve?
+
+A: Consultants familiar with value-based selling pick it up in one engagement. The platform guides you through each phase with clear workflows and AI assistance at every step.
+
+This working backwards brief emphasizes the customer outcome (proving tangible consulting value with 90% less effort) rather than features, making it clear w
