@@ -884,17 +884,38 @@ export function registerRoutes(app: Express) {
         return res.status(404).json({ error: "Project not found" });
       }
 
-      // Get selected insights grouped by capability
-      const allDataPoints = await storage.getCompanyDataPoints(projectId);
-      const selectedInsights = allDataPoints.filter(dp => dp.selectedForNotes);
+      // Get job themes to determine which insights to use for question generation
+      const jobThemes = await storage.getJobThemes(projectId);
       
-      if (selectedInsights.length === 0) {
-        return res.status(400).json({ error: "No insights selected for discovery questions" });
+      if (jobThemes.length === 0) {
+        return res.status(400).json({ error: "No job themes found. Please complete the Notes & Evidence step first to identify highlighted priorities." });
+      }
+
+      // Collect all insight IDs referenced in job themes
+      const jobThemeInsightIds = new Set<number>();
+      for (const theme of jobThemes) {
+        if (theme.sourceInsightIds) {
+          for (const id of theme.sourceInsightIds) {
+            jobThemeInsightIds.add(id);
+          }
+        }
+      }
+
+      if (jobThemeInsightIds.size === 0) {
+        return res.status(400).json({ error: "No insights found in job themes. Please ensure your highlighted priorities have associated insights." });
+      }
+
+      // Get only insights that are part of job themes
+      const allDataPoints = await storage.getCompanyDataPoints(projectId);
+      const jobThemeInsights = allDataPoints.filter(dp => jobThemeInsightIds.has(dp.id));
+      
+      if (jobThemeInsights.length === 0) {
+        return res.status(400).json({ error: "No valid insights found for job themes" });
       }
 
       // Group by capability
-      const capabilityGroups = new Map<string, typeof selectedInsights>();
-      for (const insight of selectedInsights) {
+      const capabilityGroups = new Map<string, typeof jobThemeInsights>();
+      for (const insight of jobThemeInsights) {
         if (insight.relevantCapability) {
           const existing = capabilityGroups.get(insight.relevantCapability) || [];
           existing.push(insight);
@@ -903,7 +924,7 @@ export function registerRoutes(app: Express) {
       }
 
       if (capabilityGroups.size === 0) {
-        return res.status(400).json({ error: "Selected insights must have capability classification" });
+        return res.status(400).json({ error: "Job theme insights must have capability classification" });
       }
 
       // Prepare input for AI

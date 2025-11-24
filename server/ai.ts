@@ -414,19 +414,21 @@ export async function generateDiscoveryQuestions(
   
   const capabilityContext = capabilityQuestions.map(cq => `
 ${cq.capability}:
-Selected Insights:
+Job Theme Insights:
 ${cq.insights.map(i => `- ${i.label}: ${i.value}${i.relatedKPIs && i.relatedKPIs.length > 0 ? ` (KPIs: ${i.relatedKPIs.join(', ')})` : ''}`).join('\n')}
 `).join('\n');
 
-  const prompt = `You are a Korn Ferry consultant preparing for a discovery session with ${companyName}. Based on the AI research insights that have been selected, generate targeted discovery questions that will help investigate further and capture data for KPI calculations.
+  const prompt = `You are a Korn Ferry consultant preparing for a discovery session with ${companyName}. Based on the highlighted priorities (job themes) you have identified from the organization's knowledge and research, generate targeted discovery questions that will help investigate further and capture data for KPI calculations.
 
-SELECTED INSIGHTS BY CAPABILITY:
+IMPORTANT: Only generate questions for the job themes listed below. These represent the strategic priorities the consultant has chosen to focus on based on the organization's specific needs and opportunities.
+
+JOB THEME INSIGHTS BY CAPABILITY:
 ${capabilityContext}
 
 KORN FERRY KNOWLEDGE BASE:
 ${knowledgeBase}
 
-For each capability with selected insights, generate 2-4 discovery questions that:
+For each capability with job theme insights, generate 2-4 discovery questions that:
 1. Build on the selected insights to dig deeper into the client's situation
 2. Are client-centered and conversational (not internal consulting jargon)
 3. Capture both quantitative metrics (for calculations) and qualitative context (for rationale)
