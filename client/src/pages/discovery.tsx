@@ -27,7 +27,7 @@ import ProjectSelector from "@/components/ProjectSelector";
 import StatusBadge from "@/components/StatusBadge";
 import ProjectPhaseNav from "@/components/project-phase-nav";
 import KPIRecommendationDialog from "@/components/KPIRecommendationDialog";
-import { ArrowLeft, Save, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, TrendingUp, Activity, Award, Building, Calendar, AlertCircle, ChevronDown, Lightbulb, BarChart3, MessageSquare } from "lucide-react";
+import { ArrowLeft, Save, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, TrendingUp, Activity, Award, Building, Calendar, AlertCircle, ChevronDown, Lightbulb, BarChart3, MessageSquare, Edit, Lock, Unlock } from "lucide-react";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { Link, useLocation, useRoute } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -46,10 +46,11 @@ interface JobThemeCardProps {
     isPending: boolean;
   };
   isFinalized: boolean;
+  editMode: boolean;
   onDeselect: () => void;
 }
 
-function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, onDeselect }: JobThemeCardProps) {
+function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, editMode, onDeselect }: JobThemeCardProps) {
   const { toast } = useToast();
   const [baselineInputs, setBaselineInputs] = useState<Record<number, { value: string; source: string }>>({});
   const [targetInputs, setTargetInputs] = useState<Record<number, { value: string; source: string }>>({});
@@ -97,23 +98,23 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
   }, [theme.kpis, dirtyBaseline, dirtyTarget]);
   
   // Helper functions to get current values
-  const getBaselineValue = (kpi: JobThemeKPI) => {
+  const getBaselineValue = (kpi: JobThemeWithKPIs['kpis'][0]) => {
     return baselineInputs[kpi.id]?.value ?? kpi.baselineValue ?? '';
   };
   
-  const getBaselineSource = (kpi: JobThemeKPI) => {
+  const getBaselineSource = (kpi: JobThemeWithKPIs['kpis'][0]) => {
     return baselineInputs[kpi.id]?.source ?? kpi.baselineSource ?? '';
   };
   
-  const getTargetValue = (kpi: JobThemeKPI) => {
+  const getTargetValue = (kpi: JobThemeWithKPIs['kpis'][0]) => {
     return targetInputs[kpi.id]?.value ?? kpi.targetValue ?? '';
   };
   
-  const getTargetSource = (kpi: JobThemeKPI) => {
+  const getTargetSource = (kpi: JobThemeWithKPIs['kpis'][0]) => {
     return targetInputs[kpi.id]?.source ?? kpi.targetSource ?? '';
   };
   
-  const handleKPIToggle = (kpi: JobThemeKPI) => {
+  const handleKPIToggle = (kpi: JobThemeWithKPIs['kpis'][0]) => {
     // Clear dirty flags when deselecting a KPI
     if (kpi.isSelected) {
       setDirtyBaseline(prev => {
@@ -134,7 +135,7 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
     });
   };
   
-  const handleBaselineUpdate = (kpi: JobThemeKPI) => {
+  const handleBaselineUpdate = (kpi: JobThemeWithKPIs['kpis'][0]) => {
     // Check if user has made any edits
     if (!dirtyBaseline.has(kpi.id)) {
       toast({
@@ -176,7 +177,7 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
     });
   };
   
-  const handleTargetUpdate = (kpi: JobThemeKPI) => {
+  const handleTargetUpdate = (kpi: JobThemeWithKPIs['kpis'][0]) => {
     // Check if user has made any edits
     if (!dirtyTarget.has(kpi.id)) {
       toast({
@@ -244,7 +245,7 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
   });
   
   // Render a single KPI card (reusable for both primary and supporting)
-  const renderKPI = (kpi: JobThemeKPI) => {
+  const renderKPI = (kpi: JobThemeWithKPIs['kpis'][0]) => {
             const achievabilityScore = kpi.aiAchievabilityScore || 0;
             const impactScore = kpi.aiValueImpactScore || 0;
             const isAIRecommended = kpi.isAIRecommended;
@@ -483,7 +484,7 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
                 )}
                   
                 {/* BAND 4: ACTION RAIL - Baseline Data Input/Edit */}
-                {kpi.isSelected && (
+                {kpi.isSelected && (!isFinalized || editMode) && (
                   <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 border-2 border-blue-500/30 p-5">
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
@@ -622,7 +623,7 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
                 )}
                   
                 {/* Target Data Input/Edit - Only show if baseline is set */}
-                {kpi.isSelected && kpi.baselineValue && (
+                {kpi.isSelected && kpi.baselineValue && (!isFinalized || editMode) && (
                   <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 border-2 border-purple-500/30 p-5">
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
@@ -968,6 +969,7 @@ export default function Discovery() {
   const projectId = parseInt(params?.id || "0");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const [kpiEditMode, setKpiEditMode] = useState(false);
 
   const { data: project } = useQuery<Project>({
     queryKey: [`/api/projects/${projectId}`],
@@ -3069,6 +3071,7 @@ export default function Discovery() {
                                 projectId={projectId}
                                 updateKPIMutation={updateKPIMutation}
                                 isFinalized={isFinalized}
+                                editMode={kpiEditMode}
                                 onDeselect={() => {}}
                               />
                             </CardContent>
@@ -3093,14 +3096,33 @@ export default function Discovery() {
                       <div className="flex-1">
                         <p className="font-semibold text-green-900 dark:text-green-100">Discovery Phase Complete</p>
                         <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                          Your priorities are locked. Continue to Alignment to build value cases.
+                          Your priorities are locked. {kpiEditMode ? "You can refine KPI baselines and targets below." : "Enable editing to refine KPI baselines and targets."}
                         </p>
                       </div>
-                      <Link href={`/projects/${projectId}/alignment`}>
-                        <Button data-testid="button-go-to-alignment">
-                          Go to Alignment
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant={kpiEditMode ? "outline" : "secondary"}
+                          onClick={() => setKpiEditMode(!kpiEditMode)}
+                          data-testid="button-toggle-kpi-edit-mode"
+                        >
+                          {kpiEditMode ? (
+                            <>
+                              <Lock className="w-4 h-4 mr-2" />
+                              Lock Editing
+                            </>
+                          ) : (
+                            <>
+                              <Edit className="w-4 h-4 mr-2" />
+                              Enable Editing
+                            </>
+                          )}
                         </Button>
-                      </Link>
+                        <Link href={`/projects/${projectId}/alignment`}>
+                          <Button data-testid="button-go-to-alignment">
+                            Go to Alignment
+                          </Button>
+                        </Link>
+                      </div>
                     </div>
                   ) : canFinalize ? (
                     <div className="flex items-center justify-between gap-4 p-6 rounded-lg bg-primary/10 border-2 border-primary/30">
