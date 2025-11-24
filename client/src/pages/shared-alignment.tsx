@@ -230,12 +230,9 @@ function SharedKPIRow({ kpi, token, canEdit, customerName }: SharedKPIRowProps) 
 
   const updateKPIMutation = useMutation({
     mutationFn: async (data: { baselineValue?: string; targetValue?: string; customerComment?: string }) => {
-      return await apiRequest(`/api/alignment/shared/${token}/kpis/${kpi.id}`, {
-        method: "PATCH",
-        body: {
-          ...data,
-          customerName: customerName || "Customer",
-        },
+      return await apiRequest("PATCH", `/api/alignment/shared/${token}/kpis/${kpi.id}`, {
+        ...data,
+        customerName: customerName || "Customer",
       });
     },
     onSuccess: () => {

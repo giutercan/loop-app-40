@@ -46,13 +46,10 @@ export function ShareAlignmentDialog({ projectId }: ShareAlignmentDialogProps) {
   // Create new share link mutation
   const createShareLinkMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest(`/api/projects/${projectId}/alignment/share`, {
-        method: "POST",
-        body: {
-          customerName: customerName || null,
-          customerEmail: customerEmail || null,
-          expiresInDays: expiresInDays === "never" ? null : parseInt(expiresInDays),
-        },
+      return await apiRequest("POST", `/api/projects/${projectId}/alignment/share`, {
+        customerName: customerName || null,
+        customerEmail: customerEmail || null,
+        expiresInDays: expiresInDays === "never" ? null : parseInt(expiresInDays),
       });
     },
     onSuccess: () => {
@@ -74,9 +71,7 @@ export function ShareAlignmentDialog({ projectId }: ShareAlignmentDialogProps) {
   // Revoke share link mutation
   const revokeShareLinkMutation = useMutation({
     mutationFn: async (linkId: number) => {
-      return await apiRequest(`/api/projects/${projectId}/alignment/share/${linkId}`, {
-        method: "DELETE",
-      });
+      return await apiRequest("DELETE", `/api/projects/${projectId}/alignment/share/${linkId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/alignment/share`] });
