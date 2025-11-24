@@ -298,7 +298,7 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
                     <Checkbox
                       checked={kpi.isSelected}
                       onCheckedChange={() => handleKPIToggle(kpi)}
-                      disabled={isFinalized}
+                      disabled={isFinalized && !editMode}
                       className="h-5 w-5"
                       data-testid={`checkbox-kpi-${kpi.id}`}
                     />
@@ -2975,7 +2975,7 @@ export default function Discovery() {
                       <div className="flex-1">
                         <p className="font-semibold text-green-900 dark:text-green-100">Discovery Phase Complete</p>
                         <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                          Your priorities are locked. {kpiEditMode ? "You can refine KPI baselines and targets below." : "Click 'Enable Editing' to refine KPI baselines and targets."}
+                          Your priorities are locked. {kpiEditMode ? "You can select KPIs and edit their baselines and targets below." : "Click 'Enable Editing' to modify KPI selections and values."}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
