@@ -54,10 +54,15 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
   const [baselineInputs, setBaselineInputs] = useState<Record<number, { value: string; source: string }>>({});
   const [targetInputs, setTargetInputs] = useState<Record<number, { value: string; source: string }>>({});
   const [showRecommendations, setShowRecommendations] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
   
   // Track which KPIs have unsaved edits (dirty flags)
   const [dirtyBaseline, setDirtyBaseline] = useState<Set<number>>(new Set());
   const [dirtyTarget, setDirtyTarget] = useState<Set<number>>(new Set());
+  
+  // Group KPIs by type
+  const primaryKPIs = theme.kpis.filter(kpi => kpi.kpiType === "primary");
+  const supportingKPIs = theme.kpis.filter(kpi => kpi.kpiType === "supporting");
   
   // Rehydrate input state from fresh KPI props whenever they change
   // This ensures inputs always show server-normalized data after refetch
@@ -213,46 +218,33 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
     });
   };
   
-  return (
-    <div className="space-y-4">
-      {/* Job Summary */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1">
-          <div className="font-semibold text-base">{theme.jobName}</div>
-          <div className="text-sm text-muted-foreground mt-1">{theme.capabilityName}</div>
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <Badge variant="secondary" className="text-xs">{theme.evidenceCount} insights</Badge>
-            {theme.solutionArea && <Badge variant="outline" className="text-xs">{theme.solutionArea}</Badge>}
-            {isFinalized && <Badge variant="secondary" className="bg-yellow-500 text-white text-xs">Locked</Badge>}
-          </div>
-        </div>
-        {!isFinalized && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowRecommendations(true)}
-            className="gap-2 shrink-0"
-            data-testid={`button-recommend-kpis-${theme.id}`}
-          >
-            <Sparkles className="h-4 w-4" />
-            Suggest KPIs
-          </Button>
-        )}
-      </div>
-      
-      <KPIRecommendationDialog
-        jobThemeId={theme.id}
-        jobName={theme.jobName}
-        projectId={projectId}
-        open={showRecommendations}
-        onOpenChange={setShowRecommendations}
-      />
-      
-      {/* KPIs Section - Modernized */}
-      {theme.kpis && theme.kpis.length > 0 && (
-        <div className="space-y-3 mt-4 pt-4 border-t">
-          <div className="font-medium text-sm">Key Performance Indicators</div>
-          {theme.kpis.map((kpi) => {
+  // Mutation for generating AI industry benchmarks
+  const generateBenchmarkMutation = useMutation({
+    mutationFn: async (kpiId: number): Promise<JobThemeKPI> => {
+      const response = await apiRequest("POST", `/api/job-theme-kpis/${kpiId}/generate-benchmark`, {});
+      return response;
+    },
+    onSuccess: async (updatedKPI: JobThemeKPI) => {
+      await queryClient.invalidateQueries({ 
+        queryKey: [`/api/projects/${projectId}/job-themes`],
+        refetchType: 'active'
+      });
+      toast({
+        title: "Industry Baseline Generated",
+        description: `AI generated benchmark: ${updatedKPI.benchmarkValue} ${updatedKPI.unit}`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to generate benchmark",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Render a single KPI card (reusable for both primary and supporting)
+  const renderKPI = (kpi: JobThemeKPI) => {
             const achievabilityScore = kpi.aiAchievabilityScore || 0;
             const impactScore = kpi.aiValueImpactScore || 0;
             const isAIRecommended = kpi.isAIRecommended;
@@ -532,6 +524,43 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
                         </div>
                       )}
                       
+                      {/* Generate AI industry benchmark if none exists */}
+                      {!kpi.baselineValue && !kpi.benchmarkValue && !isFinalized && (
+                        <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-purple-500/10 via-indigo-500/5 to-transparent border border-purple-500/30 p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 text-xs font-semibold text-purple-700 dark:text-purple-400 mb-1">
+                                <Sparkles className="h-3.5 w-3.5" />
+                                Industry Benchmark Not Available
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Let AI generate an industry baseline value for this KPI
+                              </p>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-2 border-purple-500/30 hover:bg-purple-500/10"
+                              onClick={() => generateBenchmarkMutation.mutate(kpi.id)}
+                              disabled={generateBenchmarkMutation.isPending}
+                              data-testid={`button-generate-benchmark-${kpi.id}`}
+                            >
+                              {generateBenchmarkMutation.isPending ? (
+                                <>
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  Generating...
+                                </>
+                              ) : (
+                                <>
+                                  <Sparkles className="h-3.5 w-3.5" />
+                                  Generate
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                      
                       {/* Input form - Pre-fill with existing values or show empty */}
                       {!isFinalized && (
                         <div className="flex flex-col gap-3">
@@ -659,10 +688,100 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
               </div>
             </div>
             );
-          })}
+  };
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="space-y-4">
+      {/* Job Summary */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1">
+          <div className="flex items-center gap-3">
+            <CollapsibleTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="shrink-0"
+                data-testid={`button-toggle-${theme.id}`}
+              >
+                <ChevronDown className={`h-5 w-5 transition-transform duration-200 ${isOpen ? 'rotate-0' : '-rotate-90'}`} />
+              </Button>
+            </CollapsibleTrigger>
+            <div className="flex-1">
+              <div className="font-semibold text-base">{theme.jobName}</div>
+              <div className="text-sm text-muted-foreground mt-1">{theme.capabilityName}</div>
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <Badge variant="secondary" className="text-xs">{theme.evidenceCount} insights</Badge>
+                {theme.solutionArea && <Badge variant="outline" className="text-xs">{theme.solutionArea}</Badge>}
+                {isFinalized && <Badge variant="secondary" className="bg-yellow-500 text-white text-xs">Locked</Badge>}
+              </div>
+            </div>
+          </div>
         </div>
-      )}
-    </div>
+        {!isFinalized && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowRecommendations(true)}
+            className="gap-2 shrink-0"
+            data-testid={`button-recommend-kpis-${theme.id}`}
+          >
+            <Sparkles className="h-4 w-4" />
+            Suggest KPIs
+          </Button>
+        )}
+      </div>
+      
+      <KPIRecommendationDialog
+        jobThemeId={theme.id}
+        jobName={theme.jobName}
+        projectId={projectId}
+        open={showRecommendations}
+        onOpenChange={setShowRecommendations}
+      />
+      
+      <CollapsibleContent className="space-y-6">
+        {/* Primary KPIs Section */}
+        {primaryKPIs.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 px-1">
+              <div className="h-px flex-1 bg-gradient-to-r from-purple-500/50 to-transparent" />
+              <Badge variant="outline" className="font-semibold bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-500/30">
+                <Target className="h-3.5 w-3.5 mr-1.5" />
+                Primary KPIs
+              </Badge>
+              <div className="h-px flex-1 bg-gradient-to-l from-purple-500/50 to-transparent" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {primaryKPIs.map(kpi => renderKPI(kpi))}
+            </div>
+          </div>
+        )}
+        
+        {/* Supporting KPIs Section */}
+        {supportingKPIs.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 px-1">
+              <div className="h-px flex-1 bg-gradient-to-r from-cyan-500/50 to-transparent" />
+              <Badge variant="outline" className="font-semibold bg-gradient-to-r from-cyan-500/10 to-teal-500/10 border-cyan-500/30">
+                <Activity className="h-3.5 w-3.5 mr-1.5" />
+                Supporting KPIs
+              </Badge>
+              <div className="h-px flex-1 bg-gradient-to-l from-cyan-500/50 to-transparent" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {supportingKPIs.map(kpi => renderKPI(kpi))}
+            </div>
+          </div>
+        )}
+        
+        {/* Empty state if no KPIs */}
+        {primaryKPIs.length === 0 && supportingKPIs.length === 0 && (
+          <div className="text-center text-sm text-muted-foreground py-8">
+            No KPIs selected yet. Click "Suggest KPIs" to get AI recommendations.
+          </div>
+        )}
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
