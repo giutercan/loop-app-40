@@ -1651,70 +1651,78 @@ export default function Discovery() {
               </div>
             </div>
 
-            {/* Step 2: Extract Insights */}
-            <Card className="bg-primary/5 border-primary/20">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-semibold text-sm shrink-0">
-                    2
-                  </div>
-                  <div className="flex-1">
-                    <CardTitle className="flex items-center gap-2">
-                      <Sparkles className="w-5 h-5 text-primary" />
-                      Extract Strategic Insights
-                    </CardTitle>
-                    <CardDescription>
-                      AI analyzes your notes and files to identify metrics, challenges, and opportunities
-                    </CardDescription>
+            {/* Step 2: Extract Insights - Modernized */}
+            <div className="relative rounded-lg border bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50 dark:from-purple-950/20 dark:via-blue-950/20 dark:to-cyan-950/20 overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500" />
+              <div className="p-6 space-y-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 text-white font-bold shrink-0 shadow-md">
+                      2
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-xl font-semibold">Extract Strategic Insights</h3>
+                        <Sparkles className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                      </div>
+                      <p className="text-sm text-muted-foreground">AI analyzes your notes to identify metrics, challenges, and opportunities</p>
+                    </div>
                   </div>
                   <Button
                     onClick={() => enrichFromNotesMutation.mutate()}
                     disabled={enrichFromNotesMutation.isPending || (!notes?.freeformNotes && attachments.length === 0)}
+                    size="lg"
+                    className="shrink-0"
                     data-testid="button-enrich-from-notes"
                   >
                     <Sparkles className="w-4 h-4 mr-2" />
                     {enrichFromNotesMutation.isPending ? "Analyzing..." : "Extract Insights"}
                   </Button>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Click "Extract Insights" to have AI analyze your notes and files. Enriched insights will appear highlighted in Step 3 below, combined with any insights you selected from the Organization tab.
-                </p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  <strong>Supported for AI analysis:</strong> Text files (.txt, .csv, .json) and voice notes
-                </p>
-              </CardContent>
-            </Card>
+                <div className="text-xs text-muted-foreground bg-background/60 rounded-md p-3 border">
+                  <strong>✓ Supported:</strong> Text files (.txt, .csv, .json) and voice notes
+                </div>
+              </div>
+            </div>
 
-            {/* Step 3: Combined Evidence */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-semibold text-sm shrink-0">
+            {/* Step 3: Combined Evidence - Modernized */}
+            <div className="rounded-lg border bg-gradient-to-br from-background to-muted/20">
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-bold shrink-0 shadow-md">
                     3
                   </div>
                   <div className="flex-1">
-                    <CardTitle>Evidence & Enriched Insights</CardTitle>
-                    <CardDescription>
+                    <h3 className="text-xl font-semibold mb-1">Evidence & Enriched Insights</h3>
+                    <div className="flex items-center gap-2">
                       {(() => {
                         const selectedCount = dataPoints.filter(dp => dp.selectedForNotes).length;
                         const enrichedCount = dataPoints.filter(dp => (dp.provenance as any)?.type === 'notes_enrichment').length;
                         const total = selectedCount + enrichedCount;
                         
                         if (total === 0) {
-                          return "Choose insights from the Organization tab to build your value case";
+                          return <p className="text-sm text-muted-foreground">No insights selected yet</p>;
                         }
                         
-                        const parts = [];
-                        if (selectedCount > 0) parts.push(`${selectedCount} selected`);
-                        if (enrichedCount > 0) parts.push(`${enrichedCount} enriched`);
-                        return parts.join(' + ');
+                        return (
+                          <>
+                            {selectedCount > 0 && (
+                              <Badge variant="secondary" className="text-xs">
+                                {selectedCount} selected
+                              </Badge>
+                            )}
+                            {enrichedCount > 0 && (
+                              <Badge className="bg-gradient-to-r from-purple-600 to-blue-600 text-white border-0 text-xs">
+                                <Sparkles className="w-3 h-3 mr-1" />
+                                {enrichedCount} enriched
+                              </Badge>
+                            )}
+                          </>
+                        );
                       })()}
-                    </CardDescription>
+                    </div>
                   </div>
                 </div>
-              </CardHeader>
               {(() => {
                 const combinedPoints = dataPoints.filter(dp => 
                   dp.selectedForNotes || (dp.provenance as any)?.type === 'notes_enrichment'
@@ -1722,17 +1730,17 @@ export default function Discovery() {
                 
                 if (combinedPoints.length === 0) {
                   return (
-                    <CardContent>
+                    <div className="bg-muted/30 rounded-md p-6 text-center">
                       <p className="text-sm text-muted-foreground">
                         Go to the <strong>Organization tab</strong> and check the boxes next to insights you want to include as evidence. 
                         You can also extract insights from your notes above using the "Extract Insights" button.
                       </p>
-                    </CardContent>
+                    </div>
                   );
                 }
                 
                 return (
-                  <CardContent className="space-y-4">
+                  <div className="space-y-4">
                     {[
                         'Success Profiles & Role Design',
                         'Standardised Assessments & Assessments at Scale',
@@ -1806,24 +1814,35 @@ export default function Discovery() {
                           </Collapsible>
                         );
                       })}
-                  </CardContent>
+                  </div>
                 );
               })()}
-            </Card>
+              </div>
+            </div>
 
-            {/* Step 4: Discovery Questions - Only show if any evidence exists */}
+            {/* Step 4: Discovery Questions - Modernized */}
             {dataPoints.filter(dp => dp.selectedForNotes || (dp.provenance as any)?.type === 'notes_enrichment').length > 0 && (
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-semibold text-sm shrink-0">
-                      4
+              <div className="relative rounded-lg border bg-gradient-to-br from-background to-muted/10 overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-500" />
+                <div className="p-6">
+                  <div className="flex items-center justify-between gap-4 mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-pink-600 text-white font-bold shrink-0 shadow-md">
+                        4
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-xl font-semibold">Discovery Questions</h3>
+                          {discoveryQuestions.length > 0 && (
+                            <Badge className="bg-gradient-to-r from-orange-600 to-pink-600 text-white border-0">
+                              {discoveryQuestions.length} questions
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">Top 10 high-impact questions to move the needle</p>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <CardTitle>Discovery Questions</CardTitle>
-                      <CardDescription>AI-generated questions to investigate insights and capture data for KPI calculations</CardDescription>
-                    </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       <Button 
                         onClick={() => generateDiscoveryQuestionsMutation.mutate()}
                         disabled={generateDiscoveryQuestionsMutation.isPending}
@@ -1909,14 +1928,13 @@ export default function Discovery() {
                       )}
                     </div>
                   </div>
-                </CardHeader>
-                  <CardContent>
-                    {discoveryQuestions.length === 0 ? (
+                  {discoveryQuestions.length === 0 ? (
+                    <div className="bg-muted/30 rounded-md p-6 text-center mt-6">
                       <p className="text-sm text-muted-foreground">
-                        Click "Generate Questions" to create discovery questions based on your selected insights. 
-                        These questions will help you dig deeper during client conversations and capture quantitative metrics for value calculations.
+                        Click "Generate Questions" above to create 10 high-impact discovery questions based on your insights.
                       </p>
-                    ) : (
+                    </div>
+                  ) : (
                       <div className="space-y-6">
                         {(() => {
                           // Group questions by their actual capability name from the database
@@ -1937,8 +1955,8 @@ export default function Discovery() {
                                 <h3 className="font-semibold text-sm">{capability}</h3>
                                 <Badge variant="secondary" className="text-xs">{capabilityQuestions.length} question{capabilityQuestions.length !== 1 ? 's' : ''}</Badge>
                               </div>
-                              <div className="space-y-3 pl-6">
-                                {capabilityQuestions.map((question) => {
+                              <div className="space-y-3">
+                                {capabilityQuestions.map((question, idx) => {
                                   const responses = questionResponses.filter(r => r.questionId === question.id);
                                   const consultantResponse = responses.find(r => r.respondentType === 'consultant');
                                   const clientResponse = responses.find(r => r.respondentType === 'client');
@@ -1946,24 +1964,31 @@ export default function Discovery() {
                                   return (
                                     <div 
                                       key={question.id} 
-                                      className="bg-muted/30 rounded-md p-3 space-y-2.5"
+                                      className="bg-gradient-to-br from-background to-muted/20 rounded-lg border p-4 space-y-3 hover-elevate"
                                       data-testid={`question-${question.id}`}
                                     >
-                                      <div className="flex items-start gap-2">
-                                        <p className="text-sm font-medium flex-1">{question.question}</p>
-                                        <Badge 
-                                          variant={question.questionType === 'quantitative' ? 'default' : question.questionType === 'qualitative' ? 'secondary' : 'outline'}
-                                          className="text-xs shrink-0"
-                                        >
-                                          {question.questionType}
-                                        </Badge>
+                                      <div className="flex items-start gap-3">
+                                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-br from-orange-500 to-pink-600 text-white font-semibold text-xs shrink-0">
+                                          {idx + 1}
+                                        </div>
+                                        <div className="flex-1 space-y-2">
+                                          <p className="text-sm font-medium leading-relaxed">{question.question}</p>
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <Badge 
+                                              variant={question.questionType === 'quantitative' ? 'default' : 'secondary'}
+                                              className="text-xs"
+                                            >
+                                              {question.questionType}
+                                            </Badge>
+                                            {question.relatedKPI && (
+                                              <Badge variant="outline" className="text-xs">
+                                                KPI: {question.relatedKPI}
+                                              </Badge>
+                                            )}
+                                          </div>
+                                          <p className="text-xs text-muted-foreground">{question.purpose}</p>
+                                        </div>
                                       </div>
-                                      <p className="text-xs text-muted-foreground italic">{question.purpose}</p>
-                                      {question.relatedKPI && (
-                                        <p className="text-xs text-primary font-medium">
-                                          Related KPI: {question.relatedKPI}
-                                        </p>
-                                      )}
 
                                       {/* Existing Responses */}
                                       {responses.length > 0 && (
@@ -2035,8 +2060,8 @@ export default function Discovery() {
                         })()}
                       </div>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               )}
 
               {/* Key Discovery Insights - Actionable Summary */}
