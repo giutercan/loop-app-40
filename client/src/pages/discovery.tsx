@@ -2373,6 +2373,60 @@ export default function Discovery() {
                     </div>
                   </div>
 
+                  {/* Available Highlighted Priorities - Compact Grid */}
+                  {unprioritizedThemes.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center justify-between">
+                          <span>Available Highlighted Priorities</span>
+                          <Badge variant="secondary">{unprioritizedThemes.length} remaining</Badge>
+                        </CardTitle>
+                        <CardDescription>Click any priority to add it to your value case (max 3)</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 gap-3">
+                          {unprioritizedThemes.map((theme: any) => (
+                            <button
+                              key={theme.id}
+                              className="text-left border rounded-lg p-3 hover-elevate active-elevate-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                              onClick={() => {
+                                // Prevent duplicates by checking if theme already exists in prioritized list
+                                const currentIds = prioritizedThemes.map((t: JobThemeWithKPIs) => t.id);
+                                if (currentIds.includes(theme.id)) {
+                                  toast({
+                                    title: "Already selected",
+                                    description: "This highlighted priority is already selected.",
+                                    variant: "destructive",
+                                  });
+                                  return;
+                                }
+                                const newPrioritized = [...currentIds, theme.id].slice(0, 3);
+                                prioritizeJobsMutation.mutate({ prioritizedIds: newPrioritized });
+                              }}
+                              disabled={isFinalized || prioritizedThemes.length >= 3 || prioritizeJobsMutation.isPending}
+                              data-testid={`button-select-job-${theme.id}`}
+                            >
+                              <div className="space-y-2">
+                                <h4 className="font-semibold text-sm line-clamp-2">{theme.jobName}</h4>
+                                <p className="text-xs text-muted-foreground">{theme.capabilityName}</p>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="secondary" className="text-xs">
+                                    {theme.evidenceCount} insights
+                                  </Badge>
+                                  {theme.solutionArea && (
+                                    <Badge variant="outline" className="text-xs line-clamp-1">
+                                      {theme.solutionArea}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
                   {/* Priority Slots with Integrated KPI Configuration */}
                   <div className="space-y-4">
                     {[1, 2, 3].map((slot) => {
@@ -2429,7 +2483,7 @@ export default function Discovery() {
                               <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-lg">
                                 <Plus className="w-8 h-8 text-muted-foreground mb-2" />
                                 <p className="text-sm font-medium">No highlighted priority selected</p>
-                                <p className="text-xs text-muted-foreground mt-1">Choose from available highlighted priorities below</p>
+                                <p className="text-xs text-muted-foreground mt-1">Choose from available highlighted priorities above</p>
                               </div>
                             </CardContent>
                           )}
@@ -2437,59 +2491,6 @@ export default function Discovery() {
                       );
                     })}
                   </div>
-
-                  {/* Available Highlighted Priorities - Compact Grid */}
-                  {unprioritizedThemes.length > 0 && (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center justify-between">
-                          <span>Available Highlighted Priorities</span>
-                          <Badge variant="secondary">{unprioritizedThemes.length} remaining</Badge>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-2 gap-3">
-                          {unprioritizedThemes.map((theme: any) => (
-                            <button
-                              key={theme.id}
-                              className="text-left border rounded-lg p-3 hover-elevate active-elevate-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                              onClick={() => {
-                                // Prevent duplicates by checking if theme already exists in prioritized list
-                                const currentIds = prioritizedThemes.map((t: JobThemeWithKPIs) => t.id);
-                                if (currentIds.includes(theme.id)) {
-                                  toast({
-                                    title: "Already selected",
-                                    description: "This highlighted priority is already selected.",
-                                    variant: "destructive",
-                                  });
-                                  return;
-                                }
-                                const newPrioritized = [...currentIds, theme.id].slice(0, 3);
-                                prioritizeJobsMutation.mutate({ prioritizedIds: newPrioritized });
-                              }}
-                              disabled={isFinalized || prioritizedThemes.length >= 3 || prioritizeJobsMutation.isPending}
-                              data-testid={`button-select-job-${theme.id}`}
-                            >
-                              <div className="space-y-2">
-                                <h4 className="font-semibold text-sm line-clamp-2">{theme.jobName}</h4>
-                                <p className="text-xs text-muted-foreground">{theme.capabilityName}</p>
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="secondary" className="text-xs">
-                                    {theme.evidenceCount} insights
-                                  </Badge>
-                                  {theme.solutionArea && (
-                                    <Badge variant="outline" className="text-xs line-clamp-1">
-                                      {theme.solutionArea}
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
 
                   {/* Finalize Discovery Button or Requirements Message */}
                   {isFinalized ? (
