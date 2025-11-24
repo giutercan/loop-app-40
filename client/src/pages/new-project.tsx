@@ -138,23 +138,23 @@ export default function NewProject() {
       <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto max-w-7xl px-4 lg:px-8">
           <div className="flex h-16 lg:h-20 items-center justify-between">
-            <Link href="/">
-              <a className="flex items-center gap-3 hover-elevate rounded-lg px-2 py-1 -mx-2">
-                <div className="w-10 h-10 bg-gradient-to-br from-primary via-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-                  <TrendingUp className="w-6 h-6 text-primary-foreground" />
-                </div>
-                <div>
-                  <span className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">Korn Ferry</span>
-                  <p className="text-xs text-muted-foreground hidden lg:block">Value Lifecycle</p>
-                </div>
-              </a>
+            <Link href="/" className="flex items-center gap-3 hover-elevate rounded-lg px-2 py-1 -mx-2">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary via-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+                <TrendingUp className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <div>
+                <span className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">Korn Ferry</span>
+                <p className="text-xs text-muted-foreground hidden lg:block">Value Lifecycle</p>
+              </div>
             </Link>
             
             <Link href="/projects">
-              <Button variant="outline" size="lg" data-testid="button-back-to-projects">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Projects
-              </Button>
+              <div className="inline-flex">
+                <Button variant="outline" size="lg" data-testid="button-back-to-projects">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to Projects
+                </Button>
+              </div>
             </Link>
           </div>
         </div>
