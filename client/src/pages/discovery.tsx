@@ -2161,52 +2161,130 @@ export default function Discovery() {
                         </div>
                       )}
 
-                      {/* Key Questionnaire Responses */}
-                      {answeredQuestionsWithResponses.length > 0 && (
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2 pb-2 border-b">
-                            <Users className="w-4 h-4 text-primary" />
-                            <h3 className="font-semibold text-sm">Key Questionnaire Insights</h3>
-                          </div>
+                      {/* Strategic Questionnaire Analysis */}
+                      {(() => {
+                        const totalQuestions = discoveryQuestions.length;
+                        const answeredQuestions = new Set(questionResponses.map(r => r.questionId)).size;
+                        const clientResponses = questionResponses.filter(r => r.respondentType === 'client');
+                        const consultantResponses = questionResponses.filter(r => r.respondentType === 'consultant');
+                        
+                        // Analyze by capability
+                        const capabilityEngagement = discoveryQuestions.reduce((acc, q) => {
+                          const cap = q.capabilityName || 'General';
+                          if (!acc[cap]) acc[cap] = { total: 0, answered: 0, clientAnswered: 0 };
+                          acc[cap].total++;
+                          if (questionResponses.some(r => r.questionId === q.id)) {
+                            acc[cap].answered++;
+                            if (clientResponses.some(r => r.questionId === q.id)) {
+                              acc[cap].clientAnswered++;
+                            }
+                          }
+                          return acc;
+                        }, {} as Record<string, { total: number; answered: number; clientAnswered: number }>);
+                        
+                        const topEngagedCapabilities = Object.entries(capabilityEngagement)
+                          .sort((a, b) => b[1].answered - a[1].answered)
+                          .slice(0, 3);
+                        
+                        const unansweredCapabilities = Object.entries(capabilityEngagement)
+                          .filter(([_, stats]) => stats.answered === 0 && stats.total > 0)
+                          .slice(0, 3);
+
+                        if (totalQuestions === 0) return null;
+
+                        return (
                           <div className="space-y-3">
-                            {answeredQuestionsWithResponses.map(({ question, responses }) => (
-                              <div key={question.id} className="bg-card rounded-md p-3 space-y-3">
-                                <div className="space-y-1">
-                                  <p className="text-sm font-medium">{question.questionText}</p>
-                                  {question.capabilityName && (
-                                    <Badge variant="outline" className="text-xs">
-                                      {question.capabilityName}
-                                    </Badge>
-                                  )}
+                            <div className="flex items-center gap-2 pb-2 border-b">
+                              <Users className="w-4 h-4 text-primary" />
+                              <h3 className="font-semibold text-sm">Discovery Engagement Analysis</h3>
+                            </div>
+                            
+                            {/* Overall Progress */}
+                            <div className="grid grid-cols-3 gap-3">
+                              <div className="bg-card rounded-md p-3">
+                                <div className="text-2xl font-bold text-primary">{answeredQuestions}/{totalQuestions}</div>
+                                <p className="text-xs text-muted-foreground mt-1">Questions Answered</p>
+                              </div>
+                              <div className="bg-card rounded-md p-3">
+                                <div className="text-2xl font-bold text-blue-600">{clientResponses.length}</div>
+                                <p className="text-xs text-muted-foreground mt-1">Client Responses</p>
+                              </div>
+                              <div className="bg-card rounded-md p-3">
+                                <div className="text-2xl font-bold text-green-600">{consultantResponses.length}</div>
+                                <p className="text-xs text-muted-foreground mt-1">Consultant Responses</p>
+                              </div>
+                            </div>
+
+                            {/* Top Engaged Capabilities */}
+                            {topEngagedCapabilities.length > 0 && (
+                              <div className="bg-primary/5 rounded-md p-3 space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <TrendingUp className="w-4 h-4 text-primary" />
+                                  <p className="text-sm font-semibold">Most Engaged Capabilities</p>
                                 </div>
-                                {responses.map((response, idx) => {
-                                  const responseDate = response.createdAt ? new Date(response.createdAt) : null;
-                                  return (
-                                    <div key={idx} className="pl-3 border-l-2 border-primary/30 space-y-1">
-                                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                                {topEngagedCapabilities.map(([capability, stats]) => (
+                                  <div key={capability} className="flex items-center justify-between gap-2">
+                                    <span className="text-xs">{capability}</span>
+                                    <div className="flex items-center gap-2">
+                                      <Badge variant="outline" className="text-xs">
+                                        {stats.answered}/{stats.total} answered
+                                      </Badge>
+                                      {stats.clientAnswered > 0 && (
+                                        <Badge variant="default" className="text-xs">
+                                          {stats.clientAnswered} from client
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Discovery Gaps */}
+                            {unansweredCapabilities.length > 0 && (
+                              <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-3 space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-500" />
+                                  <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-300">Discovery Gaps - Need Attention</p>
+                                </div>
+                                {unansweredCapabilities.map(([capability, stats]) => (
+                                  <div key={capability} className="flex items-center justify-between gap-2">
+                                    <span className="text-xs text-yellow-800 dark:text-yellow-300">{capability}</span>
+                                    <Badge variant="outline" className="text-xs border-yellow-400 text-yellow-700 dark:text-yellow-400">
+                                      {stats.total} unanswered
+                                    </Badge>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Key Sample Responses */}
+                            {answeredQuestionsWithResponses.length > 0 && (
+                              <div className="space-y-2">
+                                <p className="text-xs font-semibold text-muted-foreground">Sample Responses</p>
+                                {answeredQuestionsWithResponses.slice(0, 2).map(({ question, responses }) => (
+                                  <div key={question.id} className="bg-card rounded-md p-2 space-y-2">
+                                    <p className="text-xs font-medium">{question.questionText}</p>
+                                    {responses.slice(0, 1).map((response, idx) => (
+                                      <div key={idx} className="pl-2 border-l-2 border-primary/30">
                                         <Badge 
                                           variant={response.respondentType === 'client' ? 'default' : 'secondary'} 
-                                          className="text-xs"
+                                          className="text-xs mb-1"
                                         >
                                           {response.respondentType === 'client' 
-                                            ? (response.clientName ? `Client: ${response.clientName}` : 'Client') 
+                                            ? (response.clientName || 'Client') 
                                             : 'Consultant'}
                                         </Badge>
-                                        {responseDate && (
-                                          <span className="text-xs text-muted-foreground">
-                                            {responseDate.toLocaleDateString()}
-                                          </span>
-                                        )}
+                                        <p className="text-xs text-muted-foreground italic line-clamp-2">"{response.response}"</p>
                                       </div>
-                                      <p className="text-sm text-muted-foreground italic">"{response.response}"</p>
-                                    </div>
-                                  );
-                                })}
+                                    ))}
+                                  </div>
+                                ))}
                               </div>
-                            ))}
+                            )}
                           </div>
-                        </div>
-                      )}
+                        );
+                      })()}
 
                       {/* Next Steps */}
                       <div className="bg-primary/10 border border-primary/30 rounded-md p-4 space-y-2">
