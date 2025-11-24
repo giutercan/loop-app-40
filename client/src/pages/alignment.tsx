@@ -10,7 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Plus, 
   TrendingUp,
-  RefreshCw
+  RefreshCw,
+  Target as TargetIcon,
+  ArrowRight
 } from "lucide-react";
 import type { Project, ValueCase, CompanyDataPoint, JobThemeKPI } from "@shared/schema";
 import ValueCaseBuilder from "@/components/ValueCaseBuilder";
@@ -22,6 +24,7 @@ import ProjectPhaseNav from "@/components/project-phase-nav";
 import { ShareAlignmentDialog } from "@/components/ShareAlignmentDialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
 
 type JobWithKPIs = {
   id: number;
@@ -98,6 +101,30 @@ export default function AlignmentPage() {
     },
   });
 
+  // Mutation to start tracking value realization
+  const startTrackingMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("PATCH", `/api/projects/${projectId}`, { currentPhase: "realisation" });
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}`] });
+      toast({
+        title: "Value Realization Started",
+        description: "You can now track KPI progress and measure value delivered.",
+      });
+      // Navigate to realization page
+      window.location.href = `/projects/${projectId}/realisation`;
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to start tracking",
+        description: error.message || "Unable to transition to Realization phase.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCreate = () => {
     setIsCreationDialogOpen(true);
   };
@@ -168,6 +195,58 @@ export default function AlignmentPage() {
       <div className="flex-1 overflow-auto p-6 space-y-6">
         {/* Finalized Discovery Jobs with Interactive KPI Management */}
         <AlignmentInteractive projectId={projectId} />
+
+        {/* Start Tracking CTA - Show when ready to move to Realization */}
+        {finalizedData && finalizedData.jobs.length > 0 && project.currentPhase === "alignment" && (
+          (() => {
+            // Check if we have KPIs with baselines and targets
+            const hasReadyKPIs = finalizedData.jobs.some((job: JobWithKPIs) => 
+              job.kpis && job.kpis.some((kpi: JobThemeKPI) => 
+                kpi.isSelected && kpi.baselineValue && kpi.targetValue
+              )
+            );
+
+            if (!hasReadyKPIs) return null;
+
+            return (
+              <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10" data-testid="card-start-tracking-cta">
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-4 flex-wrap">
+                    <div className="flex items-start gap-4">
+                      <div className="h-12 w-12 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
+                        <TargetIcon className="h-6 w-6 text-primary" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-xl">Ready to Track Value Realization</CardTitle>
+                        <CardDescription className="mt-1">
+                          You've set KPI baselines and targets. Start tracking actual progress and measure value delivered.
+                        </CardDescription>
+                      </div>
+                    </div>
+                    <Button 
+                      size="lg"
+                      onClick={() => startTrackingMutation.mutate()}
+                      disabled={startTrackingMutation.isPending}
+                      data-testid="button-start-tracking-realization"
+                    >
+                      {startTrackingMutation.isPending ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Starting...
+                        </>
+                      ) : (
+                        <>
+                          Start Tracking Value Realization
+                          <ArrowRight className="h-4 w-4 ml-2" />
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardHeader>
+              </Card>
+            );
+          })()
+        )}
 
         {/* Value Cases Section */}
         {valueCases.length === 0 ? (
