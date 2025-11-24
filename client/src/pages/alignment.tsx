@@ -24,6 +24,7 @@ import ValueCaseCard from "@/components/ValueCaseCard";
 import { ValueCaseCreationDialog } from "@/components/value-case-creation-dialog";
 import { AlignmentInteractive } from "@/components/alignment-interactive";
 import ProjectPhaseNav from "@/components/project-phase-nav";
+import { ShareAlignmentDialog } from "@/components/ShareAlignmentDialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -136,14 +137,17 @@ export default function AlignmentPage() {
                 Build and refine value cases with {project.companyName}
               </p>
             </div>
-            <Button 
-              onClick={handleCreate}
-              size="default"
-              data-testid="button-create-value-case"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              New Value Case
-            </Button>
+            <div className="flex items-center gap-2">
+              <ShareAlignmentDialog projectId={projectId} />
+              <Button 
+                onClick={handleCreate}
+                size="default"
+                data-testid="button-create-value-case"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                New Value Case
+              </Button>
+            </div>
           </div>
 
           {/* Stats */}
