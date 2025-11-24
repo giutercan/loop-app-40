@@ -484,13 +484,18 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
                   
                 {/* BAND 4: ACTION RAIL - Baseline Data Input/Edit */}
                 {kpi.isSelected && (
-                  <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-muted/50 to-muted/20 border-2 border-dashed border-muted-foreground/20 p-5">
+                  <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 border-2 border-blue-500/30 p-5">
                     <div className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="text-sm font-semibold text-foreground">
-                          {kpi.baselineValue ? 'Edit Baseline Data' : 'Add Baseline Data'}
-                        </span>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                          <span className="text-sm font-bold text-blue-900 dark:text-blue-100">
+                            {kpi.baselineValue ? '✏️ Edit Baseline Data' : 'Add Baseline Data'}
+                          </span>
+                        </div>
+                        <Badge variant="outline" className="bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-300">
+                          Editable
+                        </Badge>
                       </div>
                       
                       {/* Show Korn Ferry benchmark if available and no baseline set */}
@@ -618,13 +623,18 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
                   
                 {/* Target Data Input/Edit - Only show if baseline is set */}
                 {kpi.isSelected && kpi.baselineValue && (
-                  <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-muted/50 to-muted/20 border-2 border-dashed border-muted-foreground/20 p-5">
+                  <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 border-2 border-purple-500/30 p-5">
                     <div className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <div className="h-2 w-2 rounded-full bg-purple-500 animate-pulse" />
-                        <span className="text-sm font-semibold text-foreground">
-                          {kpi.targetValue ? 'Edit Target Value' : 'Set Target Value'}
-                        </span>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full bg-purple-500 animate-pulse" />
+                          <span className="text-sm font-bold text-purple-900 dark:text-purple-100">
+                            {kpi.targetValue ? '✏️ Edit Target Value' : 'Set Target Value'}
+                          </span>
+                        </div>
+                        <Badge variant="outline" className="bg-purple-500/10 border-purple-500/30 text-purple-700 dark:text-purple-300">
+                          Editable
+                        </Badge>
                       </div>
                       
                       {/* Input form - Pre-fill with existing values or show empty */}
