@@ -2139,7 +2139,17 @@ export function registerRoutes(app: Express) {
         project.companyName
       );
       
-      res.json(benchmark);
+      // Save the benchmark to the KPI
+      const updated = await storage.updateJobThemeKPI(kpiId, {
+        benchmarkValue: benchmark.benchmarkValue,
+        benchmarkSource: benchmark.source
+      });
+      
+      if (!updated) {
+        return res.status(404).json({ error: "Failed to update KPI with benchmark" });
+      }
+      
+      res.json(updated);
     } catch (error: any) {
       console.error("Error generating AI benchmark:", error);
       res.status(500).json({ error: error.message || "Failed to generate benchmark" });
