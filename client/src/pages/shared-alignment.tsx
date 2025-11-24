@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { TrendingUp, TrendingDown, AlertCircle, CheckCircle } from "lucide-react";
+import { TrendingUp, TrendingDown, AlertCircle, CheckCircle, Building2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface JobThemeKPI {
@@ -101,13 +101,28 @@ export default function SharedAlignmentPage() {
       {/* Header */}
       <div className="border-b bg-card">
         <div className="container mx-auto p-6">
+          {/* Company Logo and Name */}
+          <div className="flex items-center gap-3 mb-6">
+            <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Building2 className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-xl font-semibold" data-testid="text-company-name">
+                {data.project.companyName}
+              </h1>
+              <p className="text-xs text-muted-foreground">
+                Korn Ferry Value Alignment
+              </p>
+            </div>
+          </div>
+
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-semibold mb-1">
+              <h2 className="text-2xl font-semibold mb-1">
                 Alignment Collaboration
-              </h1>
+              </h2>
               <p className="text-sm text-muted-foreground">
-                {data.project.name} - {data.project.companyName}
+                {data.project.name}
               </p>
             </div>
             <Badge variant="secondary" data-testid="badge-permission">
