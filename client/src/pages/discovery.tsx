@@ -2264,7 +2264,7 @@ export default function Discovery() {
                                 <p className="text-xs font-semibold text-muted-foreground">Sample Responses</p>
                                 {answeredQuestionsWithResponses.slice(0, 2).map(({ question, responses }) => (
                                   <div key={question.id} className="bg-card rounded-md p-2 space-y-2">
-                                    <p className="text-xs font-medium">{question.questionText}</p>
+                                    <p className="text-xs font-medium">{question.question}</p>
                                     {responses.slice(0, 1).map((response, idx) => (
                                       <div key={idx} className="pl-2 border-l-2 border-primary/30">
                                         <Badge 
@@ -2272,10 +2272,10 @@ export default function Discovery() {
                                           className="text-xs mb-1"
                                         >
                                           {response.respondentType === 'client' 
-                                            ? (response.clientName || 'Client') 
+                                            ? (response.respondentName || 'Client') 
                                             : 'Consultant'}
                                         </Badge>
-                                        <p className="text-xs text-muted-foreground italic line-clamp-2">"{response.response}"</p>
+                                        <p className="text-xs text-muted-foreground italic line-clamp-2">"{response.answer}"</p>
                                       </div>
                                     ))}
                                   </div>
