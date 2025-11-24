@@ -1,0 +1,23 @@
+Discovery Gaps - Need Attention
+
+What this means: These capabilities have unanswered discovery questions, meaning you lack the data needed to build a compelling value case in these areas.
+
+What to do: Before finalizing discovery, either (1) get client responses for these areas via the shared questionnaire, or (2) focus your value case on the engaged capabilities above where you have solid data.
+
+ASSESS (Success Profiles & Standardised Assessments)
+3 unanswered
+DEVELOP (Leadership & Development)
+3 unanswered
+TRANSFORM (Organisation Strategy & Transformation)
+3 unanswered
+Sample Responses
+
+What are the current win rates, deal sizes, and forecast accuracy metrics for your MedTech or Innovative Medicine sales teams?
+
+Client
+"Across our MedTech EMEA business, our current view is: Win rates Strategic tenders above 500k USD: about 26 percent Core run rate deals below 500k USD: about 38 percent For new product launches in priority therapies: about 22 percent Average deal size Strategic tenders: around 1.2 million USD Core run rate deals: around 180k USD Forecast accuracy At 90 days out, we are at roughly 62 percent accuracy on value and 55 percent on deal count for MedTech EMEA At 30 days out, this improves to about 75 percent on value and 70 percent on deal count From a deal quality perspective, we estimate that only 55 to 60 percent of opportunities in the committed forecast meet our internal definition of a fully qualified deal with clear stakeholder coverage, defined solution, and documented risks."
+
+What are the most common challenges your sales force faces in improving productivity, closing deals effectively, or forecasting accurately?
+
+Client
+"The main challenges we see are: Inconsistent qualification and deal hygiene We see deals entering late stages without clear access to decision makers, incomplete understanding of tender criteria, and limited documentation of competitive position. Complex stakeholder landscape in health systems Our teams have to navigate clinicians, procurement, finance and digital

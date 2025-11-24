@@ -26,7 +26,7 @@ import ValueCaseBuilder from "@/components/ValueCaseBuilder";
 import ProjectSelector from "@/components/ProjectSelector";
 import StatusBadge from "@/components/StatusBadge";
 import ProjectPhaseNav from "@/components/project-phase-nav";
-import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, TrendingUp, Activity, Award, Building, Calendar, AlertCircle, ChevronDown } from "lucide-react";
+import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, TrendingUp, Activity, Award, Building, Calendar, AlertCircle, ChevronDown, Lightbulb, BarChart3, MessageSquare } from "lucide-react";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { Link, useLocation, useRoute } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -2266,7 +2266,114 @@ export default function Discovery() {
                               </div>
                             )}
 
-                            {/* Key Sample Responses */}
+                            {/* Strategic Response Insights */}
+                            {clientResponses.length > 0 && (
+                              <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 border border-blue-200 dark:border-blue-900 rounded-md p-4 space-y-3">
+                                <div className="flex items-center gap-2 pb-2 border-b border-blue-300 dark:border-blue-800">
+                                  <Lightbulb className="w-4 h-4 text-blue-600" />
+                                  <h4 className="font-semibold text-sm text-blue-900 dark:text-blue-100">Client Response Insights</h4>
+                                  <Badge variant="outline" className="ml-auto text-xs border-blue-400">
+                                    Based on {clientResponses.length} response{clientResponses.length !== 1 ? 's' : ''}
+                                  </Badge>
+                                </div>
+
+                                {/* Key Metrics Extracted */}
+                                {(() => {
+                                  const metrics: string[] = [];
+                                  clientResponses.forEach(r => {
+                                    // Extract numbers/percentages from responses
+                                    const matches = r.answer.match(/(\d+(?:\.\d+)?)\s*(?:percent|%|million|USD|accuracy|days?|months?)/gi);
+                                    if (matches && matches.length > 0) {
+                                      matches.slice(0, 2).forEach(m => metrics.push(m));
+                                    }
+                                  });
+                                  
+                                  if (metrics.length > 0) {
+                                    return (
+                                      <div className="space-y-2">
+                                        <p className="text-xs font-semibold text-blue-800 dark:text-blue-200 flex items-center gap-1">
+                                          <BarChart3 className="w-3 h-3" />
+                                          Key Metrics Mentioned
+                                        </p>
+                                        <div className="flex flex-wrap gap-2">
+                                          {metrics.slice(0, 6).map((metric, idx) => (
+                                            <Badge key={idx} variant="secondary" className="bg-white dark:bg-slate-800 text-xs">
+                                              {metric}
+                                            </Badge>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })()}
+
+                                {/* Key Themes from Responses */}
+                                {(() => {
+                                  const themes: string[] = [];
+                                  const keywords = ['challenge', 'problem', 'issue', 'opportunity', 'improvement', 'gap', 'risk', 'priority', 'goal', 'strategy'];
+                                  
+                                  clientResponses.forEach(r => {
+                                    keywords.forEach(keyword => {
+                                      const regex = new RegExp(`([^.!?]*${keyword}[s]?[^.!?]*[.!?])`, 'gi');
+                                      const matches = r.answer.match(regex);
+                                      if (matches && matches.length > 0) {
+                                        themes.push(matches[0].trim());
+                                      }
+                                    });
+                                  });
+                                  
+                                  if (themes.length > 0) {
+                                    return (
+                                      <div className="space-y-2">
+                                        <p className="text-xs font-semibold text-blue-800 dark:text-blue-200 flex items-center gap-1">
+                                          <MessageSquare className="w-3 h-3" />
+                                          Key Themes Identified
+                                        </p>
+                                        <div className="space-y-1">
+                                          {themes.slice(0, 3).map((theme, idx) => (
+                                            <div key={idx} className="text-xs text-blue-900 dark:text-blue-100 bg-white/60 dark:bg-slate-800/60 rounded px-2 py-1 italic">
+                                              "{theme.length > 120 ? theme.substring(0, 120) + '...' : theme}"
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })()}
+
+                                {/* Discussion Points */}
+                                <div className="space-y-2 pt-2 border-t border-blue-200 dark:border-blue-800">
+                                  <p className="text-xs font-semibold text-blue-800 dark:text-blue-200 flex items-center gap-1">
+                                    <Target className="w-3 h-3" />
+                                    For Your Next Client Discussion
+                                  </p>
+                                  <ul className="space-y-1 text-xs text-blue-900 dark:text-blue-100">
+                                    <li className="flex items-start gap-2">
+                                      <span className="text-blue-600 shrink-0">•</span>
+                                      <span>Validate the quantitative metrics mentioned - ensure you understand baseline context and measurement methods</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                      <span className="text-blue-600 shrink-0">•</span>
+                                      <span>Probe deeper into challenges mentioned - ask "What have you tried?" and "What would success look like?"</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                      <span className="text-blue-600 shrink-0">•</span>
+                                      <span>Connect insights to business impact - translate operational challenges into financial/strategic consequences</span>
+                                    </li>
+                                    {clientResponses.some(r => r.answer.toLowerCase().includes('forecast') || r.answer.toLowerCase().includes('predict')) && (
+                                      <li className="flex items-start gap-2">
+                                        <span className="text-blue-600 shrink-0">•</span>
+                                        <span>Explore forecasting/prediction challenges - opportunity for data-driven solutions and analytics capabilities</span>
+                                      </li>
+                                    )}
+                                  </ul>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Sample Responses */}
                             {answeredQuestionsWithResponses.length > 0 && (
                               <div className="space-y-2">
                                 <p className="text-xs font-semibold text-muted-foreground">Sample Responses</p>
