@@ -2968,8 +2968,89 @@ export default function Discovery() {
                     </div>
                   </div>
 
+                  {/* Finalize Discovery Banner or Edit Mode Toggle */}
+                  {isFinalized ? (
+                    <div className="flex items-center gap-3 p-4 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900">
+                      <CheckCircle className="w-6 h-6 text-green-600 shrink-0" />
+                      <div className="flex-1">
+                        <p className="font-semibold text-green-900 dark:text-green-100">Discovery Phase Complete</p>
+                        <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                          Your priorities are locked. {kpiEditMode ? "You can refine KPI baselines and targets below." : "Click 'Enable Editing' to refine KPI baselines and targets."}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant={kpiEditMode ? "outline" : "secondary"}
+                          onClick={() => setKpiEditMode(!kpiEditMode)}
+                          data-testid="button-toggle-kpi-edit-mode"
+                        >
+                          {kpiEditMode ? (
+                            <>
+                              <Lock className="w-4 h-4 mr-2" />
+                              Lock Editing
+                            </>
+                          ) : (
+                            <>
+                              <Edit className="w-4 h-4 mr-2" />
+                              Enable Editing
+                            </>
+                          )}
+                        </Button>
+                        <Link href={`/projects/${projectId}/alignment`}>
+                          <Button data-testid="button-go-to-alignment">
+                            Go to Alignment
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  ) : canFinalize ? (
+                    <div className="flex items-center justify-between gap-4 p-6 rounded-lg bg-primary/10 border-2 border-primary/30">
+                      <div>
+                        <p className="font-semibold text-lg">Ready to move forward?</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Lock your priorities and proceed to build value cases in Alignment
+                        </p>
+                      </div>
+                      <Button
+                        size="lg"
+                        onClick={() => finalizeDiscoveryMutation.mutate()}
+                        disabled={finalizeDiscoveryMutation.isPending}
+                        data-testid="button-finalize-discovery"
+                      >
+                        {finalizeDiscoveryMutation.isPending ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Finalizing...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Finalize Discovery
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  ) : prioritizedThemes.length > 0 ? (
+                    <div className="p-4 rounded-lg bg-muted border border-muted">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">Complete all requirements to finalize</p>
+                          <ul className="text-sm text-muted-foreground mt-2 space-y-1">
+                            {prioritizedThemes.length < 3 && (
+                              <li>• Select {3 - prioritizedThemes.length} more highlighted {3 - prioritizedThemes.length !== 1 ? 'priorities' : 'priority'} (currently {prioritizedThemes.length}/3)</li>
+                            )}
+                            {prioritizedThemes.some((t: JobThemeWithKPIs) => !t.kpis || !t.kpis.some(kpi => kpi.isSelected)) && (
+                              <li>• Select at least 1 KPI for each highlighted priority</li>
+                            )}
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
                   {/* Available Highlighted Priorities - Compact Grid */}
-                  {unprioritizedThemes.length > 0 && (
+                  {!isFinalized && unprioritizedThemes.length > 0 && (
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center justify-between">
@@ -3088,87 +3169,6 @@ export default function Discovery() {
                       );
                     })}
                   </div>
-
-                  {/* Finalize Discovery Button or Requirements Message */}
-                  {isFinalized ? (
-                    <div className="flex items-center gap-3 p-4 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900">
-                      <CheckCircle className="w-6 h-6 text-green-600 shrink-0" />
-                      <div className="flex-1">
-                        <p className="font-semibold text-green-900 dark:text-green-100">Discovery Phase Complete</p>
-                        <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                          Your priorities are locked. {kpiEditMode ? "You can refine KPI baselines and targets below." : "Enable editing to refine KPI baselines and targets."}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          variant={kpiEditMode ? "outline" : "secondary"}
-                          onClick={() => setKpiEditMode(!kpiEditMode)}
-                          data-testid="button-toggle-kpi-edit-mode"
-                        >
-                          {kpiEditMode ? (
-                            <>
-                              <Lock className="w-4 h-4 mr-2" />
-                              Lock Editing
-                            </>
-                          ) : (
-                            <>
-                              <Edit className="w-4 h-4 mr-2" />
-                              Enable Editing
-                            </>
-                          )}
-                        </Button>
-                        <Link href={`/projects/${projectId}/alignment`}>
-                          <Button data-testid="button-go-to-alignment">
-                            Go to Alignment
-                          </Button>
-                        </Link>
-                      </div>
-                    </div>
-                  ) : canFinalize ? (
-                    <div className="flex items-center justify-between gap-4 p-6 rounded-lg bg-primary/10 border-2 border-primary/30">
-                      <div>
-                        <p className="font-semibold text-lg">Ready to move forward?</p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Lock your priorities and proceed to build value cases in Alignment
-                        </p>
-                      </div>
-                      <Button
-                        size="lg"
-                        onClick={() => finalizeDiscoveryMutation.mutate()}
-                        disabled={finalizeDiscoveryMutation.isPending}
-                        data-testid="button-finalize-discovery"
-                      >
-                        {finalizeDiscoveryMutation.isPending ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Finalizing...
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            Finalize Discovery
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  ) : prioritizedThemes.length > 0 && (
-                    <div className="p-4 rounded-lg bg-muted border border-muted">
-                      <div className="flex items-start gap-3">
-                        <AlertCircle className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                          <p className="font-medium text-sm">Complete all requirements to finalize</p>
-                          <ul className="text-sm text-muted-foreground mt-2 space-y-1">
-                            {prioritizedThemes.length < 3 && (
-                              <li>• Select {3 - prioritizedThemes.length} more highlighted {3 - prioritizedThemes.length !== 1 ? 'priorities' : 'priority'} (currently {prioritizedThemes.length}/3)</li>
-                            )}
-                            {prioritizedThemes.some((t: JobThemeWithKPIs) => !t.kpis || !t.kpis.some(kpi => kpi.isSelected)) && (
-                              <li>• Select at least 1 KPI for each highlighted priority</li>
-                            )}
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </>
               );
             })()}
