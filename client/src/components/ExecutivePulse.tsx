@@ -29,7 +29,7 @@ interface ProjectValueMetrics {
 export default function ExecutivePulse({ projectId }: ExecutivePulseProps) {
   // Fetch aggregated value metrics from backend
   const { data: metrics, isLoading } = useQuery<ProjectValueMetrics>({
-    queryKey: [`/api/realization/metrics/${projectId}`],
+    queryKey: [`/api/projects/${projectId}/realization/metrics`],
     enabled: !!projectId,
   });
 
