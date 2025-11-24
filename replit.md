@@ -15,13 +15,16 @@ The application prioritizes a modern, intuitive user interface with a consistent
 - **Visual Cues**: Pastel badge backgrounds, prominent primary-colored highlighting for follow-up research, "New" badges, and optimistic UI updates.
 - **Data Visualization**: Circular progress rings for KPI completion, dynamic KPI gap visualization, percentage improvement badges, and enhanced header displays with iconography.
 - **Information Hierarchy**: Prioritization of insights (Priority → Confidence → Pillar → Solution Area → KPIs), and prominent display of Korn Ferry Benchmark Callouts.
-- **Responsive Design**: Grid layouts with flex-wrap for mobile compatibility.
+- **Responsive Design**: Grid layouts with flex-wrap for mobile compatibility, 2-column KPI grid on desktop (single column on mobile).
 - **Terminology**: User-facing text uses "Highlighted priorities" instead of internal "jobTheme" for clarity.
 - **Modernized UI/UX**: Contemporary design with gradient accents, visual score representations, cleaner information hierarchy, and reduced text density for improved scannability in key areas like KPI recommendations and value case building.
+- **Collapsible Priorities**: Job theme/priority cards feature collapsible sections using Radix UI Collapsible component with ChevronDown toggle for focused navigation.
+- **KPI Organization**: KPIs are visually grouped by type (Primary KPIs vs Supporting KPIs) with distinct section headers and visual dividers for improved scannability.
 
 ### Technical Implementations
 The system is built on a robust architecture incorporating AI and a structured workflow:
-- **AI-Powered Capabilities**: GPT-4o is utilized for company research, insight generation, automatic classification into Korn Ferry capabilities, value case recommendations, KPI recommendations, and stakeholder-specific value narrative generation. AI also enriches notes and generates targeted discovery questions based on identified "job themes."
+- **AI-Powered Capabilities**: GPT-4o is utilized for company research, insight generation, automatic classification into Korn Ferry capabilities, value case recommendations, KPI recommendations, stakeholder-specific value narrative generation, and on-demand industry baseline generation. AI also enriches notes and generates targeted discovery questions based on identified "job themes."
+- **AI Industry Baseline Generation**: For selected KPIs without existing benchmarks, consultants can trigger AI to generate industry-standard baseline values with contextual sources, automatically persisted for immediate use in baseline setting.
 - **Value Calculation Framework**: A quantitative value case system includes financial calculations (NPV, payback period, 3-year projections) with KPI metadata and financial translation formulas.
 - **Korn Ferry Knowledge Integration**: AI integrates with Korn Ferry's knowledge base for assigning solution areas and KPIs.
 - **Engagement & Project Management**: Structured three-phase (Discovery, Alignment, Realization) workflow with full project lifecycle management.
