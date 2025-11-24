@@ -27,7 +27,7 @@ import ProjectSelector from "@/components/ProjectSelector";
 import StatusBadge from "@/components/StatusBadge";
 import ProjectPhaseNav from "@/components/project-phase-nav";
 import KPIRecommendationDialog from "@/components/KPIRecommendationDialog";
-import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, TrendingUp, Activity, Award, Building, Calendar, AlertCircle, ChevronDown, Lightbulb, BarChart3, MessageSquare } from "lucide-react";
+import { ArrowLeft, Save, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, TrendingUp, Activity, Award, Building, Calendar, AlertCircle, ChevronDown, Lightbulb, BarChart3, MessageSquare } from "lucide-react";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { Link, useLocation, useRoute } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -1592,14 +1592,6 @@ export default function Discovery() {
     saveNotesMutation.mutate();
   };
 
-  const handleSendToClient = () => {
-    updateProjectPhaseMutation.mutate("alignment");
-    toast({
-      title: "Sent to client",
-      description: "Discovery phase completed. Moving to Alignment phase.",
-    });
-  };
-
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -1744,10 +1736,6 @@ export default function Discovery() {
               >
                 <Save className="w-4 h-4 mr-2" />
                 {saveNotesMutation.isPending ? "Saving..." : "Save Draft"}
-              </Button>
-              <Button onClick={handleSendToClient} data-testid="button-send-to-client">
-                <Send className="w-4 h-4 mr-2" />
-                Send to Client
               </Button>
             </div>
           </div>
