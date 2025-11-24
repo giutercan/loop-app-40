@@ -791,20 +791,20 @@ export default function Landing() {
               </CardHeader>
               <CardContent className="space-y-5">
                 <CardDescription className="text-base leading-relaxed">
-                  Transform insights into actionable priorities using Korn Ferry's "Jobs We Do" strategic framework
+                  Transform insights, questions, and responses into actionable priorities using Korn Ferry's "Jobs We Do" framework
                 </CardDescription>
                 <ul className="space-y-3 text-sm text-muted-foreground">
                   <li className="flex items-start gap-3">
                     <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
                       <CheckCircle2 className="w-3 h-3 text-primary" />
                     </div>
-                    <span>Automatic job theme aggregation from insights</span>
+                    <span>Job themes from AI insights + client responses</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
                       <CheckCircle2 className="w-3 h-3 text-primary" />
                     </div>
-                    <span>Top-3 prioritization with drag-and-select</span>
+                    <span>Top-3 prioritization with re-prioritize capability</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -914,7 +914,7 @@ export default function Landing() {
               </CardHeader>
               <CardContent className="space-y-5">
                 <CardDescription className="text-base leading-relaxed">
-                  Share discovery questionnaires with clients via secure links and track response attribution
+                  Share discovery questionnaires with clients and track complete data provenance with source attribution badges
                 </CardDescription>
                 <ul className="space-y-3 text-sm text-muted-foreground">
                   <li className="flex items-start gap-3">
@@ -927,19 +927,19 @@ export default function Landing() {
                     <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
                       <CheckCircle2 className="w-3 h-3 text-primary" />
                     </div>
-                    <span>Visual distinction: consultant vs. client responses</span>
+                    <span>Source attribution badges: AI, Client, Consultant, Notes</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
                       <CheckCircle2 className="w-3 h-3 text-primary" />
                     </div>
-                    <span>One-click link copying and sharing</span>
+                    <span>Client responses integrated into job themes</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
                       <CheckCircle2 className="w-3 h-3 text-primary" />
                     </div>
-                    <span>All responses organized by capability</span>
+                    <span>Complete data provenance tracking throughout workflow</span>
                   </li>
                 </ul>
               </CardContent>
@@ -955,32 +955,32 @@ export default function Landing() {
               </CardHeader>
               <CardContent className="space-y-5">
                 <CardDescription className="text-base leading-relaxed">
-                  Set baseline and target values for KPIs to establish the value gap and build hypotheses
+                  Executive dashboard with completion progress, estimated value impact, and client engagement metrics
                 </CardDescription>
                 <ul className="space-y-3 text-sm text-muted-foreground">
                   <li className="flex items-start gap-3">
                     <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
                       <CheckCircle2 className="w-3 h-3 text-primary" />
                     </div>
-                    <span>Baseline values with source attribution</span>
+                    <span>Real-time completion progress tracking</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
                       <CheckCircle2 className="w-3 h-3 text-primary" />
                     </div>
-                    <span>Target values for desired outcomes</span>
+                    <span>Estimated value impact with KPI completion status</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
                       <CheckCircle2 className="w-3 h-3 text-primary" />
                     </div>
-                    <span>Korn Ferry benchmark comparisons</span>
+                    <span>Client engagement metrics and contribution tracking</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
                       <CheckCircle2 className="w-3 h-3 text-primary" />
                     </div>
-                    <span>Value gap visualization and tracking</span>
+                    <span>Value gap visualization with benchmark comparisons</span>
                   </li>
                 </ul>
               </CardContent>
