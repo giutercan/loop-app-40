@@ -2156,7 +2156,7 @@ export default function Discovery() {
                   <Card>
                     <CardContent className="pt-6">
                       <p className="text-sm text-muted-foreground text-center">
-                        No job themes found. Complete your discovery research first to see aggregated Jobs We Do.
+                        No highlighted priorities found. Complete your discovery research first to see potential priorities.
                       </p>
                     </CardContent>
                   </Card>
@@ -2182,13 +2182,13 @@ export default function Discovery() {
                       </div>
                       <div>
                         <h2 className="font-semibold text-lg">Build Your Value Case</h2>
-                        <p className="text-sm text-muted-foreground">Select top 3 priority jobs to focus on</p>
+                        <p className="text-sm text-muted-foreground">Select top 3 highlighted priorities to focus on</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-6">
                       <div className="text-center">
                         <div className="text-2xl font-bold text-primary">{prioritizedThemes.length}/3</div>
-                        <div className="text-xs text-muted-foreground">Jobs Selected</div>
+                        <div className="text-xs text-muted-foreground">Priorities Selected</div>
                       </div>
                       <div className="text-center">
                         <div className="text-2xl font-bold text-primary">
@@ -2254,8 +2254,8 @@ export default function Discovery() {
                             <CardContent className="pt-0">
                               <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-lg">
                                 <Plus className="w-8 h-8 text-muted-foreground mb-2" />
-                                <p className="text-sm font-medium">No job selected</p>
-                                <p className="text-xs text-muted-foreground mt-1">Choose from available jobs below</p>
+                                <p className="text-sm font-medium">No highlighted priority selected</p>
+                                <p className="text-xs text-muted-foreground mt-1">Choose from available highlighted priorities below</p>
                               </div>
                             </CardContent>
                           )}
@@ -2264,12 +2264,12 @@ export default function Discovery() {
                     })}
                   </div>
 
-                  {/* Available Jobs - Compact Grid */}
+                  {/* Available Highlighted Priorities - Compact Grid */}
                   {unprioritizedThemes.length > 0 && (
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center justify-between">
-                          <span>Available Jobs</span>
+                          <span>Available Highlighted Priorities</span>
                           <Badge variant="secondary">{unprioritizedThemes.length} remaining</Badge>
                         </CardTitle>
                       </CardHeader>
@@ -2285,7 +2285,7 @@ export default function Discovery() {
                                 if (currentIds.includes(theme.id)) {
                                   toast({
                                     title: "Already selected",
-                                    description: "This job is already in your priorities.",
+                                    description: "This highlighted priority is already selected.",
                                     variant: "destructive",
                                   });
                                   return;
@@ -2368,10 +2368,10 @@ export default function Discovery() {
                           <p className="font-medium text-sm">Complete all requirements to finalize</p>
                           <ul className="text-sm text-muted-foreground mt-2 space-y-1">
                             {prioritizedThemes.length < 3 && (
-                              <li>• Select {3 - prioritizedThemes.length} more job{3 - prioritizedThemes.length !== 1 ? 's' : ''} (currently {prioritizedThemes.length}/3)</li>
+                              <li>• Select {3 - prioritizedThemes.length} more highlighted {3 - prioritizedThemes.length !== 1 ? 'priorities' : 'priority'} (currently {prioritizedThemes.length}/3)</li>
                             )}
                             {prioritizedThemes.some((t: JobThemeWithKPIs) => !t.kpis || !t.kpis.some(kpi => kpi.isSelected)) && (
-                              <li>• Select at least 1 KPI for each priority job</li>
+                              <li>• Select at least 1 KPI for each highlighted priority</li>
                             )}
                           </ul>
                         </div>
