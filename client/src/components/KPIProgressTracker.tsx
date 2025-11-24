@@ -20,73 +20,61 @@ interface KPIWithActuals extends JobThemeKPI {
   capabilityName?: string;
 }
 
+interface FinalizedJobsResponse {
+  finalized: boolean;
+  jobs: JobTheme[];
+}
+
 export default function KPIProgressTracker({ projectId }: KPIProgressTrackerProps) {
   const [selectedKPI, setSelectedKPI] = useState<KPIWithActuals | null>(null);
   const [showRecordDialog, setShowRecordDialog] = useState(false);
 
   // Fetch finalized jobs
-  const { data: finalizedJobsData, isLoading: jobsLoading } = useQuery<JobTheme[]>({
+  const { data: finalizedJobsData, isLoading: jobsLoading } = useQuery<FinalizedJobsResponse>({
     queryKey: [`/api/projects/${projectId}/alignment/finalized-jobs`],
     enabled: !!projectId,
   });
 
   // Defensive check: Ensure finalizedJobs is always an array
-  const finalizedJobs = Array.isArray(finalizedJobsData) ? finalizedJobsData : [];
+  const finalizedJobs = finalizedJobsData?.jobs || [];
 
-  // Fetch all KPIs for finalized jobs using useQueries to avoid hook count issues
-  const kpiQueries = useQueries({
-    queries: finalizedJobs.map(job => ({
-      queryKey: [`/api/job-themes/${job.id}/kpis`],
-      enabled: !!job.id,
-    })),
-  });
-
-  // Check if KPI queries are still loading or have errors
-  const isLoadingKPIs = kpiQueries.some(q => q.isLoading);
-  const allKPIQueriesSettled = kpiQueries.every(q => !q.isLoading);
-
-  // Collect all KPIs with their job context - ONLY when all queries are settled
+  // Collect all KPIs with their job context from the embedded kpis array
   const allKPIs: KPIWithActuals[] = [];
-  if (allKPIQueriesSettled) {
-    kpiQueries.forEach((query, index) => {
-      if (query.data) {
-        const job = finalizedJobs[index];
-        const kpiList = query.data as JobThemeKPI[];
-        
-        // Log KPI data for debugging
-        console.log('[KPIProgressTracker] Job:', job.jobName, 'Total KPIs:', kpiList.length);
-        kpiList.forEach(kpi => {
-          console.log(`  KPI ${kpi.id}:`, {
-            name: kpi.kpiName,
-            isSelected: kpi.isSelected,
-            hasBaseline: !!kpi.baselineValue,
-            hasTarget: !!kpi.targetValue,
-            baseline: kpi.baselineValue,
-            target: kpi.targetValue,
-          });
-        });
-        
-        kpiList
-          .filter(kpi => kpi.isSelected && kpi.baselineValue && kpi.targetValue)
-          .forEach(kpi => {
-            allKPIs.push({
-              ...kpi,
-              actuals: [],
-              jobName: job.jobName,
-              capabilityName: job.capabilityName,
-            });
-          });
-      }
+  finalizedJobs.forEach((job: any) => {
+    const kpiList = job.kpis || [];
+    
+    // Log KPI data for debugging
+    console.log('[KPIProgressTracker] Job:', job.jobName, 'Total KPIs:', kpiList.length);
+    kpiList.forEach((kpi: JobThemeKPI) => {
+      console.log(`  KPI ${kpi.id}:`, {
+        name: kpi.kpiName,
+        isSelected: kpi.isSelected,
+        hasBaseline: !!kpi.baselineValue,
+        hasTarget: !!kpi.targetValue,
+        baseline: kpi.baselineValue,
+        target: kpi.targetValue,
+      });
     });
-  }
+    
+    kpiList
+      .filter((kpi: JobThemeKPI) => kpi.isSelected && kpi.baselineValue && kpi.targetValue)
+      .forEach((kpi: JobThemeKPI) => {
+        allKPIs.push({
+          ...kpi,
+          actuals: [],
+          jobName: job.jobName,
+          capabilityName: job.capabilityName,
+        });
+      });
+  });
   
   console.log('[KPIProgressTracker] Total filtered KPIs:', allKPIs.length);
 
-  // Fetch actuals for each KPI using useQueries - ONLY when allKPIs is populated
+  // Fetch actuals for each KPI using useQueries
   const actualsQueries = useQueries({
     queries: allKPIs.map(kpi => ({
       queryKey: [`/api/job-theme-kpis/${kpi.id}/actuals`],
-      enabled: !!kpi.id && allKPIQueriesSettled,
+      enabled: !!kpi.id,
     })),
   });
 
@@ -98,7 +86,7 @@ export default function KPIProgressTracker({ projectId }: KPIProgressTrackerProp
   const queriesLengthMatch = actualsQueries.length === allKPIs.length;
   
   // Overall loading state - show loading until ALL data is ready AND lengths match
-  const isLoading = jobsLoading || isLoadingKPIs || (allKPIs.length > 0 && isLoadingActuals) || !queriesLengthMatch;
+  const isLoading = jobsLoading || (allKPIs.length > 0 && isLoadingActuals) || !queriesLengthMatch;
   
   // Merge actuals into KPIs - only when lengths match to prevent undefined access
   const kpisWithActuals: KPIWithActuals[] = queriesLengthMatch
