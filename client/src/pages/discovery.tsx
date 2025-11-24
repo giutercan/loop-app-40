@@ -43,6 +43,7 @@ interface JobThemeCardProps {
 }
 
 function JobThemeCard({ theme, rank, updateKPIMutation, isFinalized, onDeselect }: JobThemeCardProps) {
+  const { toast } = useToast();
   const [baselineInputs, setBaselineInputs] = useState<Record<number, { value: string; source: string }>>({});
   const [targetInputs, setTargetInputs] = useState<Record<number, { value: string; source: string }>>({});
   
@@ -114,30 +115,18 @@ function JobThemeCard({ theme, rank, updateKPIMutation, isFinalized, onDeselect 
   };
   
   return (
-    <div className={`border rounded-md p-4 space-y-4 ${isFinalized ? 'bg-muted/30' : ''}`}>
+    <div className="space-y-4">
+      {/* Job Summary */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <Badge className="bg-primary text-primary-foreground">Priority #{rank}</Badge>
-            {theme.solutionArea && <Badge variant="outline">{theme.solutionArea}</Badge>}
-            {isFinalized && <Badge variant="secondary" className="bg-yellow-500 text-white">Locked</Badge>}
-          </div>
-          <div className="font-semibold text-lg">{theme.jobName}</div>
+          <div className="font-semibold text-base">{theme.jobName}</div>
           <div className="text-sm text-muted-foreground mt-1">{theme.capabilityName}</div>
-          <div className="flex items-center gap-2 mt-2">
-            <Badge variant="secondary">{theme.evidenceCount} insights</Badge>
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            <Badge variant="secondary" className="text-xs">{theme.evidenceCount} insights</Badge>
+            {theme.solutionArea && <Badge variant="outline" className="text-xs">{theme.solutionArea}</Badge>}
+            {isFinalized && <Badge variant="secondary" className="bg-yellow-500 text-white text-xs">Locked</Badge>}
           </div>
         </div>
-        {!isFinalized && (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onDeselect}
-            data-testid={`button-deselect-${theme.id}`}
-          >
-            Deselect
-          </Button>
-        )}
       </div>
       
       {/* KPIs Section */}
@@ -2176,148 +2165,218 @@ export default function Discovery() {
 
               const prioritizedThemes = jobThemesData.filter((t: any) => t.priorityRank !== null).sort((a: any, b: any) => (a.priorityRank || 999) - (b.priorityRank || 999));
               const unprioritizedThemes = jobThemesData.filter((t: any) => t.priorityRank === null);
-              const canFinalize = prioritizedThemes.length > 0;
+              
+              // Validation for finalization: need 3 jobs with at least 1 KPI each
+              const canFinalize = prioritizedThemes.length === 3 && 
+                prioritizedThemes.every((t: JobThemeWithKPIs) => 
+                  t.kpis && t.kpis.some(kpi => kpi.isSelected)
+                );
 
               return (
                 <>
-                  {/* Header Instructions */}
-                  <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-background">
-                    <CardHeader>
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground font-bold text-lg shrink-0">
-                          <Briefcase className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1">
-                          <CardTitle className="text-xl">Jobs We Do - Value Build Priorities</CardTitle>
-                          <CardDescription>
-                            Select your top 3 priority jobs, choose relevant KPIs, and provide baseline data to build your value case.
-                          </CardDescription>
-                        </div>
+                  {/* Progress Header */}
+                  <div className="flex items-center justify-between gap-4 p-4 bg-primary/5 rounded-lg border border-primary/20">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground">
+                        <Briefcase className="w-5 h-5" />
                       </div>
-                    </CardHeader>
-                  </Card>
+                      <div>
+                        <h2 className="font-semibold text-lg">Build Your Value Case</h2>
+                        <p className="text-sm text-muted-foreground">Select top 3 priority jobs to focus on</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-6">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-primary">{prioritizedThemes.length}/3</div>
+                        <div className="text-xs text-muted-foreground">Jobs Selected</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-primary">
+                          {prioritizedThemes.reduce((acc: number, t: JobThemeWithKPIs) => acc + (t.kpis?.filter(k => k.isSelected).length || 0), 0)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">KPIs Tracked</div>
+                      </div>
+                    </div>
+                  </div>
 
-                  {/* Prioritized Jobs (Top 3) */}
-                  {prioritizedThemes.length > 0 && (
-                    <Card className="border-primary/20">
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <CheckCircle className="w-5 h-5 text-primary" />
-                          Top {prioritizedThemes.length} Priority Job{prioritizedThemes.length !== 1 ? 's' : ''}
-                        </CardTitle>
-                        <CardDescription>
-                          These are your selected priorities for value case building
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        {prioritizedThemes.map((theme: JobThemeWithKPIs, idx: number) => (
-                          <JobThemeCard 
-                            key={theme.id} 
-                            theme={theme} 
-                            rank={idx + 1} 
-                            updateKPIMutation={updateKPIMutation}
-                            isFinalized={isFinalized}
-                            onDeselect={() => {
-                              if (!isFinalized) {
-                                const newPrioritized = prioritizedThemes.filter(t => t.id !== theme.id).map(t => t.id);
-                                prioritizeJobsMutation.mutate({ prioritizedIds: newPrioritized });
-                              }
-                            }}
-                          />
-                        ))}
-                      </CardContent>
-                    </Card>
-                  )}
+                  {/* Priority Slots with Integrated KPI Configuration */}
+                  <div className="space-y-4">
+                    {[1, 2, 3].map((slot) => {
+                      const theme = prioritizedThemes[slot - 1] as JobThemeWithKPIs | undefined;
+                      const selectedKPIs = theme?.kpis?.filter(k => k.isSelected).length || 0;
+                      const totalKPIs = theme?.kpis?.length || 0;
+                      
+                      return (
+                        <Card 
+                          key={slot}
+                          className={`${theme ? 'border-primary/30' : 'border-dashed border-muted'}`}
+                          data-testid={`priority-slot-${slot}`}
+                        >
+                          <CardHeader className="pb-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <Badge className="bg-primary text-primary-foreground">Priority #{slot}</Badge>
+                                {theme && (
+                                  <>
+                                    <div className="text-sm text-muted-foreground">•</div>
+                                    <div className="text-sm font-medium">{selectedKPIs}/{totalKPIs} KPIs selected</div>
+                                  </>
+                                )}
+                              </div>
+                              {theme && !isFinalized && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    const newPrioritized = prioritizedThemes.filter(t => t.id !== theme.id).map(t => t.id);
+                                    prioritizeJobsMutation.mutate({ prioritizedIds: newPrioritized });
+                                  }}
+                                  data-testid={`button-remove-${theme.id}`}
+                                >
+                                  <X className="w-4 h-4 mr-2" />
+                                  Remove
+                                </Button>
+                              )}
+                            </div>
+                          </CardHeader>
 
-                  {/* Available Jobs for Selection */}
+                          {theme ? (
+                            <CardContent className="pt-0">
+                              <JobThemeCard 
+                                theme={theme} 
+                                rank={slot} 
+                                updateKPIMutation={updateKPIMutation}
+                                isFinalized={isFinalized}
+                                onDeselect={() => {}}
+                              />
+                            </CardContent>
+                          ) : (
+                            <CardContent className="pt-0">
+                              <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-lg">
+                                <Plus className="w-8 h-8 text-muted-foreground mb-2" />
+                                <p className="text-sm font-medium">No job selected</p>
+                                <p className="text-xs text-muted-foreground mt-1">Choose from available jobs below</p>
+                              </div>
+                            </CardContent>
+                          )}
+                        </Card>
+                      );
+                    })}
+                  </div>
+
+                  {/* Available Jobs - Compact Grid */}
                   {unprioritizedThemes.length > 0 && (
                     <Card>
                       <CardHeader>
-                        <CardTitle>Available Jobs ({unprioritizedThemes.length})</CardTitle>
-                        <CardDescription>
-                          {prioritizedThemes.length < 3 
-                            ? `Select ${3 - prioritizedThemes.length} more job${3 - prioritizedThemes.length !== 1 ? 's' : ''} to reach your top 3 priorities`
-                            : "You've selected 3 priorities. Deselect one above to add a different job."
-                          }
-                        </CardDescription>
+                        <CardTitle className="flex items-center justify-between">
+                          <span>Available Jobs</span>
+                          <Badge variant="secondary">{unprioritizedThemes.length} remaining</Badge>
+                        </CardTitle>
                       </CardHeader>
-                      <CardContent className="space-y-4">
-                        {unprioritizedThemes.map((theme: any) => (
-                          <div key={theme.id} className="border rounded-md p-4 space-y-3">
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="flex-1">
-                                <div className="font-semibold text-lg">{theme.jobName}</div>
-                                <div className="text-sm text-muted-foreground mt-1">{theme.capabilityName}</div>
-                                <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
-                                  <Badge variant="secondary">{theme.evidenceCount} insights</Badge>
-                                  {theme.solutionArea && <Badge variant="outline">{theme.solutionArea}</Badge>}
+                      <CardContent>
+                        <div className="grid grid-cols-2 gap-3">
+                          {unprioritizedThemes.map((theme: any) => (
+                            <button
+                              key={theme.id}
+                              className="text-left border rounded-lg p-3 hover-elevate active-elevate-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                              onClick={() => {
+                                // Prevent duplicates by checking if theme already exists in prioritized list
+                                const currentIds = prioritizedThemes.map((t: JobThemeWithKPIs) => t.id);
+                                if (currentIds.includes(theme.id)) {
+                                  toast({
+                                    title: "Already selected",
+                                    description: "This job is already in your priorities.",
+                                    variant: "destructive",
+                                  });
+                                  return;
+                                }
+                                const newPrioritized = [...currentIds, theme.id].slice(0, 3);
+                                prioritizeJobsMutation.mutate({ prioritizedIds: newPrioritized });
+                              }}
+                              disabled={isFinalized || prioritizedThemes.length >= 3 || prioritizeJobsMutation.isPending}
+                              data-testid={`button-select-job-${theme.id}`}
+                            >
+                              <div className="space-y-2">
+                                <h4 className="font-semibold text-sm line-clamp-2">{theme.jobName}</h4>
+                                <p className="text-xs text-muted-foreground">{theme.capabilityName}</p>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="secondary" className="text-xs">
+                                    {theme.evidenceCount} insights
+                                  </Badge>
+                                  {theme.solutionArea && (
+                                    <Badge variant="outline" className="text-xs line-clamp-1">
+                                      {theme.solutionArea}
+                                    </Badge>
+                                  )}
                                 </div>
                               </div>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  const newPrioritized = [...prioritizedThemes.map((t: JobThemeWithKPIs) => t.id), theme.id].slice(0, 3);
-                                  prioritizeJobsMutation.mutate({ prioritizedIds: newPrioritized });
-                                }}
-                                disabled={isFinalized || prioritizedThemes.length >= 3 || prioritizeJobsMutation.isPending}
-                                data-testid={`button-prioritize-${theme.id}`}
-                              >
-                                Select as Priority
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
+                            </button>
+                          ))}
+                        </div>
                       </CardContent>
                     </Card>
                   )}
 
-                  {/* Finalize Discovery Button or Locked State */}
-                  {canFinalize && (
-                    isFinalized ? (
-                      <Card className="border-yellow-500/30 bg-yellow-50 dark:bg-yellow-950/20">
-                        <CardContent className="pt-6">
-                          <div className="flex items-center gap-3">
-                            <CheckCircle className="w-6 h-6 text-yellow-600" />
-                            <div>
-                              <p className="font-semibold text-yellow-900 dark:text-yellow-100">Discovery Phase Locked</p>
-                              <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                                Your priorities have been finalized and locked. Visit the Alignment page to build value hypotheses.
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ) : (
-                      <Card className="border-primary/30 bg-primary/5">
-                        <CardContent className="pt-6 flex items-center justify-between">
-                          <div>
-                            <p className="font-semibold">Ready to Build Value Hypotheses?</p>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              Finalize your discovery phase and move to Alignment to build detailed value cases.
-                            </p>
-                          </div>
-                          <Button
-                            size="lg"
-                            onClick={() => finalizeDiscoveryMutation.mutate()}
-                            disabled={finalizeDiscoveryMutation.isPending}
-                            data-testid="button-finalize-discovery"
-                          >
-                            {finalizeDiscoveryMutation.isPending ? (
-                              <>
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                Finalizing...
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle className="w-4 h-4 mr-2" />
-                                Finalize Discovery
-                              </>
+                  {/* Finalize Discovery Button or Requirements Message */}
+                  {isFinalized ? (
+                    <div className="flex items-center gap-3 p-4 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900">
+                      <CheckCircle className="w-6 h-6 text-green-600 shrink-0" />
+                      <div className="flex-1">
+                        <p className="font-semibold text-green-900 dark:text-green-100">Discovery Phase Complete</p>
+                        <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                          Your priorities are locked. Continue to Alignment to build value cases.
+                        </p>
+                      </div>
+                      <Link href={`/projects/${projectId}/alignment`}>
+                        <Button data-testid="button-go-to-alignment">
+                          Go to Alignment
+                        </Button>
+                      </Link>
+                    </div>
+                  ) : canFinalize ? (
+                    <div className="flex items-center justify-between gap-4 p-6 rounded-lg bg-primary/10 border-2 border-primary/30">
+                      <div>
+                        <p className="font-semibold text-lg">Ready to move forward?</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Lock your priorities and proceed to build value cases in Alignment
+                        </p>
+                      </div>
+                      <Button
+                        size="lg"
+                        onClick={() => finalizeDiscoveryMutation.mutate()}
+                        disabled={finalizeDiscoveryMutation.isPending}
+                        data-testid="button-finalize-discovery"
+                      >
+                        {finalizeDiscoveryMutation.isPending ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Finalizing...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Finalize Discovery
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  ) : prioritizedThemes.length > 0 && (
+                    <div className="p-4 rounded-lg bg-muted border border-muted">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">Complete all requirements to finalize</p>
+                          <ul className="text-sm text-muted-foreground mt-2 space-y-1">
+                            {prioritizedThemes.length < 3 && (
+                              <li>• Select {3 - prioritizedThemes.length} more job{3 - prioritizedThemes.length !== 1 ? 's' : ''} (currently {prioritizedThemes.length}/3)</li>
                             )}
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    )
+                            {prioritizedThemes.some((t: JobThemeWithKPIs) => !t.kpis || !t.kpis.some(kpi => kpi.isSelected)) && (
+                              <li>• Select at least 1 KPI for each priority job</li>
+                            )}
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </>
               );
