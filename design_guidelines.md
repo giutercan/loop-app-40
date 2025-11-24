@@ -3,258 +3,191 @@
 ## Design Approach
 
 **System Foundation**: Carbon Design System
-- Rationale: Enterprise-grade system purpose-built for data-heavy applications, complex workflows, and B2B SaaS products requiring trust and professionalism
-- Key principles: Information density, structured hierarchy, systematic consistency, and purposeful white space
+- Enterprise-grade system for data-heavy B2B SaaS requiring trust and professionalism
+- Principles: Information density, structured hierarchy, systematic consistency, purposeful white space
+- Enhanced with Korn Ferry's sophisticated brand identity and visual richness
+
+## Color System
+
+**Primary Brand Colors**:
+- Deep Forest Green (#00634F): Primary actions, navigation headers, key CTAs
+- Ocean Blue (#005971): Secondary actions, interactive elements, links
+- Navy (#00173B): Footers, darkest backgrounds, high-contrast text backgrounds
+
+**Accent Colors**:
+- Emerald (#009B77): Success states, positive metrics, completed phases
+- Mint (#05C690): Highlights, hover states on dark backgrounds, badges
+- Lime Green (#8DC63F): Leading indicators, growth metrics, active states
+- Cyan (#00ADBB): Information states, tooltips, secondary highlights
+- Purple (#A3238E): Premium features, AI-powered indicators, special callouts
+
+**Neutral Colors**:
+- Gray (#929192): Borders, disabled states, secondary text
+- Light Gray (#DAD8D6): Backgrounds, cards, section dividers
+
+**Color Usage Rules**:
+- White text on: Forest Green, Ocean Blue, Navy, Purple
+- Black text (#00173B) on: Light Gray backgrounds, white cards, Lime Green, Mint, Cyan
+- Gradients: Forest Green → Ocean Blue (headers), Emerald → Mint (success states), Ocean Blue → Purple (AI features)
+- Section backgrounds: Alternate between white and Light Gray (#DAD8D6)
 
 ## Typography System
 
-**Font Family**: IBM Plex Sans (via Google Fonts CDN)
-- Headings: IBM Plex Sans (600 Semibold, 700 Bold)
-- Body: IBM Plex Sans (400 Regular, 500 Medium)
-- Data/Code: IBM Plex Mono (400 Regular)
+**Font Family**: IBM Plex Sans (Google Fonts CDN)
+- Headings: 600 Semibold, 700 Bold
+- Body: 400 Regular, 500 Medium
+- Data: IBM Plex Mono 400 Regular
 
 **Type Scale**:
-- Hero/H1: text-5xl lg:text-6xl, font-bold, tracking-tight
-- Section Headers/H2: text-3xl lg:text-4xl, font-semibold
-- Card Headers/H3: text-xl lg:text-2xl, font-semibold
-- Subsections/H4: text-lg font-medium
-- Body Large: text-base lg:text-lg
-- Body Standard: text-sm lg:text-base
-- Captions/Labels: text-xs lg:text-sm, font-medium, uppercase tracking-wide
-- Data Values: text-2xl font-bold (for KPIs), font-mono for numbers
+- H1: text-5xl lg:text-6xl, font-bold, tracking-tight, text-navy
+- H2: text-3xl lg:text-4xl, font-semibold, text-navy
+- H3: text-xl lg:text-2xl, font-semibold, text-navy
+- H4: text-lg font-medium, text-ocean-blue
+- Body Large: text-base lg:text-lg, text-gray-900
+- Body Standard: text-sm lg:text-base, text-gray-700
+- Labels: text-xs lg:text-sm, font-medium, uppercase, tracking-wide, text-gray
+- Data Values: text-2xl font-bold font-mono
 
 ## Layout System
 
-**Spacing Primitives**: Tailwind units of 2, 4, 6, 8, 12, 16
-- Micro spacing (within components): p-2, gap-2
-- Standard spacing (between elements): p-4, gap-4, space-y-4
-- Section spacing: py-12 lg:py-16, px-4 lg:px-8
-- Large spacing (between major sections): py-16 lg:py-24
+**Spacing Primitives**: Tailwind units 2, 4, 6, 8, 12, 16
+- Micro: p-2, gap-2
+- Standard: p-4, gap-4, space-y-4
+- Sections: py-12 lg:py-16
+- Major sections: py-16 lg:py-24
 
-**Container Strategy**:
-- Full-width sections with inner max-w-7xl mx-auto
-- Content areas: max-w-6xl
-- Forms and wizards: max-w-4xl
-- Data tables: w-full with horizontal scroll on mobile
-
-**Grid Systems**:
-- Phase overview cards: grid-cols-1 md:grid-cols-3
-- Data cards: grid-cols-1 lg:grid-cols-2
-- Dashboard metrics: grid-cols-2 lg:grid-cols-4
-- Evidence items: grid-cols-1 gap-4
+**Containers**: max-w-7xl for full sections, max-w-6xl for content, max-w-4xl for forms
 
 ## Component Library
 
-### Navigation & Structure
+### Landing Page
 
-**Landing Page Header**:
-- Fixed top navigation with max-w-7xl container
-- Logo left, navigation links center, dual CTAs right
-- Height: h-16 lg:h-20
-- Trust indicator: "Trusted by Fortune 500 Companies" badge with icon
-- Sticky on scroll with subtle shadow
-
-**Phase Navigation (Portal Headers)**:
-- Breadcrumb trail showing: Landing > Phase Name > Current Step
-- Progress indicator for multi-step workflows
-- Phase badge with number (1, 2, 3) and status
-- Action bar with Save Draft, Export, and primary CTA
-
-**Footer**:
-- Three-column layout: Company info, Resources (Docs, Responsible AI, Analytics SLA), Contact
-- Newsletter signup with inline form
-- Legal links and copyright
-- Padding: py-12, border-t
-
-### Landing Page Sections
+**Header**:
+- Fixed navigation, h-16 lg:h-20, bg-forest-green with white text
+- Logo left, nav center, dual CTAs right (solid Emerald + outline white)
+- Trust badge: "Trusted by Fortune 500" with check icon, text-mint
 
 **Hero Section** (80vh):
-- Two-column split: Left 60% content, Right 40% video/demo embed
-- Headline + Subhead + Dual CTAs (Primary: solid button, Secondary: outline button)
-- Explainer video embed (16:9 aspect ratio, rounded corners)
-- Background: subtle gradient or abstract data visualization pattern
+- Large hero image: Professional diverse business team in modern office, right 50%, rounded-lg corners, subtle shadow
+- Left 50%: Headline (white text), subhead, dual CTAs with blurred button backgrounds (backdrop-blur-md bg-forest-green/80 for primary, bg-white/20 border-white for secondary)
+- Background: gradient from Forest Green to Ocean Blue, or hero image spanning full width with overlay
 
-**Phase Overview Cards** (Three tiles):
-- Card design: border, rounded-lg, p-8, hover lift effect (translate-y-1)
-- Icon at top (96x96 or text-6xl from Material Icons)
-- Phase number badge (1/2/3)
-- Title: text-2xl font-semibold
-- Description: 2-3 sentences explaining outcomes
-- "Learn More" link at bottom
+**Phase Overview Cards** (3 tiles):
+- Grid: grid-cols-1 md:grid-cols-3, gap-8
+- Card backgrounds: White with border-light-gray, rounded-lg, p-8
+- Phase badges: Forest Green (1), Ocean Blue (2), Purple (3), rounded-full, text-white, w-12 h-12
+- Icons: Material Icons text-6xl in matching phase colors
+- Hover: lift effect, subtle shadow increase, border color changes to phase color
 
-**Legal & Trust Section**:
-- Single row with three columns: Responsible AI badge, Data Policy summary, Security certifications
-- Icons with brief text, "Read Full Policy" links
-- Light background differentiation
+**Trust Section**:
+- Light Gray background, py-16
+- Three columns: Responsible AI badge (Purple icon), Data Security (Forest Green shield), Analytics SLA (Cyan clock)
+- Icons text-4xl, centered above text
 
-### Forms & Input Components
+**Footer**:
+- Navy background, white text
+- Three columns: Company (logo + tagline), Resources (links), Contact (form + info)
+- Newsletter: inline form with Mint CTA button
+- Social icons: Cyan on hover
 
-**Organization Card** (Phase 1):
-- Large card with header section showing company name, logo placeholder, sector tag
-- Grid of data points: each in own cell with label + value + confidence badge
-- Provenance links (underlined, with external link icon)
-- Revenue chart visualization (small line graph)
-- Recent headlines as expandable accordion list
+### Portal Components
 
-**Confidence Badges**:
-- Pill-shaped badges: rounded-full, px-3, py-1, text-xs
-- Three states: High (green icon), Medium (amber icon), Low (red icon)
-- Icon from Material Icons: check_circle, warning, error
+**Phase Navigation**:
+- Breadcrumb with phase color coding
+- Progress bar using phase color (Forest/Ocean/Purple)
+- Action bar: Save Draft (outline Ocean Blue), primary CTA (solid phase color)
 
-**Live Note Capture Interface**:
-- Split layout: Freeform notes (left 60%), Structured fields (right 40%)
-- Freeform: textarea with rich text toolbar, auto-save indicator
-- Structured: form fields with clear labels, dropdown for stakeholders
-- Tag system: chips with x to remove
-- Transcription toggle with privacy notice
+**Organization Card (Discovery)**:
+- Large white card, border-light-gray, rounded-lg, p-8
+- Header: Company name text-3xl text-navy, sector tag bg-mint text-black rounded-full
+- Data grid: label text-gray uppercase, value text-navy font-semibold
+- Confidence badges: pill shaped, High (bg-emerald text-white), Medium (bg-lime text-black), Low (bg-gray text-white)
+- Revenue chart: Line graph with Ocean Blue line, Light Gray grid
 
 **Value Hypothesis Builder**:
-- Stepper interface showing 5 steps horizontally
-- Each step: form card with clear instructions
-- Job selection: radio buttons with job descriptions
-- KPI picker: searchable dropdown with definitions on hover
-- Exposure editor: number input with unit selector, provenance display below
-- Summary card on right showing selections in real-time
+- Stepper: horizontal, connected by Forest Green lines, active step bg-forest-green text-white, completed bg-emerald, upcoming border-gray
+- Form cards: white bg, clear labels text-navy, inputs border-gray focus:border-ocean-blue
+- Summary sidebar: sticky, bg-light-gray, p-6, KPI list with Cyan highlights
 
-### Customer Portal Components (Phase 2)
+**Strategic Challenge Mapping (Alignment)**:
+- Wizard steps: Ocean Blue theme
+- Problem cards: white, p-6, border-ocean-blue on selection, hover shadow
+- Mapping interface: drag connections as Ocean Blue curved lines
+- Job cards: bg-light-gray, rounded-lg, with Ocean Blue accent border-l-4
 
-**Strategic Challenge Mapping**:
-- Wizard with numbered steps (1, 2, 3)
-- Problem selection: large clickable cards (grid-cols-1 md:grid-cols-2)
-- Mapping interface: drag-and-drop connections from problems to Korn Ferry jobs
-- "Why this matters" text area for each mapping
+**KPI Selection**:
+- Accordion: headers bg-light-gray, expanded content white
+- Primary KPI cards: large, border-ocean-blue, checkmark icon bg-ocean-blue
+- Supporting KPIs: checkbox cards with Cyan accent
+- Default badge: bg-purple text-white, "KF Standard" label
 
-**KPI Selection Interface**:
-- Accordion for each selected problem
-- Primary KPI: large radio button cards with metric name, definition, default unit
-- Supporting KPIs: checkbox cards (select 2)
-- Edit definitions: modal with form fields
-- Defaults clearly labeled as "Korn Ferry Standard"
+**Timeline Editor (Realization)**:
+- Purple theme for Phase 3
+- Gantt chart: swimlanes with Light Gray backgrounds alternating
+- Intervention cards: draggable, bg-white, border-purple, rounded
+- Milestones: diamond shapes, bg-emerald
+- Validation warnings: border-red with warning icon
 
-**Baseline Confirmation**:
-- Prominent card with warning border
-- Exposure data display with provenance table
-- Large checkbox: "I confirm this baseline is accurate"
-- Email confirmation section showing sent status
-- Lock icon and timestamp when confirmed
-- Disabled state until confirmation complete
-
-**Timeline Editor**:
-- 12-month horizontal gantt chart
-- Drag-and-drop intervention cards
-- Swimlanes for different owners
-- Milestone markers (diamond shapes)
-- Leading indicator tags
-- Validation warnings for missing data owners (red border, warning icon)
-
-### Dashboard Components (Phase 3)
-
-**KPI Cards**:
-- Card layout: border, rounded-lg, p-6
-- Top section: KPI name, current value (large, bold), trend icon (up/down arrow)
-- Middle: Sparkline chart showing monthly progression
-- Bottom: Baseline vs Current comparison with delta (percentage and absolute)
-- Confidence indicator and provenance link icon
+**Dashboard KPI Cards**:
+- White cards, border-light-gray, p-6, rounded-lg
+- Metric value: text-4xl font-bold text-navy
+- Trend icons: up arrow Emerald, down arrow Gray
+- Sparkline: Lime Green line
+- Baseline comparison: text-ocean-blue for delta
 
 **Financial Appendix Table**:
-- Structured table with sticky header
-- Columns: Year, Incremental Cash Flow, Cumulative, NPV, Notes
-- Row highlighting for key metrics
-- Expandable rows for full calculation steps
-- "Show Arithmetic" button revealing formulas
-
-**Attribution Model Viewer**:
-- Card with model name and description
-- Parameter list with values
-- Scenario comparison: three columns (Low, Medium, High)
-- NPV impact visualization (bar chart or horizontal comparison)
-
-**Analytics Status Indicator**:
-- Prominent banner when Tier 3 pending review
-- Status badges: Queued, In Review, Signed Off
-- SLA countdown timer (red when approaching deadline)
-- Ticket ID and reviewer name when assigned
-
-### Data Visualization
-
-**Charts & Graphs**:
-- Use Chart.js or Recharts for consistency
-- KPI trends: Line charts with baseline reference line
-- Financial projections: Stacked bar or waterfall charts
-- Confidence distributions: Horizontal bar charts
-- Keep charts simple, avoid 3D effects
-
-**Evidence & Provenance Display**:
-- Collapsible sections for source documents
-- Each excerpt in card with source citation, date, link icon
-- Highlight relevant text passages
-- Confidence badge next to each source
+- Sticky header bg-forest-green text-white
+- Alternating row colors: white and bg-light-gray
+- Key metrics: border-l-4 border-purple
+- NPV values: font-mono text-2xl text-navy
 
 ### Buttons & Actions
 
-**Button Hierarchy**:
-- Primary: solid background, text-white, px-6 py-3, rounded-lg, font-medium
-- Secondary: border-2, transparent background, px-6 py-3, rounded-lg
-- Tertiary: text links with hover underline
-- Danger: for delete/critical actions, red treatment
-- Disabled: opacity-50, cursor-not-allowed
-
-**CTAs on Landing**:
-- Primary CTA: Large button (px-8 py-4, text-lg)
-- Secondary CTA: Outline style, same size
-- Spacing between: gap-4
-
-**Action Bars**:
-- Sticky bottom bar on forms: Save Draft (secondary), Continue (primary)
-- Right-aligned button group
-- Background with border-top, shadow-lg
+**Primary**: bg-forest-green hover:bg-ocean-blue text-white px-6 py-3 rounded-lg font-medium
+**Secondary**: border-2 border-ocean-blue text-ocean-blue hover:bg-ocean-blue/10 px-6 py-3 rounded-lg
+**Success**: bg-emerald text-white
+**AI Features**: bg-gradient-to-r from-ocean-blue to-purple text-white, with sparkle icon
+**Danger**: bg-gray hover:bg-navy text-white
 
 ### State Indicators
 
-**Draft vs Final**:
-- Draft: Yellow badge with "DRAFT" text, border-l-4 on cards
-- Final: Green badge with "LOCKED" text and lock icon
-- Pending: Blue badge with "PENDING REVIEW"
-- Clear visual distinction on every screen
-
-**Loading States**:
-- Skeleton screens for data cards
-- Spinner for actions (inside button, replacing text)
-- Progress bars for multi-step processes
-
-**Empty States**:
-- Centered content with icon, message, and action button
-- "No data yet" messages with guidance on next steps
-
-## Icons
-
-**Library**: Material Icons (via CDN)
-- Use outlined variant for consistency
-- Size: text-xl for inline, text-4xl for feature cards, text-6xl for empty states
-- Common icons: analytics, description, timeline, check_circle, warning, lock, download, upload
-
-## Accessibility
-
-- Form labels always visible, never placeholder-only
-- Error messages below fields with error icon
-- Focus states: ring-2 ring-offset-2
-- Skip links for keyboard navigation
-- ARIA labels for icon-only buttons
-- Color not sole indicator of state (use icons + text)
-
-## Animations
-
-Use sparingly:
-- Card hover: slight lift (transform translate-y-1)
-- Button hover: subtle scale or shadow increase
-- Page transitions: fade in content
-- No scrolling animations
-- Loading spinners only when necessary
+- Draft: bg-lime/20 text-black border-l-4 border-lime, "DRAFT" badge
+- Locked: bg-emerald/20 text-black border-l-4 border-emerald, lock icon
+- Pending: bg-cyan/20 text-black border-l-4 border-cyan, "PENDING" badge
+- AI-Powered: bg-purple/10 border-purple with sparkle icon
 
 ## Images
 
-**Hero Section**: Large background image or video showing enterprise collaboration, data analysis, or business strategy meetings. Position on right side of hero split (40% width), rounded corners, subtle shadow.
+**Hero Section**: Large professional photograph (1920x1080 minimum) showing diverse business professionals collaborating in modern office. Natural lighting, authentic engagement. Position: right 50% of hero or full-width with gradient overlay (forest-green to ocean-blue, opacity 80%).
 
-**Phase Cards**: Small icon illustrations representing Discovery (magnifying glass/search), Alignment (handshake/puzzle pieces), Realisation (growth chart/trophy). Size: 96x96, placed at top of each card.
+**Phase Cards**: Icon illustrations or abstract representations - Discovery (data visualization), Alignment (connected nodes), Realization (growth chart). Size: 96x96, phase color treatment.
 
-**Trust Badges**: Partner logos or certification badges in footer or trust section, grayscale treatment for visual consistency.
+**Trust Section**: Partner logos (grayscale), certification badges, security icons. Size: 120x60, centered.
+
+**Dashboard**: Data visualization screenshots, chart examples using brand colors. Optional: small professional headshots for stakeholder assignments (48x48, rounded-full).
+
+## Icons
+
+Material Icons (outlined variant, CDN)
+- Navigation: analytics, timeline, people, description
+- States: check_circle (emerald), warning (lime), error (gray), lock (navy), auto_awesome (purple for AI)
+- Actions: download, upload, edit, delete
+- Sizes: text-xl inline, text-4xl features, text-6xl empty states
+
+## Accessibility
+
+- Labels always visible, never placeholder-only
+- Error messages with icons, text-black on Light Gray bg-red-50
+- Focus: ring-2 ring-ocean-blue ring-offset-2
+- Color + icon/text for all states
+- ARIA labels for icon buttons
+- Minimum contrast ratios met (white on Forest Green = 4.5:1)
+
+## Animations
+
+Minimal usage:
+- Card hover: translate-y-1, shadow increase
+- Button hover: subtle scale or bg color shift
+- Page transitions: fade-in
+- No scroll animations
+- Loading: spinner in button centers, skeleton screens for data cards
