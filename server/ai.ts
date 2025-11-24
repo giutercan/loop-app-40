@@ -895,6 +895,135 @@ Return JSON format:
   }
 }
 
+// KPI Rationale Schema
+const kpiRationaleSchema = z.object({
+  rationale: z.string(),
+  confidence: z.enum(["high", "medium", "low"]),
+});
+
+interface GenerateKPIRationaleParams {
+  kpiName: string;
+  unit: string;
+  baselineValue: string;
+  targetValue: string;
+  companyName: string;
+  industry: string;
+  customerResponses?: Array<{
+    question: string;
+    answer: string;
+    respondentName: string | null;
+  }>;
+  companyInsights?: Array<{
+    label: string;
+    value: string;
+  }>;
+}
+
+export async function generateKPIRationale(
+  params: GenerateKPIRationaleParams
+): Promise<z.infer<typeof kpiRationaleSchema>> {
+  const {
+    kpiName,
+    unit,
+    baselineValue,
+    targetValue,
+    companyName,
+    industry,
+    customerResponses = [],
+    companyInsights = []
+  } = params;
+
+  const baselineNum = parseFloat(baselineValue);
+  const targetNum = parseFloat(targetValue);
+  
+  // Guard against invalid numbers or division by zero
+  let improvement: string;
+  if (isNaN(baselineNum) || isNaN(targetNum)) {
+    improvement = "N/A (invalid numeric values)";
+  } else if (baselineNum === 0) {
+    improvement = "N/A (baseline is zero)";
+  } else {
+    improvement = ((targetNum - baselineNum) / baselineNum * 100).toFixed(1) + "%";
+  }
+
+  const contextSections = [];
+
+  // Add customer responses if available
+  if (customerResponses.length > 0) {
+    const responsesText = customerResponses
+      .map(r => `Q: ${r.question}\nA: ${r.answer} (${r.respondentName || 'Customer'})`)
+      .join('\n\n');
+    contextSections.push(`CUSTOMER QUESTIONNAIRE RESPONSES:\n${responsesText}`);
+  }
+
+  // Add company insights if available
+  if (companyInsights.length > 0) {
+    const insightsText = companyInsights
+      .map(i => `- ${i.label}: ${i.value}`)
+      .join('\n');
+    contextSections.push(`COMPANY RESEARCH INSIGHTS:\n${insightsText}`);
+  }
+
+  const contextText = contextSections.length > 0 
+    ? `\n\n${contextSections.join('\n\n')}`
+    : '';
+
+  const prompt = `You are a Korn Ferry management consultant helping to build a value case for ${companyName} (${industry} industry).
+
+KPI DETAILS:
+- Metric: ${kpiName}
+- Current Baseline: ${baselineValue} ${unit}
+- Target: ${targetValue} ${unit}
+- Improvement: ${improvement}
+${contextText}
+
+TASK: Generate a brief, professional rationale (2-3 sentences) explaining why these baseline and target values are appropriate for this client.
+
+GUIDELINES:
+1. Reference customer responses or company insights when available
+2. Explain why the baseline makes sense given the company's current state
+3. Justify why the target is achievable and impactful
+4. Keep it concise and professional
+5. Focus on business context, not just the numbers
+
+Return JSON format:
+{
+  "rationale": "2-3 sentence professional explanation of why these values make sense for this client",
+  "confidence": "high|medium|low" (high if customer responses or strong data available, medium if some context, low if minimal context)
+}`;
+
+  try {
+    console.log(`[AI Rationale] Generating for KPI: ${kpiName} (${baselineValue} → ${targetValue} ${unit})`);
+    
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 300,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    
+    if (!content) {
+      throw new Error("AI returned empty response");
+    }
+    
+    const parsedContent = JSON.parse(content);
+    const validationResult = kpiRationaleSchema.safeParse(parsedContent);
+    
+    if (!validationResult.success) {
+      console.error("[AI Rationale] Validation failed:", validationResult.error);
+      throw new Error(`AI rationale validation failed: ${validationResult.error.message}`);
+    }
+    
+    console.log(`[AI Rationale] Success! Generated rationale`);
+    return validationResult.data;
+  } catch (error) {
+    console.error("[AI Rationale] Error:", error);
+    throw new Error("Failed to generate KPI rationale with AI");
+  }
+}
+
 // Value Case Recommendation Schema
 const valueCaseRecommendationSchema = z.object({
   recommendations: z.array(z.object({

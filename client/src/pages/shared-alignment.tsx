@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { TrendingUp, TrendingDown, AlertCircle, CheckCircle, Building2 } from "lucide-react";
+import { TrendingUp, TrendingDown, AlertCircle, CheckCircle, Building2, Sparkles, Loader2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface JobThemeKPI {
@@ -266,6 +266,28 @@ function SharedKPIRow({ kpi, token, canEdit, customerName }: SharedKPIRowProps) 
     },
   });
 
+  const generateRationaleMutation = useMutation<{ rationale: string; confidence: string }, Error, void>({
+    mutationFn: async (): Promise<{ rationale: string; confidence: string }> => {
+      const response = await apiRequest("POST", `/api/alignment/shared/${token}/kpis/${kpi.id}/generate-rationale`, {});
+      return response as unknown as { rationale: string; confidence: string };
+    },
+    onSuccess: (data: { rationale: string; confidence: string }) => {
+      setLocalComment(data.rationale);
+      updateKPIMutation.mutate({ customerComment: data.rationale });
+      toast({
+        title: "AI Rationale Generated",
+        description: "You can edit the suggestion before saving",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Generation failed",
+        description: error.message || "Please ensure baseline and target values are set",
+      });
+    },
+  });
+
   const handleBaselineBlur = () => {
     if (localBaseline !== kpi.baselineValue) {
       updateKPIMutation.mutate({ baselineValue: localBaseline });
@@ -377,7 +399,31 @@ function SharedKPIRow({ kpi, token, canEdit, customerName }: SharedKPIRowProps) 
       {/* Customer Comment */}
       {canEdit && (
         <div className="space-y-2">
-          <Label htmlFor={`comment-${kpi.id}`}>Your Notes / Rationale (Optional)</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor={`comment-${kpi.id}`}>Your Notes / Rationale (Optional)</Label>
+            {hasValues && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-2 h-8"
+                onClick={() => generateRationaleMutation.mutate()}
+                disabled={generateRationaleMutation.isPending}
+                data-testid={`button-ai-suggest-${kpi.id}`}
+              >
+                {generateRationaleMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-3.5 w-3.5" />
+                    AI Suggest
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
           <Textarea
             id={`comment-${kpi.id}`}
             placeholder="Add context about these values or explain your reasoning..."

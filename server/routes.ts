@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "./storage";
-import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations } from "./ai";
+import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale } from "./ai";
 import { z } from "zod";
 import crypto from "crypto";
 
@@ -3071,6 +3071,82 @@ export function registerRoutes(app: Express) {
     }
   });
   
+  // Generate AI rationale for KPI (public endpoint for shared link)
+  app.post("/api/alignment/shared/:token/kpis/:kpiId/generate-rationale", async (req, res) => {
+    try {
+      const { token, kpiId } = req.params;
+      
+      // Find share link
+      const shareLink = await storage.getAlignmentShareLinkByToken(token);
+      if (!shareLink) {
+        return res.status(404).json({ error: "Share link not found" });
+      }
+      
+      // Verify permissions
+      if (shareLink.status !== "active") {
+        return res.status(403).json({ error: "This link has been revoked" });
+      }
+      if (shareLink.expiresAt && new Date(shareLink.expiresAt) < new Date()) {
+        return res.status(403).json({ error: "This link has expired" });
+      }
+      
+      // Get KPI
+      const kpi = await storage.getJobThemeKPI(parseInt(kpiId));
+      if (!kpi) {
+        return res.status(404).json({ error: "KPI not found" });
+      }
+      
+      // Verify KPI has baseline and target values
+      if (!kpi.baselineValue || !kpi.targetValue) {
+        return res.status(400).json({ 
+          error: "Both baseline and target values are required to generate rationale" 
+        });
+      }
+      
+      // Get project for context
+      const project = await storage.getProject(shareLink.projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Get customer questionnaire responses for context
+      const sharedQuestionnaire = await storage.getSharedQuestionnaire(shareLink.projectId);
+      const customerResponses = sharedQuestionnaire 
+        ? await storage.getQuestionResponsesByQuestionnaire(sharedQuestionnaire.id)
+        : [];
+      
+      // Get company insights for context
+      const companyDataPoints = await storage.getCompanyDataPoints(shareLink.projectId);
+      const selectedInsights = companyDataPoints
+        .filter(dp => dp.selectedForNotes)
+        .slice(0, 10); // Top 10 insights
+      
+      // Generate rationale using AI
+      const result = await ai.generateKPIRationale({
+        kpiName: kpi.kpiName,
+        unit: kpi.unit,
+        baselineValue: kpi.baselineValue,
+        targetValue: kpi.targetValue,
+        companyName: project.companyName,
+        industry: project.sector || "Unknown",
+        customerResponses: customerResponses.map(r => ({
+          question: r.question || "",
+          answer: r.answer,
+          respondentName: r.respondentName
+        })),
+        companyInsights: selectedInsights.map(dp => ({
+          label: dp.label,
+          value: dp.value
+        }))
+      });
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error generating KPI rationale:", error);
+      res.status(500).json({ error: error.message || "Failed to generate rationale" });
+    }
+  });
+
   // Update KPI with customer input (public endpoint for shared link)
   app.patch("/api/alignment/shared/:token/kpis/:kpiId", async (req, res) => {
     try {
