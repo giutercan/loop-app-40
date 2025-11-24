@@ -3015,19 +3015,46 @@ export function registerRoutes(app: Express) {
         lastAccessedAt: new Date()
       });
       
-      // Get project with job themes and KPIs
+      // Get project
       const project = await storage.getProject(shareLink.projectId);
       if (!project) {
         return res.status(404).json({ error: "Project not found" });
       }
       
-      const jobThemes = await storage.getJobThemes(shareLink.projectId);
-      const jobThemesWithKPIs = await Promise.all(
-        jobThemes.map(async (theme) => {
-          const kpis = await storage.getJobThemeKPIs(theme.id);
-          return { ...theme, kpis };
-        })
-      );
+      // Get discovery phase transfer to find finalized job themes
+      const transfer = await storage.getDiscoveryPhaseTransfer(shareLink.projectId);
+      if (!transfer || !transfer.isFinalized) {
+        return res.json({
+          project: {
+            name: project.name,
+            companyName: project.companyName,
+          },
+          jobThemes: [],
+          permissions: shareLink.permissions,
+          customerName: shareLink.customerName
+        });
+      }
+      
+      // Get only finalized job themes with KPIs
+      const finalizedJobIds = transfer.finalizedJobThemeIds || [];
+      const jobThemesWithKPIs = [];
+      
+      for (const jobId of finalizedJobIds) {
+        const job = await storage.getJobTheme(jobId);
+        if (job) {
+          const kpis = await storage.getJobThemeKPIs(jobId);
+          console.log(`[GET shared alignment] Job ${jobId} has ${kpis.length} KPIs (${kpis.filter(k => k.isSelected).length} selected)`);
+          jobThemesWithKPIs.push({
+            ...job,
+            kpis: kpis
+          });
+        }
+      }
+      
+      // Sort by priority rank
+      jobThemesWithKPIs.sort((a, b) => (a.priorityRank || 999) - (b.priorityRank || 999));
+      
+      console.log(`[GET shared alignment] Returning ${jobThemesWithKPIs.length} finalized jobs with total ${jobThemesWithKPIs.reduce((sum, j) => sum + j.kpis.length, 0)} KPIs`);
       
       res.json({
         project: {
