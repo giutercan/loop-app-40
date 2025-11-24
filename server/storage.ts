@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, inArray } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import type {
   Project, InsertProject,
@@ -26,7 +26,9 @@ import type {
   BusinessReview, InsertBusinessReview,
   KPIActual, InsertKPIActual,
   SuccessStory, InsertSuccessStory,
-  AlignmentShareLink, InsertAlignmentShareLink
+  AlignmentShareLink, InsertAlignmentShareLink,
+  Milestone, InsertMilestone,
+  ProjectValueMetrics, InsertProjectValueMetrics
 } from "@shared/schema";
 
 export interface IStorage {
@@ -197,6 +199,21 @@ export interface IStorage {
   createAlignmentShareLink(link: schema.InsertAlignmentShareLink): Promise<schema.AlignmentShareLink>;
   updateAlignmentShareLink(id: number, link: Partial<schema.InsertAlignmentShareLink>): Promise<schema.AlignmentShareLink | undefined>;
   deleteAlignmentShareLink(id: number): Promise<void>;
+  
+  // Milestones
+  getMilestones(projectId: number): Promise<Milestone[]>;
+  getMilestone(id: number): Promise<Milestone | undefined>;
+  createMilestone(milestone: InsertMilestone): Promise<Milestone>;
+  updateMilestone(id: number, milestone: Partial<InsertMilestone>): Promise<Milestone | undefined>;
+  deleteMilestone(id: number): Promise<void>;
+  
+  // Project Value Metrics
+  getProjectValueMetrics(projectId: number): Promise<ProjectValueMetrics | undefined>;
+  upsertProjectValueMetrics(metrics: InsertProjectValueMetrics): Promise<ProjectValueMetrics>;
+  
+  // Bulk fetches for efficient aggregation (eliminates N+1 queries)
+  getAllJobThemeKPIsForProject(projectId: number): Promise<JobThemeKPI[]>;
+  getAllKPIActualsForProject(projectId: number): Promise<KPIActual[]>;
 }
 
 export class DbStorage implements IStorage {
@@ -917,6 +934,92 @@ export class DbStorage implements IStorage {
   
   async deleteAlignmentShareLink(id: number): Promise<void> {
     await db.delete(schema.alignmentShareLinks).where(eq(schema.alignmentShareLinks.id, id));
+  }
+  
+  // Milestones
+  async getMilestones(projectId: number): Promise<Milestone[]> {
+    return await db.select().from(schema.milestones)
+      .where(eq(schema.milestones.projectId, projectId))
+      .orderBy(desc(schema.milestones.milestoneDate));
+  }
+  
+  async getMilestone(id: number): Promise<Milestone | undefined> {
+    const results = await db.select().from(schema.milestones)
+      .where(eq(schema.milestones.id, id));
+    return results[0];
+  }
+  
+  async createMilestone(milestone: InsertMilestone): Promise<Milestone> {
+    const results = await db.insert(schema.milestones).values(milestone).returning();
+    return results[0];
+  }
+  
+  async updateMilestone(id: number, milestone: Partial<InsertMilestone>): Promise<Milestone | undefined> {
+    const results = await db.update(schema.milestones)
+      .set({...milestone, updatedAt: new Date()})
+      .where(eq(schema.milestones.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deleteMilestone(id: number): Promise<void> {
+    await db.delete(schema.milestones).where(eq(schema.milestones.id, id));
+  }
+  
+  // Project Value Metrics
+  async getProjectValueMetrics(projectId: number): Promise<ProjectValueMetrics | undefined> {
+    const results = await db.select().from(schema.projectValueMetrics)
+      .where(eq(schema.projectValueMetrics.projectId, projectId));
+    return results[0];
+  }
+  
+  async upsertProjectValueMetrics(metrics: InsertProjectValueMetrics): Promise<ProjectValueMetrics> {
+    const existing = await this.getProjectValueMetrics(metrics.projectId);
+    
+    if (existing) {
+      const results = await db.update(schema.projectValueMetrics)
+        .set({...metrics, updatedAt: new Date(), lastCalculatedAt: new Date()})
+        .where(eq(schema.projectValueMetrics.projectId, metrics.projectId))
+        .returning();
+      return results[0];
+    } else {
+      const results = await db.insert(schema.projectValueMetrics).values(metrics).returning();
+      return results[0];
+    }
+  }
+  
+  // Bulk fetches for efficient aggregation
+  async getAllJobThemeKPIsForProject(projectId: number): Promise<JobThemeKPI[]> {
+    // Get all job themes for this project first
+    const jobThemes = await db.select().from(schema.jobThemes)
+      .where(eq(schema.jobThemes.projectId, projectId));
+    
+    if (jobThemes.length === 0) {
+      return [];
+    }
+    
+    const jobThemeIds = jobThemes.map(jt => jt.id);
+    
+    // Fetch all KPIs for these job themes in a single query
+    return await db.select().from(schema.jobThemeKPIs)
+      .where(inArray(schema.jobThemeKPIs.jobThemeId, jobThemeIds))
+      .orderBy(schema.jobThemeKPIs.id);
+  }
+  
+  async getAllKPIActualsForProject(projectId: number): Promise<KPIActual[]> {
+    // Get all KPIs for this project
+    const kpis = await this.getAllJobThemeKPIsForProject(projectId);
+    
+    if (kpis.length === 0) {
+      return [];
+    }
+    
+    const kpiIds = kpis.map(k => k.id);
+    
+    // Fetch all actuals for these KPIs in a single query
+    return await db.select().from(schema.kpiActuals)
+      .where(inArray(schema.kpiActuals.jobThemeKPIId, kpiIds))
+      .orderBy(desc(schema.kpiActuals.actualDate));
   }
 }
 

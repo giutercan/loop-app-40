@@ -218,7 +218,7 @@ export const insertKpiReadingSchema = createInsertSchema(kpiReadings).omit({
 export type InsertKpiReading = z.infer<typeof insertKpiReadingSchema>;
 export type KpiReading = typeof kpiReadings.$inferSelect;
 
-// Interventions (timeline items) with provenance
+// Interventions (timeline items) with provenance and value realization tracking
 export const interventions = pgTable("interventions", {
   id: serial("id").primaryKey(),
   projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
@@ -229,6 +229,13 @@ export const interventions = pgTable("interventions", {
   owner: text("owner"),
   status: text("status", { enum: ["planned", "in_progress", "completed", "cancelled"] }).notNull().default("planned"),
   sortOrder: integer("sort_order").notNull().default(0),
+  // Value realization enhancements
+  interventionType: text("intervention_type", { 
+    enum: ["training", "coaching", "process_change", "technology", "organizational_design", "other"] 
+  }),
+  targetedKPIIds: integer("targeted_kpi_ids").array(), // KPIs this intervention aims to improve
+  estimatedCost: text("estimated_cost"), // Financial investment
+  estimatedImpact: text("estimated_impact"), // Expected improvement
   provenance: jsonb("provenance"),
 });
 
@@ -465,6 +472,8 @@ export const jobThemeKPIs = pgTable("job_theme_kpis", {
   aiAchievabilityScore: integer("ai_achievability_score"), // 1-10 score for how achievable this is
   aiValueImpactScore: integer("ai_value_impact_score"), // 1-10 score for business value impact
   aiKornFerryBenchmark: text("ai_korn_ferry_benchmark"), // Korn Ferry typical range or target
+  // Value realization tracking
+  estimatedValuePerUnit: integer("estimated_value_per_unit"), // Dollar value per unit improvement (for calculating promised/realized value)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -597,6 +606,34 @@ export const insertBusinessReviewSchema = createInsertSchema(businessReviews).om
 export type InsertBusinessReview = z.infer<typeof insertBusinessReviewSchema>;
 export type BusinessReview = typeof businessReviews.$inferSelect;
 
+// Milestones - Track major project achievements and key dates
+export const milestones = pgTable("milestones", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  title: text("title").notNull(), // e.g., "Phase 1 Complete", "First Cohort Trained"
+  description: text("description"), // Detailed description
+  milestoneType: text("milestone_type", { 
+    enum: ["phase_completion", "deliverable", "measurement", "review", "custom"] 
+  }).notNull().default("custom"),
+  milestoneDate: timestamp("milestone_date").notNull(),
+  status: text("status", { enum: ["planned", "achieved", "missed"] }).notNull().default("planned"),
+  linkedKPIIds: integer("linked_kpi_ids").array(), // KPIs impacted by this milestone
+  linkedReviewId: integer("linked_review_id").references(() => businessReviews.id, { onDelete: "set null" }),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertMilestoneSchema = createInsertSchema(milestones).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  milestoneDate: z.coerce.date(),
+});
+export type InsertMilestone = z.infer<typeof insertMilestoneSchema>;
+export type Milestone = typeof milestones.$inferSelect;
+
 // KPI Actuals - Track actual KPI values over time (for progress tracking)
 export const kpiActuals = pgTable("kpi_actuals", {
   id: serial("id").primaryKey(),
@@ -606,6 +643,12 @@ export const kpiActuals = pgTable("kpi_actuals", {
   actualSource: text("actual_source"), // Where this data came from (e.g., "Client HRIS", "Survey results")
   notes: text("notes"), // Additional context about this measurement
   validatedBy: text("validated_by"), // Who validated this data (consultant or client name)
+  // Value realization enhancements
+  confidenceScore: integer("confidence_score"), // 1-10 confidence in this measurement
+  valueImpact: text("value_impact"), // Financial value delivered description (e.g., "$250,000 cost savings")
+  valueImpactAmount: integer("value_impact_amount"), // Numeric value in dollars (for aggregation)
+  linkedInterventionId: integer("linked_intervention_id").references(() => interventions.id, { onDelete: "set null" }),
+  linkedMilestoneId: integer("linked_milestone_id").references(() => milestones.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -720,3 +763,43 @@ export const insertAlignmentShareLinkSchema = createInsertSchema(alignmentShareL
 });
 export type InsertAlignmentShareLink = z.infer<typeof insertAlignmentShareLinkSchema>;
 export type AlignmentShareLink = typeof alignmentShareLinks.$inferSelect;
+
+// Project Value Metrics - Aggregate value realization tracking at project level
+export const projectValueMetrics = pgTable("project_value_metrics", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }).unique(),
+  // Value Promised (from Alignment phase targets) - stored as integers for reliable aggregation
+  totalValuePromised: integer("total_value_promised"), // Total promised value in dollars
+  valuePromisedBreakdown: jsonb("value_promised_breakdown"), // {jobId: value} breakdown
+  // Value Realized (from actual measurements) - stored as integers for reliable aggregation
+  totalValueRealized: integer("total_value_realized"), // Actual value delivered so far in dollars
+  valueRealizedBreakdown: jsonb("value_realized_breakdown"), // {jobId: value} breakdown
+  // Progress Metrics
+  overallProgressPercent: integer("overall_progress_percent"), // 0-100
+  kpisOnTrack: integer("kpis_on_track").notNull().default(0),
+  kpisAtRisk: integer("kpis_at_risk").notNull().default(0),
+  kpisOffTrack: integer("kpis_off_track").notNull().default(0),
+  kpisNoData: integer("kpis_no_data").notNull().default(0),
+  // Velocity & Forecasting
+  monthlyValueVelocity: text("monthly_value_velocity"), // Rate of value delivery per month
+  projectedCompletionDate: timestamp("projected_completion_date"), // When will targets be hit?
+  confidenceLevel: integer("confidence_level"), // 1-10 overall confidence
+  // Business Health
+  lastReviewDate: timestamp("last_review_date"),
+  nextReviewDate: timestamp("next_review_date"),
+  clientSentimentAvg: integer("client_sentiment_avg"), // Average from business reviews
+  // Metadata
+  lastCalculatedAt: timestamp("last_calculated_at").defaultNow().notNull(),
+  calculationNotes: text("calculation_notes"), // Any assumptions or notes
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertProjectValueMetricsSchema = createInsertSchema(projectValueMetrics).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastCalculatedAt: true,
+});
+export type InsertProjectValueMetrics = z.infer<typeof insertProjectValueMetricsSchema>;
+export type ProjectValueMetrics = typeof projectValueMetrics.$inferSelect;

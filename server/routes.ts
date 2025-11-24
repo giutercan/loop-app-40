@@ -64,6 +64,204 @@ function sanitizeInput(input: string): string {
   return sanitized.trim();
 }
 
+// Helper function to calculate project value metrics
+async function calculateProjectValueMetrics(projectId: number, storage: typeof import("./storage").storage) {
+  // Bulk fetch all data in parallel with minimal queries
+  const [jobThemes, allKPIs, allActuals] = await Promise.all([
+    storage.getJobThemes(projectId),
+    storage.getAllJobThemeKPIsForProject(projectId),
+    storage.getAllKPIActualsForProject(projectId)
+  ]);
+  
+  let totalValuePromised = 0;
+  let totalValueRealized = 0;
+  let kpisOnTrack = 0;
+  let kpisAtRisk = 0;
+  let kpisOffTrack = 0;
+  let kpisNoData = 0;
+  let totalConfidence = 0;
+  let kpiCount = 0;
+  
+  const valuePromisedBreakdown: Record<string, number> = {};
+  const valueRealizedBreakdown: Record<string, number> = {};
+  
+  // Create a map of KPI ID to its actuals for efficient lookup
+  const actualsMap = new Map<number, typeof allActuals>();
+  for (const actual of allActuals) {
+    if (!actualsMap.has(actual.jobThemeKPIId)) {
+      actualsMap.set(actual.jobThemeKPIId, []);
+    }
+    actualsMap.get(actual.jobThemeKPIId)!.push(actual);
+  }
+  
+  // Process each KPI with its actuals
+  allKPIs.forEach((kpi) => {
+    const actuals = actualsMap.get(kpi.id) || [];
+    kpiCount++;
+    
+    // Parse numeric values
+    const baseline = parseFloat(kpi.baselineValue || '0');
+    const target = parseFloat(kpi.targetValue || '0');
+    const targetDelta = target - baseline;
+    const valuePerUnit = kpi.estimatedValuePerUnit || 0;
+    
+    // Calculate value promised for this KPI
+    const kpiValuePromised = Math.abs(targetDelta) * valuePerUnit;
+    totalValuePromised += kpiValuePromised;
+    valuePromisedBreakdown[kpi.jobThemeId] = (valuePromisedBreakdown[kpi.jobThemeId] || 0) + kpiValuePromised;
+    
+    // Process actuals
+    if (actuals.length === 0) {
+      kpisNoData++;
+      return;
+    }
+    
+    const latestActual = actuals[0]; // Already sorted by date desc
+    const current = parseFloat(latestActual.actualValue);
+    const currentDelta = current - baseline;
+    const progressPercent = targetDelta !== 0 ? (currentDelta / targetDelta) * 100 : 0;
+    
+    // Categorize KPI status
+    if (progressPercent >= 80) {
+      kpisOnTrack++;
+    } else if (progressPercent >= 50) {
+      kpisAtRisk++;
+    } else {
+      kpisOffTrack++;
+    }
+    
+    // Calculate value realized for this KPI
+    let kpiValueRealized = 0;
+    if (latestActual.valueImpactAmount) {
+      // Use explicit value impact if provided
+      kpiValueRealized = latestActual.valueImpactAmount;
+    } else if (valuePerUnit > 0) {
+      // Calculate based on progress and value per unit
+      kpiValueRealized = Math.abs(currentDelta) * valuePerUnit;
+    }
+    
+    totalValueRealized += kpiValueRealized;
+    valueRealizedBreakdown[kpi.jobThemeId] = (valueRealizedBreakdown[kpi.jobThemeId] || 0) + kpiValueRealized;
+    
+    // Track confidence
+    if (latestActual.confidenceScore) {
+      totalConfidence += latestActual.confidenceScore;
+    }
+  });
+  
+  const overallProgressPercent = kpiCount > 0 
+    ? Math.round(((kpisOnTrack + kpisAtRisk * 0.5) / kpiCount) * 100)
+    : 0;
+  
+  const confidenceLevel = kpiCount > 0 ? Math.round(totalConfidence / kpiCount) : 0;
+  
+  // Get business review info
+  const reviews = await storage.getBusinessReviews(projectId);
+  const lastReview = reviews.length > 0 ? reviews[0] : null;
+  const clientSentimentAvg = reviews.length > 0 
+    ? Math.round(reviews.reduce((sum, r) => sum + (r.clientSentiment || 0), 0) / reviews.length)
+    : undefined;
+  
+  // Upsert metrics with numeric values
+  const metrics = await storage.upsertProjectValueMetrics({
+    projectId,
+    totalValuePromised,
+    totalValueRealized,
+    valuePromisedBreakdown,
+    valueRealizedBreakdown,
+    overallProgressPercent,
+    kpisOnTrack,
+    kpisAtRisk,
+    kpisOffTrack,
+    kpisNoData,
+    confidenceLevel,
+    lastReviewDate: lastReview?.reviewDate,
+    nextReviewDate: lastReview?.nextReviewDate,
+    clientSentimentAvg,
+    calculationNotes: `Calculated based on ${kpiCount} KPIs across ${jobThemes.length} job themes`
+  });
+  
+  return metrics;
+}
+
+// Helper function to calculate KPI status breakdown
+async function calculateKPIStatus(projectId: number, storage: typeof import("./storage").storage) {
+  const jobThemes = await storage.getJobThemes(projectId);
+  
+  const kpiStatuses: Array<{
+    kpiId: number;
+    kpiName: string;
+    jobThemeName: string;
+    baseline: string;
+    target: string;
+    current: string | null;
+    progressPercent: number;
+    status: 'on-track' | 'at-risk' | 'off-track' | 'no-data';
+    lastUpdated: Date | null;
+    confidenceScore: number | null;
+    valueImpact: string | null;
+  }> = [];
+  
+  for (const jobTheme of jobThemes) {
+    const kpis = await storage.getJobThemeKPIs(jobTheme.id);
+    
+    for (const kpi of kpis) {
+      const actuals = await storage.getKPIActuals(kpi.id);
+      
+      if (actuals.length === 0) {
+        kpiStatuses.push({
+          kpiId: kpi.id,
+          kpiName: kpi.kpiName,
+          jobThemeName: jobTheme.jobName,
+          baseline: kpi.baselineValue || 'N/A',
+          target: kpi.targetValue || 'N/A',
+          current: null,
+          progressPercent: 0,
+          status: 'no-data',
+          lastUpdated: null,
+          confidenceScore: null,
+          valueImpact: null
+        });
+        continue;
+      }
+      
+      const latestActual = actuals[0];
+      const baseline = parseFloat(kpi.baselineValue || '0');
+      const target = parseFloat(kpi.targetValue || '0');
+      const current = parseFloat(latestActual.actualValue);
+      
+      const targetDelta = target - baseline;
+      const currentDelta = current - baseline;
+      const progressPercent = targetDelta !== 0 ? (currentDelta / targetDelta) * 100 : 0;
+      
+      let status: 'on-track' | 'at-risk' | 'off-track' | 'no-data';
+      if (progressPercent >= 80) {
+        status = 'on-track';
+      } else if (progressPercent >= 50) {
+        status = 'at-risk';
+      } else {
+        status = 'off-track';
+      }
+      
+      kpiStatuses.push({
+        kpiId: kpi.id,
+        kpiName: kpi.kpiName,
+        jobThemeName: jobTheme.jobName,
+        baseline: kpi.baselineValue || 'N/A',
+        target: kpi.targetValue || 'N/A',
+        current: latestActual.actualValue,
+        progressPercent: Math.round(progressPercent),
+        status,
+        lastUpdated: latestActual.actualDate,
+        confidenceScore: latestActual.confidenceScore,
+        valueImpact: latestActual.valueImpact
+      });
+    }
+  }
+  
+  return kpiStatuses;
+}
+
 export function registerRoutes(app: Express) {
   // Projects
   app.get("/api/projects", async (req, res) => {
@@ -2542,6 +2740,144 @@ export function registerRoutes(app: Express) {
       const id = parseInt(req.params.id);
       await storage.deleteKPIActual(id);
       res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Milestones
+  app.get("/api/projects/:projectId/milestones", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const milestones = await storage.getMilestones(projectId);
+      res.json(milestones);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/projects/:projectId/milestones", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const milestone = await storage.createMilestone({
+        ...req.body,
+        projectId
+      });
+      res.json(milestone);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/milestones/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updated = await storage.updateMilestone(id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Milestone not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/milestones/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteMilestone(id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Value Realization Aggregation APIs
+
+  // Get overall value metrics for a project
+  app.get("/api/projects/:projectId/realization/metrics", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      
+      // Get or create project value metrics
+      let metrics = await storage.getProjectValueMetrics(projectId);
+      
+      if (!metrics) {
+        // Calculate metrics for the first time
+        metrics = await calculateProjectValueMetrics(projectId, storage);
+      }
+      
+      res.json(metrics);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get KPI status breakdown (on-track, at-risk, off-track, no-data)
+  app.get("/api/projects/:projectId/realization/kpi-status", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const kpiStatus = await calculateKPIStatus(projectId, storage);
+      res.json(kpiStatus);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get realization timeline (milestones, reviews, interventions)
+  app.get("/api/projects/:projectId/realization/timeline", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      
+      const [milestones, reviews, interventions] = await Promise.all([
+        storage.getMilestones(projectId),
+        storage.getBusinessReviews(projectId),
+        storage.getInterventions(projectId)
+      ]);
+      
+      // Combine and sort by date
+      const timeline = [
+        ...milestones.map(m => ({
+          type: 'milestone' as const,
+          id: m.id,
+          title: m.title,
+          description: m.description,
+          date: m.milestoneDate,
+          status: m.status,
+          data: m
+        })),
+        ...reviews.map(r => ({
+          type: 'review' as const,
+          id: r.id,
+          title: `${r.reviewType} Review`,
+          description: r.agenda || '',
+          date: r.reviewDate,
+          status: r.status,
+          data: r
+        })),
+        ...interventions.map(i => ({
+          type: 'intervention' as const,
+          id: i.id,
+          title: i.title,
+          description: i.description || '',
+          date: i.startDate,
+          status: i.status,
+          data: i
+        }))
+      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      res.json(timeline);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Recalculate value metrics
+  app.post("/api/projects/:projectId/realization/recalculate", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const metrics = await calculateProjectValueMetrics(projectId, storage);
+      res.json(metrics);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
