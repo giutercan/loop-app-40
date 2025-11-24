@@ -2109,6 +2109,22 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // Get a single job theme KPI by ID
+  app.get("/api/job-theme-kpis/:kpiId", async (req, res) => {
+    try {
+      const kpiId = parseInt(req.params.kpiId);
+      const kpi = await storage.getJobThemeKPI(kpiId);
+      
+      if (!kpi) {
+        return res.status(404).json({ error: "KPI not found" });
+      }
+      
+      res.json(kpi);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Generate AI industry benchmark for a KPI
   app.post("/api/job-theme-kpis/:kpiId/generate-benchmark", async (req, res) => {
     try {
