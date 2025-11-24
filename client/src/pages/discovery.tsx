@@ -55,7 +55,43 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
   const [targetInputs, setTargetInputs] = useState<Record<number, { value: string; source: string }>>({});
   const [showRecommendations, setShowRecommendations] = useState(false);
   
-  // Helper function to get current value (from input state or KPI props)
+  // Track which KPIs have unsaved edits (dirty flags)
+  const [dirtyBaseline, setDirtyBaseline] = useState<Set<number>>(new Set());
+  const [dirtyTarget, setDirtyTarget] = useState<Set<number>>(new Set());
+  
+  // Rehydrate input state from fresh KPI props whenever they change
+  // This ensures inputs always show server-normalized data after refetch
+  useEffect(() => {
+    const newBaselineInputs: Record<number, { value: string; source: string }> = {};
+    const newTargetInputs: Record<number, { value: string; source: string }> = {};
+    
+    theme.kpis.forEach(kpi => {
+      // Only rehydrate if this KPI is NOT currently being edited (no dirty flag)
+      // Use explicit null/undefined checks to preserve zero values
+      if (!dirtyBaseline.has(kpi.id) && kpi.baselineValue != null) {
+        newBaselineInputs[kpi.id] = {
+          value: kpi.baselineValue,
+          source: kpi.baselineSource || ''
+        };
+      }
+      
+      if (!dirtyTarget.has(kpi.id) && kpi.targetValue != null) {
+        newTargetInputs[kpi.id] = {
+          value: kpi.targetValue,
+          source: kpi.targetSource || ''
+        };
+      }
+    });
+    
+    setBaselineInputs(prev => ({ ...newBaselineInputs, ...Object.fromEntries(
+      Object.entries(prev).filter(([id]) => dirtyBaseline.has(Number(id)))
+    )}));
+    setTargetInputs(prev => ({ ...newTargetInputs, ...Object.fromEntries(
+      Object.entries(prev).filter(([id]) => dirtyTarget.has(Number(id)))
+    )}));
+  }, [theme.kpis, dirtyBaseline, dirtyTarget]);
+  
+  // Helper functions to get current values
   const getBaselineValue = (kpi: JobThemeKPI) => {
     return baselineInputs[kpi.id]?.value ?? kpi.baselineValue ?? '';
   };
@@ -73,6 +109,20 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
   };
   
   const handleKPIToggle = (kpi: JobThemeKPI) => {
+    // Clear dirty flags when deselecting a KPI
+    if (kpi.isSelected) {
+      setDirtyBaseline(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(kpi.id);
+        return newSet;
+      });
+      setDirtyTarget(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(kpi.id);
+        return newSet;
+      });
+    }
+    
     updateKPIMutation.mutate({
       kpiId: kpi.id,
       data: { isSelected: !kpi.isSelected }
@@ -80,6 +130,15 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
   };
   
   const handleBaselineUpdate = (kpi: JobThemeKPI) => {
+    // Check if user has made any edits
+    if (!dirtyBaseline.has(kpi.id)) {
+      toast({
+        title: "No Changes",
+        description: "Make changes before updating",
+      });
+      return;
+    }
+    
     const value = getBaselineValue(kpi);
     const source = getBaselineSource(kpi) || "User input";
     
@@ -104,15 +163,24 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
       }
     });
     
-    // Clear input state after mutation - inputs will fall back to KPI props after refetch
-    setBaselineInputs(prev => {
-      const newInputs = { ...prev };
-      delete newInputs[kpi.id];
-      return newInputs;
+    // Clear dirty flag - useEffect will rehydrate from fresh KPI props after refetch
+    setDirtyBaseline(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(kpi.id);
+      return newSet;
     });
   };
   
   const handleTargetUpdate = (kpi: JobThemeKPI) => {
+    // Check if user has made any edits
+    if (!dirtyTarget.has(kpi.id)) {
+      toast({
+        title: "No Changes",
+        description: "Make changes before updating",
+      });
+      return;
+    }
+    
     const value = getTargetValue(kpi);
     const source = getTargetSource(kpi) || "User input";
     
@@ -137,11 +205,11 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
       }
     });
     
-    // Clear input state after mutation - inputs will fall back to KPI props after refetch
-    setTargetInputs(prev => {
-      const newInputs = { ...prev };
-      delete newInputs[kpi.id];
-      return newInputs;
+    // Clear dirty flag - useEffect will rehydrate from fresh KPI props after refetch
+    setDirtyTarget(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(kpi.id);
+      return newSet;
     });
   };
   
@@ -236,7 +304,7 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
                   }`}>
                     <Checkbox
                       checked={kpi.isSelected}
-                      onCheckedChange={() => handleKPIToggle(kpi as any)}
+                      onCheckedChange={() => handleKPIToggle(kpi)}
                       disabled={isFinalized}
                       className="h-5 w-5"
                       data-testid={`checkbox-kpi-${kpi.id}`}
@@ -453,7 +521,10 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
                                   ...baselineInputs,
                                   [kpi.id]: { value: kpi.benchmarkValue || '', source: kpi.benchmarkSource || '' }
                                 });
+                                // Mark as dirty when benchmark is used
+                                setDirtyBaseline(prev => new Set(prev).add(kpi.id));
                               }}
+                              data-testid={`button-use-benchmark-${kpi.id}`}
                             >
                               Use as Baseline
                             </Button>
@@ -468,13 +539,17 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
                             <Input
                               placeholder={`Enter ${kpi.kpiName.toLowerCase()}...`}
                               value={baselineInputs[kpi.id]?.value || kpi.baselineValue || ''}
-                              onChange={(e) => setBaselineInputs({
-                                ...baselineInputs,
-                                [kpi.id]: { 
-                                  value: e.target.value, 
-                                  source: baselineInputs[kpi.id]?.source || kpi.baselineSource || '' 
-                                }
-                              })}
+                              onChange={(e) => {
+                                setBaselineInputs({
+                                  ...baselineInputs,
+                                  [kpi.id]: { 
+                                    value: e.target.value, 
+                                    source: baselineInputs[kpi.id]?.source || kpi.baselineSource || '' 
+                                  }
+                                });
+                                // Mark as dirty when user edits
+                                setDirtyBaseline(prev => new Set(prev).add(kpi.id));
+                              }}
                               className="text-base font-medium"
                               data-testid={`input-baseline-${kpi.id}`}
                             />
@@ -486,18 +561,22 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
                             <Input
                               placeholder="Data source (e.g., Q4 2024 Report)..."
                               value={baselineInputs[kpi.id]?.source || kpi.baselineSource || ''}
-                              onChange={(e) => setBaselineInputs({
-                                ...baselineInputs,
-                                [kpi.id]: { 
-                                  value: baselineInputs[kpi.id]?.value || kpi.baselineValue || '', 
-                                  source: e.target.value 
-                                }
-                              })}
+                              onChange={(e) => {
+                                setBaselineInputs({
+                                  ...baselineInputs,
+                                  [kpi.id]: { 
+                                    value: baselineInputs[kpi.id]?.value || kpi.baselineValue || '', 
+                                    source: e.target.value 
+                                  }
+                                });
+                                // Mark as dirty when user edits
+                                setDirtyBaseline(prev => new Set(prev).add(kpi.id));
+                              }}
                               data-testid={`input-baseline-source-${kpi.id}`}
                             />
                             <Button
-                              onClick={() => handleBaselineUpdate(kpi as any)}
-                              disabled={!baselineInputs[kpi.id]?.value && !kpi.baselineValue}
+                              onClick={() => handleBaselineUpdate(kpi)}
+                              disabled={!dirtyBaseline.has(kpi.id)}
                               className="bg-gradient-to-r from-emerald-600 to-green-600 text-white shadow-sm hover:shadow-md transition-shadow"
                               data-testid={`button-save-baseline-${kpi.id}`}
                             >
@@ -528,13 +607,17 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
                             <Input
                               placeholder={`Enter target ${kpi.kpiName.toLowerCase()}...`}
                               value={targetInputs[kpi.id]?.value || kpi.targetValue || ''}
-                              onChange={(e) => setTargetInputs({
-                                ...targetInputs,
-                                [kpi.id]: { 
-                                  value: e.target.value, 
-                                  source: targetInputs[kpi.id]?.source || kpi.targetSource || '' 
-                                }
-                              })}
+                              onChange={(e) => {
+                                setTargetInputs({
+                                  ...targetInputs,
+                                  [kpi.id]: { 
+                                    value: e.target.value, 
+                                    source: targetInputs[kpi.id]?.source || kpi.targetSource || '' 
+                                  }
+                                });
+                                // Mark as dirty when user edits
+                                setDirtyTarget(prev => new Set(prev).add(kpi.id));
+                              }}
                               className="text-base font-medium"
                               data-testid={`input-target-${kpi.id}`}
                             />
@@ -546,18 +629,22 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
                             <Input
                               placeholder="Data source (e.g., Strategic Plan 2025)..."
                               value={targetInputs[kpi.id]?.source || kpi.targetSource || ''}
-                              onChange={(e) => setTargetInputs({
-                                ...targetInputs,
-                                [kpi.id]: { 
-                                  value: targetInputs[kpi.id]?.value || kpi.targetValue || '', 
-                                  source: e.target.value 
-                                }
-                              })}
+                              onChange={(e) => {
+                                setTargetInputs({
+                                  ...targetInputs,
+                                  [kpi.id]: { 
+                                    value: targetInputs[kpi.id]?.value || kpi.targetValue || '', 
+                                    source: e.target.value 
+                                  }
+                                });
+                                // Mark as dirty when user edits
+                                setDirtyTarget(prev => new Set(prev).add(kpi.id));
+                              }}
                               data-testid={`input-target-source-${kpi.id}`}
                             />
                             <Button
-                              onClick={() => handleTargetUpdate(kpi as any)}
-                              disabled={!targetInputs[kpi.id]?.value && !kpi.targetValue}
+                              onClick={() => handleTargetUpdate(kpi)}
+                              disabled={!dirtyTarget.has(kpi.id)}
                               className="bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-sm hover:shadow-md transition-shadow"
                               data-testid={`button-save-target-${kpi.id}`}
                             >
