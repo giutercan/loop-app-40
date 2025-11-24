@@ -1,11 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Target, TrendingDown, ChevronDown, Sparkles, Briefcase, Loader2 } from "lucide-react";
+import { 
+  Target, 
+  TrendingUp, 
+  TrendingDown, 
+  ChevronDown, 
+  Sparkles, 
+  Loader2,
+  ArrowRight,
+  Award
+} from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -64,7 +71,7 @@ export function AlignmentInteractive({ projectId }: AlignmentInteractiveProps) {
       return await res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/alignment/finalized-jobs`], refetchType: "active" });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/alignment/finalized-jobs`], refetchType: "all" });
     },
     onError: (error: Error) => {
       toast({
@@ -112,7 +119,7 @@ export function AlignmentInteractive({ projectId }: AlignmentInteractiveProps) {
               <div>
                 <CardTitle className="text-2xl">Value Alignment</CardTitle>
                 <CardDescription>
-                  Define baseline and target values to quantify the transformation opportunity
+                  Define baseline → target to quantify transformation value
                 </CardDescription>
               </div>
             </div>
@@ -132,7 +139,7 @@ export function AlignmentInteractive({ projectId }: AlignmentInteractiveProps) {
         </CardHeader>
       </Card>
 
-      {/* Enhanced Job Cards */}
+      {/* Job Cards with Comprehensive Table */}
       {jobs.map((job, idx) => {
         const selectedKPIs = job.kpis.filter(kpi => kpi.isSelected);
         
@@ -163,7 +170,7 @@ function JobCard({ job, jobIndex, selectedKPIs, projectId, updateKPIMutation }: 
   const [isExpanded, setIsExpanded] = useState<boolean>(jobIndex === 0);
   const [showRecommendations, setShowRecommendations] = useState(false);
   
-  // Calculate completion percentage
+  // Calculate completion stats
   const completedKPIs = selectedKPIs.filter(kpi => 
     kpi.baselineValue && kpi.targetValue
   ).length;
@@ -177,14 +184,12 @@ function JobCard({ job, jobIndex, selectedKPIs, projectId, updateKPIMutation }: 
     >
       {/* Clickable Header */}
       <CardHeader 
-        className="hover-elevate active-elevate-2 rounded-t-md"
+        className="hover-elevate active-elevate-2 rounded-t-md cursor-pointer"
+        onClick={() => setIsExpanded(!isExpanded)}
         data-testid={`header-job-${job.id}`}
       >
         <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div 
-            className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
-            onClick={() => setIsExpanded(!isExpanded)}
-          >
+          <div className="flex items-center gap-3 flex-1 min-w-0">
             <Badge variant="default" className="text-lg px-3 py-1.5 shrink-0">
               #{jobIndex + 1}
             </Badge>
@@ -199,7 +204,7 @@ function JobCard({ job, jobIndex, selectedKPIs, projectId, updateKPIMutation }: 
             </div>
           </div>
           
-          {/* Progress Ring and Actions */}
+          {/* Actions and Stats */}
           <div className="flex items-center gap-3 shrink-0">
             <Button
               variant="outline"
@@ -214,41 +219,11 @@ function JobCard({ job, jobIndex, selectedKPIs, projectId, updateKPIMutation }: 
               <Sparkles className="h-4 w-4" />
               Suggest KPIs
             </Button>
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <div className="text-sm font-semibold">
-                  {completedKPIs}/{selectedKPIs.length} KPIs
-                </div>
-                <div className="text-xs text-muted-foreground">Configured</div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-primary">
+                {completedKPIs}/{selectedKPIs.length}
               </div>
-              <div className="relative w-14 h-14">
-                <svg className="w-14 h-14 transform -rotate-90">
-                  <circle
-                    cx="28"
-                    cy="28"
-                    r="24"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    fill="none"
-                    className="text-muted/20"
-                  />
-                  <circle
-                    cx="28"
-                    cy="28"
-                    r="24"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    fill="none"
-                    strokeDasharray={`${2 * Math.PI * 24}`}
-                    strokeDashoffset={`${2 * Math.PI * 24 * (1 - completionPercentage / 100)}`}
-                    className={completionPercentage === 100 ? "text-emerald-600" : "text-primary"}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-xs font-bold">{completionPercentage}%</span>
-                </div>
-              </div>
+              <div className="text-xs text-muted-foreground">KPIs Ready</div>
             </div>
           </div>
         </div>
@@ -262,13 +237,14 @@ function JobCard({ job, jobIndex, selectedKPIs, projectId, updateKPIMutation }: 
         />
       </CardHeader>
 
-      {/* Expandable Content */}
+      {/* Expandable Content - Comprehensive Table */}
       {isExpanded && (
-        <CardContent className="space-y-4 pt-6">
+        <CardContent className="pt-6">
           {selectedKPIs.length > 0 ? (
-            selectedKPIs.map(kpi => (
-              <KPICard key={kpi.id} kpi={kpi} updateKPIMutation={updateKPIMutation} />
-            ))
+            <ComprehensiveKPITable 
+              kpis={selectedKPIs} 
+              updateKPIMutation={updateKPIMutation} 
+            />
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <Target className="w-12 h-12 mx-auto mb-3 opacity-50" />
@@ -281,22 +257,87 @@ function JobCard({ job, jobIndex, selectedKPIs, projectId, updateKPIMutation }: 
   );
 }
 
-interface KPICardProps {
-  kpi: KPI;
+interface ComprehensiveKPITableProps {
+  kpis: KPI[];
   updateKPIMutation: any;
 }
 
-function KPICard({ kpi, updateKPIMutation }: KPICardProps) {
+function ComprehensiveKPITable({ kpis, updateKPIMutation }: ComprehensiveKPITableProps) {
+  return (
+    <div className="overflow-x-auto -mx-6">
+      <table className="w-full">
+        <thead>
+          <tr className="border-b-2 border-primary/20 bg-muted/30">
+            <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              KPI Metric
+            </th>
+            <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Current (Baseline)
+            </th>
+            <th className="text-center px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <ArrowRight className="w-4 h-4 mx-auto" />
+            </th>
+            <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Target (Desired)
+            </th>
+            <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Gap & Benefit
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {kpis.map((kpi, index) => (
+            <ComprehensiveKPIRow 
+              key={kpi.id} 
+              kpi={kpi} 
+              index={index}
+              updateKPIMutation={updateKPIMutation} 
+            />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+interface ComprehensiveKPIRowProps {
+  kpi: KPI;
+  index: number;
+  updateKPIMutation: any;
+}
+
+function ComprehensiveKPIRow({ kpi, index, updateKPIMutation }: ComprehensiveKPIRowProps) {
   const { toast } = useToast();
-  const [baselineMode, setBaselineMode] = useState<"client" | "industry">("client");
   const [isGeneratingBenchmark, setIsGeneratingBenchmark] = useState(false);
   
-  const baselineNum = parseFloat(kpi.baselineValue || "0");
-  const targetNum = parseFloat(kpi.targetValue || "0");
-  const hasValues = kpi.baselineValue && kpi.targetValue;
+  // Local state for immediate updates before server sync
+  const [localBaselineValue, setLocalBaselineValue] = useState(kpi.baselineValue || "");
+  const [localTargetValue, setLocalTargetValue] = useState(kpi.targetValue || "");
+  const [localTargetSource, setLocalTargetSource] = useState(kpi.targetSource || "");
+  
+  // Sync local state with server data when props change
+  useEffect(() => {
+    setLocalBaselineValue(kpi.baselineValue || "");
+  }, [kpi.baselineValue]);
+  
+  useEffect(() => {
+    setLocalTargetValue(kpi.targetValue || "");
+  }, [kpi.targetValue]);
+  
+  useEffect(() => {
+    setLocalTargetSource(kpi.targetSource || "");
+  }, [kpi.targetSource]);
+  
+  const baselineNum = parseFloat(localBaselineValue || "0");
+  const targetNum = parseFloat(localTargetValue || "0");
+  const hasValues = localBaselineValue && localTargetValue;
+  
+  // Calculate gap and improvement
+  const gap = hasValues ? Math.abs(targetNum - baselineNum) : 0;
   const improvement = hasValues && baselineNum > 0 
-    ? ((targetNum - baselineNum) / baselineNum * 100).toFixed(1)
-    : null;
+    ? ((targetNum - baselineNum) / baselineNum * 100)
+    : 0;
+  const isImproving = improvement > 0;
 
   const generateAIBenchmark = async () => {
     setIsGeneratingBenchmark(true);
@@ -312,23 +353,23 @@ function KPICard({ kpi, updateKPIMutation }: KPICardProps) {
       const data = await response.json();
       
       // Auto-fill the baseline with AI suggestion
+      setLocalBaselineValue(data.benchmarkValue);
       updateKPIMutation.mutate({
         kpiId: kpi.id,
         data: {
           baselineValue: data.benchmarkValue,
-          baselineSource: `AI-generated: ${data.source}`
+          baselineSource: `AI: ${data.source}`
         }
       });
       
       toast({
         title: "AI Benchmark Generated",
         description: data.rationale,
-        variant: "default",
       });
     } catch (error) {
       toast({
         title: "Generation Failed",
-        description: "Could not generate industry benchmark. Please enter manually.",
+        description: "Could not generate benchmark",
         variant: "destructive",
       });
     } finally {
@@ -337,276 +378,184 @@ function KPICard({ kpi, updateKPIMutation }: KPICardProps) {
   };
 
   return (
-    <div 
-      className="border-2 rounded-lg p-6 space-y-4 bg-gradient-to-br from-card to-muted/10 hover-elevate"
-      data-testid={`kpi-card-${kpi.id}`}
+    <tr 
+      className={`border-b border-muted ${index % 2 === 0 ? 'bg-background' : 'bg-muted/20'}`}
+      data-testid={`kpi-row-${kpi.id}`}
     >
-      {/* KPI Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div className="flex-1">
+      {/* KPI Name Column */}
+      <td className="px-6 py-4">
+        <div className="space-y-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <h4 className="font-semibold text-lg" data-testid={`text-kpi-name-${kpi.id}`}>
+            <span className="font-semibold text-sm" data-testid={`text-kpi-name-${kpi.id}`}>
               {kpi.kpiName}
-            </h4>
+            </span>
             <Badge variant={kpi.kpiType === "primary" ? "default" : "secondary"} className="text-xs">
               {kpi.kpiType}
             </Badge>
-            {hasValues && improvement && (
-              <Badge 
-                variant="outline" 
-                className={`text-xs ${
-                  parseFloat(improvement) > 0 ? 'border-emerald-600 text-emerald-600' : 'border-orange-600 text-orange-600'
-                }`}
-              >
-                {parseFloat(improvement) > 0 ? '↑' : '↓'} {Math.abs(parseFloat(improvement))}%
-              </Badge>
-            )}
           </div>
           {kpi.definition && (
-            <p className="text-sm text-muted-foreground mt-2">{kpi.definition}</p>
+            <p className="text-xs text-muted-foreground line-clamp-2">
+              {kpi.definition}
+            </p>
+          )}
+          {kpi.benchmarkValue && (
+            <div className="flex items-center gap-1 text-xs text-primary mt-1">
+              <Award className="w-3 h-3" />
+              <span>KF Benchmark: {kpi.benchmarkValue} {kpi.unit}</span>
+            </div>
           )}
         </div>
-      </div>
+      </td>
 
-      {/* Visual Progress Bar */}
-      {hasValues && (() => {
-        const range = Math.abs(targetNum - baselineNum);
-        const isTargetHigher = targetNum > baselineNum;
-        
-        // Calculate actual proportions for visualization
-        // Use zero as the minimum reference point
-        const minValue = Math.min(0, baselineNum, targetNum);
-        const maxValue = Math.max(baselineNum, targetNum);
-        const totalRange = maxValue - minValue;
-        
-        // Calculate percentage positions (ensuring we have at least 5% width for visibility)
-        let baselinePercent = totalRange > 0 
-          ? Math.max(5, ((baselineNum - minValue) / totalRange * 100))
-          : 50;
-        let targetPercent = totalRange > 0
-          ? Math.max(5, ((targetNum - minValue) / totalRange * 100))
-          : 50;
-        
-        // Ensure baseline and target don't overlap (min 5% gap)
-        if (Math.abs(targetPercent - baselinePercent) < 5) {
-          if (isTargetHigher) {
-            targetPercent = Math.min(100, baselinePercent + 5);
-          } else {
-            baselinePercent = Math.min(100, targetPercent + 5);
-          }
-        }
-        
-        const [leftPercent, rightPercent] = isTargetHigher 
-          ? [baselinePercent, targetPercent]
-          : [targetPercent, baselinePercent];
-        
-        const gapPercent = rightPercent - leftPercent;
-        
-        return (
-          <div className="bg-muted/30 rounded-lg p-4 space-y-2">
-            <div className="flex justify-between text-xs font-medium mb-1 flex-wrap gap-2">
-              <span className="text-orange-600">Baseline: {kpi.baselineValue} {kpi.unit}</span>
-              <span className="text-emerald-600">Target: {kpi.targetValue} {kpi.unit}</span>
-            </div>
-            <div className="relative h-5 bg-muted/20 rounded-full overflow-hidden border border-muted">
-              {/* Baseline marker (left) */}
-              <div 
-                className={`absolute top-0 h-full ${isTargetHigher ? 'bg-orange-500' : 'bg-emerald-500'} flex items-center ${isTargetHigher ? 'justify-start pl-2' : 'justify-end pr-2'}`}
-                style={{ 
-                  left: '0%', 
-                  width: `${leftPercent}%`,
-                  borderTopLeftRadius: '9999px',
-                  borderBottomLeftRadius: '9999px',
-                }}
-              >
-                {leftPercent > 12 && (
-                  <span className="text-white text-[9px] font-bold">
-                    {isTargetHigher ? 'NOW' : 'GOAL'}
-                  </span>
-                )}
-              </div>
-              {/* Gap/improvement zone */}
-              <div 
-                className={`absolute top-0 h-full ${
-                  isTargetHigher 
-                    ? 'bg-gradient-to-r from-orange-300/50 via-yellow-200/50 to-emerald-300/50'
-                    : 'bg-gradient-to-r from-emerald-300/50 via-yellow-200/50 to-orange-300/50'
-                }`}
-                style={{ 
-                  left: `${leftPercent}%`, 
-                  width: `${gapPercent}%` 
-                }}
-              />
-              {/* Target marker (right) */}
-              <div 
-                className={`absolute top-0 h-full ${isTargetHigher ? 'bg-emerald-500' : 'bg-orange-500'} flex items-center ${isTargetHigher ? 'justify-end pr-2' : 'justify-start pl-2'}`}
-                style={{ 
-                  right: '0%', 
-                  width: `${100 - rightPercent}%`,
-                  borderTopRightRadius: '9999px',
-                  borderBottomRightRadius: '9999px',
-                }}
-              >
-                {(100 - rightPercent) > 12 && (
-                  <span className="text-white text-[9px] font-bold">
-                    {isTargetHigher ? 'GOAL' : 'NOW'}
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="flex justify-between items-center text-xs text-muted-foreground mt-1">
-              <span className="text-[10px]">{isTargetHigher ? 'Current' : 'Target'}</span>
-              <span className="flex items-center gap-1">
-                {isTargetHigher ? '→' : '←'} 
-                <span className="font-semibold text-foreground text-xs">{range.toFixed(1)} {kpi.unit} gap</span>
-              </span>
-              <span className="text-[10px]">{isTargetHigher ? 'Target' : 'Current'}</span>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Input Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Baseline */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center shrink-0">
-                <TrendingDown className="w-4 h-4 text-orange-600" />
-              </div>
-              <Label htmlFor={`baseline-${kpi.id}`} className="font-semibold">
-                Baseline (Current State)
-              </Label>
-            </div>
-            
-            {/* Toggle Switch */}
-            <div className="flex items-center gap-2 bg-muted/50 rounded-full px-3 py-1.5">
-              <span className={`text-xs ${baselineMode === "client" ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
-                Client Data
-              </span>
-              <Switch
-                checked={baselineMode === "industry"}
-                onCheckedChange={(checked) => setBaselineMode(checked ? "industry" : "client")}
-                data-testid={`switch-baseline-mode-${kpi.id}`}
-              />
-              <span className={`text-xs ${baselineMode === "industry" ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
-                Industry
-              </span>
-            </div>
-          </div>
-          
-          {baselineMode === "industry" && (
-            <Button
-              onClick={generateAIBenchmark}
-              disabled={isGeneratingBenchmark}
-              variant="outline"
-              size="sm"
-              className="w-full border-primary/30 hover:bg-primary/10"
-              data-testid={`button-generate-benchmark-${kpi.id}`}
-            >
-              {isGeneratingBenchmark ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Generating AI Benchmark...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  Generate AI Benchmark
-                </>
-              )}
-            </Button>
-          )}
-          
-          <Input
-            id={`baseline-${kpi.id}`}
-            type="text"
-            placeholder={
-              baselineMode === "industry" 
-                ? "Click button above to generate AI benchmark"
-                : kpi.benchmarkValue ? `Benchmark: ${kpi.benchmarkValue}` : `Enter current ${kpi.unit}`
-            }
-            value={kpi.baselineValue || ""}
-            onChange={(e) => {
-              updateKPIMutation.mutate({
-                kpiId: kpi.id,
-                data: { baselineValue: e.target.value }
-              });
-            }}
-            className="text-lg font-semibold"
-            data-testid={`input-baseline-${kpi.id}`}
-            disabled={baselineMode === "industry" && !kpi.baselineValue}
-          />
-          <Input
-            type="text"
-            placeholder={baselineMode === "industry" ? "AI-generated source" : "Data source (e.g., HRIS, Client report)"}
-            value={kpi.baselineSource || ""}
-            onChange={(e) => {
-              updateKPIMutation.mutate({
-                kpiId: kpi.id,
-                data: { baselineSource: e.target.value }
-              });
-            }}
-            className="text-sm"
-            data-testid={`input-baseline-source-${kpi.id}`}
-          />
-        </div>
-
-        {/* Target */}
-        <div className="space-y-3">
+      {/* Current/Baseline Column */}
+      <td className="px-4 py-4">
+        <div className="space-y-2 min-w-[180px]">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/20 flex items-center justify-center">
-              <Target className="w-4 h-4 text-emerald-600" />
-            </div>
-            <Label htmlFor={`target-${kpi.id}`} className="font-semibold">
-              Target (Desired Outcome)
-            </Label>
+            <Input
+              type="text"
+              placeholder={`Enter ${kpi.unit}`}
+              value={localBaselineValue}
+              onChange={(e) => {
+                setLocalBaselineValue(e.target.value);
+              }}
+              onBlur={(e) => {
+                if (e.target.value !== kpi.baselineValue) {
+                  updateKPIMutation.mutate({
+                    kpiId: kpi.id,
+                    data: { baselineValue: e.target.value }
+                  });
+                }
+              }}
+              className="text-sm font-semibold"
+              data-testid={`input-baseline-${kpi.id}`}
+            />
+            <span className="text-xs text-muted-foreground whitespace-nowrap">{kpi.unit}</span>
+          </div>
+          <Button
+            onClick={generateAIBenchmark}
+            disabled={isGeneratingBenchmark}
+            variant="ghost"
+            size="sm"
+            className="w-full h-7 text-xs gap-1"
+            data-testid={`button-generate-benchmark-${kpi.id}`}
+          >
+            {isGeneratingBenchmark ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : (
+              <Sparkles className="w-3 h-3" />
+            )}
+            {isGeneratingBenchmark ? "Generating..." : "AI Suggest"}
+          </Button>
+        </div>
+      </td>
+
+      {/* Arrow Column */}
+      <td className="px-4 py-4">
+        <div className="flex justify-center">
+          <div className={`rounded-full p-2 ${hasValues ? 'bg-primary/10' : 'bg-muted/30'}`}>
+            <ArrowRight className={`w-4 h-4 ${hasValues ? 'text-primary' : 'text-muted-foreground'}`} />
+          </div>
+        </div>
+      </td>
+
+      {/* Target Column */}
+      <td className="px-4 py-4">
+        <div className="space-y-2 min-w-[180px]">
+          <div className="flex items-center gap-2">
+            <Input
+              type="text"
+              placeholder={`Target ${kpi.unit}`}
+              value={localTargetValue}
+              onChange={(e) => {
+                setLocalTargetValue(e.target.value);
+              }}
+              onBlur={(e) => {
+                if (e.target.value !== kpi.targetValue) {
+                  updateKPIMutation.mutate({
+                    kpiId: kpi.id,
+                    data: { targetValue: e.target.value }
+                  });
+                }
+              }}
+              className="text-sm font-semibold"
+              data-testid={`input-target-${kpi.id}`}
+            />
+            <span className="text-xs text-muted-foreground whitespace-nowrap">{kpi.unit}</span>
           </div>
           <Input
-            id={`target-${kpi.id}`}
             type="text"
-            placeholder={`Enter target ${kpi.unit}`}
-            value={kpi.targetValue || ""}
+            placeholder="Rationale..."
+            value={localTargetSource}
             onChange={(e) => {
-              updateKPIMutation.mutate({
-                kpiId: kpi.id,
-                data: { targetValue: e.target.value }
-              });
+              setLocalTargetSource(e.target.value);
             }}
-            className="text-lg font-semibold"
-            data-testid={`input-target-${kpi.id}`}
-          />
-          <Input
-            type="text"
-            placeholder="Target rationale (e.g., Industry best practice)"
-            value={kpi.targetSource || ""}
-            onChange={(e) => {
-              updateKPIMutation.mutate({
-                kpiId: kpi.id,
-                data: { targetSource: e.target.value }
-              });
+            onBlur={(e) => {
+              if (e.target.value !== kpi.targetSource) {
+                updateKPIMutation.mutate({
+                  kpiId: kpi.id,
+                  data: { targetSource: e.target.value }
+                });
+              }
             }}
-            className="text-sm"
+            className="text-xs h-7"
             data-testid={`input-target-source-${kpi.id}`}
           />
         </div>
-      </div>
+      </td>
 
-      {/* Benchmark Callout */}
-      {kpi.benchmarkValue && (
-        <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 flex items-start gap-3">
-          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-            <Sparkles className="w-4 h-4 text-primary" />
+      {/* Gap & Benefit Column */}
+      <td className="px-6 py-4">
+        {hasValues ? (
+          <div className="space-y-2">
+            {/* Gap Value */}
+            <div className="flex items-center gap-2">
+              <div className={`rounded-md px-3 py-1.5 ${isImproving ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-orange-50 dark:bg-orange-900/20'}`}>
+                <div className="text-sm font-bold flex items-center gap-1">
+                  {isImproving ? (
+                    <TrendingUp className="w-4 h-4 text-emerald-600" />
+                  ) : (
+                    <TrendingDown className="w-4 h-4 text-orange-600" />
+                  )}
+                  <span className={isImproving ? 'text-emerald-700 dark:text-emerald-400' : 'text-orange-700 dark:text-orange-400'}>
+                    {gap.toFixed(1)} {kpi.unit}
+                  </span>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  gap to close
+                </div>
+              </div>
+            </div>
+
+            {/* Improvement Percentage */}
+            <div className={`rounded-md px-3 py-1.5 ${isImproving ? 'bg-primary/10 border border-primary/20' : 'bg-muted/50'}`}>
+              <div className="text-lg font-bold">
+                {isImproving ? '+' : ''}{improvement.toFixed(1)}%
+              </div>
+              <div className="text-xs text-muted-foreground">
+                improvement if achieved
+              </div>
+            </div>
+
+            {/* Visual Progress Bar */}
+            <div className="relative h-2 bg-muted/30 rounded-full overflow-hidden">
+              <div 
+                className={`absolute top-0 left-0 h-full rounded-full ${
+                  isImproving ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' : 'bg-gradient-to-r from-orange-500 to-orange-400'
+                }`}
+                style={{ 
+                  width: `${Math.min(100, Math.abs(improvement))}%` 
+                }}
+              />
+            </div>
           </div>
-          <div className="flex-1">
-            <p className="font-semibold text-sm">Korn Ferry Benchmark Available</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              {kpi.benchmarkValue} {kpi.unit} {kpi.benchmarkSource && `• ${kpi.benchmarkSource}`}
+        ) : (
+          <div className="text-center py-4">
+            <p className="text-xs text-muted-foreground italic">
+              Enter baseline & target<br/>to see benefit
             </p>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </td>
+    </tr>
   );
 }
