@@ -19,6 +19,7 @@ import type { JobThemeKPI, KPIActual } from "@shared/schema";
 
 interface MomentumTimelineProps {
   projectId: number;
+  onNavigateToKPITracking?: () => void;
 }
 
 interface FinalizedJobsResponse {
@@ -56,7 +57,7 @@ interface TimelineAPIEvent {
   data: any;
 }
 
-export default function MomentumTimeline({ projectId }: MomentumTimelineProps) {
+export default function MomentumTimeline({ projectId, onNavigateToKPITracking }: MomentumTimelineProps) {
   // Fetch timeline events from backend (milestones, reviews, interventions)
   const { data: timelineAPIEvents = [], isLoading: timelineLoading } = useQuery<TimelineAPIEvent[]>({
     queryKey: [`/api/projects/${projectId}/realization/timeline`],
@@ -407,7 +408,11 @@ export default function MomentumTimeline({ projectId }: MomentumTimelineProps) {
                   <p className="text-sm text-muted-foreground mb-3">
                     Begin recording actual measurements for your KPIs to build a comprehensive timeline of value delivery
                   </p>
-                  <Button size="sm" data-testid="button-record-first-measurement">
+                  <Button 
+                    size="sm" 
+                    onClick={onNavigateToKPITracking}
+                    data-testid="button-record-first-measurement"
+                  >
                     <Plus className="w-4 h-4 mr-2" />
                     Record First Measurement
                   </Button>

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,6 +19,7 @@ export default function Realisation() {
   const [, params] = useRoute("/projects/:id/realisation");
   const projectId = parseInt(params?.id || "0");
   const [, setLocation] = useLocation();
+  const [activeTab, setActiveTab] = useState("dashboard");
 
   const { data: project } = useQuery<Project>({
     queryKey: [`/api/projects/${projectId}`],
@@ -106,7 +108,7 @@ export default function Realisation() {
       )}
 
       <main className="container mx-auto max-w-7xl px-4 lg:px-8 py-8">
-        <Tabs defaultValue="dashboard" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-5 max-w-4xl" data-testid="tabs-realisation">
             <TabsTrigger value="dashboard">Executive Pulse</TabsTrigger>
             <TabsTrigger value="kpis">KPI Tracking</TabsTrigger>
@@ -118,7 +120,10 @@ export default function Realisation() {
           <TabsContent value="dashboard" className="space-y-6">
             <ExecutivePulse projectId={projectId} />
             <KPITraction projectId={projectId} />
-            <MomentumTimeline projectId={projectId} />
+            <MomentumTimeline 
+              projectId={projectId} 
+              onNavigateToKPITracking={() => setActiveTab("kpis")}
+            />
           </TabsContent>
 
           <TabsContent value="kpis" className="space-y-6">
