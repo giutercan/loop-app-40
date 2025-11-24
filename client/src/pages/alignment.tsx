@@ -9,14 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { 
   Plus, 
-  TrendingUp, 
-  CheckCircle2, 
-  Send, 
-  FileText,
-  Lightbulb,
-  Target,
-  Briefcase,
-  TrendingDown,
+  TrendingUp,
   RefreshCw
 } from "lucide-react";
 import type { Project, ValueCase, CompanyDataPoint, JobThemeKPI } from "@shared/schema";
@@ -167,57 +160,6 @@ export default function AlignmentPage() {
                 New Value Case
               </Button>
             </div>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-4 gap-4 mt-6">
-            <Card className="no-default-hover-elevate">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Value Cases</p>
-                    <p className="text-2xl font-bold mt-1">{valueCases.length}</p>
-                  </div>
-                  <FileText className="h-8 w-8 text-muted-foreground" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="no-default-hover-elevate">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Draft</p>
-                    <p className="text-2xl font-bold mt-1">{draftValueCases.length}</p>
-                  </div>
-                  <Lightbulb className="h-8 w-8 text-muted-foreground" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="no-default-hover-elevate">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Sent</p>
-                    <p className="text-2xl font-bold mt-1">{sentValueCases.length}</p>
-                  </div>
-                  <Send className="h-8 w-8 text-muted-foreground" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="no-default-hover-elevate">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Approved</p>
-                    <p className="text-2xl font-bold mt-1">{approvedValueCases.length}</p>
-                  </div>
-                  <CheckCircle2 className="h-8 w-8 text-emerald-600" />
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>
