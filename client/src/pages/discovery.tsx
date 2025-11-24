@@ -16,12 +16,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import OrganisationCard from "@/components/OrganisationCard";
 import ValueCaseBuilder from "@/components/ValueCaseBuilder";
 import ProjectSelector from "@/components/ProjectSelector";
 import StatusBadge from "@/components/StatusBadge";
 import ProjectPhaseNav from "@/components/project-phase-nav";
-import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, Activity, Award, Building, Calendar, AlertCircle } from "lucide-react";
+import { ArrowLeft, Save, Send, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, Activity, Award, Building, Calendar, AlertCircle, ChevronDown } from "lucide-react";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { Link, useLocation, useRoute } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -1295,38 +1300,58 @@ export default function Discovery() {
           </TabsList>
 
           <TabsContent value="organisation" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>AI-Powered Company Research</CardTitle>
-                <CardDescription>
-                  Automatically research and populate company data using AI
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button
-                  onClick={() => researchCompanyMutation.mutate()}
-                  disabled={researchCompanyMutation.isPending || !projectId}
-                  data-testid="button-ai-research"
-                >
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  {researchCompanyMutation.isPending ? "Researching..." : "AI Research Company"}
-                </Button>
-              </CardContent>
-            </Card>
+            <Collapsible defaultOpen={true}>
+              <div className="rounded-lg border bg-card hover-elevate">
+                <CollapsibleTrigger className="w-full p-6 cursor-pointer">
+                  <div className="flex items-center justify-between w-full">
+                    <div className="text-left">
+                      <h3 className="text-lg font-semibold leading-none tracking-tight">AI-Powered Company Research</h3>
+                      <p className="text-sm text-muted-foreground mt-1.5">
+                        Automatically research and populate company data using AI
+                      </p>
+                    </div>
+                    <ChevronDown className="w-5 h-5 text-muted-foreground shrink-0 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+                  </div>
+                </CollapsibleTrigger>
+              </div>
+              <CollapsibleContent>
+                <Card className="mt-2">
+                  <CardContent className="pt-6">
+                    <Button
+                      onClick={() => researchCompanyMutation.mutate()}
+                      disabled={researchCompanyMutation.isPending || !projectId}
+                      data-testid="button-ai-research"
+                    >
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      {researchCompanyMutation.isPending ? "Researching..." : "AI Research Company"}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </CollapsibleContent>
+            </Collapsible>
 
             {dataPoints.length > 0 && (
               <>
-                <Card className="border-primary/20 bg-primary/5">
-                  <CardContent className="pt-6">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <MessageSquarePlus className="w-5 h-5 text-primary" />
-                          <h3 className="font-semibold text-lg">Need More Information?</h3>
+                <Collapsible defaultOpen={false}>
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 hover-elevate">
+                    <CollapsibleTrigger className="w-full p-6 cursor-pointer">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <MessageSquarePlus className="w-5 h-5 text-primary" />
+                            <h3 className="text-lg font-semibold leading-none tracking-tight">Need More Information?</h3>
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1.5">
+                            Ask the AI for additional insights about {project?.companyName}
+                          </p>
                         </div>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          Ask the AI for additional insights about {project?.companyName}
-                        </p>
+                        <ChevronDown className="w-5 h-5 text-muted-foreground shrink-0 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+                      </div>
+                    </CollapsibleTrigger>
+                  </div>
+                  <CollapsibleContent>
+                    <Card className="mt-2 border-primary/20 bg-primary/5">
+                      <CardContent className="pt-6">
                         <Dialog open={isFollowUpDialogOpen} onOpenChange={setIsFollowUpDialogOpen}>
                           <DialogTrigger asChild>
                             <Button data-testid="button-ask-followup">
@@ -1376,39 +1401,60 @@ export default function Discovery() {
                             </div>
                           </DialogContent>
                         </Dialog>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                      </CardContent>
+                    </Card>
+                  </CollapsibleContent>
+                </Collapsible>
 
-                <OrganisationCard
-                  name={project?.companyName || ""}
-                  sector={project?.sector || ""}
-                  dataPoints={dataPoints.map(dp => ({
-                    id: dp.id,
-                    label: dp.label,
-                    value: dp.value,
-                    confidence: dp.confidence as "high" | "medium" | "low",
-                    source: dp.source || undefined,
-                    isFollowUp: Boolean(dp.provenance && typeof dp.provenance === 'object' && 'type' in dp.provenance && dp.provenance.type === 'ai_follow_up'),
-                    selectedForNotes: dp.selectedForNotes,
-                    relevantJob: dp.relevantJob || undefined,
-                    relevantCapability: dp.relevantCapability || null,
-                    priorityScore: dp.priorityScore,
-                    kornFerryPillar: dp.kornFerryPillar || undefined,
-                    solutionArea: dp.solutionArea || undefined,
-                    relatedKPIs: (dp.relatedKPIs as string[] | null) || undefined,
-                  }))}
-                  headlines={headlines.map(h => ({
-                    title: h.title,
-                    date: h.date,
-                    source: h.source,
-                    url: h.url,
-                    isFollowUp: h.source === "AI Follow-up",
-                  }))}
-                  onCapabilityChange={handleCapabilityChange}
-                  onDataPointSelect={handleDataPointSelect}
-                />
+                <Collapsible defaultOpen={true}>
+                  <div className="rounded-lg border bg-card hover-elevate">
+                    <CollapsibleTrigger className="w-full p-6 cursor-pointer">
+                      <div className="flex items-center justify-between w-full">
+                        <div className="text-left">
+                          <h3 className="text-lg font-semibold leading-none tracking-tight">Company Data & Headlines</h3>
+                          <p className="text-sm text-muted-foreground mt-1.5">
+                            Research insights and news about {project?.companyName}
+                          </p>
+                        </div>
+                        <ChevronDown className="w-5 h-5 text-muted-foreground shrink-0 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+                      </div>
+                    </CollapsibleTrigger>
+                  </div>
+                  <CollapsibleContent>
+                    <Card className="mt-2">
+                      <CardContent className="pt-6">
+                        <OrganisationCard
+                          name={project?.companyName || ""}
+                          sector={project?.sector || ""}
+                          dataPoints={dataPoints.map(dp => ({
+                            id: dp.id,
+                            label: dp.label,
+                            value: dp.value,
+                            confidence: dp.confidence as "high" | "medium" | "low",
+                            source: dp.source || undefined,
+                            isFollowUp: Boolean(dp.provenance && typeof dp.provenance === 'object' && 'type' in dp.provenance && dp.provenance.type === 'ai_follow_up'),
+                            selectedForNotes: dp.selectedForNotes,
+                            relevantJob: dp.relevantJob || undefined,
+                            relevantCapability: dp.relevantCapability || null,
+                            priorityScore: dp.priorityScore,
+                            kornFerryPillar: dp.kornFerryPillar || undefined,
+                            solutionArea: dp.solutionArea || undefined,
+                            relatedKPIs: (dp.relatedKPIs as string[] | null) || undefined,
+                          }))}
+                          headlines={headlines.map(h => ({
+                            title: h.title,
+                            date: h.date,
+                            source: h.source,
+                            url: h.url,
+                            isFollowUp: h.source === "AI Follow-up",
+                          }))}
+                          onCapabilityChange={handleCapabilityChange}
+                          onDataPointSelect={handleDataPointSelect}
+                        />
+                      </CardContent>
+                    </Card>
+                  </CollapsibleContent>
+                </Collapsible>
               </>
             )}
 
