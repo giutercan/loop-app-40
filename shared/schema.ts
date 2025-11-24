@@ -544,10 +544,18 @@ export const jobThemeWithKPIsSchema = z.object({
     isSelected: z.boolean(),
     baselineValue: z.string().nullable().optional(),
     baselineSource: z.string().nullable().optional(),
+    targetValue: z.string().nullable().optional(),
+    targetSource: z.string().nullable().optional(),
     benchmarkValue: z.string().nullable().optional(),
     benchmarkSource: z.string().nullable().optional(),
     definition: z.string().nullable().optional(),
     measurementFrequency: z.string().nullable().optional(),
+    // AI Recommendation fields
+    isAIRecommended: z.boolean().optional(),
+    aiStrategicRationale: z.string().nullable().optional(),
+    aiAchievabilityScore: z.number().nullable().optional(),
+    aiValueImpactScore: z.number().nullable().optional(),
+    aiKornFerryBenchmark: z.string().nullable().optional(),
     createdAt: z.any(), // Date from DB
     updatedAt: z.any(), // Date from DB
   })),

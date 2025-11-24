@@ -157,29 +157,161 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
         onOpenChange={setShowRecommendations}
       />
       
-      {/* KPIs Section */}
+      {/* KPIs Section - Modernized */}
       {theme.kpis && theme.kpis.length > 0 && (
         <div className="space-y-3 mt-4 pt-4 border-t">
           <div className="font-medium text-sm">Key Performance Indicators</div>
-          {theme.kpis.map((kpi: JobThemeKPI) => (
-            <div key={kpi.id} className="border rounded-md p-3 space-y-3 bg-muted/30">
-              <div className="flex items-start gap-3">
-                <Checkbox
-                  checked={kpi.isSelected}
-                  onCheckedChange={() => handleKPIToggle(kpi)}
-                  disabled={isFinalized}
-                  data-testid={`checkbox-kpi-${kpi.id}`}
-                />
-                <div className="flex-1 space-y-2">
-                  <div>
-                    <div className="font-medium text-sm">{kpi.kpiName}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {kpi.kpiType === 'primary' ? 'Primary KPI' : 'Supporting KPI'} • {kpi.unit}
+          {theme.kpis.map((kpi) => {
+            const achievabilityScore = kpi.aiAchievabilityScore || 0;
+            const impactScore = kpi.aiValueImpactScore || 0;
+            const isAIRecommended = kpi.isAIRecommended;
+            
+            const getScoreColor = (score: number) => {
+              if (score >= 8) return "text-emerald-600 dark:text-emerald-400";
+              if (score >= 6) return "text-amber-600 dark:text-amber-400";
+              return "text-orange-600 dark:text-orange-400";
+            };
+
+            const getScoreBackground = (score: number) => {
+              if (score >= 8) return "bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-950/30 dark:to-green-950/30";
+              if (score >= 6) return "bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950/30 dark:to-yellow-950/30";
+              return "bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/30";
+            };
+
+            return (
+            <div 
+              key={kpi.id} 
+              className={`relative overflow-hidden rounded-lg border space-y-3 transition-all ${
+                kpi.isSelected 
+                  ? "border-primary/50 bg-primary/5 shadow-sm" 
+                  : "bg-gradient-to-br from-background to-muted/20 hover-elevate"
+              }`}
+            >
+              {/* Gradient accent bar for AI recommendations */}
+              {isAIRecommended && (
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500" />
+              )}
+              
+              <div className="p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    checked={kpi.isSelected}
+                    onCheckedChange={() => handleKPIToggle(kpi)}
+                    disabled={isFinalized}
+                    className="mt-1"
+                    data-testid={`checkbox-kpi-${kpi.id}`}
+                  />
+                  <div className="flex-1 space-y-3">
+                    {/* Header */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {isAIRecommended && (
+                          <Badge className="bg-gradient-to-r from-purple-600 to-blue-600 text-white border-0 text-xs">
+                            <Award className="mr-1 h-3 w-3" />
+                            Korn Ferry Recommended
+                          </Badge>
+                        )}
+                        <Badge variant="outline" className="text-xs">
+                          {kpi.kpiType === "primary" ? "Primary" : "Supporting"}
+                        </Badge>
+                      </div>
+                      <h3 className="text-base font-semibold leading-tight">{kpi.kpiName}</h3>
+                      {kpi.definition && (
+                        <p className="text-sm text-muted-foreground leading-relaxed">{kpi.definition}</p>
+                      )}
                     </div>
-                    {kpi.definition && (
-                      <p className="text-xs text-muted-foreground mt-1">{kpi.definition}</p>
+
+                    {/* AI Scores - Show only if AI recommended AND scores exist */}
+                    {isAIRecommended && achievabilityScore && impactScore && (
+                      <div className="grid grid-cols-2 gap-3">
+                        {achievabilityScore > 0 && (
+                          <div className={`rounded-lg p-3 ${getScoreBackground(achievabilityScore)}`}>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-medium text-muted-foreground">Achievability</span>
+                              <Target className={`h-4 w-4 ${getScoreColor(achievabilityScore)}`} />
+                            </div>
+                            <div className="flex items-baseline gap-1">
+                              <span className={`text-2xl font-bold ${getScoreColor(achievabilityScore)}`}>
+                                {achievabilityScore}
+                              </span>
+                              <span className="text-sm text-muted-foreground">/10</span>
+                            </div>
+                            <div className="mt-2 h-1.5 bg-white/50 dark:bg-black/20 rounded-full overflow-hidden">
+                              <div 
+                                className={`h-full transition-all ${
+                                  achievabilityScore >= 8 ? "bg-emerald-500" : achievabilityScore >= 6 ? "bg-amber-500" : "bg-orange-500"
+                                }`}
+                                style={{ width: `${achievabilityScore * 10}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                        
+                        {impactScore > 0 && (
+                          <div className={`rounded-lg p-3 ${getScoreBackground(impactScore)}`}>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-medium text-muted-foreground">Value Impact</span>
+                              <TrendingUp className={`h-4 w-4 ${getScoreColor(impactScore)}`} />
+                            </div>
+                            <div className="flex items-baseline gap-1">
+                              <span className={`text-2xl font-bold ${getScoreColor(impactScore)}`}>
+                                {impactScore}
+                              </span>
+                              <span className="text-sm text-muted-foreground">/10</span>
+                            </div>
+                            <div className="mt-2 h-1.5 bg-white/50 dark:bg-black/20 rounded-full overflow-hidden">
+                              <div 
+                                className={`h-full transition-all ${
+                                  impactScore >= 8 ? "bg-emerald-500" : impactScore >= 6 ? "bg-amber-500" : "bg-orange-500"
+                                }`}
+                                style={{ width: `${impactScore * 10}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )}
+
+                    {/* Strategic Rationale */}
+                    {kpi.aiStrategicRationale && (
+                      <div className="rounded-lg bg-muted/50 p-3 space-y-1">
+                        <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                          <TrendingUp className="h-3 w-3" />
+                          Strategic Value
+                        </div>
+                        <p className="text-sm leading-relaxed">
+                          {kpi.aiStrategicRationale}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Korn Ferry Benchmark */}
+                    {kpi.aiKornFerryBenchmark && (
+                      <div className="rounded-lg bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 border border-blue-200/50 dark:border-blue-800/50 p-3 space-y-1">
+                        <div className="flex items-center gap-2 text-xs font-medium text-blue-900 dark:text-blue-100">
+                          <Award className="h-3 w-3" />
+                          Korn Ferry Benchmark
+                        </div>
+                        <p className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">
+                          {kpi.aiKornFerryBenchmark}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Measurement Details */}
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 border-t">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium">Unit:</span>
+                        <Badge variant="secondary" className="text-xs">{kpi.unit}</Badge>
+                      </div>
+                      <div className="w-px h-3 bg-border" />
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium">Frequency:</span>
+                        <Badge variant="secondary" className="text-xs">{kpi.measurementFrequency}</Badge>
+                      </div>
+                    </div>
                   </div>
+                </div>
                   
                   {/* Baseline Data Input - Only show if KPI is selected */}
                   {kpi.isSelected && (
@@ -326,10 +458,10 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
                       )}
                     </div>
                   )}
-                </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
