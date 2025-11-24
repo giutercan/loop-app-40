@@ -1503,39 +1503,36 @@ export default function Discovery() {
           </TabsContent>
 
           <TabsContent value="notes" className="space-y-6">
-            {/* Step 1: Capture Information */}
-            <Card>
-              <CardHeader>
+            {/* Step 1: Capture Information - Modernized */}
+            <div className="rounded-lg border bg-gradient-to-br from-background to-muted/20">
+              <div className="p-6 space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-semibold text-sm shrink-0">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white font-bold shrink-0">
                     1
                   </div>
                   <div className="flex-1">
-                    <CardTitle>Capture Client Information</CardTitle>
-                    <CardDescription>Write notes, upload files, or record voice memos from client conversations</CardDescription>
+                    <h3 className="text-xl font-semibold">Capture Client Information</h3>
+                    <p className="text-sm text-muted-foreground">Notes, files, or voice memos from client conversations</p>
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="freeform">Notes</Label>
+                
+                <div className="space-y-3">
                   <Textarea
                     id="freeform"
-                    placeholder="Type or paste notes from meetings, conversations, or research... (e.g., 'Client has 50-75 sales reps, wants 40% revenue increase, current employee satisfaction at 65%')"
-                    className="min-h-[120px] resize-none"
+                    placeholder="Type notes from meetings... (e.g., '50-75 sales reps, wants 40% revenue increase')"
+                    className="min-h-[100px] resize-none"
                     value={localNotes.freeformNotes}
                     onChange={(e) => setLocalNotes({ ...localNotes, freeformNotes: e.target.value })}
                     data-testid="textarea-notes"
                   />
-                </div>
 
-                <div className="flex items-center gap-2">
-                  <Separator className="flex-1" />
-                  <span className="text-xs text-muted-foreground">OR</span>
-                  <Separator className="flex-1" />
-                </div>
+                  <div className="flex items-center gap-3">
+                    <div className="h-px flex-1 bg-border" />
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider">or attach</span>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
 
-                <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2">
                   <Input
                     type="file"
                     onChange={handleFileUpload}
@@ -1650,8 +1647,9 @@ export default function Discovery() {
                     </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+                </div>
+              </div>
+            </div>
 
             {/* Step 2: Extract Insights */}
             <Card className="bg-primary/5 border-primary/20">

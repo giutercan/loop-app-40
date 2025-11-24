@@ -418,7 +418,7 @@ Job Theme Insights:
 ${cq.insights.map(i => `- ${i.label}: ${i.value}${i.relatedKPIs && i.relatedKPIs.length > 0 ? ` (KPIs: ${i.relatedKPIs.join(', ')})` : ''}`).join('\n')}
 `).join('\n');
 
-  const prompt = `You are a Korn Ferry consultant preparing for a discovery session with ${companyName}. Based on the highlighted priorities (job themes) you have identified from the organization's knowledge and research, generate targeted discovery questions that will help investigate further and capture data for KPI calculations.
+  const prompt = `You are a Korn Ferry consultant preparing for a discovery session with ${companyName}. Based on the highlighted priorities (job themes) you have identified from the organization's knowledge and research, generate the TOP 10 MOST IMPACTFUL discovery questions that will help move the needle for the client.
 
 IMPORTANT: Only generate questions for the job themes listed below. These represent the strategic priorities the consultant has chosen to focus on based on the organization's specific needs and opportunities.
 
@@ -428,19 +428,25 @@ ${capabilityContext}
 KORN FERRY KNOWLEDGE BASE:
 ${knowledgeBase}
 
-For each capability with job theme insights, generate 2-4 discovery questions that:
-1. Build on the selected insights to dig deeper into the client's situation
+Generate EXACTLY 10 high-impact discovery questions across all capabilities that:
+1. Focus on the most critical insights that will drive business value
 2. Are client-centered and conversational (not internal consulting jargon)
-3. Capture both quantitative metrics (for calculations) and qualitative context (for rationale)
+3. Prioritize questions that capture quantitative metrics for value calculations
 4. Map to specific KPIs from the knowledge base when applicable
-5. Help bridge insights to value hypotheses
+5. Help bridge insights to measurable business outcomes
+
+PRIORITIZATION CRITERIA:
+- Questions that unlock the highest financial impact
+- Questions that validate the most critical assumptions
+- Questions with clear, measurable KPI connections
+- Questions that bridge to executive-level business outcomes
 
 Question types:
-- "quantitative": Asks for numbers, metrics, counts, percentages
+- "quantitative": Asks for numbers, metrics, counts, percentages (PRIORITIZE THESE)
 - "qualitative": Asks for context, challenges, goals, strategies
 - "both": Asks for both quantitative data and qualitative context
 
-Return JSON with this structure:
+Return JSON with this structure (limit to 10 questions total across all capabilities):
 {
   "capabilityName1": [
     {
@@ -458,15 +464,15 @@ For "Leadership & Development Journeys" with insight about leadership transition
 {
   "question": "How many leadership transitions do you anticipate in the next 12-18 months?",
   "questionType": "quantitative",
-  "purpose": "Understand the scale of succession planning needs",
+  "purpose": "Quantify succession planning scope and calculate leadership development investment needs",
   "relatedKPI": "Leadership Bench Strength"
 }
 
 {
-  "question": "What are the biggest challenges you've faced with recent leadership transitions?",
-  "questionType": "qualitative",
-  "purpose": "Identify pain points in current succession process",
-  "relatedKPI": null
+  "question": "What percentage of critical roles have identified successors ready within 12 months?",
+  "questionType": "quantitative",
+  "purpose": "Establish baseline for succession readiness and calculate risk of leadership gaps",
+  "relatedKPI": "Succession Coverage Ratio"
 }`;
 
   try {
