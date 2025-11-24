@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import emptyStateImage from "@assets/Picture35_1763994371581.jpg";
 
 interface Project {
   id: number;
@@ -169,25 +170,41 @@ export default function ProjectsDashboard() {
 
           {/* Projects Grid */}
           {projects.length === 0 ? (
-            <Card className="border-dashed border-2">
-              <CardContent className="flex flex-col items-center justify-center py-16 space-y-6">
-                <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center">
-                  <Building2 className="w-10 h-10 text-muted-foreground" />
+            <Card className="border-2 overflow-hidden">
+              <CardContent className="p-0">
+                <div className="grid md:grid-cols-2 gap-0">
+                  {/* Left: Image */}
+                  <div className="relative h-64 md:h-auto min-h-[400px]">
+                    <img
+                      src={emptyStateImage}
+                      alt="Professional ready to start"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-primary/10 to-transparent" />
+                  </div>
+                  
+                  {/* Right: Content */}
+                  <div className="flex flex-col items-center justify-center p-12 space-y-6">
+                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+                      <Briefcase className="w-8 h-8 text-primary" />
+                    </div>
+                    <div className="text-center space-y-3 max-w-md">
+                      <h3 className="text-2xl font-bold">Ready to Start</h3>
+                      <p className="text-muted-foreground leading-relaxed">
+                        Create your first client engagement project and unlock AI-powered insights, strategic value alignment, and measurable outcomes.
+                      </p>
+                    </div>
+                    <Button 
+                      size="lg" 
+                      className="shadow-lg shadow-primary/20"
+                      data-testid="button-create-first-project"
+                      onClick={() => setLocation('/projects/new')}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Your First Project
+                    </Button>
+                  </div>
                 </div>
-                <div className="text-center space-y-2 max-w-md">
-                  <h3 className="text-xl font-semibold">No projects yet</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Get started by creating your first client engagement project
-                  </p>
-                </div>
-                <Button 
-                  size="lg" 
-                  data-testid="button-create-first-project"
-                  onClick={() => setLocation('/projects/new')}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Your First Project
-                </Button>
               </CardContent>
             </Card>
           ) : (

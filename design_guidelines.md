@@ -33,10 +33,10 @@
 
 ## Typography System
 
-**Font Family**: IBM Plex Sans (Google Fonts CDN)
+**Font Family**: Aptos, 'Segoe UI', system-ui, -apple-system, sans-serif
 - Headings: 600 Semibold, 700 Bold
 - Body: 400 Regular, 500 Medium
-- Data: IBM Plex Mono 400 Regular
+- Data: 'Roboto Mono', 'Consolas', monospace
 
 **Type Scale**:
 - H1: text-5xl lg:text-6xl, font-bold, tracking-tight, text-navy

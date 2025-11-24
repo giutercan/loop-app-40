@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* LIGHT MODE */
+/* LIGHT MODE - Korn Ferry Brand Colors */
 :root {
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
@@ -10,39 +10,39 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
   --background: 0 0% 100%;
-  --foreground: 210 100% 7%;
-  --border: 30 14% 88%;
-  --card: 30 18% 97%;
-  --card-foreground: 210 100% 7%;
-  --card-border: 30 18% 93%;
-  --sidebar: 30 14% 96%;
-  --sidebar-foreground: 210 100% 7%;
-  --sidebar-border: 30 14% 90%;
-  --sidebar-primary: 168 100% 20%;
+  --foreground: 216 100% 12%;
+  --border: 30 11% 84%;
+  --card: 0 0% 100%;
+  --card-foreground: 216 100% 12%;
+  --card-border: 30 11% 88%;
+  --sidebar: 30 11% 84%;
+  --sidebar-foreground: 216 100% 12%;
+  --sidebar-border: 30 11% 78%;
+  --sidebar-primary: 167 100% 19%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 30 18% 90%;
-  --sidebar-accent-foreground: 210 100% 7%;
-  --sidebar-ring: 168 100% 20%;
-  --popover: 30 18% 94%;
-  --popover-foreground: 210 100% 7%;
-  --popover-border: 30 18% 88%;
-  --primary: 168 100% 20%;
+  --sidebar-accent: 30 11% 88%;
+  --sidebar-accent-foreground: 216 100% 12%;
+  --sidebar-ring: 167 100% 19%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 216 100% 12%;
+  --popover-border: 30 11% 84%;
+  --primary: 167 100% 19%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 30 18% 90%;
-  --secondary-foreground: 210 100% 7%;
-  --muted: 30 18% 92%;
-  --muted-foreground: 0 0% 46%;
-  --accent: 168 100% 37%;
+  --secondary: 193 100% 22%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 30 11% 84%;
+  --muted-foreground: 216 20% 40%;
+  --accent: 162 100% 30%;
   --accent-foreground: 0 0% 100%;
-  --destructive: 301 64% 35%;
+  --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
-  --input: 30 14% 75%;
-  --ring: 168 100% 20%;
-  --chart-1: 168 100% 20%;
-  --chart-2: 162 100% 30%;
-  --chart-3: 164 100% 39%;
-  --chart-4: 181 100% 37%;
-  --chart-5: 73 63% 54%;
+  --input: 30 11% 75%;
+  --ring: 167 100% 19%;
+  --chart-1: 167 100% 19%;
+  --chart-2: 193 100% 22%;
+  --chart-3: 162 100% 30%;
+  --chart-4: 184 100% 37%;
+  --chart-5: 78 56% 51%;
   --font-sans: Aptos, 'Segoe UI', system-ui, -apple-system, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: 'Roboto Mono', 'Consolas', monospace;
@@ -93,40 +93,40 @@
   --opaque-button-border-intensity: 9;
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
-  --background: 210 100% 7%;
+  --background: 216 100% 8%;
   --foreground: 0 0% 100%;
-  --border: 210 100% 18%;
-  --card: 210 100% 10%;
+  --border: 216 100% 18%;
+  --card: 216 100% 10%;
   --card-foreground: 0 0% 100%;
-  --card-border: 210 100% 13%;
-  --sidebar: 210 100% 9%;
+  --card-border: 216 100% 13%;
+  --sidebar: 216 100% 9%;
   --sidebar-foreground: 0 0% 100%;
-  --sidebar-border: 210 100% 15%;
-  --sidebar-primary: 168 100% 39%;
+  --sidebar-border: 216 100% 15%;
+  --sidebar-primary: 162 100% 30%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 210 100% 16%;
+  --sidebar-accent: 216 100% 16%;
   --sidebar-accent-foreground: 0 0% 100%;
-  --sidebar-ring: 168 100% 39%;
-  --popover: 210 100% 12%;
+  --sidebar-ring: 162 100% 30%;
+  --popover: 216 100% 12%;
   --popover-foreground: 0 0% 100%;
-  --popover-border: 210 100% 18%;
-  --primary: 168 100% 30%;
+  --popover-border: 216 100% 18%;
+  --primary: 162 100% 30%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 210 100% 18%;
+  --secondary: 193 100% 28%;
   --secondary-foreground: 0 0% 100%;
-  --muted: 210 100% 17%;
+  --muted: 216 100% 17%;
   --muted-foreground: 0 0% 70%;
-  --accent: 168 100% 37%;
-  --accent-foreground: 0 0% 100%;
-  --destructive: 301 64% 45%;
+  --accent: 160 96% 40%;
+  --accent-foreground: 216 100% 12%;
+  --destructive: 0 72% 60%;
   --destructive-foreground: 0 0% 100%;
-  --input: 210 100% 25%;
-  --ring: 168 100% 39%;
-  --chart-1: 168 100% 30%;
-  --chart-2: 162 100% 40%;
-  --chart-3: 164 100% 50%;
-  --chart-4: 181 100% 45%;
-  --chart-5: 73 63% 60%;
+  --input: 216 100% 25%;
+  --ring: 162 100% 30%;
+  --chart-1: 162 100% 30%;
+  --chart-2: 193 100% 28%;
+  --chart-3: 160 96% 40%;
+  --chart-4: 184 100% 37%;
+  --chart-5: 78 56% 60%;
   --shadow-2xs: 0px 2px 0px 0px hsl(220 13% 0% / 0.15);
   --shadow-xs: 0px 2px 0px 0px hsl(220 13% 0% / 0.20);
   --shadow-sm: 0px 2px 0px 0px hsl(220 13% 0% / 0.25), 0px 1px 2px -1px hsl(220 13% 0% / 0.20);
@@ -172,6 +172,20 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+  }
+
+  /* Korn Ferry Brand Colors - Custom utilities */
+  :root {
+    --kf-forest: 167 100% 19%;     /* #00634F */
+    --kf-ocean: 193 100% 22%;       /* #005971 */
+    --kf-emerald: 162 100% 30%;     /* #009B77 */
+    --kf-mint: 160 96% 40%;         /* #05C690 */
+    --kf-lime: 78 56% 51%;          /* #8DC63F */
+    --kf-cyan: 184 100% 37%;        /* #00ADBB */
+    --kf-gray: 300 1% 57%;          /* #929192 */
+    --kf-light-gray: 30 11% 84%;    /* #DAD8D6 */
+    --kf-purple: 310 64% 39%;       /* #A3238E */
+    --kf-navy: 216 100% 12%;        /* #00173B */
   }
 }
 

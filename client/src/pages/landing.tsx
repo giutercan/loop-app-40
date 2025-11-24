@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sparkles, Brain, Target, Users, FileText, Mic, CheckCircle2, ArrowRight, Zap, TrendingUp, MessageSquare, BarChart3, Calendar, Award, Activity, Search, Lightbulb, LineChart, Play } from "lucide-react";
 import { Link } from "wouter";
 import { useState } from "react";
+import heroImage from "@assets/Picture6_1763994371580.jpg";
 
 export default function Landing() {
   const [activePhase, setActivePhase] = useState("discovery");
@@ -97,32 +98,61 @@ export default function Landing() {
               </div>
             </div>
             
-            {/* Right: Feature Preview Cards - Complete Lifecycle */}
+            {/* Right: Professional Hero Image */}
             <div className="relative">
-              <div className="grid grid-cols-2 gap-5">
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl shadow-primary/20 border-2 border-primary/10 group">
+                <img
+                  src={heroImage}
+                  alt="Professional consultant collaboration"
+                  className="w-full h-auto object-cover"
+                />
+                {/* Gradient Overlay for subtle branding */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-500" />
+                
+                {/* Feature Stats Overlay */}
+                <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-background/95 via-background/80 to-transparent">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-foreground">AI</div>
+                      <div className="text-xs text-muted-foreground">Powered</div>
+                    </div>
+                    <div className="text-center border-l border-r border-border">
+                      <div className="text-2xl font-bold text-foreground">3</div>
+                      <div className="text-xs text-muted-foreground">Phases</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-foreground">∞</div>
+                      <div className="text-xs text-muted-foreground">Value</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Small feature cards below */}
+              <div className="grid grid-cols-2 gap-5 mt-6">
                 <Card className="hover-elevate transition-all duration-300 border-2 hover:border-primary/20 group">
                   <CardHeader className="pb-3">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
-                      <Brain className="w-6 h-6 text-primary" />
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform duration-300">
+                      <Brain className="w-5 h-5 text-primary" />
                     </div>
-                    <CardTitle className="text-lg font-bold">AI Research</CardTitle>
+                    <CardTitle className="text-sm font-bold">AI Research</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      GPT-5 powered company insights with priority scoring
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      GPT-4o insights with priority scoring
                     </p>
                   </CardContent>
                 </Card>
                 
                 <Card className="hover-elevate transition-all duration-300 border-2 hover:border-primary/20 group">
                   <CardHeader className="pb-3">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
-                      <BarChart3 className="w-6 h-6 text-primary" />
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform duration-300">
+                      <BarChart3 className="w-5 h-5 text-primary" />
                     </div>
-                    <CardTitle className="text-lg font-bold">Value Alignment</CardTitle>
+                    <CardTitle className="text-sm font-bold">Value Alignment</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
+                    <p className="text-xs text-muted-foreground leading-relaxed">
                       Baseline to target KPIs with benchmark data
                     </p>
                   </CardContent>
