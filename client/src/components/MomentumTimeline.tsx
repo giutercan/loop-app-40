@@ -9,7 +9,10 @@ import {
   TrendingUp,
   AlertCircle,
   Plus,
-  Flag
+  Flag,
+  Users,
+  Zap,
+  Target as TargetIcon
 } from "lucide-react";
 import { format, parseISO, isAfter, isBefore, isToday } from "date-fns";
 import type { JobThemeKPI, KPIActual } from "@shared/schema";
@@ -29,7 +32,7 @@ interface FinalizedJobsResponse {
 
 interface TimelineEvent {
   id: string;
-  type: 'measurement' | 'milestone' | 'action';
+  type: 'measurement' | 'milestone' | 'action' | 'review' | 'intervention';
   date: Date;
   kpiId?: number;
   kpiName?: string;
@@ -38,12 +41,28 @@ interface TimelineEvent {
   description: string;
   value?: string;
   unit?: string;
-  status?: 'completed' | 'upcoming' | 'overdue';
+  status?: 'completed' | 'upcoming' | 'overdue' | 'scheduled' | 'pending' | 'in-progress';
   icon: any;
   color: string;
 }
 
+interface TimelineAPIEvent {
+  type: 'milestone' | 'review' | 'intervention';
+  id: number;
+  title: string;
+  description: string;
+  date: string;
+  status: string;
+  data: any;
+}
+
 export default function MomentumTimeline({ projectId }: MomentumTimelineProps) {
+  // Fetch timeline events from backend (milestones, reviews, interventions)
+  const { data: timelineAPIEvents = [], isLoading: timelineLoading } = useQuery<TimelineAPIEvent[]>({
+    queryKey: [`/api/projects/${projectId}/realization/timeline`],
+    enabled: !!projectId,
+  });
+
   const { data: finalizedJobsData } = useQuery<FinalizedJobsResponse>({
     queryKey: [`/api/projects/${projectId}/alignment/finalized-jobs`],
     enabled: !!projectId,
@@ -108,23 +127,54 @@ export default function MomentumTimeline({ projectId }: MomentumTimelineProps) {
     });
   });
 
-  // Add synthetic milestones (e.g., "Baseline Established")
-  if (allKPIs.length > 0) {
-    const oldestDate = timelineEvents.reduce((oldest, event) => {
-      return event.date < oldest ? event.date : oldest;
-    }, new Date());
-
-    timelineEvents.push({
-      id: 'milestone-baseline',
-      type: 'milestone',
-      date: new Date(oldestDate.getTime() - 7 * 24 * 60 * 60 * 1000), // 7 days before first measurement
-      title: 'Alignment Phase Completed',
-      description: `Baseline and target values set for ${allKPIs.length} KPIs`,
-      status: 'completed',
-      icon: Flag,
-      color: 'text-purple-600 bg-purple-100 dark:bg-purple-900/20 border-purple-200',
-    });
-  }
+  // Add timeline events from API (milestones, reviews, interventions)
+  timelineAPIEvents.forEach((event) => {
+    const eventDate = new Date(event.date);
+    const isPast = eventDate < new Date();
+    
+    if (event.type === 'milestone') {
+      timelineEvents.push({
+        id: `milestone-${event.id}`,
+        type: 'milestone',
+        date: eventDate,
+        title: event.title,
+        description: event.description,
+        status: event.status as any,
+        icon: Flag,
+        color: isPast 
+          ? 'text-purple-600 bg-purple-100 dark:bg-purple-900/20 border-purple-200'
+          : 'text-purple-500 bg-purple-50 dark:bg-purple-900/10 border-purple-100',
+      });
+    } else if (event.type === 'review') {
+      timelineEvents.push({
+        id: `review-${event.id}`,
+        type: 'review',
+        date: eventDate,
+        title: event.title,
+        description: event.description,
+        status: event.status as any,
+        icon: Users,
+        color: isPast 
+          ? 'text-blue-600 bg-blue-100 dark:bg-blue-900/20 border-blue-200'
+          : 'text-blue-500 bg-blue-50 dark:bg-blue-900/10 border-blue-100',
+      });
+    } else if (event.type === 'intervention') {
+      timelineEvents.push({
+        id: `intervention-${event.id}`,
+        type: 'intervention',
+        date: eventDate,
+        title: event.title,
+        description: event.description,
+        status: event.status as any,
+        icon: Zap,
+        color: event.status === 'completed' 
+          ? 'text-green-600 bg-green-100 dark:bg-green-900/20 border-green-200'
+          : event.status === 'in-progress'
+          ? 'text-orange-600 bg-orange-100 dark:bg-orange-900/20 border-orange-200'
+          : 'text-gray-600 bg-gray-100 dark:bg-gray-900/20 border-gray-200',
+      });
+    }
+  });
 
   // Add upcoming actions (next measurement dates based on measurement frequency)
   actualsQuery.data?.forEach(({ kpi, jobName, actuals }) => {
@@ -212,7 +262,7 @@ export default function MomentumTimeline({ projectId }: MomentumTimelineProps) {
     });
   }
 
-  if (actualsQuery.isLoading) {
+  if (actualsQuery.isLoading || timelineLoading) {
     return (
       <Card>
         <CardHeader>
