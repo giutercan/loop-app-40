@@ -502,7 +502,7 @@ export type DiscoveryPhaseTransfer = typeof discoveryPhaseTransfers.$inferSelect
 
 // Prioritize Jobs Request
 export const prioritizeJobsRequestSchema = z.object({
-  prioritizedIds: z.array(z.number()).min(1).max(3), // Enforce top-3 constraint
+  prioritizedIds: z.array(z.number()).max(3), // Enforce top-3 constraint, allow empty array when removing all
 });
 export type PrioritizeJobsRequest = z.infer<typeof prioritizeJobsRequestSchema>;
 
