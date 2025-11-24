@@ -2242,19 +2242,29 @@ export default function Discovery() {
 
                             {/* Discovery Gaps */}
                             {unansweredCapabilities.length > 0 && (
-                              <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-3 space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-500" />
-                                  <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-300">Discovery Gaps - Need Attention</p>
-                                </div>
-                                {unansweredCapabilities.map(([capability, stats]) => (
-                                  <div key={capability} className="flex items-center justify-between gap-2">
-                                    <span className="text-xs text-yellow-800 dark:text-yellow-300">{capability}</span>
-                                    <Badge variant="outline" className="text-xs border-yellow-400 text-yellow-700 dark:text-yellow-400">
-                                      {stats.total} unanswered
-                                    </Badge>
+                              <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-3 space-y-3">
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-500" />
+                                    <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-300">Discovery Gaps - Need Attention</p>
                                   </div>
-                                ))}
+                                  <p className="text-xs text-yellow-700 dark:text-yellow-400 leading-relaxed">
+                                    <strong>What this means:</strong> These capabilities have unanswered discovery questions, meaning you lack the data needed to build a compelling value case in these areas.
+                                  </p>
+                                  <p className="text-xs text-yellow-700 dark:text-yellow-400 leading-relaxed">
+                                    <strong>What to do:</strong> Before finalizing discovery, either (1) get client responses for these areas via the shared questionnaire, or (2) focus your value case on the engaged capabilities above where you have solid data.
+                                  </p>
+                                </div>
+                                <div className="space-y-1 pt-1 border-t border-yellow-300 dark:border-yellow-700">
+                                  {unansweredCapabilities.map(([capability, stats]) => (
+                                    <div key={capability} className="flex items-center justify-between gap-2">
+                                      <span className="text-xs text-yellow-800 dark:text-yellow-300">{capability}</span>
+                                      <Badge variant="outline" className="text-xs border-yellow-400 text-yellow-700 dark:text-yellow-400">
+                                        {stats.total} unanswered
+                                      </Badge>
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
                             )}
 
