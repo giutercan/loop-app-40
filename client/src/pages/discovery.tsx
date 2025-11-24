@@ -1897,21 +1897,19 @@ export default function Discovery() {
                       </p>
                     ) : (
                       <div className="space-y-6">
-                        {[
-                          'Success Profiles & Role Design',
-                          'Standardised Assessments & Assessments at Scale',
-                          'Leadership & Development Journeys',
-                          'AI-Ready Leader (within L&D)',
-                          'Organisation Strategy & Transformation',
-                          'Total Rewards Optimisation (TRO)',
-                          'Sales & Service (KF Sell)',
-                          'People Analytics / KFI Analytics',
-                          'Value Management / Client Success & Talent Suite',
-                        ].map(capability => {
-                          const capabilityQuestions = discoveryQuestions.filter(q => q.capabilityName === capability);
-                          if (capabilityQuestions.length === 0) return null;
-
-                          return (
+                        {(() => {
+                          // Group questions by their actual capability name from the database
+                          const capabilityGroups = discoveryQuestions.reduce((acc: Record<string, typeof discoveryQuestions>, q) => {
+                            const cap = q.capabilityName || 'General';
+                            if (!acc[cap]) acc[cap] = [];
+                            acc[cap].push(q);
+                            return acc;
+                          }, {});
+                          
+                          // Sort capabilities alphabetically for consistent display
+                          return Object.entries(capabilityGroups)
+                            .sort(([a], [b]) => a.localeCompare(b))
+                            .map(([capability, capabilityQuestions]) => (
                             <div key={capability} className="space-y-3">
                               <div className="flex items-center gap-2 pb-2 border-b">
                                 <Briefcase className="w-4 h-4 text-primary" />
@@ -2012,8 +2010,8 @@ export default function Discovery() {
                                 })}
                               </div>
                             </div>
-                          );
-                        })}
+                          ));
+                        })()}
                       </div>
                     )}
                   </CardContent>
