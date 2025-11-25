@@ -1541,3 +1541,154 @@ IMPORTANT:
     throw error;
   }
 }
+
+// Strategic Pillar recommendation types
+interface StrategicPillarRecommendation {
+  name: string;
+  description: string;
+  confidence: "high" | "medium" | "low";
+  sourceInsightIds: number[];
+  objectives: Array<{
+    objective: string;
+    keyResults: Array<{ result: string; target: string }>;
+    timeline: string;
+    objectiveType: "company" | "hr" | "talent";
+  }>;
+}
+
+const strategicPillarOutputSchema = z.object({
+  pillars: z.array(z.object({
+    name: z.string(),
+    description: z.string(),
+    confidence: z.enum(["high", "medium", "low"]),
+    sourceInsightIds: z.array(z.number()),
+    objectives: z.array(z.object({
+      objective: z.string(),
+      keyResults: z.array(z.object({
+        result: z.string(),
+        target: z.string()
+      })),
+      timeline: z.string(),
+      objectiveType: z.enum(["company", "hr", "talent"])
+    }))
+  }))
+});
+
+export async function generateStrategicPillars(
+  companyName: string,
+  sector: string | null,
+  dataPoints: Array<{ id: number; label: string; value: string; confidence: string; relevantCapability: string | null }>,
+  headlines: Array<{ title: string; date: string }>,
+  discoveryNotes: { freeformNotes?: string | null; topChallenges?: string | null; keyStakeholder?: string | null } | null
+): Promise<StrategicPillarRecommendation[]> {
+  const knowledgeBase = getSolutionSummary();
+  
+  const contextData = `
+COMPANY: ${companyName}${sector ? ` (${sector} sector)` : ''}
+
+DISCOVERY INSIGHTS:
+${dataPoints.map(dp => `[ID: ${dp.id}] [${dp.confidence}] ${dp.label}: ${dp.value}${dp.relevantCapability ? ` (Capability: ${dp.relevantCapability})` : ''}`).join('\n')}
+
+RECENT HEADLINES:
+${headlines.map(h => `- ${h.title} (${h.date})`).join('\n')}
+
+CONSULTANT NOTES:
+${discoveryNotes?.freeformNotes || 'No notes'}
+
+KEY STAKEHOLDER: ${discoveryNotes?.keyStakeholder || 'Not specified'}
+TOP CHALLENGES: ${discoveryNotes?.topChallenges || 'Not specified'}
+`;
+
+  const prompt = `You are a senior Korn Ferry strategic consultant helping to identify the top 3-5 Strategic Pillars for a client engagement.
+
+Strategic Pillars are the high-level organizational priorities that connect to the client's business strategy. They should:
+1. Reflect the client's most important strategic focus areas
+2. Be broad enough to encompass multiple initiatives
+3. Connect clearly to business outcomes and talent/leadership implications
+4. Provide a framework for organizing the Korn Ferry engagement
+
+${contextData}
+
+KORN FERRY SOLUTIONS CONTEXT:
+${knowledgeBase}
+
+Based on the discovery data above, identify 3-5 Strategic Pillars that:
+1. Emerge clearly from the research insights and headlines
+2. Align with Korn Ferry's capabilities (leadership, talent, organization, rewards)
+3. Have clear business impact and measurable outcomes
+4. Connect to specific talent/HR objectives
+
+For each Strategic Pillar, provide:
+- A clear, concise name (e.g., "Operational Excellence", "Digital Transformation", "Talent Pipeline Strength")
+- A detailed description explaining why this is strategic for the client
+- Confidence level based on how strongly the data supports this pillar
+- The IDs of discovery insights that support this pillar (from the ID numbers provided)
+- 2-3 specific business objectives with key results and timeline
+
+OBJECTIVE TYPES:
+- "company": Business-level objectives (revenue, cost, efficiency, growth)
+- "hr": HR/People function objectives (systems, processes, capabilities)
+- "talent": Individual talent/leadership objectives (development, capability building)
+
+Return your response in JSON format:
+{
+  "pillars": [
+    {
+      "name": "Strategic Pillar Name",
+      "description": "Why this pillar is strategically important for this client (50-100 words)",
+      "confidence": "high|medium|low",
+      "sourceInsightIds": [1, 3, 5],
+      "objectives": [
+        {
+          "objective": "Specific, measurable objective statement",
+          "keyResults": [
+            {"result": "Key result description", "target": "Quantified target"}
+          ],
+          "timeline": "Q2 2025" or "FY 2025",
+          "objectiveType": "company|hr|talent"
+        }
+      ]
+    }
+  ]
+}
+
+IMPORTANT GUIDELINES:
+- Recommend exactly 3-5 pillars (4 is ideal)
+- Each pillar should link to at least 2 discovery insights
+- Objectives should be actionable and measurable
+- Include at least one pillar related to leadership/talent (Korn Ferry differentiation)
+- Confidence should reflect strength of evidence in discovery data`;
+
+  try {
+    console.log(`[AI Strategic Pillars] Generating for ${companyName}`);
+    console.log(`[AI Strategic Pillars] Analyzing ${dataPoints.length} data points and ${headlines.length} headlines`);
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 3000,
+    });
+
+    const content = response.choices[0]?.message?.content;
+
+    if (!content) {
+      throw new Error("AI returned empty response");
+    }
+
+    const parsedContent = JSON.parse(content);
+
+    const validationResult = strategicPillarOutputSchema.safeParse(parsedContent);
+    if (!validationResult.success) {
+      console.error("[AI Strategic Pillars] Validation failed:", validationResult.error);
+      console.error("[AI Strategic Pillars] Received data:", parsedContent);
+      throw new Error(`AI strategic pillar validation failed: ${validationResult.error.message}`);
+    }
+
+    console.log(`[AI Strategic Pillars] Success! Generated ${validationResult.data.pillars.length} pillars`);
+    return validationResult.data.pillars;
+  } catch (error) {
+    console.error("[AI Strategic Pillars] Error:", error);
+    throw error;
+  }
+}

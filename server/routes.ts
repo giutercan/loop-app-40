@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "./storage";
-import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale } from "./ai";
+import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale, generateStrategicPillars } from "./ai";
 import { z } from "zod";
 import crypto from "crypto";
 
@@ -2458,6 +2458,102 @@ export function registerRoutes(app: Express) {
       });
       res.json(updated);
     } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // AI-powered Strategic Pillar generation
+  app.post("/api/projects/:projectId/strategic-pillars/generate", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      
+      // Get project
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Gather discovery data for AI analysis
+      const [dataPoints, headlines, discoveryNotes] = await Promise.all([
+        storage.getCompanyDataPoints(projectId),
+        storage.getHeadlines(projectId),
+        storage.getDiscoveryNotes(projectId)
+      ]);
+
+      if (dataPoints.length === 0 && headlines.length === 0) {
+        return res.status(400).json({ 
+          error: "Not enough discovery data", 
+          message: "Please complete company research first to generate strategic pillars" 
+        });
+      }
+
+      // Generate pillars using AI
+      const aiPillars = await generateStrategicPillars(
+        project.companyName,
+        project.sector,
+        dataPoints.map(dp => ({
+          id: dp.id,
+          label: dp.label,
+          value: dp.value,
+          confidence: dp.confidence,
+          relevantCapability: dp.relevantCapability
+        })),
+        headlines.map(h => ({
+          title: h.title,
+          date: h.date
+        })),
+        discoveryNotes ? {
+          freeformNotes: discoveryNotes.freeformNotes,
+          topChallenges: discoveryNotes.topChallenges,
+          keyStakeholder: discoveryNotes.keyStakeholder
+        } : null
+      );
+
+      // Store the generated pillars
+      const createdPillars = [];
+      for (let i = 0; i < aiPillars.length; i++) {
+        const pillarData = aiPillars[i];
+        
+        // Create the pillar
+        const pillar = await storage.createStrategicPillar({
+          projectId,
+          name: pillarData.name,
+          description: pillarData.description,
+          priority: i + 1,
+          status: "draft",
+          isAISuggested: true,
+          confidence: pillarData.confidence,
+          sourceInsightIds: pillarData.sourceInsightIds,
+          provenance: { source: "ai", generatedAt: new Date().toISOString() }
+        });
+
+        // Create objectives for this pillar
+        const createdObjectives = [];
+        for (const objData of pillarData.objectives) {
+          const objective = await storage.createPillarObjective({
+            pillarId: pillar.id,
+            objective: objData.objective,
+            objectiveType: objData.objectiveType,
+            keyResults: objData.keyResults,
+            timeline: objData.timeline,
+            status: "not_started",
+            isAISuggested: true
+          });
+          createdObjectives.push(objective);
+        }
+
+        createdPillars.push({
+          ...pillar,
+          objectives: createdObjectives
+        });
+      }
+
+      res.status(201).json({
+        pillars: createdPillars,
+        message: `Generated ${createdPillars.length} strategic pillars based on discovery data`
+      });
+    } catch (error: any) {
+      console.error("[Strategic Pillars Generate] Error:", error);
       res.status(500).json({ error: error.message });
     }
   });
