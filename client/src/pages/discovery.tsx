@@ -29,6 +29,7 @@ import ProjectPhaseNav from "@/components/project-phase-nav";
 import KPIRecommendationDialog from "@/components/KPIRecommendationDialog";
 import { ArrowLeft, ArrowRight, Save, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, TrendingUp, Activity, Award, Building, Calendar, AlertCircle, ChevronDown, Lightbulb, BarChart3, MessageSquare, Edit, Lock, Unlock, Flag, GripVertical, Layers, RefreshCw, Star } from "lucide-react";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
+import { AppTour } from "@/components/AppTour";
 import { Link, useLocation, useRoute } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -1966,6 +1967,7 @@ export default function Discovery() {
                 currentProjectId={projectId}
                 onProjectChange={(p) => setLocation(`/projects/${p.id}/discovery`)}
               />
+              <AppTour />
               <Button
                 variant="outline"
                 onClick={handleSaveDraft}
@@ -1991,10 +1993,10 @@ export default function Discovery() {
       <main className="container mx-auto max-w-7xl px-4 lg:px-8 py-8">
         <Tabs defaultValue="organisation" className="space-y-6">
           <TabsList className="grid w-full grid-cols-5 max-w-5xl" data-testid="tabs-discovery">
-            <TabsTrigger value="organisation">Organisation</TabsTrigger>
-            <TabsTrigger value="notes">Build Value Case</TabsTrigger>
+            <TabsTrigger value="organisation" data-testid="tab-research">Organisation</TabsTrigger>
+            <TabsTrigger value="notes" data-testid="tab-value-case">Build Value Case</TabsTrigger>
             <TabsTrigger value="pillars" data-testid="tab-strategic-pillars">Strategic Pillars</TabsTrigger>
-            <TabsTrigger value="jobs">Jobs & Priorities</TabsTrigger>
+            <TabsTrigger value="jobs" data-testid="tab-jobs">Jobs & Priorities</TabsTrigger>
             <TabsTrigger value="successStories" data-testid="tab-success-stories">Success Stories</TabsTrigger>
           </TabsList>
 

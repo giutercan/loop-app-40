@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { AppTour } from "@/components/AppTour";
 import emptyStateImage from "@assets/Picture35_1763994371581.jpg";
 
 interface Project {
@@ -108,15 +109,18 @@ export default function ProjectsDashboard() {
               </div>
             </Link>
             
-            <Button 
-              size="lg" 
-              className="shadow-lg shadow-primary/20" 
-              data-testid="button-new-project"
-              onClick={() => setLocation('/projects/new')}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              New Project
-            </Button>
+            <div className="flex items-center gap-2">
+              <AppTour autoStart />
+              <Button 
+                size="lg" 
+                className="shadow-lg shadow-primary/20" 
+                data-testid="button-new-project"
+                onClick={() => setLocation('/projects/new')}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                New Project
+              </Button>
+            </div>
           </div>
         </div>
       </header>

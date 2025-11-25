@@ -67,7 +67,7 @@ export default function ProjectPhaseNav({
         </div>
 
         {/* Phase Navigation Tabs */}
-        <div className="flex items-center gap-2 pb-2 overflow-x-auto">
+        <div className="flex items-center gap-2 pb-2 overflow-x-auto" data-testid="phase-nav">
           {phases.map((phase, index) => {
             const Icon = phase.icon;
             const isActive = currentPhase === phase.id;
