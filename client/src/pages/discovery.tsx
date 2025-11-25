@@ -3801,58 +3801,105 @@ export default function Discovery() {
                 );
               }
 
+              // Calculate linkage stats
+              const unlinkedCount = jobsByPillar.get(null)?.length || 0;
+              const linkedCount = (jobThemesData?.length || 0) - unlinkedCount;
+              const pillarsWithJobs = strategicPillars.filter(p => (jobsByPillar.get(p.id)?.length || 0) > 0).length;
+              const allPillarsHaveJobs = pillarsWithJobs === strategicPillars.length && strategicPillars.length > 0;
+
               return (
                 <>
-                  {/* Compact Header with Stats and Actions */}
-                  <div className="flex items-center justify-between gap-4 p-4 bg-card rounded-lg border">
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-sm py-1">
-                          {prioritizedThemes.length}/3 Selected
-                        </Badge>
-                        <Badge variant="secondary" className="text-sm py-1">
-                          {totalKPIsSelected} KPIs
-                        </Badge>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {!isFinalized && (
-                        <>
-                          {showRegenConfirm ? (
-                            <div className="flex items-center gap-2 bg-destructive/10 px-3 py-1.5 rounded-md">
-                              <span className="text-sm text-destructive">Clear all and regenerate?</span>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => regenerateJobsMutation.mutate()}
-                                disabled={regenerateJobsMutation.isPending}
-                                data-testid="button-confirm-regenerate"
-                              >
-                                {regenerateJobsMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Yes"}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setShowRegenConfirm(false)}
-                                data-testid="button-cancel-regenerate"
-                              >
-                                No
-                              </Button>
+                  {/* Strategic Context Summary - The Thread from Discovery */}
+                  <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
+                    <CardContent className="pt-4 pb-4">
+                      <div className="flex items-start gap-4">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 shrink-0">
+                          <Layers className="w-5 h-5 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-sm mb-2">Strategic Thread</h3>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                            <span className="bg-muted px-2 py-1 rounded">
+                              {new Set(pillarOkrThemeLinks.map(l => l.okrThemeId)).size} OKR Themes
+                            </span>
+                            <ArrowRight className="w-3 h-3" />
+                            <span className="bg-muted px-2 py-1 rounded">
+                              {strategicPillars.length} Strategic Pillars
+                            </span>
+                            <ArrowRight className="w-3 h-3" />
+                            <span className="bg-primary/10 text-primary px-2 py-1 rounded font-medium">
+                              {jobThemesData?.length || 0} Jobs
+                            </span>
+                          </div>
+                          {/* Linkage Status */}
+                          <div className="mt-3 flex items-center gap-3 flex-wrap">
+                            <div className="flex items-center gap-1.5">
+                              {allPillarsHaveJobs ? (
+                                <CheckCircle className="w-4 h-4 text-green-600" />
+                              ) : (
+                                <AlertCircle className="w-4 h-4 text-amber-500" />
+                              )}
+                              <span className="text-xs">
+                                {pillarsWithJobs}/{strategicPillars.length} pillars have linked jobs
+                              </span>
                             </div>
-                          ) : (
+                            {unlinkedCount > 0 && (
+                              <Badge variant="outline" className="text-xs border-amber-300 text-amber-700 dark:text-amber-400">
+                                {unlinkedCount} job{unlinkedCount !== 1 ? 's' : ''} need{unlinkedCount === 1 ? 's' : ''} assignment
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge variant="outline" className="text-sm py-1">
+                            {prioritizedThemes.length}/3 Selected
+                          </Badge>
+                          <Badge variant="secondary" className="text-sm py-1">
+                            {totalKPIsSelected} KPIs
+                          </Badge>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Action Bar */}
+                  <div className="flex items-center justify-end gap-2">
+                    {!isFinalized && (
+                      <>
+                        {showRegenConfirm ? (
+                          <div className="flex items-center gap-2 bg-destructive/10 px-3 py-1.5 rounded-md">
+                            <span className="text-sm text-destructive">Clear all and regenerate?</span>
                             <Button
-                              variant="outline"
                               size="sm"
-                              onClick={() => setShowRegenConfirm(true)}
-                              data-testid="button-regenerate-jobs"
+                              variant="destructive"
+                              onClick={() => regenerateJobsMutation.mutate()}
+                              disabled={regenerateJobsMutation.isPending}
+                              data-testid="button-confirm-regenerate"
                             >
-                              <RefreshCw className="w-4 h-4 mr-2" />
-                              Regenerate
+                              {regenerateJobsMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Yes"}
                             </Button>
-                          )}
-                        </>
-                      )}
-                    </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setShowRegenConfirm(false)}
+                              data-testid="button-cancel-regenerate"
+                            >
+                              No
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowRegenConfirm(true)}
+                            data-testid="button-regenerate-jobs"
+                          >
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            Regenerate
+                          </Button>
+                        )}
+                      </>
+                    )}
                   </div>
 
                   {/* Status Banner */}
@@ -3940,12 +3987,16 @@ export default function Discovery() {
                           onClick={() => setSelectedPillarFilter(-1)}
                           className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
                             selectedPillarFilter === -1 
-                              ? "bg-primary text-primary-foreground" 
-                              : "hover-elevate text-muted-foreground"
+                              ? "bg-amber-500 text-white" 
+                              : "hover-elevate text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
                           }`}
                           data-testid="filter-unlinked"
                         >
-                          Unlinked ({jobsByPillar.get(null)?.length || 0})
+                          <div className="flex items-center gap-1.5">
+                            <AlertCircle className="w-3 h-3" />
+                            <span>Needs Assignment</span>
+                          </div>
+                          <span className="text-xs opacity-80">({jobsByPillar.get(null)?.length || 0} jobs)</span>
                         </button>
                       )}
                     </div>
@@ -4037,11 +4088,42 @@ export default function Discovery() {
                           {(selectedPillarFilter === -1 ? jobsByPillar.get(null) || [] : unprioritizedJobs).map((theme: JobThemeWithKPIs) => {
                             const linkedPillar = strategicPillars.find(p => p.id === theme.pillarId);
                             const canSelect = !isFinalized && prioritizedThemes.length < 3;
+                            const needsAssignment = !theme.pillarId;
                             
                             return (
-                              <Card key={theme.id} className="hover-elevate" data-testid={`job-card-${theme.id}`}>
+                              <Card key={theme.id} className={`hover-elevate ${needsAssignment ? 'border-amber-200 dark:border-amber-800' : ''}`} data-testid={`job-card-${theme.id}`}>
                                 <Collapsible>
                                   <div className="p-4">
+                                    {/* Assignment Alert for unlinked jobs */}
+                                    {needsAssignment && !isFinalized && (
+                                      <div className="mb-3 p-2 rounded bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                                          <div className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-400">
+                                            <AlertCircle className="w-3 h-3" />
+                                            <span>Assign to a Strategic Pillar:</span>
+                                          </div>
+                                          <Select
+                                            value=""
+                                            onValueChange={(value) => {
+                                              if (value && handlePillarLink) {
+                                                handlePillarLink(theme.id, parseInt(value));
+                                              }
+                                            }}
+                                          >
+                                            <SelectTrigger className="h-7 w-[180px] text-xs" data-testid={`select-pillar-${theme.id}`}>
+                                              <SelectValue placeholder="Select pillar..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              {strategicPillars.map((pillar) => (
+                                                <SelectItem key={pillar.id} value={pillar.id.toString()}>
+                                                  {pillar.name.length > 25 ? pillar.name.slice(0, 25) + "..." : pillar.name}
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                      </div>
+                                    )}
                                     <div className="flex items-start justify-between gap-3">
                                       <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2 mb-1 flex-wrap">

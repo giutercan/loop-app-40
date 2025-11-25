@@ -29,6 +29,12 @@ The application prioritizes a modern, intuitive user interface with a consistent
 - **Modernized UI/UX**: Contemporary design with gradient accents using brand colors, visual score representations, cleaner information hierarchy, and reduced text density for improved scannability in key areas like KPI recommendations and value case building.
 - **Collapsible Priorities**: Job theme/priority cards feature collapsible sections using Radix UI Collapsible component with ChevronDown toggle for focused navigation.
 - **KPI Organization**: KPIs are visually grouped by type (Primary KPIs vs Supporting KPIs) with distinct section headers and visual dividers for improved scannability.
+- **Jobs & Priorities Strategic Thread (November 2024)**: Enhanced UX showing the complete data flow from Discovery to Jobs:
+  - Strategic Thread panel displays visual flow: OKR Themes → Strategic Pillars → Jobs with counts
+  - Linkage completeness indicator showing X/Y pillars have linked jobs with checkmark/warning icons
+  - "Needs Assignment" filter (amber styling) replaces confusing "Unlinked" terminology
+  - Inline pillar assignment dropdown on unassigned job cards for quick linking
+  - Amber highlighting on jobs needing pillar assignment to draw attention to incomplete setup
 
 ### Technical Implementations
 The system is built on a robust architecture incorporating AI and a structured workflow:
