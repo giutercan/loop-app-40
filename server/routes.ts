@@ -2589,6 +2589,104 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // AI-powered auto-assignment of jobs to strategic pillars
+  app.post("/api/projects/:projectId/job-themes/auto-assign-pillars", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      
+      // Get project info
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Get all jobs and pillars for this project
+      const [jobThemes, pillars] = await Promise.all([
+        storage.getJobThemes(projectId),
+        storage.getStrategicPillars(projectId)
+      ]);
+
+      if (jobThemes.length === 0) {
+        return res.status(400).json({ error: "No jobs found. Please generate jobs first." });
+      }
+
+      if (pillars.length === 0) {
+        return res.status(400).json({ error: "No strategic pillars found. Please create pillars first." });
+      }
+
+      // Get objectives for each pillar
+      const pillarsWithObjectives = await Promise.all(
+        pillars.map(async (pillar) => ({
+          id: pillar.id,
+          name: pillar.name,
+          description: pillar.description,
+          objectives: await storage.getPillarObjectives(pillar.id)
+        }))
+      );
+
+      // Prepare jobs for AI (filter to unassigned or get all based on request)
+      const { reassignAll = false } = req.body;
+      const jobsToAssign = reassignAll 
+        ? jobThemes 
+        : jobThemes.filter(j => !j.pillarId);
+
+      if (jobsToAssign.length === 0) {
+        return res.json({ 
+          message: "All jobs are already assigned to pillars",
+          assignedCount: 0,
+          assignments: []
+        });
+      }
+
+      const jobsForAI = jobsToAssign.map(j => ({
+        id: j.id,
+        jobName: j.jobName,
+        capabilityName: j.capabilityName,
+        solutionArea: j.solutionArea,
+        aggregationSummary: j.aggregationSummary,
+        evidenceCount: j.evidenceCount
+      }));
+
+      // Call AI to get assignments
+      const { assignJobsToPillars } = await import("./ai");
+      const assignments = await assignJobsToPillars(
+        project.companyName,
+        project.sector,
+        jobsForAI,
+        pillarsWithObjectives
+      );
+
+      // Apply the assignments
+      const updatedJobs = [];
+      for (const assignment of assignments) {
+        // Validate the pillar belongs to this project
+        const pillar = pillars.find(p => p.id === assignment.pillarId);
+        if (!pillar) {
+          console.warn(`[Auto-assign] Skipping job ${assignment.jobId}: pillar ${assignment.pillarId} not found`);
+          continue;
+        }
+
+        const updated = await storage.updateJobTheme(assignment.jobId, {
+          pillarId: assignment.pillarId,
+          pillarLinkageNarrative: assignment.pillarLinkageNarrative
+        });
+        updatedJobs.push({
+          ...updated,
+          confidence: assignment.confidence
+        });
+      }
+
+      res.json({
+        message: `Successfully assigned ${updatedJobs.length} jobs to pillars`,
+        assignedCount: updatedJobs.length,
+        assignments: updatedJobs
+      });
+    } catch (error: any) {
+      console.error("[Auto-assign pillars] Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // AI-powered Strategic Pillar generation
   app.post("/api/projects/:projectId/strategic-pillars/generate", async (req, res) => {
     try {
