@@ -1709,3 +1709,180 @@ IMPORTANT GUIDELINES:
     throw error;
   }
 }
+
+// Job Theme generation from Strategic Pillars
+interface JobThemeFromPillarRecommendation {
+  pillarId: number;
+  jobs: Array<{
+    jobName: string;
+    capabilityName: string;
+    solutionArea: "ASSESS" | "DEVELOP" | "TRANSFORM" | "REWARD" | "COMMERCIAL" | "ANALYTICS";
+    rationale: string;
+    pillarLinkageNarrative: string;
+    priorityScore: number; // 1-10
+    kpis: Array<{
+      kpiName: string;
+      kpiType: "primary" | "supporting";
+      unit: string;
+      definition: string;
+      strategicRationale: string;
+      achievabilityScore: number;
+      valueImpactScore: number;
+      kornFerryBenchmark: string;
+      measurementFrequency: string;
+    }>;
+  }>;
+}
+
+const jobThemeFromPillarOutputSchema = z.object({
+  pillars: z.array(z.object({
+    pillarId: z.number(),
+    jobs: z.array(z.object({
+      jobName: z.string().min(5),
+      capabilityName: z.string(),
+      solutionArea: z.enum(["ASSESS", "DEVELOP", "TRANSFORM", "REWARD", "COMMERCIAL", "ANALYTICS"]),
+      rationale: z.string().min(20),
+      pillarLinkageNarrative: z.string().min(20),
+      priorityScore: z.number().min(1).max(10),
+      kpis: z.array(z.object({
+        kpiName: z.string().min(3),
+        kpiType: z.enum(["primary", "supporting"]),
+        unit: z.string(),
+        definition: z.string().min(10),
+        strategicRationale: z.string().min(20),
+        achievabilityScore: z.number().min(1).max(10),
+        valueImpactScore: z.number().min(1).max(10),
+        kornFerryBenchmark: z.string(),
+        measurementFrequency: z.string()
+      })).min(2).max(5)
+    }))
+  }))
+});
+
+interface PillarForJobGeneration {
+  id: number;
+  name: string;
+  description: string;
+  confidence: string;
+  okrThemeIds: string[];
+  okrThemeNames: string[];
+  objectives: Array<{ objective: string; keyResults: Array<{ result: string; target: string }> }>;
+}
+
+export async function generateJobThemesFromPillars(
+  companyName: string,
+  sector: string | null,
+  pillars: PillarForJobGeneration[],
+  discoveryInsights: Array<{ label: string; value: string; relevantCapability: string | null }>
+): Promise<JobThemeFromPillarRecommendation[]> {
+  const knowledgeBase = getSolutionSummary();
+
+  const pillarContext = pillars.map(p => `
+PILLAR: ${p.name} (ID: ${p.id})
+Description: ${p.description}
+Confidence: ${p.confidence}
+OKR Themes: ${p.okrThemeNames.join(", ")}
+Objectives:
+${p.objectives.map(o => `  - ${o.objective}
+    Key Results: ${o.keyResults.map(kr => kr.result).join("; ")}`).join("\n")}
+`).join("\n---\n");
+
+  const insightsContext = discoveryInsights
+    .filter(d => d.relevantCapability)
+    .slice(0, 20) // Limit to top 20 insights
+    .map(d => `- ${d.label}: ${d.value} (${d.relevantCapability})`)
+    .join("\n");
+
+  const prompt = `You are a senior Korn Ferry strategic consultant. Based on the Strategic Pillars defined for this client engagement, generate targeted Job Themes (actionable work packages) with KPIs for value tracking.
+
+COMPANY: ${companyName}${sector ? ` (${sector} sector)` : ''}
+
+STRATEGIC PILLARS DEFINED:
+${pillarContext}
+
+DISCOVERY INSIGHTS (for context):
+${insightsContext}
+
+KORN FERRY KNOWLEDGE BASE:
+${knowledgeBase}
+
+YOUR MISSION:
+For EACH Strategic Pillar, recommend 1-3 Job Themes that:
+1. Directly support the pillar's objectives and key results
+2. Map to a specific Korn Ferry capability and solution area
+3. Include 2-5 strategic KPIs per job for value measurement
+4. Prioritize leading indicators and behavioral metrics (Korn Ferry differentiation)
+
+Return JSON in this exact format:
+{
+  "pillars": [
+    {
+      "pillarId": 1,
+      "jobs": [
+        {
+          "jobName": "Action-oriented job description (e.g., 'Define role success; align roles')",
+          "capabilityName": "Exact Korn Ferry capability name from knowledge base",
+          "solutionArea": "ASSESS|DEVELOP|TRANSFORM|REWARD|COMMERCIAL|ANALYTICS",
+          "rationale": "Why this job is critical for the pillar's success",
+          "pillarLinkageNarrative": "How this job directly supports the pillar's objectives",
+          "priorityScore": 8,
+          "kpis": [
+            {
+              "kpiName": "Specific, measurable KPI name",
+              "kpiType": "primary|supporting",
+              "unit": "% or # or $ or days",
+              "definition": "Clear definition of what is measured",
+              "strategicRationale": "Why this KPI matters for value realization",
+              "achievabilityScore": 7,
+              "valueImpactScore": 9,
+              "kornFerryBenchmark": "Industry benchmark with source",
+              "measurementFrequency": "Monthly|Quarterly|Annual"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+
+IMPORTANT GUIDELINES:
+- Each pillar should have 1-3 jobs (don't overload)
+- Jobs must use EXACT capability names from the Korn Ferry knowledge base
+- KPIs should be a mix of primary (outcome-focused) and supporting (leading indicators)
+- Focus on behavioral/people metrics that differentiate Korn Ferry's approach
+- priorityScore should reflect strategic importance (1-10)
+- achievabilityScore reflects ease of measurement within 6-12 months
+- valueImpactScore reflects potential business impact`;
+
+  try {
+    console.log(`[AI Job Themes from Pillars] Generating for ${companyName} with ${pillars.length} pillars`);
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 4000,
+    });
+
+    const content = response.choices[0]?.message?.content;
+
+    if (!content) {
+      throw new Error("AI returned empty response");
+    }
+
+    const parsedContent = JSON.parse(content);
+
+    const validationResult = jobThemeFromPillarOutputSchema.safeParse(parsedContent);
+    if (!validationResult.success) {
+      console.error("[AI Job Themes from Pillars] Validation failed:", validationResult.error);
+      console.error("[AI Job Themes from Pillars] Received data:", JSON.stringify(parsedContent, null, 2));
+      throw new Error(`AI job theme validation failed: ${validationResult.error.message}`);
+    }
+
+    console.log(`[AI Job Themes from Pillars] Success! Generated jobs for ${validationResult.data.pillars.length} pillars`);
+    return validationResult.data.pillars;
+  } catch (error) {
+    console.error("[AI Job Themes from Pillars] Error:", error);
+    throw error;
+  }
+}

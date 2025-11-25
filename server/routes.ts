@@ -2855,6 +2855,136 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // Regenerate job themes from Strategic Pillars (AI-powered)
+  app.post("/api/projects/:projectId/job-themes/regenerate", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      
+      // Check if project exists
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Check if discovery is finalized (block regeneration if so)
+      const phaseTransfer = await storage.getDiscoveryPhaseTransfer(projectId);
+      if (phaseTransfer?.isFinalized) {
+        return res.status(400).json({ 
+          error: "Cannot regenerate jobs after discovery is finalized. Use Re-prioritize in Alignment phase." 
+        });
+      }
+      
+      // Get strategic pillars with objectives and OKR themes
+      const pillars = await storage.getStrategicPillars(projectId);
+      if (pillars.length === 0) {
+        return res.status(400).json({ 
+          error: "No Strategic Pillars defined. Generate pillars first before creating jobs." 
+        });
+      }
+      
+      // Get pillar objectives and OKR theme links
+      const pillarOkrThemes = await storage.getAllPillarOkrThemesForProject(projectId);
+      const { OKR_THEMES } = await import("@shared/knowledge");
+      
+      const pillarsWithContext = await Promise.all(pillars.map(async (pillar) => {
+        const objectives = await storage.getPillarObjectives(pillar.id);
+        const themeLinks = pillarOkrThemes.filter(link => link.pillarId === pillar.id);
+        const themeIds = themeLinks.map(link => link.okrThemeId);
+        const themeNames = themeIds.map(id => 
+          OKR_THEMES.find(t => t.id === id)?.name || id
+        );
+        
+        return {
+          id: pillar.id,
+          name: pillar.name,
+          description: pillar.description || "",
+          confidence: pillar.confidence || "medium",
+          okrThemeIds: themeIds,
+          okrThemeNames: themeNames,
+          objectives: objectives.map(o => ({
+            objective: o.objective,
+            keyResults: o.keyResults || []
+          }))
+        };
+      }));
+      
+      // Get discovery insights for context
+      const insights = await storage.getCompanyDataPoints(projectId);
+      const discoveryInsights = insights.map(i => ({
+        label: i.label,
+        value: i.value,
+        relevantCapability: i.relevantCapability
+      }));
+      
+      // Delete existing job themes and KPIs
+      console.log(`[Regenerate Jobs] Deleting existing job themes for project ${projectId}`);
+      await storage.deleteAllJobThemesForProject(projectId);
+      
+      // Generate new job themes from pillars using AI
+      const { generateJobThemesFromPillars } = await import("./ai");
+      const aiResult = await generateJobThemesFromPillars(
+        project.companyName,
+        project.sector,
+        pillarsWithContext,
+        discoveryInsights
+      );
+      
+      // Create job themes and KPIs from AI recommendations
+      const createdThemes = [];
+      for (const pillarResult of aiResult) {
+        for (const job of pillarResult.jobs) {
+          const theme = await storage.createJobTheme({
+            projectId,
+            jobName: job.jobName,
+            capabilityName: job.capabilityName,
+            solutionArea: job.solutionArea,
+            pillarId: pillarResult.pillarId,
+            pillarLinkageNarrative: job.pillarLinkageNarrative,
+            aggregationSummary: job.rationale,
+            compositeScore: job.priorityScore,
+            evidenceCount: pillarsWithContext.find(p => p.id === pillarResult.pillarId)?.objectives.length || 0
+          });
+          
+          // Create KPIs for this job theme
+          for (const kpi of job.kpis) {
+            await storage.createJobThemeKPI({
+              jobThemeId: theme.id,
+              kpiName: kpi.kpiName,
+              kpiType: kpi.kpiType,
+              unit: kpi.unit,
+              definition: kpi.definition,
+              measurementFrequency: kpi.measurementFrequency,
+              benchmarkValue: kpi.kornFerryBenchmark,
+              benchmarkSource: "Korn Ferry AI Analysis",
+              isAIRecommended: true,
+              aiStrategicRationale: kpi.strategicRationale,
+              aiAchievabilityScore: kpi.achievabilityScore,
+              aiValueImpactScore: kpi.valueImpactScore,
+              aiKornFerryBenchmark: kpi.kornFerryBenchmark
+            });
+          }
+          
+          createdThemes.push(theme);
+        }
+      }
+      
+      console.log(`[Regenerate Jobs] Created ${createdThemes.length} job themes from ${pillarsWithContext.length} pillars`);
+      
+      // Return enriched themes with KPIs
+      const enrichedThemes = await Promise.all(
+        createdThemes.map(async (theme) => {
+          const kpis = await storage.getJobThemeKPIs(theme.id);
+          return { ...theme, kpis };
+        })
+      );
+      
+      res.json(enrichedThemes);
+    } catch (error: any) {
+      console.error("[Regenerate Jobs] Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Update job theme prioritization (set top 3)
   app.post("/api/projects/:projectId/job-themes/prioritize", async (req, res) => {
     try {
