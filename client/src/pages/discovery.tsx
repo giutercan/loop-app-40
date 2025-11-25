@@ -4253,16 +4253,23 @@ export default function Discovery() {
                       )}
                     </div>
                     
-                    {/* Selected Pillar's Jobs */}
+                    {/* Ranked Jobs List with Visual Scores */}
                     {(() => {
-                      // If a pillar is selected, show its jobs
+                      // Sort all jobs by composite score (highest first) for ranked display
+                      const allJobsSorted = [...(jobThemesData || [])].sort((a: JobThemeWithKPIs, b: JobThemeWithKPIs) => {
+                        const scoreA = a.compositeScore || 0;
+                        const scoreB = b.compositeScore || 0;
+                        return scoreB - scoreA;
+                      });
+                      
+                      // Filter jobs based on selected pillar
                       const getFilteredJobs = (): JobThemeWithKPIs[] => {
                         if (selectedPillarFilter === null) {
-                          return []; // Show nothing when no pillar selected - user should click a pillar card
+                          return allJobsSorted; // Show ALL jobs ranked by score when no filter
                         } else if (selectedPillarFilter === -1) {
-                          return jobsByPillar.get(null) || [];
+                          return allJobsSorted.filter(j => !j.pillarId);
                         } else {
-                          return jobsByPillar.get(selectedPillarFilter) || [];
+                          return allJobsSorted.filter(j => j.pillarId === selectedPillarFilter);
                         }
                       };
                       
@@ -4272,112 +4279,195 @@ export default function Discovery() {
                         ? strategicPillars.find(p => p.id === selectedPillarFilter) 
                         : null;
                       
-                      // Show instruction when no pillar selected
-                      if (selectedPillarFilter === null) {
-                        return (
-                          <div className="text-center py-8 rounded-lg border-2 border-dashed bg-muted/20">
-                            <Flag className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
-                            <p className="text-sm text-muted-foreground">Click a Strategic Pillar above to view its jobs</p>
-                            <p className="text-xs text-muted-foreground/70 mt-1">Or click "Needs Assignment" to see unassigned jobs</p>
-                          </div>
-                        );
-                      }
+                      // Calculate max score for normalization
+                      const maxScore = Math.max(...allJobsSorted.map(j => j.compositeScore || 1), 5);
+                      const maxEvidence = Math.max(...allJobsSorted.map(j => j.evidenceCount || 1), 3);
                       
                       if (filteredJobs.length === 0) {
                         return (
                           <div className="text-center py-8 text-muted-foreground">
                             <Briefcase className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                            <p>No jobs in this pillar yet.</p>
+                            <p>No jobs found for this filter.</p>
                           </div>
                         );
                       }
                       
                       return (
-                        <Card className={showingUnassigned ? "border-amber-300 dark:border-amber-700" : "border-primary/30"}>
+                        <Card>
                           <CardHeader className="pb-3">
                             <div className="flex items-center justify-between gap-3 flex-wrap">
                               <div className="flex items-center gap-3">
-                                {showingUnassigned ? (
-                                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/50 shrink-0">
-                                    <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 shrink-0">
-                                    <Flag className="w-4 h-4 text-primary" />
-                                  </div>
-                                )}
+                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 shrink-0">
+                                  <BarChart3 className="w-4 h-4 text-primary" />
+                                </div>
                                 <div>
                                   <CardTitle className="text-base flex items-center gap-2">
-                                    {showingUnassigned ? "Unassigned Jobs" : selectedPillar?.name}
-                                    <Button 
-                                      size="icon" 
-                                      variant="ghost" 
-                                      className="h-6 w-6"
-                                      onClick={() => setSelectedPillarFilter(null)}
-                                    >
-                                      <X className="w-4 h-4" />
-                                    </Button>
+                                    {selectedPillarFilter === null 
+                                      ? "All Jobs Ranked by Relevance"
+                                      : showingUnassigned 
+                                        ? "Unassigned Jobs"
+                                        : selectedPillar?.name}
+                                    {selectedPillarFilter !== null && (
+                                      <Button 
+                                        size="icon" 
+                                        variant="ghost" 
+                                        className="h-6 w-6"
+                                        onClick={() => setSelectedPillarFilter(null)}
+                                      >
+                                        <X className="w-4 h-4" />
+                                      </Button>
+                                    )}
                                   </CardTitle>
                                   <CardDescription>
-                                    {filteredJobs.length} job{filteredJobs.length !== 1 ? 's' : ''}
-                                    {showingUnassigned && " — assign to a pillar using the dropdown"}
+                                    {filteredJobs.length} job{filteredJobs.length !== 1 ? 's' : ''} • 
+                                    Select up to 3 priorities using checkboxes
                                   </CardDescription>
                                 </div>
                               </div>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                  <div className="w-2 h-2 rounded-full bg-primary" />
+                                  Relevance Score
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <div className="w-2 h-2 rounded-full bg-cyan-500" />
+                                  Evidence Count
+                                </span>
+                              </div>
                             </div>
                           </CardHeader>
-                          <CardContent className="space-y-2">
-                            {filteredJobs.map((theme: JobThemeWithKPIs) => {
-                              const canSelect = !isFinalized && prioritizedThemes.length < 3 && !prioritizedThemes.some((t: JobThemeWithKPIs) => t.id === theme.id);
+                          <CardContent className="space-y-1">
+                            {filteredJobs.map((theme: JobThemeWithKPIs, index: number) => {
                               const isPrioritized = prioritizedThemes.some((t: JobThemeWithKPIs) => t.id === theme.id);
                               const priorityIndex = prioritizedThemes.findIndex((t: JobThemeWithKPIs) => t.id === theme.id);
+                              const canSelect = !isFinalized && prioritizedThemes.length < 3 && !isPrioritized;
                               const linkedPillar = strategicPillars.find(p => p.id === theme.pillarId);
                               const needsAssignment = !theme.pillarId;
                               
+                              // Calculate normalized scores (0-100%)
+                              const relevancePercent = Math.round(((theme.compositeScore || 0) / maxScore) * 100);
+                              const evidencePercent = Math.round(((theme.evidenceCount || 0) / maxEvidence) * 100);
+                              
                               return (
                                 <Collapsible key={theme.id}>
-                                  <div className={`p-3 rounded-lg border ${isPrioritized ? 'bg-primary/5 border-primary/30' : needsAssignment ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800' : 'bg-muted/30'}`} data-testid={`job-card-${theme.id}`}>
-                                    <div className="flex items-start justify-between gap-3">
+                                  <div 
+                                    className={`p-3 rounded-lg border transition-all ${
+                                      isPrioritized 
+                                        ? 'bg-primary/5 border-primary ring-1 ring-primary/30' 
+                                        : needsAssignment 
+                                          ? 'bg-amber-50/30 dark:bg-amber-950/10 border-amber-200 dark:border-amber-800' 
+                                          : 'hover-elevate'
+                                    }`} 
+                                    data-testid={`job-card-${theme.id}`}
+                                  >
+                                    <div className="flex items-start gap-3">
+                                      {/* Checkbox for Priority Selection */}
+                                      <div className="pt-1 shrink-0">
+                                        {!isFinalized && (
+                                          <Checkbox
+                                            checked={isPrioritized}
+                                            disabled={!canSelect && !isPrioritized}
+                                            onCheckedChange={(checked) => {
+                                              if (checked && canSelect) {
+                                                const currentIds = prioritizedThemes.map((t: JobThemeWithKPIs) => t.id);
+                                                const newPrioritized = [...currentIds, theme.id].slice(0, 3);
+                                                prioritizeJobsMutation.mutate({ prioritizedIds: newPrioritized });
+                                              } else if (!checked && isPrioritized) {
+                                                const newPrioritized = prioritizedThemes.filter((t: JobThemeWithKPIs) => t.id !== theme.id).map((t: JobThemeWithKPIs) => t.id);
+                                                prioritizeJobsMutation.mutate({ prioritizedIds: newPrioritized });
+                                              }
+                                            }}
+                                            data-testid={`checkbox-priority-${theme.id}`}
+                                            className="h-5 w-5"
+                                          />
+                                        )}
+                                        {isFinalized && isPrioritized && (
+                                          <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                                            <span className="text-xs font-bold text-primary-foreground">{priorityIndex + 1}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                      
+                                      {/* Main Content */}
                                       <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 flex-wrap">
+                                        <div className="flex items-center gap-2 flex-wrap mb-1">
                                           {isPrioritized && (
-                                            <Badge className="bg-primary text-primary-foreground text-xs">Priority #{priorityIndex + 1}</Badge>
+                                            <Badge className="bg-primary text-primary-foreground text-xs">
+                                              Priority #{priorityIndex + 1}
+                                            </Badge>
                                           )}
                                           <span className="font-medium text-sm">{theme.jobName}</span>
+                                          {linkedPillar && selectedPillarFilter === null && (
+                                            <Badge variant="outline" className="text-xs">
+                                              <Flag className="w-3 h-3 mr-1" />
+                                              {linkedPillar.name.length > 12 ? linkedPillar.name.slice(0, 12) + "..." : linkedPillar.name}
+                                            </Badge>
+                                          )}
+                                          {needsAssignment && (
+                                            <Badge variant="outline" className="text-xs border-amber-300 text-amber-700 dark:text-amber-400">
+                                              <AlertCircle className="w-3 h-3 mr-1" />
+                                              Needs pillar
+                                            </Badge>
+                                          )}
                                         </div>
-                                        <p className="text-xs text-muted-foreground mt-0.5">
-                                          {theme.capabilityName}
+                                        <p className="text-xs text-muted-foreground">
+                                          {theme.capabilityName} • {theme.solutionArea || 'N/A'}
                                         </p>
                                         
-                                        {/* KPIs Summary */}
-                                        <div className="flex items-center gap-3 mt-2">
-                                          <span className="text-xs flex items-center gap-1 text-muted-foreground">
+                                        {/* Visual Score Bars */}
+                                        <div className="mt-2 space-y-1.5">
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-xs text-muted-foreground w-20 shrink-0">Relevance</span>
+                                            <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                                              <div 
+                                                className="h-full bg-gradient-to-r from-primary/70 to-primary transition-all duration-500" 
+                                                style={{ width: `${relevancePercent}%` }}
+                                              />
+                                            </div>
+                                            <span className="text-xs font-medium w-8 text-right">{theme.compositeScore || 0}</span>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-xs text-muted-foreground w-20 shrink-0">Evidence</span>
+                                            <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                                              <div 
+                                                className="h-full bg-gradient-to-r from-cyan-400/70 to-cyan-500 transition-all duration-500" 
+                                                style={{ width: `${evidencePercent}%` }}
+                                              />
+                                            </div>
+                                            <span className="text-xs font-medium w-8 text-right">{theme.evidenceCount || 0}</span>
+                                          </div>
+                                        </div>
+                                        
+                                        {/* KPI & Info Row */}
+                                        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                                          <span className="flex items-center gap-1">
                                             <Target className="w-3 h-3" />
-                                            {theme.kpis?.filter(k => k.isSelected).length || 0} KPIs selected
+                                            {theme.kpis?.filter(k => k.isSelected).length || 0} KPIs
+                                          </span>
+                                          <span className="flex items-center gap-1">
+                                            <Lightbulb className="w-3 h-3" />
+                                            {theme.sourceInsightIds?.length || 0} insights
                                           </span>
                                         </div>
                                         
-                                        {/* Pillar Assignment - Clear labeling */}
-                                        {!isFinalized && showingUnassigned && (
-                                          <div className="mt-3 p-2 rounded bg-amber-100/50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800">
-                                            <label className="text-xs font-medium text-amber-700 dark:text-amber-400 block mb-1">
-                                              Assign to Strategic Pillar:
-                                            </label>
+                                        {/* Pillar Assignment for unassigned jobs */}
+                                        {!isFinalized && needsAssignment && (
+                                          <div className="mt-2 flex items-center gap-2">
                                             <Select
-                                              value={theme.pillarId?.toString() || ""}
+                                              value=""
                                               onValueChange={(value) => {
-                                                if (handlePillarLink) {
-                                                  handlePillarLink(theme.id, value ? parseInt(value) : null);
+                                                if (handlePillarLink && value) {
+                                                  handlePillarLink(theme.id, parseInt(value));
                                                 }
                                               }}
                                             >
-                                              <SelectTrigger className="h-8 text-xs bg-background" data-testid={`assign-pillar-${theme.id}`}>
-                                                <SelectValue placeholder="Select a pillar..." />
+                                              <SelectTrigger className="h-7 text-xs w-[200px]" data-testid={`assign-pillar-${theme.id}`}>
+                                                <SelectValue placeholder="Assign to pillar..." />
                                               </SelectTrigger>
                                               <SelectContent>
                                                 {strategicPillars.map((p) => (
                                                   <SelectItem key={p.id} value={p.id.toString()}>
-                                                    {p.name.length > 30 ? p.name.slice(0, 30) + "..." : p.name}
+                                                    {p.name.length > 25 ? p.name.slice(0, 25) + "..." : p.name}
                                                   </SelectItem>
                                                 ))}
                                               </SelectContent>
@@ -4386,47 +4476,16 @@ export default function Discovery() {
                                         )}
                                       </div>
                                       
-                                      <div className="flex items-center gap-2 shrink-0">
-                                        {canSelect && (
-                                          <Button
-                                            size="sm"
-                                            onClick={() => {
-                                              const currentIds = prioritizedThemes.map((t: JobThemeWithKPIs) => t.id);
-                                              const newPrioritized = [...currentIds, theme.id].slice(0, 3);
-                                              prioritizeJobsMutation.mutate({ prioritizedIds: newPrioritized });
-                                            }}
-                                            disabled={prioritizeJobsMutation.isPending}
-                                            data-testid={`button-prioritize-${theme.id}`}
-                                          >
-                                            <Star className="w-3 h-3 mr-1" />
-                                            Add to Priorities
-                                          </Button>
-                                        )}
-                                        {isPrioritized && !isFinalized && (
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => {
-                                              const newPrioritized = prioritizedThemes.filter((t: JobThemeWithKPIs) => t.id !== theme.id).map((t: JobThemeWithKPIs) => t.id);
-                                              prioritizeJobsMutation.mutate({ prioritizedIds: newPrioritized });
-                                            }}
-                                            disabled={prioritizeJobsMutation.isPending}
-                                            data-testid={`button-remove-priority-${theme.id}`}
-                                          >
-                                            <X className="w-3 h-3 mr-1" />
-                                            Remove
-                                          </Button>
-                                        )}
-                                        <CollapsibleTrigger asChild>
-                                          <Button variant="ghost" size="sm" data-testid={`expand-job-${theme.id}`}>
-                                            <ChevronDown className="w-4 h-4" />
-                                          </Button>
-                                        </CollapsibleTrigger>
-                                      </div>
+                                      {/* Expand Button */}
+                                      <CollapsibleTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="shrink-0" data-testid={`expand-job-${theme.id}`}>
+                                          <ChevronDown className="w-4 h-4" />
+                                        </Button>
+                                      </CollapsibleTrigger>
                                     </div>
                                   </div>
                                   <CollapsibleContent>
-                                    <div className="mt-2 p-4 rounded-lg bg-muted/20 border">
+                                    <div className="mt-2 p-4 rounded-lg bg-muted/20 border ml-8">
                                       <JobThemeCard 
                                         theme={theme} 
                                         rank={isPrioritized ? priorityIndex + 1 : null} 
