@@ -426,6 +426,8 @@ export const jobThemes = pgTable("job_themes", {
     enum: ["ASSESS", "DEVELOP", "TRANSFORM", "REWARD", "COMMERCIAL", "ANALYTICS"]
   }),
   priorityRank: integer("priority_rank"), // 1, 2, 3 for top priorities (null if not prioritized yet)
+  pillarId: integer("pillar_id"), // Link to strategic pillar (optional until linked)
+  pillarLinkageNarrative: text("pillar_linkage_narrative"), // How this job supports the strategic pillar
   aggregationSummary: text("aggregation_summary"), // AI-generated summary of all insights for this job
   sourceInsightIds: integer("source_insight_ids").array(), // IDs of companyDataPoints that contribute to this job
   sourceQuestionIds: integer("source_question_ids").array(), // IDs of discoveryQuestions that contribute
@@ -804,3 +806,72 @@ export const insertProjectValueMetricsSchema = createInsertSchema(projectValueMe
 });
 export type InsertProjectValueMetrics = z.infer<typeof insertProjectValueMetricsSchema>;
 export type ProjectValueMetrics = typeof projectValueMetrics.$inferSelect;
+
+// Strategic Pillars - High-level organizational priorities (3-5 per client)
+export const strategicPillars = pgTable("strategic_pillars", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  name: text("name").notNull(), // e.g., "Operational Excellence", "Digital Transformation"
+  description: text("description"), // Detailed description of the pillar
+  owner: text("owner"), // Executive sponsor or owner
+  priority: integer("priority"), // Order/rank among pillars (1 = highest)
+  status: text("status", { enum: ["draft", "confirmed", "in_progress", "achieved"] }).notNull().default("draft"),
+  isAISuggested: boolean("is_ai_suggested").notNull().default(false), // True if AI recommended
+  confidence: text("confidence", { enum: ["high", "medium", "low"] }), // AI confidence level
+  provenance: jsonb("provenance"), // Source info (AI reasoning, user edits, etc.)
+  sourceInsightIds: integer("source_insight_ids").array(), // Links to companyDataPoints that support this pillar
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertStrategicPillarSchema = createInsertSchema(strategicPillars).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertStrategicPillar = z.infer<typeof insertStrategicPillarSchema>;
+export type StrategicPillar = typeof strategicPillars.$inferSelect;
+
+// Pillar Objectives - Business OKRs linked to each strategic pillar
+export const pillarObjectives = pgTable("pillar_objectives", {
+  id: serial("id").primaryKey(),
+  pillarId: integer("pillar_id").notNull().references(() => strategicPillars.id, { onDelete: "cascade" }),
+  objectiveType: text("objective_type", { enum: ["company", "hr", "talent"] }).notNull().default("company"),
+  objective: text("objective").notNull(), // The objective statement e.g., "Reduce time-to-productivity by 30%"
+  keyResults: jsonb("key_results"), // Array of {result: string, target: string, current?: string}
+  timeline: text("timeline"), // e.g., "Q1 2025", "FY 2024"
+  sponsor: text("sponsor"), // Executive sponsor
+  status: text("status", { enum: ["not_started", "in_progress", "on_track", "at_risk", "completed"] }).notNull().default("not_started"),
+  isAISuggested: boolean("is_ai_suggested").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertPillarObjectiveSchema = createInsertSchema(pillarObjectives).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertPillarObjective = z.infer<typeof insertPillarObjectiveSchema>;
+export type PillarObjective = typeof pillarObjectives.$inferSelect;
+
+// Strategic Pillar Share Links - Allow clients to view/edit pillars
+export const pillarShareLinks = pgTable("pillar_share_links", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(), // Secure random token for URL
+  permissions: text("permissions", { enum: ["view", "edit"] }).notNull().default("edit"),
+  customerName: text("customer_name"), // Name of customer contact
+  customerEmail: text("customer_email"), // Email of customer contact
+  status: text("status", { enum: ["active", "expired", "revoked"] }).notNull().default("active"),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastAccessedAt: timestamp("last_accessed_at"),
+});
+
+export const insertPillarShareLinkSchema = createInsertSchema(pillarShareLinks).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertPillarShareLink = z.infer<typeof insertPillarShareLinkSchema>;
+export type PillarShareLink = typeof pillarShareLinks.$inferSelect;
