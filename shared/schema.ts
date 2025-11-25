@@ -545,6 +545,8 @@ export const jobThemeWithKPIsSchema = z.object({
   sourceQuestionIds: z.array(z.number()).nullable().optional(),
   compositeScore: z.number(),
   evidenceCount: z.number(),
+  pillarId: z.number().nullable().optional(), // Link to strategic pillar
+  pillarLinkageNarrative: z.string().nullable().optional(), // AI-generated explanation of pillar linkage
   createdAt: z.any(), // Date from DB, allow flexible parsing
   updatedAt: z.any(), // Date from DB, allow flexible parsing
   kpis: z.array(z.object({

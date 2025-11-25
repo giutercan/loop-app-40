@@ -2131,12 +2131,21 @@ export function registerRoutes(app: Express) {
   // STRATEGIC PILLARS (ORGANIZATIONAL PRIORITIES)
   // ============================================
 
-  // Get all strategic pillars for a project
+  // Get all strategic pillars for a project (with objectives)
   app.get("/api/projects/:projectId/strategic-pillars", async (req, res) => {
     try {
       const projectId = parseInt(req.params.projectId);
       const pillars = await storage.getStrategicPillars(projectId);
-      res.json(pillars);
+      
+      // Fetch objectives for each pillar
+      const pillarsWithObjectives = await Promise.all(
+        pillars.map(async (pillar) => ({
+          ...pillar,
+          objectives: await storage.getPillarObjectives(pillar.id)
+        }))
+      );
+      
+      res.json(pillarsWithObjectives);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

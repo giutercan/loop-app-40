@@ -27,16 +27,28 @@ import ProjectSelector from "@/components/ProjectSelector";
 import StatusBadge from "@/components/StatusBadge";
 import ProjectPhaseNav from "@/components/project-phase-nav";
 import KPIRecommendationDialog from "@/components/KPIRecommendationDialog";
-import { ArrowLeft, Save, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, TrendingUp, Activity, Award, Building, Calendar, AlertCircle, ChevronDown, Lightbulb, BarChart3, MessageSquare, Edit, Lock, Unlock } from "lucide-react";
+import { ArrowLeft, Save, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, TrendingUp, Activity, Award, Building, Calendar, AlertCircle, ChevronDown, Lightbulb, BarChart3, MessageSquare, Edit, Lock, Unlock, Flag, GripVertical, Layers } from "lucide-react";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { Link, useLocation, useRoute } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Project, CompanyDataPoint, Headline, DiscoveryNotes, DiscoveryQuestion, Attachment, SharedQuestionnaire, QuestionResponse, JobThemeWithKPIs, DiscoveryPhaseTransfer, SuccessStory, JobThemeKPI, UpdateJobThemeKPIRequest } from "@shared/schema";
+import type { Project, CompanyDataPoint, Headline, DiscoveryNotes, DiscoveryQuestion, Attachment, SharedQuestionnaire, QuestionResponse, JobThemeWithKPIs, DiscoveryPhaseTransfer, SuccessStory, JobThemeKPI, UpdateJobThemeKPIRequest, StrategicPillar, PillarObjective } from "@shared/schema";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { format } from "date-fns";
 
 // Job Theme Card Component - Displays prioritized job with KPIs and baseline/target input
+interface PillarOption {
+  id: number;
+  name: string;
+}
+
 interface JobThemeCardProps {
   theme: JobThemeWithKPIs;
   rank: number;
@@ -48,9 +60,11 @@ interface JobThemeCardProps {
   isFinalized: boolean;
   editMode: boolean;
   onDeselect: () => void;
+  pillars?: PillarOption[];
+  onPillarLink?: (jobThemeId: number, pillarId: number | null) => void;
 }
 
-function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, editMode, onDeselect }: JobThemeCardProps) {
+function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, editMode, onDeselect, pillars, onPillarLink }: JobThemeCardProps) {
   const { toast } = useToast();
   const [baselineInputs, setBaselineInputs] = useState<Record<number, { value: string; source: string }>>({});
   const [targetInputs, setTargetInputs] = useState<Record<number, { value: string; source: string }>>({});
@@ -719,7 +733,43 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
               <div className="flex items-center gap-2 mt-2 flex-wrap">
                 <Badge variant="secondary" className="text-xs">{theme.evidenceCount} insights</Badge>
                 {theme.solutionArea && <Badge variant="outline" className="text-xs">{theme.solutionArea}</Badge>}
+                {/* Pillar Link Badge */}
+                {theme.pillarId && pillars && (
+                  <Badge 
+                    variant="outline" 
+                    className="text-xs bg-primary/10 border-primary/30 text-primary gap-1"
+                  >
+                    <Flag className="w-3 h-3" />
+                    {pillars.find(p => p.id === theme.pillarId)?.name || 'Linked Pillar'}
+                  </Badge>
+                )}
               </div>
+              {/* Pillar Selector */}
+              {pillars && pillars.length > 0 && onPillarLink && !isFinalized && (
+                <div className="mt-3 flex items-center gap-2">
+                  <Flag className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <Select
+                    value={theme.pillarId?.toString() || ""}
+                    onValueChange={(value) => {
+                      onPillarLink(theme.id, value ? parseInt(value) : null);
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-xs w-[200px]" data-testid={`select-pillar-${theme.id}`}>
+                      <SelectValue placeholder="Link to Strategic Pillar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none" className="text-xs text-muted-foreground">
+                        No pillar linked
+                      </SelectItem>
+                      {pillars.map((pillar) => (
+                        <SelectItem key={pillar.id} value={pillar.id.toString()} className="text-xs">
+                          {pillar.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1024,6 +1074,16 @@ export default function Discovery() {
 
   const { data: phaseTransfer } = useQuery<DiscoveryPhaseTransfer>({
     queryKey: [`/api/projects/${projectId}/phase-transfer`],
+    enabled: !!projectId,
+  });
+
+  // Strategic Pillars queries
+  interface PillarWithObjectives extends StrategicPillar {
+    objectives?: PillarObjective[];
+  }
+  
+  const { data: strategicPillars = [], isLoading: pillarsLoading, refetch: refetchPillars } = useQuery<PillarWithObjectives[]>({
+    queryKey: [`/api/projects/${projectId}/strategic-pillars`],
     enabled: !!projectId,
   });
 
@@ -1581,6 +1641,144 @@ export default function Discovery() {
     },
   });
 
+  // Strategic Pillars state
+  const [newPillarName, setNewPillarName] = useState("");
+  const [newPillarDescription, setNewPillarDescription] = useState("");
+  const [editingPillarId, setEditingPillarId] = useState<number | null>(null);
+  const [editingPillarData, setEditingPillarData] = useState({ name: "", description: "" });
+  const [newObjective, setNewObjective] = useState({ pillarId: 0, objective: "", objectiveType: "company" as "company" | "hr" | "talent" });
+  const [isAddObjectiveOpen, setIsAddObjectiveOpen] = useState(false);
+  const [addingObjectiveToPillar, setAddingObjectiveToPillar] = useState<number | null>(null);
+
+  // Strategic Pillars mutations
+  const generatePillarsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/projects/${projectId}/strategic-pillars/generate`, {});
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to generate pillars");
+      }
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/strategic-pillars`] });
+      toast({
+        title: "Strategic pillars generated",
+        description: `Created ${data.pillars?.length || 0} strategic pillars based on your discovery research.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Generation failed",
+        description: error.message || "Failed to generate strategic pillars",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createPillarMutation = useMutation({
+    mutationFn: async (data: { name: string; description: string }) => {
+      const res = await apiRequest("POST", `/api/projects/${projectId}/strategic-pillars`, {
+        ...data,
+        priority: (strategicPillars?.length || 0) + 1,
+        status: "draft",
+        isAISuggested: false,
+      });
+      if (!res.ok) throw new Error("Failed to create pillar");
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/strategic-pillars`] });
+      setNewPillarName("");
+      setNewPillarDescription("");
+      toast({ title: "Strategic pillar added" });
+    },
+  });
+
+  const updatePillarMutation = useMutation({
+    mutationFn: async ({ pillarId, data }: { pillarId: number; data: Partial<StrategicPillar> }) => {
+      const res = await apiRequest("PATCH", `/api/strategic-pillars/${pillarId}`, data);
+      if (!res.ok) throw new Error("Failed to update pillar");
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/strategic-pillars`] });
+      setEditingPillarId(null);
+      toast({ title: "Strategic pillar updated" });
+    },
+  });
+
+  const deletePillarMutation = useMutation({
+    mutationFn: async (pillarId: number) => {
+      const res = await apiRequest("DELETE", `/api/strategic-pillars/${pillarId}`, {});
+      if (!res.ok) throw new Error("Failed to delete pillar");
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/strategic-pillars`] });
+      toast({ title: "Strategic pillar removed" });
+    },
+  });
+
+  const createObjectiveMutation = useMutation({
+    mutationFn: async ({ pillarId, data }: { pillarId: number; data: { objective: string; objectiveType: string } }) => {
+      const res = await apiRequest("POST", `/api/strategic-pillars/${pillarId}/objectives`, {
+        ...data,
+        status: "not_started",
+        isAISuggested: false,
+      });
+      if (!res.ok) throw new Error("Failed to create objective");
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/strategic-pillars`] });
+      setNewObjective({ pillarId: 0, objective: "", objectiveType: "company" });
+      setAddingObjectiveToPillar(null);
+      toast({ title: "Objective added" });
+    },
+  });
+
+  const deleteObjectiveMutation = useMutation({
+    mutationFn: async (objectiveId: number) => {
+      const res = await apiRequest("DELETE", `/api/pillar-objectives/${objectiveId}`, {});
+      if (!res.ok) throw new Error("Failed to delete objective");
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/strategic-pillars`] });
+      toast({ title: "Objective removed" });
+    },
+  });
+
+  // Link job theme to strategic pillar
+  const linkJobToPillarMutation = useMutation({
+    mutationFn: async ({ jobThemeId, pillarId }: { jobThemeId: number; pillarId: number | null }) => {
+      const res = await apiRequest("PATCH", `/api/job-themes/${jobThemeId}/pillar-link`, {
+        pillarId: pillarId,
+        pillarLinkageNarrative: null
+      });
+      if (!res.ok) throw new Error("Failed to link job to pillar");
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/job-themes`] });
+      toast({ title: "Job linked to strategic pillar" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to link job",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handlePillarLink = (jobThemeId: number, pillarId: number | null) => {
+    // Handle "none" value which comes as parseInt("none") = NaN
+    const finalPillarId = pillarId && !isNaN(pillarId) ? pillarId : null;
+    linkJobToPillarMutation.mutate({ jobThemeId, pillarId: finalPillarId });
+  };
+
   const handleCapabilityChange = (id: number, capability: string | null) => {
     updateCapabilityMutation.mutate({ 
       id, 
@@ -1759,9 +1957,10 @@ export default function Discovery() {
 
       <main className="container mx-auto max-w-7xl px-4 lg:px-8 py-8">
         <Tabs defaultValue="organisation" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 max-w-4xl" data-testid="tabs-discovery">
+          <TabsList className="grid w-full grid-cols-5 max-w-5xl" data-testid="tabs-discovery">
             <TabsTrigger value="organisation">Organisation</TabsTrigger>
             <TabsTrigger value="notes">Build Value Case</TabsTrigger>
+            <TabsTrigger value="pillars" data-testid="tab-strategic-pillars">Strategic Pillars</TabsTrigger>
             <TabsTrigger value="jobs">Jobs & Priorities</TabsTrigger>
             <TabsTrigger value="successStories" data-testid="tab-success-stories">Success Stories</TabsTrigger>
           </TabsList>
@@ -2904,6 +3103,493 @@ export default function Discovery() {
               })()}
           </TabsContent>
 
+          <TabsContent value="pillars" className="space-y-6">
+            {/* Strategic Pillars Introduction */}
+            <div className="flex items-center justify-between gap-4 p-4 bg-primary/5 rounded-lg border border-primary/20">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground">
+                  <Flag className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-lg">Strategic Pillars</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Define 3-5 organizational priorities that connect to the client's business strategy
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-6">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-primary">{strategicPillars.length}</div>
+                  <div className="text-xs text-muted-foreground">Pillars Defined</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-primary">
+                    {strategicPillars.filter(p => p.status === "confirmed").length}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Confirmed</div>
+                </div>
+              </div>
+            </div>
+
+            {/* AI Generation Button */}
+            {strategicPillars.length === 0 && dataPoints.length > 0 && (
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center space-y-4">
+                    <div className="flex items-center justify-center w-16 h-16 mx-auto rounded-full bg-primary/10">
+                      <Sparkles className="w-8 h-8 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Generate Strategic Pillars with AI</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Based on your discovery research, AI will suggest 3-5 strategic pillars with associated objectives.
+                      </p>
+                    </div>
+                    <Button
+                      onClick={() => generatePillarsMutation.mutate()}
+                      disabled={generatePillarsMutation.isPending}
+                      data-testid="button-generate-pillars"
+                    >
+                      {generatePillarsMutation.isPending ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Analyzing Discovery Data...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          Generate Strategic Pillars
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {strategicPillars.length === 0 && dataPoints.length === 0 && (
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center space-y-2">
+                    <AlertCircle className="w-10 h-10 mx-auto text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      Complete your company research in the Organisation tab first to generate strategic pillars.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Loading State */}
+            {pillarsLoading && (
+              <Card>
+                <CardContent className="pt-6 flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <p className="text-sm text-muted-foreground">Loading strategic pillars...</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Pillars List */}
+            {!pillarsLoading && strategicPillars.length > 0 && (
+              <div className="space-y-4">
+                {strategicPillars
+                  .sort((a, b) => (a.priority || 999) - (b.priority || 999))
+                  .map((pillar, index) => (
+                  <Card key={pillar.id} className="overflow-visible" data-testid={`card-pillar-${pillar.id}`}>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3 flex-1">
+                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary text-sm font-bold shrink-0">
+                            {index + 1}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            {editingPillarId === pillar.id ? (
+                              <div className="space-y-2">
+                                <Input
+                                  value={editingPillarData.name}
+                                  onChange={(e) => setEditingPillarData(prev => ({ ...prev, name: e.target.value }))}
+                                  placeholder="Pillar name"
+                                  data-testid={`input-edit-pillar-name-${pillar.id}`}
+                                />
+                                <Textarea
+                                  value={editingPillarData.description}
+                                  onChange={(e) => setEditingPillarData(prev => ({ ...prev, description: e.target.value }))}
+                                  placeholder="Description"
+                                  className="min-h-[80px]"
+                                  data-testid={`textarea-edit-pillar-desc-${pillar.id}`}
+                                />
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => updatePillarMutation.mutate({ 
+                                      pillarId: pillar.id, 
+                                      data: editingPillarData 
+                                    })}
+                                    disabled={updatePillarMutation.isPending}
+                                    data-testid={`button-save-pillar-${pillar.id}`}
+                                  >
+                                    Save
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setEditingPillarId(null)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="flex items-center gap-2">
+                                  <CardTitle className="text-lg">{pillar.name}</CardTitle>
+                                  {pillar.isAISuggested && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      <Sparkles className="w-3 h-3 mr-1" />
+                                      AI Suggested
+                                    </Badge>
+                                  )}
+                                  {pillar.confidence && (
+                                    <ConfidenceBadge level={pillar.confidence} />
+                                  )}
+                                  <Badge 
+                                    variant={pillar.status === "confirmed" ? "default" : "outline"}
+                                    className="text-xs"
+                                  >
+                                    {pillar.status === "confirmed" ? "Confirmed" : "Draft"}
+                                  </Badge>
+                                </div>
+                                <CardDescription className="mt-1">{pillar.description}</CardDescription>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        {editingPillarId !== pillar.id && (
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingPillarId(pillar.id);
+                                setEditingPillarData({ name: pillar.name, description: pillar.description || "" });
+                              }}
+                              data-testid={`button-edit-pillar-${pillar.id}`}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            {pillar.status !== "confirmed" && (
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => updatePillarMutation.mutate({ 
+                                  pillarId: pillar.id, 
+                                  data: { status: "confirmed" } 
+                                })}
+                                title="Confirm this pillar"
+                                data-testid={`button-confirm-pillar-${pillar.id}`}
+                              >
+                                <Check className="w-4 h-4" />
+                              </Button>
+                            )}
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => {
+                                if (confirm("Remove this strategic pillar?")) {
+                                  deletePillarMutation.mutate(pillar.id);
+                                }
+                              }}
+                              data-testid={`button-delete-pillar-${pillar.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {/* Objectives Section */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-medium flex items-center gap-2">
+                            <Target className="w-4 h-4 text-muted-foreground" />
+                            Business Objectives
+                          </h4>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setAddingObjectiveToPillar(pillar.id);
+                              setNewObjective({ pillarId: pillar.id, objective: "", objectiveType: "company" });
+                            }}
+                            data-testid={`button-add-objective-${pillar.id}`}
+                          >
+                            <Plus className="w-3 h-3 mr-1" />
+                            Add Objective
+                          </Button>
+                        </div>
+
+                        {/* Add Objective Form */}
+                        {addingObjectiveToPillar === pillar.id && (
+                          <div className="p-3 bg-muted/50 rounded-md space-y-3">
+                            <Input
+                              placeholder="Enter objective (e.g., Reduce time-to-hire by 25%)"
+                              value={newObjective.objective}
+                              onChange={(e) => setNewObjective(prev => ({ ...prev, objective: e.target.value }))}
+                              data-testid={`input-new-objective-${pillar.id}`}
+                            />
+                            <div className="flex items-center gap-2">
+                              <div className="flex gap-1">
+                                {(["company", "hr", "talent"] as const).map((type) => (
+                                  <Button
+                                    key={type}
+                                    size="sm"
+                                    variant={newObjective.objectiveType === type ? "default" : "outline"}
+                                    onClick={() => setNewObjective(prev => ({ ...prev, objectiveType: type }))}
+                                    className="capitalize"
+                                  >
+                                    {type}
+                                  </Button>
+                                ))}
+                              </div>
+                              <div className="flex-1" />
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  if (newObjective.objective.trim()) {
+                                    createObjectiveMutation.mutate({
+                                      pillarId: pillar.id,
+                                      data: {
+                                        objective: newObjective.objective,
+                                        objectiveType: newObjective.objectiveType
+                                      }
+                                    });
+                                  }
+                                }}
+                                disabled={!newObjective.objective.trim() || createObjectiveMutation.isPending}
+                                data-testid={`button-save-objective-${pillar.id}`}
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setAddingObjectiveToPillar(null)}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Objectives List */}
+                        {pillar.objectives && pillar.objectives.length > 0 ? (
+                          <div className="space-y-2">
+                            {pillar.objectives.map((obj) => (
+                              <div 
+                                key={obj.id} 
+                                className="flex items-start gap-3 p-3 bg-muted/30 rounded-md group"
+                                data-testid={`objective-${obj.id}`}
+                              >
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <Badge variant="outline" className="text-xs capitalize">
+                                      {obj.objectiveType}
+                                    </Badge>
+                                    {obj.isAISuggested && (
+                                      <Badge variant="secondary" className="text-xs">
+                                        <Sparkles className="w-2 h-2 mr-1" />
+                                        AI
+                                      </Badge>
+                                    )}
+                                    {obj.timeline && (
+                                      <span className="text-xs text-muted-foreground">
+                                        <Calendar className="w-3 h-3 inline mr-1" />
+                                        {obj.timeline}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-sm">{obj.objective}</p>
+                                  {(() => {
+                                    const keyResults = obj.keyResults as Array<{ result: string; target: string }> | null;
+                                    if (!keyResults || !Array.isArray(keyResults) || keyResults.length === 0) return null;
+                                    return (
+                                      <div className="mt-2 space-y-1">
+                                        {keyResults.map((kr, idx) => (
+                                          <div key={idx} className="text-xs text-muted-foreground flex items-center gap-2">
+                                            <Activity className="w-3 h-3" />
+                                            <span>{kr.result}</span>
+                                            {kr.target && (
+                                              <Badge variant="outline" className="text-xs">
+                                                Target: {kr.target}
+                                              </Badge>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => {
+                                    if (confirm("Remove this objective?")) {
+                                      deleteObjectiveMutation.mutate(obj.id);
+                                    }
+                                  }}
+                                  data-testid={`button-delete-objective-${obj.id}`}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground italic py-2">
+                            No objectives defined yet. Add objectives to connect this pillar to measurable outcomes.
+                          </p>
+                        )}
+
+                        {/* Source Insights */}
+                        {pillar.sourceInsightIds && pillar.sourceInsightIds.length > 0 && (
+                          <div className="pt-3 border-t">
+                            <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                              <Lightbulb className="w-3 h-3" />
+                              Based on {pillar.sourceInsightIds.length} discovery insights
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {pillar.sourceInsightIds.slice(0, 5).map((insightId) => {
+                                const insight = dataPoints.find(dp => dp.id === insightId);
+                                return insight ? (
+                                  <Badge key={insightId} variant="outline" className="text-xs">
+                                    {insight.label}
+                                  </Badge>
+                                ) : null;
+                              })}
+                              {pillar.sourceInsightIds.length > 5 && (
+                                <Badge variant="outline" className="text-xs">
+                                  +{pillar.sourceInsightIds.length - 5} more
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {/* Add New Pillar Manually */}
+            {!pillarsLoading && strategicPillars.length > 0 && strategicPillars.length < 5 && (
+              <Card className="border-dashed">
+                <CardContent className="pt-6">
+                  <Collapsible>
+                    <CollapsibleTrigger className="w-full">
+                      <div className="flex items-center justify-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+                        <Plus className="w-4 h-4" />
+                        <span className="text-sm font-medium">Add Strategic Pillar Manually</span>
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="pt-4 space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="new-pillar-name">Pillar Name</Label>
+                        <Input
+                          id="new-pillar-name"
+                          placeholder="e.g., Digital Transformation, Operational Excellence"
+                          value={newPillarName}
+                          onChange={(e) => setNewPillarName(e.target.value)}
+                          data-testid="input-new-pillar-name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="new-pillar-desc">Description</Label>
+                        <Textarea
+                          id="new-pillar-desc"
+                          placeholder="Describe why this pillar is strategically important..."
+                          value={newPillarDescription}
+                          onChange={(e) => setNewPillarDescription(e.target.value)}
+                          className="min-h-[80px]"
+                          data-testid="textarea-new-pillar-desc"
+                        />
+                      </div>
+                      <Button
+                        onClick={() => {
+                          if (newPillarName.trim()) {
+                            createPillarMutation.mutate({
+                              name: newPillarName.trim(),
+                              description: newPillarDescription.trim()
+                            });
+                          }
+                        }}
+                        disabled={!newPillarName.trim() || createPillarMutation.isPending}
+                        data-testid="button-create-pillar"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Pillar
+                      </Button>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Regenerate Button */}
+            {strategicPillars.length > 0 && dataPoints.length > 0 && (
+              <div className="flex justify-center">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (confirm("This will generate new AI suggestions. Your current pillars will remain, but duplicates may be created. Continue?")) {
+                      generatePillarsMutation.mutate();
+                    }
+                  }}
+                  disabled={generatePillarsMutation.isPending}
+                  data-testid="button-regenerate-pillars"
+                >
+                  {generatePillarsMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Generate More Suggestions
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+
+            {/* Validation Message */}
+            {strategicPillars.length > 0 && strategicPillars.length < 3 && (
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-md p-4">
+                <p className="text-sm text-yellow-700 dark:text-yellow-300 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4" />
+                  Define at least 3 strategic pillars before moving to Jobs & Priorities.
+                </p>
+              </div>
+            )}
+
+            {/* Next Steps */}
+            {strategicPillars.length >= 3 && (
+              <div className="bg-primary/10 border border-primary/30 rounded-md p-4 space-y-2">
+                <p className="text-sm font-medium text-primary flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4" />
+                  Strategic Pillars Defined
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  You have {strategicPillars.length} strategic pillars. Move to Jobs & Priorities to link specific initiatives to these pillars.
+                </p>
+              </div>
+            )}
+          </TabsContent>
+
           <TabsContent value="jobs" className="space-y-6">
             {(() => {
               // Use hooks from top level (already declared above)
@@ -3154,6 +3840,8 @@ export default function Discovery() {
                                 isFinalized={isFinalized}
                                 editMode={kpiEditMode}
                                 onDeselect={() => {}}
+                                pillars={strategicPillars?.map(p => ({ id: p.id, name: p.name })) || []}
+                                onPillarLink={handlePillarLink}
                               />
                             </CardContent>
                           ) : (
