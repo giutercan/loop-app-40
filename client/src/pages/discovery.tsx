@@ -27,7 +27,7 @@ import ProjectSelector from "@/components/ProjectSelector";
 import StatusBadge from "@/components/StatusBadge";
 import ProjectPhaseNav from "@/components/project-phase-nav";
 import KPIRecommendationDialog from "@/components/KPIRecommendationDialog";
-import { ArrowLeft, ArrowRight, Save, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, TrendingUp, Activity, Award, Building, Calendar, AlertCircle, ChevronDown, Lightbulb, BarChart3, MessageSquare, Edit, Lock, Unlock, Flag, GripVertical, Layers, RefreshCw } from "lucide-react";
+import { ArrowLeft, ArrowRight, Save, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, TrendingUp, Activity, Award, Building, Calendar, AlertCircle, ChevronDown, Lightbulb, BarChart3, MessageSquare, Edit, Lock, Unlock, Flag, GripVertical, Layers, RefreshCw, Star } from "lucide-react";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { Link, useLocation, useRoute } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -4003,116 +4003,100 @@ export default function Discovery() {
                     </div>
                   ) : null}
 
-                  {/* Two-Column Layout: Pillar Filter + Jobs */}
-                  <div className="flex gap-4">
-                    {/* Left: Pillar Navigator */}
-                    <div className="w-48 shrink-0 space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide px-2">Filter by Pillar</p>
-                      <button
-                        onClick={() => setSelectedPillarFilter(null)}
-                        className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
-                          selectedPillarFilter === null 
-                            ? "bg-primary text-primary-foreground" 
-                            : "hover-elevate"
-                        }`}
-                        data-testid="filter-all-pillars"
-                      >
-                        All Jobs ({jobThemesData?.length || 0})
-                      </button>
-                      {strategicPillars.map((pillar) => {
-                        const pillarJobCount = jobsByPillar.get(pillar.id)?.length || 0;
-                        return (
-                          <button
-                            key={pillar.id}
-                            onClick={() => setSelectedPillarFilter(pillar.id)}
-                            className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
-                              selectedPillarFilter === pillar.id 
-                                ? "bg-primary text-primary-foreground" 
-                                : "hover-elevate"
-                            }`}
-                            data-testid={`filter-pillar-${pillar.id}`}
-                          >
-                            <span className="line-clamp-1">{pillar.name}</span>
-                            <span className="text-xs opacity-70 ml-1">({pillarJobCount})</span>
-                          </button>
-                        );
-                      })}
-                      {jobsByPillar.has(null) && (
-                        <button
-                          onClick={() => setSelectedPillarFilter(-1)}
-                          className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
-                            selectedPillarFilter === -1 
-                              ? "bg-amber-500 text-white" 
-                              : "hover-elevate text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
-                          }`}
-                          data-testid="filter-unlinked"
-                        >
-                          <div className="flex items-center gap-1.5">
-                            <AlertCircle className="w-3 h-3" />
-                            <span>Needs Assignment</span>
+                  {/* Your Priorities Section - Always visible when there are prioritized jobs */}
+                  {prioritizedThemes.length > 0 && (
+                    <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-transparent">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/20 shrink-0">
+                              <Star className="w-5 h-5 text-primary" />
+                            </div>
+                            <div>
+                              <CardTitle className="text-lg">Your Priorities</CardTitle>
+                              <CardDescription>{prioritizedThemes.length}/3 selected for this engagement</CardDescription>
+                            </div>
                           </div>
-                          <span className="text-xs opacity-80">({jobsByPillar.get(null)?.length || 0} jobs)</span>
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Right: Job Cards */}
-                    <div className="flex-1 space-y-3">
-                      {/* Selected Priorities Summary */}
-                      {prioritizedThemes.length > 0 && (
-                        <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
-                          <p className="text-xs font-medium text-muted-foreground mb-2">SELECTED PRIORITIES</p>
-                          <div className="flex flex-wrap gap-2">
-                            {prioritizedThemes.map((theme: JobThemeWithKPIs, idx: number) => (
-                              <Badge key={theme.id} className="bg-primary text-primary-foreground">
-                                #{idx + 1} {theme.jobName.length > 30 ? theme.jobName.slice(0, 30) + "..." : theme.jobName}
-                                {!isFinalized && (
-                                  <button
-                                    onClick={() => {
-                                      const newPrioritized = prioritizedThemes.filter((t: JobThemeWithKPIs) => t.id !== theme.id).map((t: JobThemeWithKPIs) => t.id);
-                                      prioritizeJobsMutation.mutate({ prioritizedIds: newPrioritized });
-                                    }}
-                                    className="ml-2 hover:bg-primary-foreground/20 rounded-full p-0.5"
-                                    data-testid={`badge-remove-${theme.id}`}
-                                  >
-                                    <X className="w-3 h-3" />
-                                  </button>
-                                )}
-                              </Badge>
-                            ))}
-                            {prioritizedThemes.length < 3 && (
-                              <Badge variant="outline" className="border-dashed">
-                                + {3 - prioritizedThemes.length} more
-                              </Badge>
-                            )}
-                          </div>
+                          {prioritizedThemes.length < 3 && (
+                            <Badge variant="outline" className="border-dashed">
+                              + {3 - prioritizedThemes.length} more needed to finalize
+                            </Badge>
+                          )}
                         </div>
-                      )}
-
-                      {/* Job Cards - Clean List */}
-                      {(selectedPillarFilter === -1 ? jobsByPillar.get(null) || [] : unprioritizedJobs).length === 0 && prioritizedThemes.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                          No jobs found for this filter.
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {/* Show prioritized jobs first if no filter or showing all */}
-                          {(selectedPillarFilter === null) && prioritizedThemes.map((theme: JobThemeWithKPIs, idx: number) => (
-                            <Card key={theme.id} className="border-primary/30" data-testid={`priority-card-${theme.id}`}>
-                              <Collapsible>
-                                <div className="p-4">
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <Badge className="bg-primary text-primary-foreground shrink-0 text-xs">
-                                          #{idx + 1}
-                                        </Badge>
-                                        <h4 className="font-semibold text-sm line-clamp-1">{theme.jobName}</h4>
-                                      </div>
-                                      <p className="text-xs text-muted-foreground line-clamp-1">
-                                        {theme.capabilityName} • {theme.kpis?.filter(k => k.isSelected).length || 0} KPIs selected
-                                      </p>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {prioritizedThemes.map((theme: JobThemeWithKPIs, idx: number) => {
+                          const linkedPillar = strategicPillars.find(p => p.id === theme.pillarId);
+                          return (
+                            <Collapsible key={theme.id}>
+                              <div className="p-3 rounded-lg bg-background border border-primary/20" data-testid={`priority-card-${theme.id}`}>
+                                <div className="flex items-center justify-between gap-3 flex-wrap">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <Badge className="bg-primary text-primary-foreground">#{idx + 1}</Badge>
+                                      <span className="font-semibold">{theme.jobName}</span>
                                     </div>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      {theme.capabilityName} • {theme.kpis?.filter(k => k.isSelected).length || 0} KPIs selected
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    {!isFinalized && (
+                                      <Select
+                                        value={theme.pillarId?.toString() || ""}
+                                        onValueChange={(value) => {
+                                          if (handlePillarLink) {
+                                            handlePillarLink(theme.id, value === "unlink" ? null : value ? parseInt(value) : null);
+                                          }
+                                        }}
+                                      >
+                                        <SelectTrigger className="h-8 w-[180px] text-xs" data-testid={`priority-assign-pillar-${theme.id}`}>
+                                          <SelectValue placeholder="Assign to pillar...">
+                                            {linkedPillar ? (
+                                              <span className="flex items-center gap-1">
+                                                <Flag className="w-3 h-3" />
+                                                {linkedPillar.name.length > 15 ? linkedPillar.name.slice(0, 15) + "..." : linkedPillar.name}
+                                              </span>
+                                            ) : (
+                                              "Assign to pillar..."
+                                            )}
+                                          </SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {theme.pillarId && (
+                                            <SelectItem value="unlink" className="text-muted-foreground">
+                                              Remove from pillar
+                                            </SelectItem>
+                                          )}
+                                          {strategicPillars.filter(p => p.id !== theme.pillarId).map((p) => (
+                                            <SelectItem key={p.id} value={p.id.toString()}>
+                                              {p.name.length > 25 ? p.name.slice(0, 25) + "..." : p.name}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    )}
+                                    {isFinalized && linkedPillar && (
+                                      <Badge variant="outline" className="text-xs">
+                                        <Flag className="w-3 h-3 mr-1" />
+                                        {linkedPillar.name.length > 20 ? linkedPillar.name.slice(0, 20) + "..." : linkedPillar.name}
+                                      </Badge>
+                                    )}
+                                    {!isFinalized && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          const newPrioritized = prioritizedThemes.filter((t: JobThemeWithKPIs) => t.id !== theme.id).map((t: JobThemeWithKPIs) => t.id);
+                                          prioritizeJobsMutation.mutate({ prioritizedIds: newPrioritized });
+                                        }}
+                                        disabled={prioritizeJobsMutation.isPending}
+                                        data-testid={`button-remove-priority-${theme.id}`}
+                                      >
+                                        <X className="w-3 h-3 mr-1" />
+                                        Remove
+                                      </Button>
+                                    )}
                                     <CollapsibleTrigger asChild>
                                       <Button variant="ghost" size="sm" data-testid={`expand-priority-${theme.id}`}>
                                         <ChevronDown className="w-4 h-4" />
@@ -4120,99 +4104,251 @@ export default function Discovery() {
                                     </CollapsibleTrigger>
                                   </div>
                                 </div>
-                                <CollapsibleContent>
-                                  <div className="px-4 pb-4 border-t pt-4">
-                                    <JobThemeCard 
-                                      theme={theme} 
-                                      rank={idx + 1} 
-                                      projectId={projectId}
-                                      updateKPIMutation={updateKPIMutation}
-                                      isFinalized={isFinalized}
-                                      editMode={kpiEditMode}
-                                      onDeselect={() => {}}
-                                      pillars={strategicPillars?.map(p => ({ id: p.id, name: p.name })) || []}
-                                      onPillarLink={handlePillarLink}
-                                    />
-                                  </div>
-                                </CollapsibleContent>
-                              </Collapsible>
-                            </Card>
-                          ))}
+                              </div>
+                              <CollapsibleContent>
+                                <div className="mt-2 p-4 rounded-lg bg-muted/20 border">
+                                  <JobThemeCard 
+                                    theme={theme} 
+                                    rank={idx + 1} 
+                                    projectId={projectId}
+                                    updateKPIMutation={updateKPIMutation}
+                                    isFinalized={isFinalized}
+                                    editMode={kpiEditMode}
+                                    onDeselect={() => {}}
+                                    pillars={strategicPillars?.map(p => ({ id: p.id, name: p.name })) || []}
+                                    onPillarLink={handlePillarLink}
+                                  />
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          );
+                        })}
+                      </CardContent>
+                    </Card>
+                  )}
 
-                          {/* Show available/unprioritized jobs */}
-                          {(selectedPillarFilter === -1 ? jobsByPillar.get(null) || [] : unprioritizedJobs).map((theme: JobThemeWithKPIs) => {
-                            const linkedPillar = strategicPillars.find(p => p.id === theme.pillarId);
-                            const canSelect = !isFinalized && prioritizedThemes.length < 3;
-                            const needsAssignment = !theme.pillarId;
-                            
-                            return (
-                              <Card key={theme.id} className={`hover-elevate ${needsAssignment ? 'border-amber-200 dark:border-amber-800' : ''}`} data-testid={`job-card-${theme.id}`}>
-                                <Collapsible>
-                                  <div className="p-4">
-                                    {/* Assignment Alert for unlinked jobs */}
-                                    {needsAssignment && !isFinalized && (
-                                      <div className="mb-3 p-2 rounded bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
-                                        <div className="flex items-center justify-between gap-2 flex-wrap">
-                                          <div className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-400">
-                                            <AlertCircle className="w-3 h-3" />
-                                            <span>Assign to a Strategic Pillar:</span>
-                                          </div>
-                                          <Select
-                                            value=""
-                                            onValueChange={(value) => {
-                                              if (value && handlePillarLink) {
-                                                handlePillarLink(theme.id, parseInt(value));
-                                              }
-                                            }}
-                                          >
-                                            <SelectTrigger className="h-7 w-[180px] text-xs" data-testid={`select-pillar-${theme.id}`}>
-                                              <SelectValue placeholder="Select pillar..." />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                              {strategicPillars.map((pillar) => (
-                                                <SelectItem key={pillar.id} value={pillar.id.toString()}>
-                                                  {pillar.name.length > 25 ? pillar.name.slice(0, 25) + "..." : pillar.name}
-                                                </SelectItem>
-                                              ))}
-                                            </SelectContent>
-                                          </Select>
-                                        </div>
-                                      </div>
-                                    )}
-                                    <div className="flex items-start justify-between gap-3">
+                  {/* Available Jobs Section */}
+                  <div className="space-y-4">
+                    {/* Sticky Filter Section */}
+                    <div className="sticky top-0 z-10 bg-background py-3 -mx-4 px-4 border-b">
+                      <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
+                        <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                          Jobs by Pillar
+                        </h3>
+                        <span className="text-xs text-muted-foreground">
+                          {jobThemesData?.length || 0} total • {prioritizedThemes.length}/3 prioritized
+                        </span>
+                      </div>
+                    
+                      {/* Pillar Filter Tabs */}
+                      <div className="flex gap-2 flex-wrap">
+                      <Button
+                        size="sm"
+                        variant={selectedPillarFilter === null ? "default" : "outline"}
+                        onClick={() => setSelectedPillarFilter(null)}
+                        data-testid="filter-all"
+                      >
+                        All ({jobThemesData?.length || 0})
+                      </Button>
+                      {(jobsByPillar.get(null)?.length || 0) > 0 && (
+                        <Button
+                          size="sm"
+                          variant={selectedPillarFilter === -1 ? "default" : "outline"}
+                          onClick={() => setSelectedPillarFilter(-1)}
+                          className={selectedPillarFilter === -1 ? "" : "border-amber-300 text-amber-700 dark:text-amber-400"}
+                          data-testid="filter-unassigned"
+                        >
+                          <AlertCircle className="w-3 h-3 mr-1" />
+                          Unassigned ({jobsByPillar.get(null)?.length || 0})
+                        </Button>
+                      )}
+                      {strategicPillars.map(pillar => {
+                        const count = jobsByPillar.get(pillar.id)?.length || 0;
+                        if (count === 0) return null;
+                        return (
+                          <Button
+                            key={pillar.id}
+                            size="sm"
+                            variant={selectedPillarFilter === pillar.id ? "default" : "outline"}
+                            onClick={() => setSelectedPillarFilter(pillar.id)}
+                            data-testid={`filter-pillar-${pillar.id}`}
+                          >
+                            {pillar.name.length > 15 ? pillar.name.slice(0, 15) + "..." : pillar.name} ({count})
+                          </Button>
+                        );
+                      })}
+                      </div>
+                    </div>
+                    
+                    {/* Filtered Job List */}
+                    {(() => {
+                      // Determine which jobs to display based on filter
+                      const getFilteredJobs = (): JobThemeWithKPIs[] => {
+                        if (selectedPillarFilter === null) {
+                          // Show ALL jobs including prioritized ones
+                          return jobThemesData || [];
+                        } else if (selectedPillarFilter === -1) {
+                          return jobsByPillar.get(null) || [];
+                        } else {
+                          return jobsByPillar.get(selectedPillarFilter) || [];
+                        }
+                      };
+                      
+                      const filteredJobs = getFilteredJobs();
+                      const showingUnassigned = selectedPillarFilter === -1;
+                      
+                      if (filteredJobs.length === 0) {
+                        return (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <Briefcase className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                            <p>No jobs found for this filter.</p>
+                          </div>
+                        );
+                      }
+                      
+                      return (
+                        <Card className={showingUnassigned ? "border-amber-300 dark:border-amber-700 bg-amber-50/30 dark:bg-amber-950/10" : ""}>
+                          <CardHeader className="pb-3">
+                            <div className="flex items-center justify-between gap-3 flex-wrap">
+                              <div className="flex items-center gap-3">
+                                {showingUnassigned ? (
+                                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/50 shrink-0">
+                                    <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                                  </div>
+                                ) : selectedPillarFilter !== null ? (
+                                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 shrink-0">
+                                    <Flag className="w-4 h-4 text-primary" />
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted shrink-0">
+                                    <Briefcase className="w-4 h-4 text-muted-foreground" />
+                                  </div>
+                                )}
+                                <div>
+                                  <CardTitle className="text-base">
+                                    {showingUnassigned 
+                                      ? "Unassigned Jobs" 
+                                      : selectedPillarFilter !== null 
+                                        ? strategicPillars.find(p => p.id === selectedPillarFilter)?.name 
+                                        : "All Available Jobs"}
+                                  </CardTitle>
+                                  <CardDescription>
+                                    {filteredJobs.length} job{filteredJobs.length !== 1 ? 's' : ''}
+                                    {showingUnassigned && " need pillar assignment"}
+                                  </CardDescription>
+                                </div>
+                              </div>
+                              {showingUnassigned && !isFinalized && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => autoAssignPillarsMutation.mutate({ reassignAll: false })}
+                                  disabled={autoAssignPillarsMutation.isPending}
+                                  data-testid="button-auto-assign-inline"
+                                >
+                                  {autoAssignPillarsMutation.isPending ? (
+                                    <>
+                                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                      Assigning...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Sparkles className="w-4 h-4 mr-2" />
+                                      AI Assign All
+                                    </>
+                                  )}
+                                </Button>
+                              )}
+                            </div>
+                          </CardHeader>
+                          <CardContent className="space-y-2">
+                            {filteredJobs.map((theme: JobThemeWithKPIs) => {
+                              const canSelect = !isFinalized && prioritizedThemes.length < 3 && !prioritizedThemes.some((t: JobThemeWithKPIs) => t.id === theme.id);
+                              const isPrioritized = prioritizedThemes.some((t: JobThemeWithKPIs) => t.id === theme.id);
+                              const priorityIndex = prioritizedThemes.findIndex((t: JobThemeWithKPIs) => t.id === theme.id);
+                              const linkedPillar = strategicPillars.find(p => p.id === theme.pillarId);
+                              const needsAssignment = !theme.pillarId;
+                              
+                              return (
+                                <Collapsible key={theme.id}>
+                                  <div className={`p-3 rounded-lg border ${isPrioritized ? 'bg-primary/5 border-primary/30' : needsAssignment ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800' : 'bg-muted/30'}`} data-testid={`job-card-${theme.id}`}>
+                                    <div className="flex items-center justify-between gap-3 flex-wrap">
                                       <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                          <h4 className="font-semibold text-sm">{theme.jobName}</h4>
-                                          {linkedPillar && (
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          {isPrioritized && (
+                                            <Badge className="bg-primary text-primary-foreground text-xs">#{priorityIndex + 1}</Badge>
+                                          )}
+                                          <span className="font-medium text-sm">{theme.jobName}</span>
+                                          {linkedPillar && selectedPillarFilter === null && (
                                             <Badge variant="outline" className="text-xs">
-                                              {linkedPillar.name.length > 20 ? linkedPillar.name.slice(0, 20) + "..." : linkedPillar.name}
+                                              <Flag className="w-3 h-3 mr-1" />
+                                              {linkedPillar.name.length > 15 ? linkedPillar.name.slice(0, 15) + "..." : linkedPillar.name}
                                             </Badge>
                                           )}
                                         </div>
-                                        <p className="text-xs text-muted-foreground">
-                                          {theme.capabilityName} • {theme.kpis?.length || 0} KPIs
+                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                          {theme.capabilityName} • {theme.kpis?.filter(k => k.isSelected).length || 0} KPIs
                                         </p>
                                         {theme.pillarLinkageNarrative && (
-                                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2 italic">
+                                          <p className="text-xs text-muted-foreground mt-1 italic line-clamp-1">
                                             {theme.pillarLinkageNarrative}
                                           </p>
                                         )}
                                       </div>
                                       <div className="flex items-center gap-2 shrink-0">
+                                        {!isFinalized && (
+                                          <Select
+                                            value={theme.pillarId?.toString() || ""}
+                                            onValueChange={(value) => {
+                                              if (handlePillarLink) {
+                                                handlePillarLink(theme.id, value === "unlink" ? null : value ? parseInt(value) : null);
+                                              }
+                                            }}
+                                          >
+                                            <SelectTrigger className="h-8 w-[180px] text-xs" data-testid={`assign-pillar-${theme.id}`}>
+                                              <SelectValue placeholder="Assign to pillar..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              {theme.pillarId && (
+                                                <SelectItem value="unlink" className="text-muted-foreground">
+                                                  Remove from pillar
+                                                </SelectItem>
+                                              )}
+                                              {strategicPillars.filter(p => p.id !== theme.pillarId).map((p) => (
+                                                <SelectItem key={p.id} value={p.id.toString()}>
+                                                  {p.name.length > 25 ? p.name.slice(0, 25) + "..." : p.name}
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                        )}
                                         {canSelect && (
                                           <Button
                                             size="sm"
-                                            variant="outline"
                                             onClick={() => {
                                               const currentIds = prioritizedThemes.map((t: JobThemeWithKPIs) => t.id);
                                               const newPrioritized = [...currentIds, theme.id].slice(0, 3);
                                               prioritizeJobsMutation.mutate({ prioritizedIds: newPrioritized });
                                             }}
                                             disabled={prioritizeJobsMutation.isPending}
-                                            data-testid={`button-select-${theme.id}`}
+                                            data-testid={`button-prioritize-${theme.id}`}
                                           >
-                                            <Plus className="w-3 h-3 mr-1" />
-                                            Select
+                                            <Star className="w-3 h-3 mr-1" />
+                                            Add to Priorities
+                                          </Button>
+                                        )}
+                                        {isPrioritized && !isFinalized && (
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => {
+                                              const newPrioritized = prioritizedThemes.filter((t: JobThemeWithKPIs) => t.id !== theme.id).map((t: JobThemeWithKPIs) => t.id);
+                                              prioritizeJobsMutation.mutate({ prioritizedIds: newPrioritized });
+                                            }}
+                                            disabled={prioritizeJobsMutation.isPending}
+                                            data-testid={`button-remove-priority-${theme.id}`}
+                                          >
+                                            <X className="w-3 h-3 mr-1" />
+                                            Remove
                                           </Button>
                                         )}
                                         <CollapsibleTrigger asChild>
@@ -4224,14 +4360,14 @@ export default function Discovery() {
                                     </div>
                                   </div>
                                   <CollapsibleContent>
-                                    <div className="px-4 pb-4 border-t pt-4">
+                                    <div className="mt-2 p-4 rounded-lg bg-muted/20 border">
                                       <JobThemeCard 
                                         theme={theme} 
-                                        rank={null} 
+                                        rank={isPrioritized ? priorityIndex + 1 : null} 
                                         projectId={projectId}
                                         updateKPIMutation={updateKPIMutation}
                                         isFinalized={isFinalized}
-                                        editMode={!isFinalized}
+                                        editMode={kpiEditMode || !isFinalized}
                                         onDeselect={() => {}}
                                         pillars={strategicPillars?.map(p => ({ id: p.id, name: p.name })) || []}
                                         onPillarLink={handlePillarLink}
@@ -4239,12 +4375,21 @@ export default function Discovery() {
                                     </div>
                                   </CollapsibleContent>
                                 </Collapsible>
-                              </Card>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
+                              );
+                            })}
+                          </CardContent>
+                        </Card>
+                      );
+                    })()}
+
+                    {/* Empty State - when no jobs at all */}
+                    {(jobThemesData?.length || 0) === 0 && (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <Briefcase className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p className="font-medium">No jobs generated yet</p>
+                        <p className="text-sm mt-1">Click "Regenerate" to create job recommendations from your Strategic Pillars.</p>
+                      </div>
+                    )}
                   </div>
                 </>
               );
