@@ -834,6 +834,24 @@ export const insertStrategicPillarSchema = createInsertSchema(strategicPillars).
 export type InsertStrategicPillar = z.infer<typeof insertStrategicPillarSchema>;
 export type StrategicPillar = typeof strategicPillars.$inferSelect;
 
+// Pillar OKR Theme Links - Connect pillars to enterprise OKR themes (many-to-many)
+export const pillarOkrThemes = pgTable("pillar_okr_themes", {
+  id: serial("id").primaryKey(),
+  pillarId: integer("pillar_id").notNull().references(() => strategicPillars.id, { onDelete: "cascade" }),
+  okrThemeId: text("okr_theme_id").notNull(), // References ENTERPRISE_OKR_THEMES id from knowledge.ts
+  isAIInferred: boolean("is_ai_inferred").notNull().default(false), // True if AI suggested this link
+  confidence: text("confidence", { enum: ["high", "medium", "low"] }), // AI confidence level
+  rationale: text("rationale"), // Why this theme applies to this pillar
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertPillarOkrThemeSchema = createInsertSchema(pillarOkrThemes).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertPillarOkrTheme = z.infer<typeof insertPillarOkrThemeSchema>;
+export type PillarOkrTheme = typeof pillarOkrThemes.$inferSelect;
+
 // Pillar Objectives - Business OKRs linked to each strategic pillar
 export const pillarObjectives = pgTable("pillar_objectives", {
   id: serial("id").primaryKey(),
