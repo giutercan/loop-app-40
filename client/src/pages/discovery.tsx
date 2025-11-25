@@ -4049,46 +4049,51 @@ export default function Discovery() {
                                 </div>
                                 
                                 {/* Pillar Assignment */}
-                                {!isFinalized ? (
-                                  <Select
-                                    value={theme.pillarId?.toString() || ""}
-                                    onValueChange={(value) => {
-                                      if (handlePillarLink) {
-                                        handlePillarLink(theme.id, value === "unlink" ? null : value ? parseInt(value) : null);
-                                      }
-                                    }}
-                                  >
-                                    <SelectTrigger className="h-8 text-xs" data-testid={`priority-assign-pillar-${theme.id}`}>
-                                      <SelectValue placeholder="Assign to pillar...">
-                                        {linkedPillar ? (
-                                          <span className="flex items-center gap-1">
-                                            <Flag className="w-3 h-3" />
-                                            {linkedPillar.name.length > 12 ? linkedPillar.name.slice(0, 12) + "..." : linkedPillar.name}
-                                          </span>
-                                        ) : (
-                                          <span className="text-muted-foreground">Assign pillar...</span>
+                                <div className="space-y-1">
+                                  <label className="text-xs font-medium text-muted-foreground">Strategic Pillar:</label>
+                                  {!isFinalized ? (
+                                    <Select
+                                      value={theme.pillarId?.toString() || ""}
+                                      onValueChange={(value) => {
+                                        if (handlePillarLink) {
+                                          handlePillarLink(theme.id, value === "unlink" ? null : value ? parseInt(value) : null);
+                                        }
+                                      }}
+                                    >
+                                      <SelectTrigger className="h-8 text-xs" data-testid={`priority-assign-pillar-${theme.id}`}>
+                                        <SelectValue>
+                                          {linkedPillar ? (
+                                            <span className="flex items-center gap-1 text-foreground">
+                                              <Flag className="w-3 h-3 text-primary" />
+                                              {linkedPillar.name.length > 15 ? linkedPillar.name.slice(0, 15) + "..." : linkedPillar.name}
+                                            </span>
+                                          ) : (
+                                            <span className="text-muted-foreground italic">Click to assign...</span>
+                                          )}
+                                        </SelectValue>
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {theme.pillarId && (
+                                          <SelectItem value="unlink" className="text-muted-foreground">
+                                            Remove from pillar
+                                          </SelectItem>
                                         )}
-                                      </SelectValue>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {theme.pillarId && (
-                                        <SelectItem value="unlink" className="text-muted-foreground">
-                                          Remove from pillar
-                                        </SelectItem>
-                                      )}
-                                      {strategicPillars.filter(p => p.id !== theme.pillarId).map((p) => (
-                                        <SelectItem key={p.id} value={p.id.toString()}>
-                                          {p.name.length > 25 ? p.name.slice(0, 25) + "..." : p.name}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                ) : linkedPillar ? (
-                                  <Badge variant="outline" className="text-xs w-full justify-center">
-                                    <Flag className="w-3 h-3 mr-1" />
-                                    {linkedPillar.name.length > 18 ? linkedPillar.name.slice(0, 18) + "..." : linkedPillar.name}
-                                  </Badge>
-                                ) : null}
+                                        {strategicPillars.filter(p => p.id !== theme.pillarId).map((p) => (
+                                          <SelectItem key={p.id} value={p.id.toString()}>
+                                            {p.name.length > 30 ? p.name.slice(0, 30) + "..." : p.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  ) : linkedPillar ? (
+                                    <Badge variant="outline" className="text-xs w-full justify-center">
+                                      <Flag className="w-3 h-3 mr-1" />
+                                      {linkedPillar.name.length > 18 ? linkedPillar.name.slice(0, 18) + "..." : linkedPillar.name}
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground italic">No pillar assigned</span>
+                                  )}
+                                </div>
                                 
                                 <div className="flex items-center justify-between text-xs">
                                   <span className="flex items-center gap-1 text-muted-foreground">
