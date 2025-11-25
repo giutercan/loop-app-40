@@ -3707,6 +3707,39 @@ export default function Discovery() {
                 },
               });
 
+              // AI auto-assign to pillars mutation
+              const autoAssignPillarsMutation = useMutation({
+                mutationFn: async ({ reassignAll = false }: { reassignAll?: boolean }) => {
+                  const res = await apiRequest("POST", `/api/projects/${projectId}/job-themes/auto-assign-pillars`, { reassignAll });
+                  if (!res.ok) {
+                    const error = await res.json();
+                    throw new Error(error.error || "Failed to auto-assign pillars");
+                  }
+                  return res.json();
+                },
+                onSuccess: (data) => {
+                  queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/job-themes`] });
+                  if (data.assignedCount > 0) {
+                    toast({
+                      title: "Pillars Auto-Assigned",
+                      description: `AI assigned ${data.assignedCount} job${data.assignedCount !== 1 ? 's' : ''} to strategic pillars.`,
+                    });
+                  } else {
+                    toast({
+                      title: "No Changes",
+                      description: data.message || "All jobs are already assigned to pillars.",
+                    });
+                  }
+                },
+                onError: (error: Error) => {
+                  toast({
+                    title: "Auto-Assignment Failed",
+                    description: error.message,
+                    variant: "destructive",
+                  });
+                },
+              });
+
               if (jobThemesLoading) {
                 return (
                   <Card>
@@ -3866,6 +3899,28 @@ export default function Discovery() {
                   <div className="flex items-center justify-end gap-2">
                     {!isFinalized && (
                       <>
+                        {/* AI Auto-Assign Button - show when there are unassigned jobs */}
+                        {unlinkedCount > 0 && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => autoAssignPillarsMutation.mutate({ reassignAll: false })}
+                            disabled={autoAssignPillarsMutation.isPending}
+                            data-testid="button-auto-assign-pillars"
+                          >
+                            {autoAssignPillarsMutation.isPending ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Assigning...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="w-4 h-4 mr-2" />
+                                AI Assign to Pillars
+                              </>
+                            )}
+                          </Button>
+                        )}
                         {showRegenConfirm ? (
                           <div className="flex items-center gap-2 bg-destructive/10 px-3 py-1.5 rounded-md">
                             <span className="text-sm text-destructive">Clear all and regenerate?</span>

@@ -2614,14 +2614,22 @@ export function registerRoutes(app: Express) {
         return res.status(400).json({ error: "No strategic pillars found. Please create pillars first." });
       }
 
-      // Get objectives for each pillar
+      // Get objectives for each pillar and transform to AI-friendly format
       const pillarsWithObjectives = await Promise.all(
-        pillars.map(async (pillar) => ({
-          id: pillar.id,
-          name: pillar.name,
-          description: pillar.description,
-          objectives: await storage.getPillarObjectives(pillar.id)
-        }))
+        pillars.map(async (pillar) => {
+          const objectives = await storage.getPillarObjectives(pillar.id);
+          return {
+            id: pillar.id,
+            name: pillar.name,
+            description: pillar.description,
+            objectives: objectives.map(o => ({
+              objective: o.objective,
+              keyResults: Array.isArray(o.keyResults) 
+                ? (o.keyResults as Array<{ result: string; target: string }>)
+                : []
+            }))
+          };
+        })
       );
 
       // Prepare jobs for AI (filter to unassigned or get all based on request)
