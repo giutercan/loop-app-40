@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { HelpCircle } from "lucide-react";
 
 const TOUR_STORAGE_KEY = "kf-app-tour-completed";
+const DISCOVERY_TOUR_KEY = "kf-discovery-tour-completed";
 
-const tourSteps: Step[] = [
+const projectsDashboardSteps: Step[] = [
   {
     target: "body",
     content: (
@@ -18,36 +19,70 @@ const tourSteps: Step[] = [
     disableBeacon: true,
   },
   {
-    target: '[data-testid="sidebar-projects"]',
-    content: (
-      <div className="space-y-2">
-        <h3 className="font-semibold">Your Projects</h3>
-        <p>All your client engagements appear here. Click on any project to open it.</p>
-      </div>
-    ),
-    placement: "right",
-  },
-  {
     target: '[data-testid="button-new-project"]',
     content: (
       <div className="space-y-2">
         <h3 className="font-semibold">Create New Project</h3>
-        <p>Start a new client engagement by clicking here. You'll enter the company name and engagement details.</p>
+        <p>Start a new client engagement by clicking here. You'll enter the company name and select an engagement type.</p>
       </div>
     ),
-    placement: "right",
+    placement: "left",
+  },
+  {
+    target: "body",
+    content: (
+      <div className="space-y-2">
+        <h3 className="font-semibold">Your Projects</h3>
+        <p>All your client engagements will appear on this page. Click on any project card to open it and continue your work.</p>
+      </div>
+    ),
+    placement: "center",
+  },
+  {
+    target: "body",
+    content: (
+      <div className="space-y-2">
+        <h3 className="font-semibold">Three Phases</h3>
+        <p>Each project moves through three phases:</p>
+        <ul className="list-disc list-inside text-sm space-y-1 mt-2">
+          <li><strong>Discovery</strong> - Research & understand the client</li>
+          <li><strong>Alignment</strong> - Build value cases with KPIs</li>
+          <li><strong>Realization</strong> - Track actual value delivered</li>
+        </ul>
+      </div>
+    ),
+    placement: "center",
+  },
+  {
+    target: "body",
+    content: (
+      <div className="space-y-2">
+        <h3 className="font-semibold text-lg">You're All Set!</h3>
+        <p>Create your first project to get started. You can restart this tour anytime using the help button.</p>
+      </div>
+    ),
+    placement: "center",
+  },
+];
+
+const discoverySteps: Step[] = [
+  {
+    target: "body",
+    content: (
+      <div className="space-y-2">
+        <h3 className="font-semibold text-lg">Discovery Phase Guide</h3>
+        <p>This tour will show you how to research your client and set up priorities for the engagement.</p>
+      </div>
+    ),
+    placement: "center",
+    disableBeacon: true,
   },
   {
     target: '[data-testid="phase-nav"]',
     content: (
       <div className="space-y-2">
         <h3 className="font-semibold">Engagement Phases</h3>
-        <p>Each project moves through three phases:</p>
-        <ul className="list-disc list-inside text-sm space-y-1">
-          <li><strong>Discovery</strong> - Research & understand the client</li>
-          <li><strong>Alignment</strong> - Build value cases with KPIs</li>
-          <li><strong>Realization</strong> - Track actual value delivered</li>
-        </ul>
+        <p>Navigate between the three phases here. Each phase builds on the previous one.</p>
       </div>
     ),
     placement: "bottom",
@@ -56,8 +91,8 @@ const tourSteps: Step[] = [
     target: '[data-testid="tab-research"]',
     content: (
       <div className="space-y-2">
-        <h3 className="font-semibold">AI-Powered Research</h3>
-        <p>Use AI to research the company and generate strategic insights. The AI analyzes public information and maps findings to Korn Ferry capabilities.</p>
+        <h3 className="font-semibold">Organisation Tab</h3>
+        <p>Use AI to research the company and generate strategic insights. The AI maps findings to Korn Ferry capabilities.</p>
       </div>
     ),
     placement: "bottom",
@@ -67,75 +102,60 @@ const tourSteps: Step[] = [
     content: (
       <div className="space-y-2">
         <h3 className="font-semibold">Jobs & Priorities</h3>
-        <p>Select up to 3 priority jobs to focus on. These become the foundation for your value cases and KPI tracking.</p>
+        <p>This is where you'll select up to 3 priority jobs to focus on. These become the foundation for your value cases.</p>
       </div>
     ),
     placement: "bottom",
-  },
-  {
-    target: '[data-testid="priority-slot-0"]',
-    content: (
-      <div className="space-y-2">
-        <h3 className="font-semibold">Priority Slots</h3>
-        <p>Your selected priorities appear here. You can:</p>
-        <ul className="list-disc list-inside text-sm space-y-1">
-          <li>Assign each to a Strategic Pillar using the dropdown</li>
-          <li>Remove priorities with the X button</li>
-          <li>See how many KPIs are linked</li>
-        </ul>
-      </div>
-    ),
-    placement: "bottom",
-  },
-  {
-    target: '[data-testid="button-finalize-inline"]',
-    content: (
-      <div className="space-y-2">
-        <h3 className="font-semibold">Finalize Discovery</h3>
-        <p>Once you've selected 3 priorities, click Finalize to lock in your choices and move to the Alignment phase.</p>
-      </div>
-    ),
-    placement: "top",
-  },
-  {
-    target: '[data-testid="sidebar-dashboard"]',
-    content: (
-      <div className="space-y-2">
-        <h3 className="font-semibold">Your Dashboard</h3>
-        <p>Access your personalized dashboard with customizable widgets. Drag and drop to arrange them how you like.</p>
-      </div>
-    ),
-    placement: "right",
   },
   {
     target: "body",
     content: (
       <div className="space-y-2">
-        <h3 className="font-semibold text-lg">You're All Set!</h3>
-        <p>That's the basics! You can restart this tour anytime using the help button.</p>
-        <p className="text-sm text-muted-foreground">Tip: Look for helpful tooltips and guidance throughout the app.</p>
+        <h3 className="font-semibold">Selecting Priorities</h3>
+        <p>In the Jobs tab, you'll see:</p>
+        <ul className="list-disc list-inside text-sm space-y-1 mt-2">
+          <li><strong>3 Priority Slots</strong> - Your selected jobs appear at the top</li>
+          <li><strong>Strategic Pillar</strong> - Assign each priority to a pillar</li>
+          <li><strong>Finalize</strong> - Lock in choices when you have 3 priorities</li>
+        </ul>
+      </div>
+    ),
+    placement: "center",
+  },
+  {
+    target: "body",
+    content: (
+      <div className="space-y-2">
+        <h3 className="font-semibold text-lg">Ready to Begin!</h3>
+        <p>Start by researching the company, then select your priorities. You can restart this tour anytime using the help button.</p>
       </div>
     ),
     placement: "center",
   },
 ];
 
+export type TourContext = "dashboard" | "discovery";
+
 interface AppTourProps {
   autoStart?: boolean;
+  context?: TourContext;
 }
 
-export function AppTour({ autoStart = false }: AppTourProps) {
+export function AppTour({ autoStart = false, context = "dashboard" }: AppTourProps) {
   const [run, setRun] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
+  
+  const storageKey = context === "discovery" ? DISCOVERY_TOUR_KEY : TOUR_STORAGE_KEY;
+  const steps = context === "discovery" ? discoverySteps : projectsDashboardSteps;
 
   useEffect(() => {
     if (autoStart) {
-      const hasCompletedTour = localStorage.getItem(TOUR_STORAGE_KEY);
+      const hasCompletedTour = localStorage.getItem(storageKey);
       if (!hasCompletedTour) {
         setTimeout(() => setRun(true), 1000);
       }
     }
-  }, [autoStart]);
+  }, [autoStart, storageKey]);
 
   const handleJoyrideCallback = (data: CallBackProps) => {
     const { status, type, index } = data;
@@ -147,7 +167,7 @@ export function AppTour({ autoStart = false }: AppTourProps) {
     if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
       setRun(false);
       setStepIndex(0);
-      localStorage.setItem(TOUR_STORAGE_KEY, "true");
+      localStorage.setItem(storageKey, "true");
     }
   };
 
@@ -156,7 +176,7 @@ export function AppTour({ autoStart = false }: AppTourProps) {
     setRun(true);
   };
 
-  const filteredSteps = tourSteps.filter((step) => {
+  const filteredSteps = steps.filter((step) => {
     if (step.target === "body") return true;
     const element = document.querySelector(step.target as string);
     return element !== null;
@@ -227,6 +247,13 @@ export function AppTour({ autoStart = false }: AppTourProps) {
   );
 }
 
-export function resetTour() {
-  localStorage.removeItem(TOUR_STORAGE_KEY);
+export function resetTour(context?: TourContext) {
+  if (context === "discovery") {
+    localStorage.removeItem(DISCOVERY_TOUR_KEY);
+  } else if (context === "dashboard") {
+    localStorage.removeItem(TOUR_STORAGE_KEY);
+  } else {
+    localStorage.removeItem(TOUR_STORAGE_KEY);
+    localStorage.removeItem(DISCOVERY_TOUR_KEY);
+  }
 }

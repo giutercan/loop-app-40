@@ -1967,7 +1967,7 @@ export default function Discovery() {
                 currentProjectId={projectId}
                 onProjectChange={(p) => setLocation(`/projects/${p.id}/discovery`)}
               />
-              <AppTour />
+              <AppTour context="discovery" autoStart />
               <Button
                 variant="outline"
                 onClick={handleSaveDraft}
