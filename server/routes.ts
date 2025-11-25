@@ -2884,14 +2884,14 @@ export function registerRoutes(app: Express) {
       
       // Get pillar objectives and OKR theme links
       const pillarOkrThemes = await storage.getAllPillarOkrThemesForProject(projectId);
-      const { OKR_THEMES } = await import("@shared/knowledge");
+      const { ENTERPRISE_OKR_THEMES } = await import("@shared/knowledge");
       
       const pillarsWithContext = await Promise.all(pillars.map(async (pillar) => {
         const objectives = await storage.getPillarObjectives(pillar.id);
         const themeLinks = pillarOkrThemes.filter(link => link.pillarId === pillar.id);
         const themeIds = themeLinks.map(link => link.okrThemeId);
-        const themeNames = themeIds.map(id => 
-          OKR_THEMES.find(t => t.id === id)?.name || id
+        const themeNames = themeIds.map((id: string) => 
+          ENTERPRISE_OKR_THEMES.find((t: { id: string; name: string }) => t.id === id)?.name || id
         );
         
         return {
@@ -2903,7 +2903,7 @@ export function registerRoutes(app: Express) {
           okrThemeNames: themeNames,
           objectives: objectives.map(o => ({
             objective: o.objective,
-            keyResults: o.keyResults || []
+            keyResults: (o.keyResults || []) as Array<{ result: string; target: string }>
           }))
         };
       }));

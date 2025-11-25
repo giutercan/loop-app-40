@@ -27,7 +27,7 @@ import ProjectSelector from "@/components/ProjectSelector";
 import StatusBadge from "@/components/StatusBadge";
 import ProjectPhaseNav from "@/components/project-phase-nav";
 import KPIRecommendationDialog from "@/components/KPIRecommendationDialog";
-import { ArrowLeft, Save, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, TrendingUp, Activity, Award, Building, Calendar, AlertCircle, ChevronDown, Lightbulb, BarChart3, MessageSquare, Edit, Lock, Unlock, Flag, GripVertical, Layers } from "lucide-react";
+import { ArrowLeft, ArrowRight, Save, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, TrendingUp, Activity, Award, Building, Calendar, AlertCircle, ChevronDown, Lightbulb, BarChart3, MessageSquare, Edit, Lock, Unlock, Flag, GripVertical, Layers, RefreshCw } from "lucide-react";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { Link, useLocation, useRoute } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -52,7 +52,7 @@ interface PillarOption {
 
 interface JobThemeCardProps {
   theme: JobThemeWithKPIs;
-  rank: number;
+  rank: number | null;
   projectId: number;
   updateKPIMutation: {
     mutate: (params: { kpiId: number; data: UpdateJobThemeKPIRequest }) => void;
@@ -3676,15 +3676,89 @@ export default function Discovery() {
 
           <TabsContent value="jobs" className="space-y-6">
             {(() => {
-              // Use hooks from top level (already declared above)
               const isFinalized = phaseTransfer?.isFinalized || false;
+              const [showRegenConfirm, setShowRegenConfirm] = useState(false);
+              const [selectedPillarFilter, setSelectedPillarFilter] = useState<number | null>(null);
+
+              // Regenerate mutation
+              const regenerateJobsMutation = useMutation({
+                mutationFn: async () => {
+                  const res = await apiRequest("POST", `/api/projects/${projectId}/job-themes/regenerate`);
+                  if (!res.ok) {
+                    const error = await res.json();
+                    throw new Error(error.error || "Failed to regenerate jobs");
+                  }
+                  return res.json();
+                },
+                onSuccess: () => {
+                  queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/job-themes`] });
+                  toast({
+                    title: "Jobs Regenerated",
+                    description: "New job recommendations have been generated from your Strategic Pillars.",
+                  });
+                  setShowRegenConfirm(false);
+                },
+                onError: (error: Error) => {
+                  toast({
+                    title: "Regeneration Failed",
+                    description: error.message,
+                    variant: "destructive",
+                  });
+                },
+              });
 
               if (jobThemesLoading) {
                 return (
                   <Card>
                     <CardContent className="pt-6 flex items-center justify-center gap-2">
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <p className="text-sm text-muted-foreground">Loading job themes...</p>
+                      <p className="text-sm text-muted-foreground">Loading recommendations...</p>
+                    </CardContent>
+                  </Card>
+                );
+              }
+
+              // Group jobs by pillar
+              const jobsByPillar = new Map<number | null, JobThemeWithKPIs[]>();
+              (jobThemesData || []).forEach((job: JobThemeWithKPIs) => {
+                const pillarId = job.pillarId || null;
+                if (!jobsByPillar.has(pillarId)) {
+                  jobsByPillar.set(pillarId, []);
+                }
+                jobsByPillar.get(pillarId)!.push(job);
+              });
+
+              const prioritizedThemes = (jobThemesData || []).filter((t: any) => t.priorityRank !== null).sort((a: any, b: any) => (a.priorityRank || 999) - (b.priorityRank || 999));
+              const totalKPIsSelected = prioritizedThemes.reduce((acc: number, t: JobThemeWithKPIs) => acc + (t.kpis?.filter(k => k.isSelected).length || 0), 0);
+              
+              const canFinalize = prioritizedThemes.length === 3 && 
+                prioritizedThemes.every((t: JobThemeWithKPIs) => 
+                  t.kpis && t.kpis.some(kpi => kpi.isSelected)
+                );
+
+              // Filter jobs based on selected pillar
+              const filteredJobs = selectedPillarFilter !== null
+                ? (jobThemesData || []).filter((j: JobThemeWithKPIs) => j.pillarId === selectedPillarFilter)
+                : (jobThemesData || []);
+
+              const unprioritizedJobs = filteredJobs.filter((t: any) => t.priorityRank === null);
+
+              // Empty state - no pillars or no jobs
+              if (strategicPillars.length === 0) {
+                return (
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-center space-y-4 py-8">
+                        <div className="flex items-center justify-center w-16 h-16 mx-auto rounded-full bg-muted">
+                          <Flag className="w-8 h-8 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-lg">Define Strategic Pillars First</h3>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Go to the Strategic Pillars tab to define your client's strategic priorities before generating job recommendations.
+                          </p>
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                 );
@@ -3694,252 +3768,346 @@ export default function Discovery() {
                 return (
                   <Card>
                     <CardContent className="pt-6">
-                      <p className="text-sm text-muted-foreground text-center">
-                        No highlighted priorities found. Complete your discovery research first to see potential priorities.
-                      </p>
+                      <div className="text-center space-y-4 py-8">
+                        <div className="flex items-center justify-center w-16 h-16 mx-auto rounded-full bg-primary/10">
+                          <Sparkles className="w-8 h-8 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-lg">Generate Job Recommendations</h3>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Based on your {strategicPillars.length} Strategic Pillars, AI will recommend targeted jobs with KPIs.
+                          </p>
+                        </div>
+                        <Button
+                          onClick={() => regenerateJobsMutation.mutate()}
+                          disabled={regenerateJobsMutation.isPending}
+                          data-testid="button-generate-jobs"
+                        >
+                          {regenerateJobsMutation.isPending ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Generating...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-4 h-4 mr-2" />
+                              Generate from Pillars
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 );
               }
 
-              const prioritizedThemes = jobThemesData.filter((t: any) => t.priorityRank !== null).sort((a: any, b: any) => (a.priorityRank || 999) - (b.priorityRank || 999));
-              const unprioritizedThemes = jobThemesData.filter((t: any) => t.priorityRank === null);
-              
-              // Validation for finalization: need 3 jobs with at least 1 KPI each
-              const canFinalize = prioritizedThemes.length === 3 && 
-                prioritizedThemes.every((t: JobThemeWithKPIs) => 
-                  t.kpis && t.kpis.some(kpi => kpi.isSelected)
-                );
-
               return (
                 <>
-                  {/* Progress Header */}
-                  <div className="flex items-center justify-between gap-4 p-4 bg-primary/5 rounded-lg border border-primary/20">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground">
-                        <Briefcase className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h2 className="font-semibold text-lg">Build Your Value Case</h2>
-                        <p className="text-sm text-muted-foreground">Select top 3 highlighted priorities to focus on</p>
+                  {/* Compact Header with Stats and Actions */}
+                  <div className="flex items-center justify-between gap-4 p-4 bg-card rounded-lg border">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-sm py-1">
+                          {prioritizedThemes.length}/3 Selected
+                        </Badge>
+                        <Badge variant="secondary" className="text-sm py-1">
+                          {totalKPIsSelected} KPIs
+                        </Badge>
                       </div>
                     </div>
-                    <div className="flex items-center gap-6">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-primary">{prioritizedThemes.length}/3</div>
-                        <div className="text-xs text-muted-foreground">Priorities Selected</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-primary">
-                          {prioritizedThemes.reduce((acc: number, t: JobThemeWithKPIs) => acc + (t.kpis?.filter(k => k.isSelected).length || 0), 0)}
-                        </div>
-                        <div className="text-xs text-muted-foreground">KPIs Tracked</div>
-                      </div>
+                    <div className="flex items-center gap-2">
+                      {!isFinalized && (
+                        <>
+                          {showRegenConfirm ? (
+                            <div className="flex items-center gap-2 bg-destructive/10 px-3 py-1.5 rounded-md">
+                              <span className="text-sm text-destructive">Clear all and regenerate?</span>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => regenerateJobsMutation.mutate()}
+                                disabled={regenerateJobsMutation.isPending}
+                                data-testid="button-confirm-regenerate"
+                              >
+                                {regenerateJobsMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Yes"}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setShowRegenConfirm(false)}
+                                data-testid="button-cancel-regenerate"
+                              >
+                                No
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setShowRegenConfirm(true)}
+                              data-testid="button-regenerate-jobs"
+                            >
+                              <RefreshCw className="w-4 h-4 mr-2" />
+                              Regenerate
+                            </Button>
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
 
-                  {/* Finalize Discovery Banner or Edit Mode Toggle */}
+                  {/* Status Banner */}
                   {isFinalized ? (
-                    <div className="flex items-center gap-3 p-4 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900">
-                      <CheckCircle className="w-6 h-6 text-green-600 shrink-0" />
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900">
+                      <CheckCircle className="w-5 h-5 text-green-600 shrink-0" />
                       <div className="flex-1">
-                        <p className="font-semibold text-green-900 dark:text-green-100">Discovery Phase Complete</p>
-                        <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                          Your priorities are locked. {kpiEditMode ? "You can select KPIs and edit their baselines and targets below." : "Click 'Enable Editing' to modify KPI selections and values."}
-                        </p>
+                        <p className="font-medium text-sm text-green-900 dark:text-green-100">Discovery Complete</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <Button 
                           variant={kpiEditMode ? "outline" : "secondary"}
+                          size="sm"
                           onClick={() => setKpiEditMode(!kpiEditMode)}
                           data-testid="button-toggle-kpi-edit-mode"
                         >
-                          {kpiEditMode ? (
-                            <>
-                              <Lock className="w-4 h-4 mr-2" />
-                              Lock Editing
-                            </>
-                          ) : (
-                            <>
-                              <Edit className="w-4 h-4 mr-2" />
-                              Enable Editing
-                            </>
-                          )}
+                          {kpiEditMode ? <Lock className="w-3 h-3 mr-1" /> : <Edit className="w-3 h-3 mr-1" />}
+                          {kpiEditMode ? "Lock" : "Edit KPIs"}
                         </Button>
                         <Link href={`/projects/${projectId}/alignment`}>
-                          <Button data-testid="button-go-to-alignment">
-                            Go to Alignment
+                          <Button size="sm" data-testid="button-go-to-alignment">
+                            Alignment <ArrowRight className="w-3 h-3 ml-1" />
                           </Button>
                         </Link>
                       </div>
                     </div>
                   ) : canFinalize ? (
-                    <div className="flex items-center justify-between gap-4 p-6 rounded-lg bg-primary/10 border-2 border-primary/30">
-                      <div>
-                        <p className="font-semibold text-lg">Ready to move forward?</p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Lock your priorities and proceed to build value cases in Alignment
-                        </p>
-                      </div>
+                    <div className="flex items-center justify-between gap-4 p-4 rounded-lg bg-primary/10 border border-primary/30">
+                      <p className="font-medium">Ready to finalize?</p>
                       <Button
-                        size="lg"
                         onClick={() => finalizeDiscoveryMutation.mutate()}
                         disabled={finalizeDiscoveryMutation.isPending}
                         data-testid="button-finalize-discovery"
                       >
                         {finalizeDiscoveryMutation.isPending ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Finalizing...
-                          </>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                         ) : (
-                          <>
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            Finalize Discovery
-                          </>
+                          <CheckCircle className="w-4 h-4 mr-2" />
                         )}
+                        Finalize Discovery
                       </Button>
                     </div>
-                  ) : prioritizedThemes.length > 0 ? (
-                    <div className="p-4 rounded-lg bg-muted border border-muted">
-                      <div className="flex items-start gap-3">
-                        <AlertCircle className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                          <p className="font-medium text-sm">Complete all requirements to finalize</p>
-                          <ul className="text-sm text-muted-foreground mt-2 space-y-1">
-                            {prioritizedThemes.length < 3 && (
-                              <li>• Select {3 - prioritizedThemes.length} more highlighted {3 - prioritizedThemes.length !== 1 ? 'priorities' : 'priority'} (currently {prioritizedThemes.length}/3)</li>
-                            )}
-                            {prioritizedThemes.some((t: JobThemeWithKPIs) => !t.kpis || !t.kpis.some(kpi => kpi.isSelected)) && (
-                              <li>• Select at least 1 KPI for each highlighted priority</li>
-                            )}
-                          </ul>
-                        </div>
-                      </div>
+                  ) : prioritizedThemes.length > 0 && prioritizedThemes.length < 3 ? (
+                    <div className="p-3 rounded-lg bg-muted text-sm">
+                      Select {3 - prioritizedThemes.length} more {3 - prioritizedThemes.length !== 1 ? 'priorities' : 'priority'} to finalize
                     </div>
                   ) : null}
 
-                  {/* Available Highlighted Priorities - Compact Grid */}
-                  {!isFinalized && unprioritizedThemes.length > 0 && (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center justify-between">
-                          <span>Available Highlighted Priorities</span>
-                          <Badge variant="secondary">{unprioritizedThemes.length} remaining</Badge>
-                        </CardTitle>
-                        <CardDescription>Click any priority to add it to your value case (max 3)</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-2 gap-3">
-                          {unprioritizedThemes.map((theme: any) => (
-                            <button
-                              key={theme.id}
-                              className="text-left border rounded-lg p-3 hover-elevate active-elevate-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                              onClick={() => {
-                                // Prevent duplicates by checking if theme already exists in prioritized list
-                                const currentIds = prioritizedThemes.map((t: JobThemeWithKPIs) => t.id);
-                                if (currentIds.includes(theme.id)) {
-                                  toast({
-                                    title: "Already selected",
-                                    description: "This highlighted priority is already selected.",
-                                    variant: "destructive",
-                                  });
-                                  return;
-                                }
-                                const newPrioritized = [...currentIds, theme.id].slice(0, 3);
-                                prioritizeJobsMutation.mutate({ prioritizedIds: newPrioritized });
-                              }}
-                              disabled={isFinalized || prioritizedThemes.length >= 3 || prioritizeJobsMutation.isPending}
-                              data-testid={`button-select-job-${theme.id}`}
-                            >
-                              <div className="space-y-2">
-                                <h4 className="font-semibold text-sm line-clamp-2">{theme.jobName}</h4>
-                                <p className="text-xs text-muted-foreground">{theme.capabilityName}</p>
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="secondary" className="text-xs">
-                                    {theme.evidenceCount} insights
-                                  </Badge>
-                                  {theme.solutionArea && (
-                                    <Badge variant="outline" className="text-xs line-clamp-1">
-                                      {theme.solutionArea}
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {/* Priority Slots with Integrated KPI Configuration */}
-                  <div className="space-y-4">
-                    {[1, 2, 3].map((slot) => {
-                      const theme = prioritizedThemes[slot - 1] as JobThemeWithKPIs | undefined;
-                      const selectedKPIs = theme?.kpis?.filter(k => k.isSelected).length || 0;
-                      const totalKPIs = theme?.kpis?.length || 0;
-                      
-                      return (
-                        <Card 
-                          key={slot}
-                          className={`${theme ? 'border-primary/30' : 'border-dashed border-muted'}`}
-                          data-testid={`priority-slot-${slot}`}
+                  {/* Two-Column Layout: Pillar Filter + Jobs */}
+                  <div className="flex gap-4">
+                    {/* Left: Pillar Navigator */}
+                    <div className="w-48 shrink-0 space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide px-2">Filter by Pillar</p>
+                      <button
+                        onClick={() => setSelectedPillarFilter(null)}
+                        className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                          selectedPillarFilter === null 
+                            ? "bg-primary text-primary-foreground" 
+                            : "hover-elevate"
+                        }`}
+                        data-testid="filter-all-pillars"
+                      >
+                        All Jobs ({jobThemesData?.length || 0})
+                      </button>
+                      {strategicPillars.map((pillar) => {
+                        const pillarJobCount = jobsByPillar.get(pillar.id)?.length || 0;
+                        return (
+                          <button
+                            key={pillar.id}
+                            onClick={() => setSelectedPillarFilter(pillar.id)}
+                            className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                              selectedPillarFilter === pillar.id 
+                                ? "bg-primary text-primary-foreground" 
+                                : "hover-elevate"
+                            }`}
+                            data-testid={`filter-pillar-${pillar.id}`}
+                          >
+                            <span className="line-clamp-1">{pillar.name}</span>
+                            <span className="text-xs opacity-70 ml-1">({pillarJobCount})</span>
+                          </button>
+                        );
+                      })}
+                      {jobsByPillar.has(null) && (
+                        <button
+                          onClick={() => setSelectedPillarFilter(-1)}
+                          className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                            selectedPillarFilter === -1 
+                              ? "bg-primary text-primary-foreground" 
+                              : "hover-elevate text-muted-foreground"
+                          }`}
+                          data-testid="filter-unlinked"
                         >
-                          <CardHeader className="pb-4">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <Badge className="bg-primary text-primary-foreground">Priority #{slot}</Badge>
-                                {theme && (
-                                  <>
-                                    <div className="text-sm text-muted-foreground">•</div>
-                                    <div className="text-sm font-medium">{selectedKPIs}/{totalKPIs} KPIs selected</div>
-                                  </>
-                                )}
-                              </div>
-                              {theme && !isFinalized && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => {
-                                    const newPrioritized = prioritizedThemes.filter(t => t.id !== theme.id).map(t => t.id);
-                                    prioritizeJobsMutation.mutate({ prioritizedIds: newPrioritized });
-                                  }}
-                                  data-testid={`button-remove-${theme.id}`}
-                                >
-                                  <X className="w-4 h-4 mr-2" />
-                                  Remove
-                                </Button>
-                              )}
-                            </div>
-                          </CardHeader>
+                          Unlinked ({jobsByPillar.get(null)?.length || 0})
+                        </button>
+                      )}
+                    </div>
 
-                          {theme ? (
-                            <CardContent className="pt-0">
-                              <JobThemeCard 
-                                theme={theme} 
-                                rank={slot} 
-                                projectId={projectId}
-                                updateKPIMutation={updateKPIMutation}
-                                isFinalized={isFinalized}
-                                editMode={kpiEditMode}
-                                onDeselect={() => {}}
-                                pillars={strategicPillars?.map(p => ({ id: p.id, name: p.name })) || []}
-                                onPillarLink={handlePillarLink}
-                              />
-                            </CardContent>
-                          ) : (
-                            <CardContent className="pt-0">
-                              <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-lg">
-                                <Plus className="w-8 h-8 text-muted-foreground mb-2" />
-                                <p className="text-sm font-medium">No highlighted priority selected</p>
-                                <p className="text-xs text-muted-foreground mt-1">Choose from available highlighted priorities above</p>
-                              </div>
-                            </CardContent>
-                          )}
-                        </Card>
-                      );
-                    })}
+                    {/* Right: Job Cards */}
+                    <div className="flex-1 space-y-3">
+                      {/* Selected Priorities Summary */}
+                      {prioritizedThemes.length > 0 && (
+                        <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
+                          <p className="text-xs font-medium text-muted-foreground mb-2">SELECTED PRIORITIES</p>
+                          <div className="flex flex-wrap gap-2">
+                            {prioritizedThemes.map((theme: JobThemeWithKPIs, idx: number) => (
+                              <Badge key={theme.id} className="bg-primary text-primary-foreground">
+                                #{idx + 1} {theme.jobName.length > 30 ? theme.jobName.slice(0, 30) + "..." : theme.jobName}
+                                {!isFinalized && (
+                                  <button
+                                    onClick={() => {
+                                      const newPrioritized = prioritizedThemes.filter((t: JobThemeWithKPIs) => t.id !== theme.id).map((t: JobThemeWithKPIs) => t.id);
+                                      prioritizeJobsMutation.mutate({ prioritizedIds: newPrioritized });
+                                    }}
+                                    className="ml-2 hover:bg-primary-foreground/20 rounded-full p-0.5"
+                                    data-testid={`badge-remove-${theme.id}`}
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </Badge>
+                            ))}
+                            {prioritizedThemes.length < 3 && (
+                              <Badge variant="outline" className="border-dashed">
+                                + {3 - prioritizedThemes.length} more
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Job Cards - Clean List */}
+                      {(selectedPillarFilter === -1 ? jobsByPillar.get(null) || [] : unprioritizedJobs).length === 0 && prioritizedThemes.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          No jobs found for this filter.
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {/* Show prioritized jobs first if no filter or showing all */}
+                          {(selectedPillarFilter === null) && prioritizedThemes.map((theme: JobThemeWithKPIs, idx: number) => (
+                            <Card key={theme.id} className="border-primary/30" data-testid={`priority-card-${theme.id}`}>
+                              <Collapsible>
+                                <div className="p-4">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <Badge className="bg-primary text-primary-foreground shrink-0 text-xs">
+                                          #{idx + 1}
+                                        </Badge>
+                                        <h4 className="font-semibold text-sm line-clamp-1">{theme.jobName}</h4>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground line-clamp-1">
+                                        {theme.capabilityName} • {theme.kpis?.filter(k => k.isSelected).length || 0} KPIs selected
+                                      </p>
+                                    </div>
+                                    <CollapsibleTrigger asChild>
+                                      <Button variant="ghost" size="sm" data-testid={`expand-priority-${theme.id}`}>
+                                        <ChevronDown className="w-4 h-4" />
+                                      </Button>
+                                    </CollapsibleTrigger>
+                                  </div>
+                                </div>
+                                <CollapsibleContent>
+                                  <div className="px-4 pb-4 border-t pt-4">
+                                    <JobThemeCard 
+                                      theme={theme} 
+                                      rank={idx + 1} 
+                                      projectId={projectId}
+                                      updateKPIMutation={updateKPIMutation}
+                                      isFinalized={isFinalized}
+                                      editMode={kpiEditMode}
+                                      onDeselect={() => {}}
+                                      pillars={strategicPillars?.map(p => ({ id: p.id, name: p.name })) || []}
+                                      onPillarLink={handlePillarLink}
+                                    />
+                                  </div>
+                                </CollapsibleContent>
+                              </Collapsible>
+                            </Card>
+                          ))}
+
+                          {/* Show available/unprioritized jobs */}
+                          {(selectedPillarFilter === -1 ? jobsByPillar.get(null) || [] : unprioritizedJobs).map((theme: JobThemeWithKPIs) => {
+                            const linkedPillar = strategicPillars.find(p => p.id === theme.pillarId);
+                            const canSelect = !isFinalized && prioritizedThemes.length < 3;
+                            
+                            return (
+                              <Card key={theme.id} className="hover-elevate" data-testid={`job-card-${theme.id}`}>
+                                <Collapsible>
+                                  <div className="p-4">
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                          <h4 className="font-semibold text-sm">{theme.jobName}</h4>
+                                          {linkedPillar && (
+                                            <Badge variant="outline" className="text-xs">
+                                              {linkedPillar.name.length > 20 ? linkedPillar.name.slice(0, 20) + "..." : linkedPillar.name}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                          {theme.capabilityName} • {theme.kpis?.length || 0} KPIs
+                                        </p>
+                                        {theme.pillarLinkageNarrative && (
+                                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2 italic">
+                                            {theme.pillarLinkageNarrative}
+                                          </p>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-2 shrink-0">
+                                        {canSelect && (
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => {
+                                              const currentIds = prioritizedThemes.map((t: JobThemeWithKPIs) => t.id);
+                                              const newPrioritized = [...currentIds, theme.id].slice(0, 3);
+                                              prioritizeJobsMutation.mutate({ prioritizedIds: newPrioritized });
+                                            }}
+                                            disabled={prioritizeJobsMutation.isPending}
+                                            data-testid={`button-select-${theme.id}`}
+                                          >
+                                            <Plus className="w-3 h-3 mr-1" />
+                                            Select
+                                          </Button>
+                                        )}
+                                        <CollapsibleTrigger asChild>
+                                          <Button variant="ghost" size="sm" data-testid={`expand-job-${theme.id}`}>
+                                            <ChevronDown className="w-4 h-4" />
+                                          </Button>
+                                        </CollapsibleTrigger>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <CollapsibleContent>
+                                    <div className="px-4 pb-4 border-t pt-4">
+                                      <JobThemeCard 
+                                        theme={theme} 
+                                        rank={null} 
+                                        projectId={projectId}
+                                        updateKPIMutation={updateKPIMutation}
+                                        isFinalized={isFinalized}
+                                        editMode={!isFinalized}
+                                        onDeselect={() => {}}
+                                        pillars={strategicPillars?.map(p => ({ id: p.id, name: p.name })) || []}
+                                        onPillarLink={handlePillarLink}
+                                      />
+                                    </div>
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </>
               );
