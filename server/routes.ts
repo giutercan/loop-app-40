@@ -2669,9 +2669,29 @@ export function registerRoutes(app: Express) {
           createdObjectives.push(objective);
         }
 
+        // Create OKR theme links for this pillar (if AI inferred them)
+        const createdThemeLinks = [];
+        if (pillarData.okrThemeIds && pillarData.okrThemeIds.length > 0) {
+          for (const okrThemeId of pillarData.okrThemeIds) {
+            try {
+              const themeLink = await storage.createPillarOkrTheme({
+                pillarId: pillar.id,
+                okrThemeId,
+                confidence: pillarData.confidence,
+                isAIInferred: true,
+                rationale: `AI-inferred from discovery data analysis`
+              });
+              createdThemeLinks.push(themeLink);
+            } catch (themeError) {
+              console.warn(`[Strategic Pillars] Failed to create theme link for ${okrThemeId}:`, themeError);
+            }
+          }
+        }
+
         createdPillars.push({
           ...pillar,
-          objectives: createdObjectives
+          objectives: createdObjectives,
+          okrThemeLinks: createdThemeLinks
         });
       }
 

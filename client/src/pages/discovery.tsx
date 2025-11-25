@@ -32,7 +32,8 @@ import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { Link, useLocation, useRoute } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Project, CompanyDataPoint, Headline, DiscoveryNotes, DiscoveryQuestion, Attachment, SharedQuestionnaire, QuestionResponse, JobThemeWithKPIs, DiscoveryPhaseTransfer, SuccessStory, JobThemeKPI, UpdateJobThemeKPIRequest, StrategicPillar, PillarObjective } from "@shared/schema";
+import type { Project, CompanyDataPoint, Headline, DiscoveryNotes, DiscoveryQuestion, Attachment, SharedQuestionnaire, QuestionResponse, JobThemeWithKPIs, DiscoveryPhaseTransfer, SuccessStory, JobThemeKPI, UpdateJobThemeKPIRequest, StrategicPillar, PillarObjective, PillarOkrTheme } from "@shared/schema";
+import type { OKRThemeDefinition } from "@shared/knowledge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -1087,6 +1088,16 @@ export default function Discovery() {
     enabled: !!projectId,
   });
 
+  // OKR Themes - knowledge base themes and project links
+  const { data: okrThemes = [] } = useQuery<OKRThemeDefinition[]>({
+    queryKey: ['/api/okr-themes'],
+  });
+
+  const { data: pillarOkrThemeLinks = [], refetch: refetchPillarOkrThemes } = useQuery<PillarOkrTheme[]>({
+    queryKey: [`/api/projects/${projectId}/pillar-okr-themes`],
+    enabled: !!projectId,
+  });
+
   // Alignment phase data (finalized jobs with KPIs)
   const { data: finalizedData } = useQuery<{
     finalized: boolean;
@@ -1747,6 +1758,28 @@ export default function Discovery() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/strategic-pillars`] });
       toast({ title: "Objective removed" });
+    },
+  });
+
+  // Update OKR theme links for a pillar
+  const updatePillarOkrThemesMutation = useMutation({
+    mutationFn: async ({ pillarId, okrThemeIds }: { pillarId: number; okrThemeIds: string[] }) => {
+      const res = await apiRequest("PUT", `/api/strategic-pillars/${pillarId}/okr-themes`, {
+        okrThemeIds,
+      });
+      if (!res.ok) throw new Error("Failed to update OKR themes");
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/pillar-okr-themes`] });
+      toast({ title: "OKR themes updated" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Update failed",
+        description: error.message || "Failed to update OKR themes",
+        variant: "destructive",
+      });
     },
   });
 
@@ -3308,7 +3341,58 @@ export default function Discovery() {
                         )}
                       </div>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="space-y-4">
+                      {/* Enterprise OKR Themes Section */}
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium flex items-center gap-2">
+                          <Layers className="w-4 h-4 text-muted-foreground" />
+                          Enterprise OKR Themes
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {okrThemes.map((theme) => {
+                            const isLinked = pillarOkrThemeLinks.some(
+                              link => link.pillarId === pillar.id && link.okrThemeId === theme.id
+                            );
+                            return (
+                              <Badge
+                                key={theme.id}
+                                variant={isLinked ? "default" : "outline"}
+                                className={`cursor-pointer transition-colors ${isLinked ? "" : "hover-elevate"}`}
+                                onClick={() => {
+                                  const currentThemeIds = pillarOkrThemeLinks
+                                    .filter(link => link.pillarId === pillar.id)
+                                    .map(link => link.okrThemeId);
+                                  
+                                  const newThemeIds = isLinked
+                                    ? currentThemeIds.filter(id => id !== theme.id)
+                                    : [...currentThemeIds, theme.id];
+                                  
+                                  updatePillarOkrThemesMutation.mutate({
+                                    pillarId: pillar.id,
+                                    okrThemeIds: newThemeIds,
+                                  });
+                                }}
+                                data-testid={`badge-okr-theme-${pillar.id}-${theme.id}`}
+                              >
+                                {isLinked && <Check className="w-3 h-3 mr-1" />}
+                                {theme.shortName}
+                              </Badge>
+                            );
+                          })}
+                        </div>
+                        {pillarOkrThemeLinks.filter(link => link.pillarId === pillar.id).length > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            {pillarOkrThemeLinks
+                              .filter(link => link.pillarId === pillar.id)
+                              .map(link => okrThemes.find(t => t.id === link.okrThemeId)?.objective)
+                              .filter(Boolean)
+                              .join(" • ")}
+                          </p>
+                        )}
+                      </div>
+
+                      <Separator />
+
                       {/* Objectives Section */}
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
