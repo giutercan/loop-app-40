@@ -3100,20 +3100,28 @@ export function registerRoutes(app: Express) {
       const validated = prioritizeJobsRequestSchema.parse(req.body);
       const { prioritizedIds } = validated;
       
+      console.log(`[Prioritize Jobs] Project ${projectId}: Setting priorities for IDs:`, prioritizedIds);
+      
       // Clear existing priorities
       const allThemes = await storage.getJobThemes(projectId);
+      console.log(`[Prioritize Jobs] Found ${allThemes.length} total themes, clearing priorities...`);
       for (const theme of allThemes) {
         await storage.updateJobTheme(theme.id, { priorityRank: null });
       }
       
       // Set new priorities
       for (let i = 0; i < prioritizedIds.length; i++) {
+        console.log(`[Prioritize Jobs] Setting theme ${prioritizedIds[i]} to rank ${i + 1}`);
         await storage.updateJobTheme(prioritizedIds[i], { priorityRank: i + 1 });
       }
       
       const updatedThemes = await storage.getJobThemes(projectId);
+      const prioritized = updatedThemes.filter(t => t.priorityRank !== null);
+      console.log(`[Prioritize Jobs] After update: ${prioritized.length} themes have priorityRank:`, prioritized.map(t => ({ id: t.id, rank: t.priorityRank })));
+      
       res.json(updatedThemes);
     } catch (error: any) {
+      console.error(`[Prioritize Jobs] Error:`, error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -3284,11 +3292,17 @@ export function registerRoutes(app: Express) {
       
       // Get prioritized job themes
       const jobThemes = await storage.getJobThemes(projectId);
+      console.log(`[Finalize Discovery] Project ${projectId}: Found ${jobThemes.length} total job themes`);
+      console.log(`[Finalize Discovery] Job themes with priorityRank:`, jobThemes.filter(t => t.priorityRank !== null).map(t => ({ id: t.id, name: t.jobName, rank: t.priorityRank })));
+      
       const prioritized = jobThemes
         .filter(t => t.priorityRank !== null)
         .sort((a, b) => (a.priorityRank || 999) - (b.priorityRank || 999));
       
+      console.log(`[Finalize Discovery] ${prioritized.length} prioritized themes:`, prioritized.map(t => ({ id: t.id, name: t.jobName, rank: t.priorityRank })));
+      
       if (prioritized.length === 0) {
+        console.log(`[Finalize Discovery] ERROR: No job themes have been prioritized`);
         return res.status(400).json({ error: "No job themes have been prioritized" });
       }
       
@@ -3296,30 +3310,37 @@ export function registerRoutes(app: Express) {
       let transfer = await storage.getDiscoveryPhaseTransfer(projectId);
       
       if (transfer && transfer.isFinalized) {
+        console.log(`[Finalize Discovery] Already finalized, returning existing transfer with jobs:`, transfer.finalizedJobThemeIds);
         return res.json(transfer);
       }
       
       // Create or update transfer record
+      const finalizedIds = prioritized.map(t => t.id);
+      console.log(`[Finalize Discovery] Creating/updating transfer with finalizedJobThemeIds:`, finalizedIds);
+      
       if (transfer) {
         transfer = await storage.updateDiscoveryPhaseTransfer(transfer.id, {
           isFinalized: true,
-          finalizedJobThemeIds: prioritized.map(t => t.id),
+          finalizedJobThemeIds: finalizedIds,
           transferredAt: new Date()
         });
       } else {
         transfer = await storage.createDiscoveryPhaseTransfer({
           projectId,
           isFinalized: true,
-          finalizedJobThemeIds: prioritized.map(t => t.id),
+          finalizedJobThemeIds: finalizedIds,
           transferredAt: new Date()
         });
       }
+      
+      console.log(`[Finalize Discovery] Transfer created/updated:`, transfer);
       
       // Update project phase to alignment
       await storage.updateProject(projectId, { currentPhase: "alignment" });
       
       res.json(transfer);
     } catch (error: any) {
+      console.error(`[Finalize Discovery] Error:`, error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -3329,12 +3350,17 @@ export function registerRoutes(app: Express) {
     try {
       const projectId = parseInt(req.params.projectId);
       
+      console.log(`[GET finalized-jobs] Project ${projectId}: Fetching finalized jobs...`);
+      
       // Get discovery phase transfer
       const transfer = await storage.getDiscoveryPhaseTransfer(projectId);
       
       if (!transfer || !transfer.isFinalized) {
+        console.log(`[GET finalized-jobs] Project ${projectId}: No finalized transfer found`);
         return res.json({ finalized: false, jobs: [] });
       }
+      
+      console.log(`[GET finalized-jobs] Project ${projectId}: Found transfer with finalizedJobThemeIds:`, transfer.finalizedJobThemeIds);
       
       // Get finalized job themes with KPIs
       const finalizedJobIds = transfer.finalizedJobThemeIds || [];
@@ -3344,11 +3370,13 @@ export function registerRoutes(app: Express) {
         const job = await storage.getJobTheme(jobId);
         if (job) {
           const kpis = await storage.getJobThemeKPIs(jobId);
-          console.log(`[GET finalized-jobs] Job ${jobId} has ${kpis.length} KPIs, selected: ${kpis.filter(k => k.isSelected).length}, AI-recommended: ${kpis.filter(k => k.isAIRecommended).length}`);
+          console.log(`[GET finalized-jobs] Job ${jobId} (${job.jobName}) has ${kpis.length} KPIs, selected: ${kpis.filter(k => k.isSelected).length}, AI-recommended: ${kpis.filter(k => k.isAIRecommended).length}`);
           jobsWithKPIs.push({
             ...job,
             kpis: kpis
           });
+        } else {
+          console.log(`[GET finalized-jobs] Job ${jobId} not found in storage!`);
         }
       }
       
