@@ -31,7 +31,8 @@ import type {
   ProjectValueMetrics, InsertProjectValueMetrics,
   StrategicPillar, InsertStrategicPillar,
   PillarObjective, InsertPillarObjective,
-  PillarShareLink, InsertPillarShareLink
+  PillarShareLink, InsertPillarShareLink,
+  PillarOkrTheme, InsertPillarOkrTheme
 } from "@shared/schema";
 
 export interface IStorage {
@@ -233,6 +234,13 @@ export interface IStorage {
   updatePillarObjective(id: number, objective: Partial<InsertPillarObjective>): Promise<PillarObjective | undefined>;
   deletePillarObjective(id: number): Promise<void>;
   getAllPillarObjectivesForProject(projectId: number): Promise<PillarObjective[]>;
+  
+  // Pillar OKR Theme Links (connect pillars to enterprise OKR themes)
+  getPillarOkrThemes(pillarId: number): Promise<PillarOkrTheme[]>;
+  getAllPillarOkrThemesForProject(projectId: number): Promise<PillarOkrTheme[]>;
+  createPillarOkrTheme(link: InsertPillarOkrTheme): Promise<PillarOkrTheme>;
+  deletePillarOkrTheme(id: number): Promise<void>;
+  deletePillarOkrThemesByPillar(pillarId: number): Promise<void>;
   
   // Pillar Share Links (client collaboration on strategic pillars)
   getPillarShareLink(projectId: number): Promise<PillarShareLink | undefined>;
@@ -1136,6 +1144,36 @@ export class DbStorage implements IStorage {
     return await db.select().from(schema.pillarObjectives)
       .where(inArray(schema.pillarObjectives.pillarId, pillarIds))
       .orderBy(schema.pillarObjectives.createdAt);
+  }
+  
+  // Pillar OKR Theme Links (connect pillars to enterprise OKR themes)
+  async getPillarOkrThemes(pillarId: number): Promise<PillarOkrTheme[]> {
+    return await db.select().from(schema.pillarOkrThemes)
+      .where(eq(schema.pillarOkrThemes.pillarId, pillarId))
+      .orderBy(schema.pillarOkrThemes.createdAt);
+  }
+  
+  async getAllPillarOkrThemesForProject(projectId: number): Promise<PillarOkrTheme[]> {
+    const pillars = await this.getStrategicPillars(projectId);
+    if (pillars.length === 0) return [];
+    
+    const pillarIds = pillars.map(p => p.id);
+    return await db.select().from(schema.pillarOkrThemes)
+      .where(inArray(schema.pillarOkrThemes.pillarId, pillarIds))
+      .orderBy(schema.pillarOkrThemes.createdAt);
+  }
+  
+  async createPillarOkrTheme(link: InsertPillarOkrTheme): Promise<PillarOkrTheme> {
+    const results = await db.insert(schema.pillarOkrThemes).values(link).returning();
+    return results[0];
+  }
+  
+  async deletePillarOkrTheme(id: number): Promise<void> {
+    await db.delete(schema.pillarOkrThemes).where(eq(schema.pillarOkrThemes.id, id));
+  }
+  
+  async deletePillarOkrThemesByPillar(pillarId: number): Promise<void> {
+    await db.delete(schema.pillarOkrThemes).where(eq(schema.pillarOkrThemes.pillarId, pillarId));
   }
   
   // Pillar Share Links (client collaboration on strategic pillars)
