@@ -1886,3 +1886,147 @@ IMPORTANT GUIDELINES:
     throw error;
   }
 }
+
+// ============================================
+// AI-POWERED PILLAR ASSIGNMENT FOR JOBS
+// ============================================
+
+interface JobForPillarAssignment {
+  id: number;
+  jobName: string;
+  capabilityName: string;
+  solutionArea: string | null;
+  aggregationSummary: string | null;
+  evidenceCount: number;
+}
+
+interface PillarForAssignment {
+  id: number;
+  name: string;
+  description: string | null;
+  objectives: Array<{ objective: string; keyResults: Array<{ result: string; target: string }> }>;
+}
+
+interface PillarAssignmentResult {
+  jobId: number;
+  pillarId: number;
+  pillarLinkageNarrative: string;
+  confidence: "high" | "medium" | "low";
+}
+
+const pillarAssignmentOutputSchema = z.object({
+  assignments: z.array(z.object({
+    jobId: z.number(),
+    pillarId: z.number(),
+    pillarLinkageNarrative: z.string().min(20),
+    confidence: z.enum(["high", "medium", "low"])
+  }))
+});
+
+export async function assignJobsToPillars(
+  companyName: string,
+  sector: string | null,
+  jobs: JobForPillarAssignment[],
+  pillars: PillarForAssignment[]
+): Promise<PillarAssignmentResult[]> {
+  if (jobs.length === 0 || pillars.length === 0) {
+    return [];
+  }
+
+  const knowledgeBase = getSolutionSummary();
+
+  const jobsContext = jobs.map(j => `
+JOB ID ${j.id}: "${j.jobName}"
+  Capability: ${j.capabilityName}
+  Solution Area: ${j.solutionArea || "Not specified"}
+  Evidence: ${j.evidenceCount} supporting insights
+  Summary: ${j.aggregationSummary || "No summary available"}
+`).join("\n");
+
+  const pillarsContext = pillars.map(p => `
+PILLAR ID ${p.id}: "${p.name}"
+  Description: ${p.description || "No description"}
+  Objectives:
+${p.objectives.map(o => `    - ${o.objective}
+      Key Results: ${o.keyResults.map(kr => kr.result).join("; ")}`).join("\n")}
+`).join("\n");
+
+  const prompt = `You are a senior Korn Ferry strategic consultant. Your task is to analyze the Jobs (work packages) and Strategic Pillars for a client engagement, then determine the BEST pillar assignment for each job.
+
+COMPANY: ${companyName}${sector ? ` (${sector} sector)` : ''}
+
+JOBS TO ASSIGN:
+${jobsContext}
+
+AVAILABLE STRATEGIC PILLARS:
+${pillarsContext}
+
+KORN FERRY SOLUTIONS (for context):
+${knowledgeBase}
+
+YOUR MISSION:
+For EACH job, determine which Strategic Pillar it most directly supports. Consider:
+1. How the job's capability and solution area align with the pillar's objectives
+2. Whether the job's expected outcomes would contribute to the pillar's key results
+3. The strength of the conceptual relationship between the job and pillar
+
+ASSIGNMENT GUIDELINES:
+- Every job MUST be assigned to exactly ONE pillar
+- Choose the pillar where the job provides the STRONGEST contribution
+- If a job could reasonably support multiple pillars, choose the one with the clearest alignment
+- Provide a narrative explaining how the job supports the pillar (50-100 words)
+- Assign confidence based on how clear the alignment is:
+  * "high" = obvious, direct alignment with pillar objectives
+  * "medium" = reasonable alignment, some interpretation required
+  * "low" = weak alignment, but best available match
+
+Return your response in JSON format:
+{
+  "assignments": [
+    {
+      "jobId": 1,
+      "pillarId": 2,
+      "pillarLinkageNarrative": "This job directly supports the pillar by... [specific explanation of how the job's outcomes contribute to the pillar's objectives and key results]",
+      "confidence": "high"
+    }
+  ]
+}
+
+IMPORTANT:
+- Include an assignment for EVERY job provided
+- Each job should appear exactly once in the assignments array
+- Use the exact jobId and pillarId numbers provided
+- Write clear, specific narratives that connect job outcomes to pillar objectives`;
+
+  try {
+    console.log(`[AI Pillar Assignment] Assigning ${jobs.length} jobs to ${pillars.length} pillars for ${companyName}`);
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 3000,
+    });
+
+    const content = response.choices[0]?.message?.content;
+
+    if (!content) {
+      throw new Error("AI returned empty response");
+    }
+
+    const parsedContent = JSON.parse(content);
+
+    const validationResult = pillarAssignmentOutputSchema.safeParse(parsedContent);
+    if (!validationResult.success) {
+      console.error("[AI Pillar Assignment] Validation failed:", validationResult.error);
+      console.error("[AI Pillar Assignment] Received data:", JSON.stringify(parsedContent, null, 2));
+      throw new Error(`AI pillar assignment validation failed: ${validationResult.error.message}`);
+    }
+
+    console.log(`[AI Pillar Assignment] Success! Assigned ${validationResult.data.assignments.length} jobs`);
+    return validationResult.data.assignments;
+  } catch (error) {
+    console.error("[AI Pillar Assignment] Error:", error);
+    throw error;
+  }
+}
