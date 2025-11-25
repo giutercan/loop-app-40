@@ -4302,4 +4302,44 @@ export function registerRoutes(app: Express) {
       res.status(500).json({ error: error.message || "Failed to revoke share link" });
     }
   });
+  
+  // Dashboard Layouts - User-configurable widget arrangements
+  app.get("/api/projects/:projectId/dashboard-layout", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const layout = await storage.getDashboardLayout(projectId);
+      
+      if (!layout) {
+        // Return default layout if none exists
+        return res.json({ layout: null });
+      }
+      
+      res.json(layout);
+    } catch (error: any) {
+      console.error("Error fetching dashboard layout:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch dashboard layout" });
+    }
+  });
+  
+  app.put("/api/projects/:projectId/dashboard-layout", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const { layoutConfig, widgets } = req.body;
+      
+      if (!layoutConfig || !widgets) {
+        return res.status(400).json({ error: "Missing layoutConfig or widgets" });
+      }
+      
+      const layout = await storage.upsertDashboardLayout({
+        projectId,
+        layoutConfig,
+        widgets
+      });
+      
+      res.json(layout);
+    } catch (error: any) {
+      console.error("Error saving dashboard layout:", error);
+      res.status(500).json({ error: error.message || "Failed to save dashboard layout" });
+    }
+  });
 }

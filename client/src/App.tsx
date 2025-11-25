@@ -10,6 +10,7 @@ import NewProject from "@/pages/new-project";
 import Discovery from "@/pages/discovery";
 import Alignment from "@/pages/alignment";
 import Realization from "@/pages/realisation";
+import Dashboard from "@/pages/dashboard";
 import Questionnaire from "@/pages/questionnaire";
 import SharedAlignment from "@/pages/shared-alignment";
 
@@ -25,6 +26,7 @@ function Router() {
       <Route path="/projects/:id/discovery" component={Discovery} />
       <Route path="/projects/:id/alignment" component={Alignment} />
       <Route path="/projects/:id/realisation" component={Realization} />
+      <Route path="/projects/:id/dashboard" component={Dashboard} />
       <Route path="/questionnaire/:token" component={Questionnaire} />
       <Route path="/shared/alignment/:token" component={SharedAlignment} />
       <Route component={NotFound} />

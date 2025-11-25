@@ -32,7 +32,8 @@ import type {
   StrategicPillar, InsertStrategicPillar,
   PillarObjective, InsertPillarObjective,
   PillarShareLink, InsertPillarShareLink,
-  PillarOkrTheme, InsertPillarOkrTheme
+  PillarOkrTheme, InsertPillarOkrTheme,
+  DashboardLayout, InsertDashboardLayout
 } from "@shared/schema";
 
 export interface IStorage {
@@ -249,6 +250,10 @@ export interface IStorage {
   createPillarShareLink(link: InsertPillarShareLink): Promise<PillarShareLink>;
   updatePillarShareLink(id: number, link: Partial<InsertPillarShareLink>): Promise<PillarShareLink | undefined>;
   deletePillarShareLink(id: number): Promise<void>;
+  
+  // Dashboard Layouts (user-configurable widget arrangements)
+  getDashboardLayout(projectId: number): Promise<DashboardLayout | undefined>;
+  upsertDashboardLayout(layout: InsertDashboardLayout): Promise<DashboardLayout>;
 }
 
 export class DbStorage implements IStorage {
@@ -1216,6 +1221,27 @@ export class DbStorage implements IStorage {
   
   async deletePillarShareLink(id: number): Promise<void> {
     await db.delete(schema.pillarShareLinks).where(eq(schema.pillarShareLinks.id, id));
+  }
+  
+  // Dashboard Layouts
+  async getDashboardLayout(projectId: number): Promise<DashboardLayout | undefined> {
+    const results = await db.select().from(schema.dashboardLayouts)
+      .where(eq(schema.dashboardLayouts.projectId, projectId));
+    return results[0];
+  }
+  
+  async upsertDashboardLayout(layout: InsertDashboardLayout): Promise<DashboardLayout> {
+    const existing = await this.getDashboardLayout(layout.projectId);
+    if (existing) {
+      const results = await db.update(schema.dashboardLayouts)
+        .set({ ...layout, updatedAt: new Date() })
+        .where(eq(schema.dashboardLayouts.id, existing.id))
+        .returning();
+      return results[0];
+    } else {
+      const results = await db.insert(schema.dashboardLayouts).values(layout).returning();
+      return results[0];
+    }
   }
 }
 

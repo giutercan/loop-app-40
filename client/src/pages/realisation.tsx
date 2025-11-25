@@ -10,7 +10,7 @@ import FinancialAppendix from "@/components/FinancialAppendix";
 import StatusBadge from "@/components/StatusBadge";
 import ProjectPhaseNav from "@/components/project-phase-nav";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Download, FileText, Clock, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Download, FileText, Clock, CheckCircle2, LayoutDashboard } from "lucide-react";
 import { Link, useLocation, useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import type { Project, AnalyticsReview, Kpi } from "@shared/schema";
@@ -118,6 +118,18 @@ export default function Realisation() {
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-semibold">Executive Pulse</h2>
+                <p className="text-sm text-muted-foreground">Real-time overview of value realization progress</p>
+              </div>
+              <Link href={`/projects/${projectId}/dashboard`}>
+                <Button variant="outline" data-testid="button-open-dashboard">
+                  <LayoutDashboard className="w-4 h-4 mr-2" />
+                  Customize Dashboard
+                </Button>
+              </Link>
+            </div>
             <ExecutivePulse projectId={projectId} />
             <KPITraction projectId={projectId} />
             <MomentumTimeline 

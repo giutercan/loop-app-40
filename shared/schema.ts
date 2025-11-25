@@ -895,3 +895,53 @@ export const insertPillarShareLinkSchema = createInsertSchema(pillarShareLinks).
 });
 export type InsertPillarShareLink = z.infer<typeof insertPillarShareLinkSchema>;
 export type PillarShareLink = typeof pillarShareLinks.$inferSelect;
+
+// Dashboard Layouts - User-configurable dashboard widget arrangements per project
+export const dashboardLayouts = pgTable("dashboard_layouts", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  layoutConfig: jsonb("layout_config").notNull(), // react-grid-layout config: {lg: Layout[], md: Layout[], sm: Layout[]}
+  widgets: jsonb("widgets").notNull(), // Array of {id: string, type: string, title: string, visible: boolean}
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertDashboardLayoutSchema = createInsertSchema(dashboardLayouts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertDashboardLayout = z.infer<typeof insertDashboardLayoutSchema>;
+export type DashboardLayout = typeof dashboardLayouts.$inferSelect;
+
+// Widget configuration type for type safety
+export const widgetConfigSchema = z.object({
+  id: z.string(),
+  type: z.enum([
+    "value-summary",
+    "kpi-status-chart", 
+    "confidence-gauge",
+    "client-sentiment",
+    "upcoming-reviews",
+    "risk-alerts",
+    "strategic-coverage",
+    "recent-activity"
+  ]),
+  title: z.string(),
+  visible: z.boolean().default(true),
+});
+export type WidgetConfig = z.infer<typeof widgetConfigSchema>;
+
+// Layout item type matching react-grid-layout
+export const layoutItemSchema = z.object({
+  i: z.string(), // widget id
+  x: z.number(),
+  y: z.number(),
+  w: z.number(),
+  h: z.number(),
+  minW: z.number().optional(),
+  minH: z.number().optional(),
+  maxW: z.number().optional(),
+  maxH: z.number().optional(),
+});
+export type LayoutItem = z.infer<typeof layoutItemSchema>;
