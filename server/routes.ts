@@ -2304,6 +2304,124 @@ export function registerRoutes(app: Express) {
   });
 
   // ============================================
+  // PILLAR OKR THEME LINKS
+  // ============================================
+
+  // Get the static list of Enterprise OKR Themes (from knowledge base)
+  app.get("/api/okr-themes", async (_req, res) => {
+    try {
+      const { ENTERPRISE_OKR_THEMES } = await import("@shared/knowledge");
+      res.json(ENTERPRISE_OKR_THEMES);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get OKR theme links for a pillar
+  app.get("/api/strategic-pillars/:pillarId/okr-themes", async (req, res) => {
+    try {
+      const pillarId = parseInt(req.params.pillarId);
+      const pillar = await storage.getStrategicPillar(pillarId);
+      if (!pillar) {
+        return res.status(404).json({ error: "Strategic pillar not found" });
+      }
+      const themes = await storage.getPillarOkrThemes(pillarId);
+      res.json(themes);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get all OKR theme links for a project
+  app.get("/api/projects/:projectId/pillar-okr-themes", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const themes = await storage.getAllPillarOkrThemesForProject(projectId);
+      res.json(themes);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create an OKR theme link for a pillar
+  app.post("/api/strategic-pillars/:pillarId/okr-themes", async (req, res) => {
+    try {
+      const pillarId = parseInt(req.params.pillarId);
+      const pillar = await storage.getStrategicPillar(pillarId);
+      if (!pillar) {
+        return res.status(404).json({ error: "Strategic pillar not found" });
+      }
+
+      const { okrThemeId } = req.body;
+      if (!okrThemeId) {
+        return res.status(400).json({ error: "okrThemeId is required" });
+      }
+
+      // Verify the theme exists in the knowledge base
+      const { ENTERPRISE_OKR_THEMES } = await import("@shared/knowledge");
+      const theme = ENTERPRISE_OKR_THEMES.find((t: { id: string }) => t.id === okrThemeId);
+      if (!theme) {
+        return res.status(400).json({ error: "Invalid OKR theme ID" });
+      }
+
+      const link = await storage.createPillarOkrTheme({
+        pillarId,
+        okrThemeId
+      });
+      res.status(201).json(link);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Delete an OKR theme link
+  app.delete("/api/pillar-okr-themes/:linkId", async (req, res) => {
+    try {
+      const linkId = parseInt(req.params.linkId);
+      await storage.deletePillarOkrTheme(linkId);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update all OKR theme links for a pillar (replace operation)
+  app.put("/api/strategic-pillars/:pillarId/okr-themes", async (req, res) => {
+    try {
+      const pillarId = parseInt(req.params.pillarId);
+      const pillar = await storage.getStrategicPillar(pillarId);
+      if (!pillar) {
+        return res.status(404).json({ error: "Strategic pillar not found" });
+      }
+
+      const { okrThemeIds } = req.body;
+      if (!Array.isArray(okrThemeIds)) {
+        return res.status(400).json({ error: "okrThemeIds must be an array" });
+      }
+
+      // Verify all themes exist
+      const { ENTERPRISE_OKR_THEMES } = await import("@shared/knowledge");
+      const validThemeIds = ENTERPRISE_OKR_THEMES.map((t: { id: string }) => t.id);
+      for (const okrThemeId of okrThemeIds) {
+        if (!validThemeIds.includes(okrThemeId)) {
+          return res.status(400).json({ error: `Invalid OKR theme ID: ${okrThemeId}` });
+        }
+      }
+
+      // Delete existing links and create new ones
+      await storage.deletePillarOkrThemesByPillar(pillarId);
+      const links = [];
+      for (const okrThemeId of okrThemeIds) {
+        const link = await storage.createPillarOkrTheme({ pillarId, okrThemeId });
+        links.push(link);
+      }
+      res.json(links);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================
   // PILLAR SHARE LINKS (CLIENT COLLABORATION)
   // ============================================
 
