@@ -36,7 +36,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Building2, TrendingUp, Search, Check, ChevronsUpDown, ArrowLeft, Loader2 } from "lucide-react";
+import { Building2, TrendingUp, Search, Check, ChevronsUpDown, ArrowLeft, Loader2, X, Pencil } from "lucide-react";
 import { Link } from "wouter";
 
 const createProjectSchema = z.object({
@@ -193,94 +193,127 @@ export default function NewProject() {
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
                         <FormLabel>Company Name *</FormLabel>
-                        <Popover open={open} onOpenChange={setOpen}>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                role="combobox"
-                                aria-expanded={open}
-                                className="w-full justify-between font-normal"
-                                data-testid="button-company-search"
-                              >
-                                {field.value || "Search for a company..."}
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-full p-0" align="start">
-                            <Command>
-                              <CommandInput
-                                placeholder="Type company name..."
-                                value={companySearch}
-                                onValueChange={(value) => {
-                                  setCompanySearch(value);
-                                  searchCompanies(value);
-                                }}
-                                data-testid="input-company-search"
-                              />
-                              <CommandEmpty>
-                                {isSearching ? (
-                                  <div className="flex items-center justify-center py-6">
-                                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                                  </div>
-                                ) : companySearch.length >= 2 ? (
-                                  <div className="py-6 text-center text-sm">
-                                    <p className="text-muted-foreground mb-2">No companies found</p>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => {
-                                        field.onChange(companySearch);
-                                        setOpen(false);
-                                      }}
-                                      data-testid="button-use-manual-entry"
-                                    >
-                                      Use "{companySearch}"
-                                    </Button>
-                                  </div>
-                                ) : (
-                                  "Type at least 2 characters to search..."
-                                )}
-                              </CommandEmpty>
-                              {companySuggestions.length > 0 && (
-                                <CommandGroup>
-                                  {companySuggestions.map((company) => (
-                                    <CommandItem
-                                      key={company.domain}
-                                      value={company.name}
-                                      onSelect={() => selectCompany(company)}
-                                      data-testid={`option-company-${company.domain}`}
-                                    >
-                                      <div className="flex items-center gap-3 w-full">
-                                        {company.logo && (
-                                          <img
-                                            src={company.logo}
-                                            alt={company.name}
-                                            className="w-6 h-6 rounded"
-                                          />
-                                        )}
-                                        <div className="flex-1 min-w-0">
-                                          <p className="font-medium truncate">{company.name}</p>
-                                          <p className="text-xs text-muted-foreground truncate">
-                                            {company.domain}
-                                          </p>
-                                        </div>
-                                        <Check
-                                          className={`ml-auto h-4 w-4 ${
-                                            field.value === company.name
-                                              ? "opacity-100"
-                                              : "opacity-0"
-                                          }`}
-                                        />
-                                      </div>
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
+                        {field.value ? (
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 flex items-center gap-3 px-3 py-2 border rounded-md bg-muted/30">
+                              {form.watch("companyLogoUrl") && (
+                                <img
+                                  src={form.watch("companyLogoUrl")}
+                                  alt={field.value}
+                                  className="w-6 h-6 rounded"
+                                />
                               )}
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
+                              <span className="font-medium" data-testid="text-selected-company">{field.value}</span>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              onClick={() => {
+                                field.onChange("");
+                                form.setValue("companyLogoUrl", "");
+                                setCompanySearch("");
+                                setCompanySuggestions([]);
+                                setOpen(true);
+                              }}
+                              data-testid="button-change-company"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Popover open={open} onOpenChange={setOpen}>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  role="combobox"
+                                  aria-expanded={open}
+                                  className="w-full justify-between font-normal"
+                                  data-testid="button-company-search"
+                                >
+                                  <span className="flex items-center gap-2 text-muted-foreground">
+                                    <Search className="w-4 h-4" />
+                                    Search for a company...
+                                  </span>
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-full p-0" align="start">
+                              <Command>
+                                <CommandInput
+                                  placeholder="Type company name..."
+                                  value={companySearch}
+                                  onValueChange={(value) => {
+                                    setCompanySearch(value);
+                                    searchCompanies(value);
+                                  }}
+                                  data-testid="input-company-search"
+                                />
+                                <CommandEmpty>
+                                  {isSearching ? (
+                                    <div className="flex items-center justify-center py-6">
+                                      <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                                    </div>
+                                  ) : companySearch.length >= 2 ? (
+                                    <div className="py-6 text-center text-sm">
+                                      <p className="text-muted-foreground mb-2">No companies found</p>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          field.onChange(companySearch);
+                                          setOpen(false);
+                                        }}
+                                        data-testid="button-use-manual-entry"
+                                      >
+                                        Use "{companySearch}"
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    "Type at least 2 characters to search..."
+                                  )}
+                                </CommandEmpty>
+                                {companySuggestions.length > 0 && (
+                                  <CommandGroup>
+                                    {companySuggestions.map((company) => (
+                                      <CommandItem
+                                        key={company.domain}
+                                        value={company.name}
+                                        onSelect={() => selectCompany(company)}
+                                        data-testid={`option-company-${company.domain}`}
+                                      >
+                                        <div className="flex items-center gap-3 w-full">
+                                          {company.logo && (
+                                            <img
+                                              src={company.logo}
+                                              alt={company.name}
+                                              className="w-6 h-6 rounded"
+                                            />
+                                          )}
+                                          <div className="flex-1 min-w-0">
+                                            <p className="font-medium truncate">{company.name}</p>
+                                            <p className="text-xs text-muted-foreground truncate">
+                                              {company.domain}
+                                            </p>
+                                          </div>
+                                          <Check
+                                            className={`ml-auto h-4 w-4 ${
+                                              field.value === company.name
+                                                ? "opacity-100"
+                                                : "opacity-0"
+                                            }`}
+                                          />
+                                        </div>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                )}
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                        )}
                         <FormDescription>
                           Search for the client company or enter manually
                         </FormDescription>
