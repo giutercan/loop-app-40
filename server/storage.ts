@@ -28,7 +28,10 @@ import type {
   SuccessStory, InsertSuccessStory,
   AlignmentShareLink, InsertAlignmentShareLink,
   Milestone, InsertMilestone,
-  ProjectValueMetrics, InsertProjectValueMetrics
+  ProjectValueMetrics, InsertProjectValueMetrics,
+  StrategicPillar, InsertStrategicPillar,
+  PillarObjective, InsertPillarObjective,
+  PillarShareLink, InsertPillarShareLink
 } from "@shared/schema";
 
 export interface IStorage {
@@ -215,6 +218,28 @@ export interface IStorage {
   // Bulk fetches for efficient aggregation (eliminates N+1 queries)
   getAllJobThemeKPIsForProject(projectId: number): Promise<JobThemeKPI[]>;
   getAllKPIActualsForProject(projectId: number): Promise<KPIActual[]>;
+  
+  // Strategic Pillars (organizational priorities)
+  getStrategicPillars(projectId: number): Promise<StrategicPillar[]>;
+  getStrategicPillar(id: number): Promise<StrategicPillar | undefined>;
+  createStrategicPillar(pillar: InsertStrategicPillar): Promise<StrategicPillar>;
+  updateStrategicPillar(id: number, pillar: Partial<InsertStrategicPillar>): Promise<StrategicPillar | undefined>;
+  deleteStrategicPillar(id: number): Promise<void>;
+  
+  // Pillar Objectives (business OKRs linked to pillars)
+  getPillarObjectives(pillarId: number): Promise<PillarObjective[]>;
+  getPillarObjective(id: number): Promise<PillarObjective | undefined>;
+  createPillarObjective(objective: InsertPillarObjective): Promise<PillarObjective>;
+  updatePillarObjective(id: number, objective: Partial<InsertPillarObjective>): Promise<PillarObjective | undefined>;
+  deletePillarObjective(id: number): Promise<void>;
+  getAllPillarObjectivesForProject(projectId: number): Promise<PillarObjective[]>;
+  
+  // Pillar Share Links (client collaboration on strategic pillars)
+  getPillarShareLink(projectId: number): Promise<PillarShareLink | undefined>;
+  getPillarShareLinkByToken(token: string): Promise<PillarShareLink | undefined>;
+  createPillarShareLink(link: InsertPillarShareLink): Promise<PillarShareLink>;
+  updatePillarShareLink(id: number, link: Partial<InsertPillarShareLink>): Promise<PillarShareLink | undefined>;
+  deletePillarShareLink(id: number): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -1041,6 +1066,107 @@ export class DbStorage implements IStorage {
     return await db.select().from(schema.kpiActuals)
       .where(inArray(schema.kpiActuals.jobThemeKPIId, kpiIds))
       .orderBy(desc(schema.kpiActuals.actualDate));
+  }
+  
+  // Strategic Pillars (organizational priorities)
+  async getStrategicPillars(projectId: number): Promise<StrategicPillar[]> {
+    return await db.select().from(schema.strategicPillars)
+      .where(eq(schema.strategicPillars.projectId, projectId))
+      .orderBy(schema.strategicPillars.priority, schema.strategicPillars.createdAt);
+  }
+  
+  async getStrategicPillar(id: number): Promise<StrategicPillar | undefined> {
+    const results = await db.select().from(schema.strategicPillars)
+      .where(eq(schema.strategicPillars.id, id));
+    return results[0];
+  }
+  
+  async createStrategicPillar(pillar: InsertStrategicPillar): Promise<StrategicPillar> {
+    const results = await db.insert(schema.strategicPillars).values(pillar).returning();
+    return results[0];
+  }
+  
+  async updateStrategicPillar(id: number, pillar: Partial<InsertStrategicPillar>): Promise<StrategicPillar | undefined> {
+    const results = await db.update(schema.strategicPillars)
+      .set({ ...pillar, updatedAt: new Date() })
+      .where(eq(schema.strategicPillars.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deleteStrategicPillar(id: number): Promise<void> {
+    await db.delete(schema.strategicPillars).where(eq(schema.strategicPillars.id, id));
+  }
+  
+  // Pillar Objectives (business OKRs linked to pillars)
+  async getPillarObjectives(pillarId: number): Promise<PillarObjective[]> {
+    return await db.select().from(schema.pillarObjectives)
+      .where(eq(schema.pillarObjectives.pillarId, pillarId))
+      .orderBy(schema.pillarObjectives.createdAt);
+  }
+  
+  async getPillarObjective(id: number): Promise<PillarObjective | undefined> {
+    const results = await db.select().from(schema.pillarObjectives)
+      .where(eq(schema.pillarObjectives.id, id));
+    return results[0];
+  }
+  
+  async createPillarObjective(objective: InsertPillarObjective): Promise<PillarObjective> {
+    const results = await db.insert(schema.pillarObjectives).values(objective).returning();
+    return results[0];
+  }
+  
+  async updatePillarObjective(id: number, objective: Partial<InsertPillarObjective>): Promise<PillarObjective | undefined> {
+    const results = await db.update(schema.pillarObjectives)
+      .set({ ...objective, updatedAt: new Date() })
+      .where(eq(schema.pillarObjectives.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deletePillarObjective(id: number): Promise<void> {
+    await db.delete(schema.pillarObjectives).where(eq(schema.pillarObjectives.id, id));
+  }
+  
+  async getAllPillarObjectivesForProject(projectId: number): Promise<PillarObjective[]> {
+    const pillars = await this.getStrategicPillars(projectId);
+    if (pillars.length === 0) return [];
+    
+    const pillarIds = pillars.map(p => p.id);
+    return await db.select().from(schema.pillarObjectives)
+      .where(inArray(schema.pillarObjectives.pillarId, pillarIds))
+      .orderBy(schema.pillarObjectives.createdAt);
+  }
+  
+  // Pillar Share Links (client collaboration on strategic pillars)
+  async getPillarShareLink(projectId: number): Promise<PillarShareLink | undefined> {
+    const results = await db.select().from(schema.pillarShareLinks)
+      .where(eq(schema.pillarShareLinks.projectId, projectId))
+      .orderBy(desc(schema.pillarShareLinks.createdAt));
+    return results[0];
+  }
+  
+  async getPillarShareLinkByToken(token: string): Promise<PillarShareLink | undefined> {
+    const results = await db.select().from(schema.pillarShareLinks)
+      .where(eq(schema.pillarShareLinks.token, token));
+    return results[0];
+  }
+  
+  async createPillarShareLink(link: InsertPillarShareLink): Promise<PillarShareLink> {
+    const results = await db.insert(schema.pillarShareLinks).values(link).returning();
+    return results[0];
+  }
+  
+  async updatePillarShareLink(id: number, link: Partial<InsertPillarShareLink>): Promise<PillarShareLink | undefined> {
+    const results = await db.update(schema.pillarShareLinks)
+      .set(link)
+      .where(eq(schema.pillarShareLinks.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deletePillarShareLink(id: number): Promise<void> {
+    await db.delete(schema.pillarShareLinks).where(eq(schema.pillarShareLinks.id, id));
   }
 }
 
