@@ -152,6 +152,7 @@ export interface IStorage {
   createJobTheme(theme: InsertJobTheme): Promise<JobTheme>;
   updateJobTheme(id: number, theme: Partial<InsertJobTheme>): Promise<JobTheme | undefined>;
   deleteJobTheme(id: number): Promise<void>;
+  deleteAllJobThemesForProject(projectId: number): Promise<void>;
   
   // Job Theme KPIs (selected KPIs with baseline data)
   getJobThemeKPIs(jobThemeId: number): Promise<JobThemeKPI[]>;
@@ -736,6 +737,16 @@ export class DbStorage implements IStorage {
   
   async deleteJobTheme(id: number): Promise<void> {
     await db.delete(schema.jobThemes).where(eq(schema.jobThemes.id, id));
+  }
+  
+  async deleteAllJobThemesForProject(projectId: number): Promise<void> {
+    // First delete all KPIs for all job themes in this project (cascade won't work for this)
+    const themes = await this.getJobThemes(projectId);
+    for (const theme of themes) {
+      await db.delete(schema.jobThemeKPIs).where(eq(schema.jobThemeKPIs.jobThemeId, theme.id));
+    }
+    // Then delete all job themes
+    await db.delete(schema.jobThemes).where(eq(schema.jobThemes.projectId, projectId));
   }
   
   // Job Theme KPIs (selected KPIs with baseline data)
