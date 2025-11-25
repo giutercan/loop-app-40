@@ -33,7 +33,10 @@ import {
   insertBusinessReviewSchema,
   insertKPIActualSchema,
   insertSuccessStorySchema,
-  insertSuccessStoryLibrarySchema
+  insertSuccessStoryLibrarySchema,
+  insertStrategicPillarSchema,
+  insertPillarObjectiveSchema,
+  insertPillarShareLinkSchema
 } from "@shared/schema";
 
 // Helper function for robust HTML/script sanitization
@@ -2119,6 +2122,341 @@ export function registerRoutes(app: Express) {
       });
       
       res.json(response);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================
+  // STRATEGIC PILLARS (ORGANIZATIONAL PRIORITIES)
+  // ============================================
+
+  // Get all strategic pillars for a project
+  app.get("/api/projects/:projectId/strategic-pillars", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const pillars = await storage.getStrategicPillars(projectId);
+      res.json(pillars);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get a single strategic pillar
+  app.get("/api/strategic-pillars/:pillarId", async (req, res) => {
+    try {
+      const pillarId = parseInt(req.params.pillarId);
+      const pillar = await storage.getStrategicPillar(pillarId);
+      if (!pillar) {
+        return res.status(404).json({ error: "Strategic pillar not found" });
+      }
+      res.json(pillar);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create a new strategic pillar
+  app.post("/api/projects/:projectId/strategic-pillars", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const validatedData = insertStrategicPillarSchema.parse({
+        ...req.body,
+        projectId
+      });
+
+      const pillar = await storage.createStrategicPillar(validatedData);
+      res.status(201).json(pillar);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update a strategic pillar
+  app.patch("/api/strategic-pillars/:pillarId", async (req, res) => {
+    try {
+      const pillarId = parseInt(req.params.pillarId);
+      const existing = await storage.getStrategicPillar(pillarId);
+      if (!existing) {
+        return res.status(404).json({ error: "Strategic pillar not found" });
+      }
+
+      const pillar = await storage.updateStrategicPillar(pillarId, req.body);
+      res.json(pillar);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Delete a strategic pillar
+  app.delete("/api/strategic-pillars/:pillarId", async (req, res) => {
+    try {
+      const pillarId = parseInt(req.params.pillarId);
+      const existing = await storage.getStrategicPillar(pillarId);
+      if (!existing) {
+        return res.status(404).json({ error: "Strategic pillar not found" });
+      }
+
+      await storage.deleteStrategicPillar(pillarId);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================
+  // PILLAR OBJECTIVES (BUSINESS OKRS)
+  // ============================================
+
+  // Get all objectives for a pillar
+  app.get("/api/strategic-pillars/:pillarId/objectives", async (req, res) => {
+    try {
+      const pillarId = parseInt(req.params.pillarId);
+      const objectives = await storage.getPillarObjectives(pillarId);
+      res.json(objectives);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get all objectives for a project
+  app.get("/api/projects/:projectId/pillar-objectives", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const objectives = await storage.getAllPillarObjectivesForProject(projectId);
+      res.json(objectives);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create a new objective
+  app.post("/api/strategic-pillars/:pillarId/objectives", async (req, res) => {
+    try {
+      const pillarId = parseInt(req.params.pillarId);
+      const pillar = await storage.getStrategicPillar(pillarId);
+      if (!pillar) {
+        return res.status(404).json({ error: "Strategic pillar not found" });
+      }
+
+      const validatedData = insertPillarObjectiveSchema.parse({
+        ...req.body,
+        pillarId
+      });
+
+      const objective = await storage.createPillarObjective(validatedData);
+      res.status(201).json(objective);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update an objective
+  app.patch("/api/pillar-objectives/:objectiveId", async (req, res) => {
+    try {
+      const objectiveId = parseInt(req.params.objectiveId);
+      const existing = await storage.getPillarObjective(objectiveId);
+      if (!existing) {
+        return res.status(404).json({ error: "Objective not found" });
+      }
+
+      const objective = await storage.updatePillarObjective(objectiveId, req.body);
+      res.json(objective);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Delete an objective
+  app.delete("/api/pillar-objectives/:objectiveId", async (req, res) => {
+    try {
+      const objectiveId = parseInt(req.params.objectiveId);
+      const existing = await storage.getPillarObjective(objectiveId);
+      if (!existing) {
+        return res.status(404).json({ error: "Objective not found" });
+      }
+
+      await storage.deletePillarObjective(objectiveId);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================
+  // PILLAR SHARE LINKS (CLIENT COLLABORATION)
+  // ============================================
+
+  // Get share link for a project's pillars
+  app.get("/api/projects/:projectId/pillar-share-link", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const link = await storage.getPillarShareLink(projectId);
+      res.json(link || null);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create a share link
+  app.post("/api/projects/:projectId/pillar-share-link", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Generate a secure token
+      const token = crypto.randomBytes(32).toString("hex");
+
+      const validatedData = insertPillarShareLinkSchema.parse({
+        projectId,
+        token,
+        permissions: req.body.permissions || "edit",
+        customerName: req.body.customerName,
+        customerEmail: req.body.customerEmail,
+        expiresAt: req.body.expiresAt ? new Date(req.body.expiresAt) : null,
+        status: "active"
+      });
+
+      const link = await storage.createPillarShareLink(validatedData);
+      res.status(201).json(link);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Access shared pillars via token (for customers)
+  app.get("/api/shared-pillars/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      const link = await storage.getPillarShareLinkByToken(token);
+      
+      if (!link || link.status !== "active") {
+        return res.status(404).json({ error: "Share link not found or expired" });
+      }
+
+      // Check expiration
+      if (link.expiresAt && new Date(link.expiresAt) < new Date()) {
+        return res.status(410).json({ error: "Share link has expired" });
+      }
+
+      // Update last accessed timestamp
+      await storage.updatePillarShareLink(link.id, { lastAccessedAt: new Date() });
+
+      // Get project and pillars with objectives
+      const project = await storage.getProject(link.projectId);
+      const pillars = await storage.getStrategicPillars(link.projectId);
+      
+      // Get objectives for each pillar
+      const pillarsWithObjectives = await Promise.all(
+        pillars.map(async (pillar) => ({
+          ...pillar,
+          objectives: await storage.getPillarObjectives(pillar.id)
+        }))
+      );
+
+      res.json({
+        project: project ? { id: project.id, name: project.name, companyName: project.companyName } : null,
+        pillars: pillarsWithObjectives,
+        shareLink: {
+          permissions: link.permissions,
+          customerName: link.customerName
+        }
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update pillar via shared link (customer edits)
+  app.patch("/api/shared-pillars/:token/pillars/:pillarId", async (req, res) => {
+    try {
+      const { token, pillarId } = req.params;
+      const link = await storage.getPillarShareLinkByToken(token);
+      
+      if (!link || link.status !== "active") {
+        return res.status(404).json({ error: "Share link not found or expired" });
+      }
+
+      if (link.permissions !== "edit") {
+        return res.status(403).json({ error: "View-only access" });
+      }
+
+      // Check expiration
+      if (link.expiresAt && new Date(link.expiresAt) < new Date()) {
+        return res.status(410).json({ error: "Share link has expired" });
+      }
+
+      const pillar = await storage.getStrategicPillar(parseInt(pillarId));
+      if (!pillar || pillar.projectId !== link.projectId) {
+        return res.status(404).json({ error: "Pillar not found" });
+      }
+
+      const updated = await storage.updateStrategicPillar(parseInt(pillarId), req.body);
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Revoke a share link
+  app.delete("/api/projects/:projectId/pillar-share-link/:linkId", async (req, res) => {
+    try {
+      const linkId = parseInt(req.params.linkId);
+      await storage.updatePillarShareLink(linkId, { status: "revoked" });
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================
+  // LINK JOBS TO STRATEGIC PILLARS
+  // ============================================
+
+  // Update job theme to link it to a pillar
+  app.patch("/api/job-themes/:jobThemeId/pillar-link", async (req, res) => {
+    try {
+      const jobThemeId = parseInt(req.params.jobThemeId);
+      const { pillarId, pillarLinkageNarrative } = req.body;
+
+      const jobTheme = await storage.getJobTheme(jobThemeId);
+      if (!jobTheme) {
+        return res.status(404).json({ error: "Job theme not found" });
+      }
+
+      // If pillarId is provided, verify the pillar exists and belongs to the same project
+      if (pillarId) {
+        const pillar = await storage.getStrategicPillar(pillarId);
+        if (!pillar) {
+          return res.status(404).json({ error: "Strategic pillar not found" });
+        }
+        if (pillar.projectId !== jobTheme.projectId) {
+          return res.status(400).json({ error: "Pillar must belong to the same project" });
+        }
+      }
+
+      const updated = await storage.updateJobTheme(jobThemeId, { 
+        pillarId, 
+        pillarLinkageNarrative 
+      });
+      res.json(updated);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
