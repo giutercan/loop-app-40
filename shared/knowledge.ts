@@ -1,5 +1,163 @@
 // Korn Ferry Knowledge Structure with Detailed KPI Metadata and Calculation Framework
 
+// ============================================================================
+// ENTERPRISE OKR THEMES - Top-level strategic archetypes
+// ============================================================================
+
+export interface OKRKeyResult {
+  description: string;
+  metricType: string;
+}
+
+export interface OKRThemeDefinition {
+  id: string;
+  name: string;
+  shortName: string;
+  objective: string;
+  description: string;
+  exampleKeyResults: OKRKeyResult[];
+  dataSources: string[];
+  kornFerryAlignment: string[]; // Which KF solution areas align
+  sectorVariants?: Record<string, { additionalKeyResults: string[]; notes: string }>;
+}
+
+export const ENTERPRISE_OKR_THEMES: OKRThemeDefinition[] = [
+  {
+    id: "growth",
+    name: "Growth & Market Position",
+    shortName: "Growth",
+    objective: "Grow sustainable revenue and strengthen position in priority markets",
+    description: "Focus on revenue growth, market share expansion, and strategic market positioning through new offers and segment penetration.",
+    exampleKeyResults: [
+      { description: "Increase total revenue by X percent year on year", metricType: "percentage" },
+      { description: "Grow share in priority segment(s) by Y percentage points", metricType: "percentage" },
+      { description: "Launch N offers in strategic segments with at least Z adoption in year one", metricType: "count" }
+    ],
+    dataSources: ["Board decks", "Investor reports", "Sales plans", "Product roadmaps"],
+    kornFerryAlignment: ["COMMERCIAL", "TRANSFORM"],
+    sectorVariants: {
+      "financial_services": { additionalKeyResults: ["Grow AUM by X%", "Increase loan book by Y%"], notes: "Focus on capital efficiency" },
+      "healthcare": { additionalKeyResults: ["Increase patient volume by X%", "Expand service lines"], notes: "Balance growth with quality" }
+    }
+  },
+  {
+    id: "profitability",
+    name: "Profitability & Cost Effectiveness",
+    shortName: "Profitability",
+    objective: "Improve profitability while protecting service and quality",
+    description: "Drive margin improvement through cost optimization, productivity gains, and strategic resource allocation without compromising service levels.",
+    exampleKeyResults: [
+      { description: "Improve operating margin by X basis points", metricType: "basis_points" },
+      { description: "Reduce unit cost to serve by Y percent in target channels", metricType: "percentage" },
+      { description: "Shift N percent of spend from run to change or growth initiatives", metricType: "percentage" }
+    ],
+    dataSources: ["Finance packs", "Productivity programmes", "Procurement data", "Transformation cases"],
+    kornFerryAlignment: ["TRANSFORM", "REWARD"],
+    sectorVariants: {
+      "manufacturing": { additionalKeyResults: ["Reduce scrap rate by X%", "Improve OEE by Y%"], notes: "Focus on yield and efficiency" }
+    }
+  },
+  {
+    id: "customer",
+    name: "Customer Value & Loyalty",
+    shortName: "Customer",
+    objective: "Increase customer satisfaction and deepen relationships",
+    description: "Enhance customer experience, build loyalty, and strengthen relationships through improved service delivery and responsiveness.",
+    exampleKeyResults: [
+      { description: "Raise NPS or customer satisfaction score from A to B", metricType: "score" },
+      { description: "Improve customer retention from X percent to Y percent in priority segments", metricType: "percentage" },
+      { description: "Reduce complaint volume or response times by Z percent", metricType: "percentage" }
+    ],
+    dataSources: ["Customer surveys", "Service dashboards", "CRM systems"],
+    kornFerryAlignment: ["DEVELOP", "TRANSFORM"],
+    sectorVariants: {
+      "healthcare": { additionalKeyResults: ["Improve patient satisfaction scores", "Reduce wait times by X%"], notes: "Patient experience is paramount" }
+    }
+  },
+  {
+    id: "operations",
+    name: "Operational Reliability & Speed",
+    shortName: "Operations",
+    objective: "Increase reliability, speed and resilience of core operations",
+    description: "Optimize operational performance through improved processes, reduced errors, and faster cycle times while building organizational resilience.",
+    exampleKeyResults: [
+      { description: "Improve on time delivery or service levels from X to Y", metricType: "percentage" },
+      { description: "Reduce rework, error rates or incident volume by Z percent", metricType: "percentage" },
+      { description: "Improve cycle times for key processes by N percent", metricType: "percentage" }
+    ],
+    dataSources: ["Operations dashboards", "Quality reports", "Risk logs"],
+    kornFerryAlignment: ["TRANSFORM", "ANALYTICS"],
+    sectorVariants: {
+      "manufacturing": { additionalKeyResults: ["Improve first-pass yield by X%", "Reduce safety incidents by Y%"], notes: "Safety and quality critical" },
+      "healthcare": { additionalKeyResults: ["Reduce medical errors by X%", "Improve care coordination"], notes: "Clinical outcomes focus" }
+    }
+  },
+  {
+    id: "people",
+    name: "People, Leadership & Culture",
+    shortName: "People",
+    objective: "Build a capable, engaged workforce and AI-ready leaders",
+    description: "Develop leadership capability, drive engagement, build inclusive culture, and prepare the workforce for AI-enabled ways of working.",
+    exampleKeyResults: [
+      { description: "Raise engagement or inclusion scores from X to Y in target groups", metricType: "score" },
+      { description: "Increase critical roles with ready successors from A percent to B percent", metricType: "percentage" },
+      { description: "Achieve N percent adoption of key AI tools by target personas", metricType: "percentage" }
+    ],
+    dataSources: ["Engagement surveys", "Talent data", "Learning analytics", "AI adoption reports"],
+    kornFerryAlignment: ["ASSESS", "DEVELOP", "REWARD"],
+  },
+  {
+    id: "digital_ai",
+    name: "Digital, AI & Innovation",
+    shortName: "Digital & AI",
+    objective: "Use data and AI to improve decisions, productivity and client outcomes",
+    description: "Accelerate digital transformation, deploy AI use cases at scale, and drive innovation to create competitive advantage.",
+    exampleKeyResults: [
+      { description: "Deliver N AI use cases to production with measured impact on cost, revenue or risk", metricType: "count" },
+      { description: "Achieve X percent of transactions through digital or self-service channels", metricType: "percentage" },
+      { description: "Reach Y percent of employees using AI assistance weekly in target workflows", metricType: "percentage" }
+    ],
+    dataSources: ["Digital roadmaps", "AI portfolio", "Product analytics"],
+    kornFerryAlignment: ["DEVELOP", "TRANSFORM", "ANALYTICS"],
+  },
+  {
+    id: "risk_sustainability",
+    name: "Risk, Compliance & Sustainability",
+    shortName: "Risk & ESG",
+    objective: "Manage risk and improve ESG and compliance performance",
+    description: "Strengthen risk management, ensure regulatory compliance, and advance environmental, social, and governance objectives.",
+    exampleKeyResults: [
+      { description: "Reduce high severity incidents by X percent", metricType: "percentage" },
+      { description: "Achieve target ESG score or meet external standard by date D", metricType: "score" },
+      { description: "Reach N percent completion on priority compliance training with impact on observed behaviours", metricType: "percentage" }
+    ],
+    dataSources: ["Risk reports", "ESG reporting", "Internal audit", "Compliance dashboards"],
+    kornFerryAlignment: ["DEVELOP", "TRANSFORM"],
+    sectorVariants: {
+      "financial_services": { additionalKeyResults: ["Maintain capital ratios above X%", "Zero regulatory breaches"], notes: "Regulatory capital critical" }
+    }
+  }
+];
+
+// Helper functions for OKR Themes
+export function getOKRThemeById(id: string): OKRThemeDefinition | undefined {
+  return ENTERPRISE_OKR_THEMES.find(theme => theme.id === id);
+}
+
+export function getOKRThemesByKFAlignment(solutionArea: string): OKRThemeDefinition[] {
+  return ENTERPRISE_OKR_THEMES.filter(theme => 
+    theme.kornFerryAlignment.includes(solutionArea)
+  );
+}
+
+export function getAllOKRThemeIds(): string[] {
+  return ENTERPRISE_OKR_THEMES.map(theme => theme.id);
+}
+
+// ============================================================================
+// KORN FERRY CAPABILITIES AND KPIs
+// ============================================================================
+
 export interface KPIDefinition {
   name: string;
   unit: string;

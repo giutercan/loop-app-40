@@ -1,0 +1,239 @@
+Executive summary
+
+Most organisations converge on about seven enterprise OKR themes across industries: growth, profitability, customer, operations, people, digital and AI, and risk or sustainability.
+
+You can codify these into a reusable OKR library with sector variants, then map client data to this library to infer their likely OKRs and strategies.
+
+AI can scan leadership communications, plans and performance data to surface candidate objectives, key results and strategy patterns, then benchmark them against the library.
+
+This creates a closed loop: inferred OKRs, aligned Korn Ferry interventions, measured outcomes and ROI, then refinement of both the OKR library and the client’s strategy.
+
+The key decision is how much you standardise on a small set of OKR archetypes versus allowing free expression and using AI to translate that into structure.
+
+Key decision / trade off
+How far do you push clients to adopt a standard OKR pattern library, versus letting them describe goals in their own language and using AI to infer and align those goals to the standard library behind the scenes.
+
+If you want speed to value, the pragmatic answer is a small standard library plus AI translation on top.
+
+Why: what problem this solves
+
+For your closed loop value capture story, you need three things:
+
+A clear picture of what the client is trying to achieve in business terms.
+
+A way to connect Korn Ferry services to those aims in a traceable way.
+
+A data loop that shows movement in the client’s own metrics, not just proxy HR measures.
+
+Standard OKR patterns plus AI inference give you:
+
+A common language across Assess, Develop, Transform, Reward and Digital.
+
+Faster onboarding of a client into the “loop” because you can start from patterns rather than a blank page.
+
+Automated alignment checks between what leaders say, what the organisation measures and what people do.
+
+This is your “conditions for success” box, and AI helps you populate it without weeks of interviews.
+
+What: typical cross-industry organisation OKRs
+
+Below is a compact OKR library you can reuse across industries. Think of these as archetypes that you then adapt by sector.
+
+1. Growth and market position
+
+Objective
+Grow sustainable revenue and strengthen position in priority markets.
+
+Example key results
+
+Increase total revenue by X percent year on year.
+
+Grow share in priority segment(s) by Y percentage points.
+
+Launch N offers in strategic segments with at least Z adoption in year one.
+
+Where it shows up in data
+Board decks, investor reports, sales plans, product roadmaps.
+
+2. Profitability and cost effectiveness
+
+Objective
+Improve profitability while protecting service and quality.
+
+Example key results
+
+Improve operating margin by X basis points.
+
+Reduce unit cost to serve by Y percent in target channels.
+
+Shift N percent of spend from run to change or growth initiatives.
+
+Where it shows up
+Finance packs, productivity programmes, procurement data, transformation cases.
+
+3. Customer value and loyalty
+
+Objective
+Increase customer satisfaction and deepen relationships.
+
+Example key results
+
+Raise NPS or customer satisfaction score from A to B.
+
+Improve customer retention from X percent to Y percent in priority segments.
+
+Reduce complaint volume or response times by Z percent.
+
+Where it shows up
+Customer surveys, service dashboards, CRM.
+
+4. Operational reliability and speed
+
+Objective
+Increase reliability, speed and resilience of core operations.
+
+Example key results
+
+Improve on time delivery or service levels from X to Y.
+
+Reduce rework, error rates or incident volume by Z percent.
+
+Improve cycle times for key processes by N percent.
+
+Where it shows up
+Operations dashboards, quality reports, risk logs.
+
+5. People, leadership and culture
+
+Objective
+Build a capable, engaged workforce and AI ready leaders.
+
+Example key results
+
+Raise engagement or inclusion scores from X to Y in target groups.
+
+Increase critical roles with ready successors from A percent to B percent.
+
+Achieve N percent adoption of key AI tools by target personas.
+
+Where it shows up
+Engagement surveys, talent data, learning analytics, AI adoption reports.
+
+Maps directly into KF Assess, Develop, Reward and Digital.
+
+6. Digital, AI and innovation
+
+Objective
+Use data and AI to improve decisions, productivity and client outcomes.
+
+Example key results
+
+Deliver N AI use cases to production with measured impact on cost, revenue or risk.
+
+Achieve X percent of transactions through digital or self service channels.
+
+Reach Y percent of employees using AI assistance weekly in target workflows.
+
+Where it shows up
+Digital roadmaps, AI portfolio, product analytics.
+
+7. Risk, compliance, sustainability
+
+Objective
+Manage risk and improve ESG and compliance performance.
+
+Example key results
+
+Reduce high severity incidents by X percent.
+
+Achieve target ESG score or meet external standard by date D.
+
+Reach N percent completion on priority compliance training with impact on observed behaviours.
+
+Where it shows up
+Risk reports, ESG reporting, internal audit, compliance dashboards.
+
+You can treat these seven as your “master OKR set”, then define sector specific variants, for example:
+
+Financial services: capital, liquidity, regulatory change.
+
+Healthcare: clinical outcomes, patient safety, wait times.
+
+Manufacturing: yield, scrap rate, safety incidents, OEE.
+
+How: use AI to infer OKRs and strategies
+
+Think in layers:
+
+Library and ontology
+
+Define your OKR archetypes and the metrics usually associated with each.
+
+Link each archetype to Korn Ferry service lines. For example:
+
+People and leadership OKRs → Assess, Develop, Reward.
+
+Operating model and productivity OKRs → Transform.
+
+AI adoption OKRs → Digital plus AI ready leadership offers.
+
+Data sources to read
+Prioritise sources that contain real strategy and intent, not only noise. For example:
+
+Board and ExCo papers and packs.
+
+Strategy decks, OKR docs, annual plans.
+
+HR, finance, operations and customer dashboards.
+
+Leadership town hall transcripts and internal comms.
+
+AI extraction and mapping
+Use models to do four core tasks:
+
+Objective extraction
+
+Find sentences with intent language such as “our aim”, “we will”, “target is”, “by 2027 we want”.
+
+Metric and target extraction
+
+Identify numbers, time frames and measures, for example “reduce attrition by 3 percent within 12 months”.
+
+Topic and domain tagging
+
+Classify each extracted objective into one or more archetypes, for example “customer”, “operations”, “growth”.
+
+Source weighting
+
+Give more weight to ExCo, board and formal plan documents than to casual channels.
+
+Inferred OKR set
+From this, the system can assemble a draft OKR map:
+
+Top 3 enterprise objectives, labelled with archetypes.
+
+Candidate key results with metric, baseline, target and timeframe.
+
+Heatmap of where each OKR is most visible in the organisation, for example in HR data, in finance, in operations.
+
+Strategy pattern recognition
+On top of the OKRs, the model can identify strategy moves, for example:
+
+“Shift to subscription revenue in segment X.”
+
+“Automate back office process Y.”
+
+“Build data products for external clients.”
+
+These become links to Korn Ferry offerings and case stories.
+
+Closed loop value capture
+Finally, you connect this to the loop you and Jerry described.
+
+Input: inferred OKRs and strategy patterns.
+
+Process: KF interventions mapped to those OKRs.
+
+Output: movement in the same metrics that defined the OKRs, plus ROI.
+
+Feedback: update the OKR map to show which objectives and strategies are moving, and refine where KF has the strongest effect.
