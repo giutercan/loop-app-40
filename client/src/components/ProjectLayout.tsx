@@ -35,6 +35,7 @@ import {
 import { AppTour } from "@/components/AppTour";
 import { PhaseChecklist } from "@/components/PhaseChecklist";
 import { LogoEditDialog } from "@/components/LogoEditDialog";
+import { CommandPaletteHint } from "@/components/CommandPalette";
 import type { Project } from "@shared/schema";
 
 interface ProjectLayoutProps {
@@ -309,29 +310,32 @@ export default function ProjectLayout({
               </nav>
             </div>
 
-            <div className="flex items-center gap-2">
-              {phases.map((phase, index) => {
-                const isActive = currentPhase === phase.id;
-                const isCompleted = index < currentPhaseIndex;
+            <div className="flex items-center gap-4">
+              <CommandPaletteHint />
+              <div className="flex items-center gap-2">
+                {phases.map((phase, index) => {
+                  const isActive = currentPhase === phase.id;
+                  const isCompleted = index < currentPhaseIndex;
 
-                return (
-                  <Link
-                    key={phase.id}
-                    href={phase.path(projectId)}
-                    className={`hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-colors hover-elevate ${
-                      isActive
-                        ? "bg-primary text-primary-foreground"
-                        : isCompleted
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground"
-                    }`}
-                    data-testid={`header-phase-${phase.id}`}
-                  >
-                    <phase.icon className="w-3.5 h-3.5" />
-                    <span className="hidden md:inline">{phase.label}</span>
-                  </Link>
-                );
-              })}
+                  return (
+                    <Link
+                      key={phase.id}
+                      href={phase.path(projectId)}
+                      className={`hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-colors hover-elevate ${
+                        isActive
+                          ? "bg-primary text-primary-foreground"
+                          : isCompleted
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground"
+                      }`}
+                      data-testid={`header-phase-${phase.id}`}
+                    >
+                      <phase.icon className="w-3.5 h-3.5" />
+                      <span className="hidden md:inline">{phase.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
           </header>
 

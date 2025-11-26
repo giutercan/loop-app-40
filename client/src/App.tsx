@@ -14,6 +14,7 @@ import Dashboard from "@/pages/dashboard";
 import Questionnaire from "@/pages/questionnaire";
 import SharedAlignment from "@/pages/shared-alignment";
 import ProjectLayout from "@/components/ProjectLayout";
+import { CommandPalette } from "@/components/CommandPalette";
 
 function DiscoveryWithLayout() {
   const [, params] = useRoute("/projects/:id/discovery");
@@ -83,6 +84,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <CommandPalette />
         <Toaster />
         <Router />
       </TooltipProvider>

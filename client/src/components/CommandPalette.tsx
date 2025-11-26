@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -14,7 +14,6 @@ import {
 import {
   LayoutDashboard,
   FolderPlus,
-  Search,
   Building2,
   Compass,
   Target,
@@ -23,24 +22,24 @@ import {
   Sparkles,
   FileText,
   Settings,
-  Moon,
-  Sun,
   HelpCircle,
 } from "lucide-react";
 import type { Project } from "@shared/schema";
 
-interface CommandPaletteProps {
-  currentProjectId?: number;
-}
-
-export function CommandPalette({ currentProjectId }: CommandPaletteProps) {
+export function CommandPalette() {
   const [open, setOpen] = useState(false);
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
 
   const { data: projects = [] } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
     enabled: open,
   });
+
+  // Extract project ID from URL if we're on a project page
+  const currentProjectId = useMemo(() => {
+    const match = location.match(/\/projects\/(\d+)/);
+    return match ? parseInt(match[1]) : undefined;
+  }, [location]);
 
   const currentProject = projects.find((p) => p.id === currentProjectId);
 
@@ -69,7 +68,7 @@ export function CommandPalette({ currentProjectId }: CommandPaletteProps) {
   );
 
   const activeProjects = projects.filter((p) => p.status === "active");
-  const recentProjects = activeProjects.slice(0, 5);
+  const otherProjects = activeProjects.filter((p) => p.id !== currentProjectId);
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
@@ -128,11 +127,11 @@ export function CommandPalette({ currentProjectId }: CommandPaletteProps) {
           </CommandItem>
         </CommandGroup>
 
-        {recentProjects.length > 0 && (
+        {otherProjects.length > 0 && (
           <>
             <CommandSeparator />
             <CommandGroup heading="Switch Project">
-              {recentProjects.map((project) => (
+              {otherProjects.map((project) => (
                 <CommandItem
                   key={project.id}
                   onSelect={() => navigateTo(`/projects/${project.id}/discovery`)}

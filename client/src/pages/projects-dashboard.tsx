@@ -30,6 +30,7 @@ import {
   Pencil
 } from "lucide-react";
 import { LogoEditDialog } from "@/components/LogoEditDialog";
+import { CommandPaletteHint } from "@/components/CommandPalette";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { AppTour } from "@/components/AppTour";
@@ -150,7 +151,8 @@ export default function ProjectsDashboard() {
               </div>
             </Link>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
+              <CommandPaletteHint />
               <AppTour autoStart />
               <Button 
                 size="lg" 
