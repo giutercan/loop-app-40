@@ -630,6 +630,71 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // Manually update project logo
+  const updateLogoSchema = z.object({
+    logoUrl: z.string().nullable(),
+  }).strict();
+
+  app.patch("/api/projects/:projectId/logo", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      
+      // Validate request body
+      const parseResult = updateLogoSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: "Invalid request body" });
+      }
+      const { logoUrl } = parseResult.data;
+      
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Allow clearing the logo (null, undefined, or empty string)
+      if (logoUrl === null || logoUrl === undefined || logoUrl === "") {
+        await storage.updateProject(projectId, { companyLogoUrl: null });
+        return res.json({ logoUrl: null, updated: true });
+      }
+
+      // Validate URL format
+      try {
+        new URL(logoUrl);
+      } catch {
+        return res.status(400).json({ error: "Invalid URL format" });
+      }
+
+      // Verify the logo URL exists and is an image (try HEAD first, fallback to GET)
+      try {
+        let response = await fetch(logoUrl, { method: 'HEAD' });
+        
+        // Some servers don't support HEAD or block anonymous requests, try GET
+        if (!response.ok && (response.status === 405 || response.status === 403)) {
+          response = await fetch(logoUrl, { method: 'GET' });
+        }
+        
+        const contentType = response.headers.get('content-type') || '';
+        // Accept 200-399 status codes (success and redirects)
+        if (response.status >= 400) {
+          return res.status(400).json({ error: "Logo URL is not accessible" });
+        }
+        // Allow missing content-type for some CDNs, but still require image if present
+        if (contentType && !contentType.startsWith('image/')) {
+          return res.status(400).json({ error: "URL does not point to an image" });
+        }
+      } catch {
+        // If verification fails completely, still allow the URL (user chose it)
+        console.warn("Could not verify logo URL, proceeding anyway:", logoUrl);
+      }
+
+      await storage.updateProject(projectId, { companyLogoUrl: logoUrl });
+      res.json({ logoUrl, updated: true });
+    } catch (error: any) {
+      console.error("Error updating logo:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Auto-fetch logo for a project using Clearout API
   app.post("/api/projects/:projectId/fetch-logo", async (req, res) => {
     try {

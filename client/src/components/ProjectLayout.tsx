@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import {
@@ -29,9 +30,11 @@ import {
   ChevronRight,
   HelpCircle,
   CheckCircle2,
+  Pencil,
 } from "lucide-react";
 import { AppTour } from "@/components/AppTour";
 import { PhaseChecklist } from "@/components/PhaseChecklist";
+import { LogoEditDialog } from "@/components/LogoEditDialog";
 import type { Project } from "@shared/schema";
 
 interface ProjectLayoutProps {
@@ -87,6 +90,7 @@ export default function ProjectLayout({
   children,
 }: ProjectLayoutProps) {
   const [location] = useLocation();
+  const [editingLogo, setEditingLogo] = useState(false);
 
   const isValidProjectId = projectId && projectId > 0 && !isNaN(projectId);
 
@@ -141,7 +145,11 @@ export default function ProjectLayout({
                   ) : project ? (
                     <>
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded bg-sidebar-accent/50 flex items-center justify-center shrink-0 overflow-hidden">
+                        <div 
+                          className="relative w-6 h-6 rounded bg-sidebar-accent/50 flex items-center justify-center shrink-0 overflow-hidden group/logo cursor-pointer"
+                          onClick={() => setEditingLogo(true)}
+                          data-testid="button-sidebar-edit-logo"
+                        >
                           {project.companyLogoUrl ? (
                             <img 
                               src={project.companyLogoUrl} 
@@ -155,6 +163,9 @@ export default function ProjectLayout({
                             />
                           ) : null}
                           <Building2 className={`w-4 h-4 text-sidebar-foreground/70 ${project.companyLogoUrl ? 'hidden' : ''}`} />
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/logo:opacity-100 transition-opacity flex items-center justify-center rounded">
+                            <Pencil className="w-3 h-3 text-white" />
+                          </div>
                         </div>
                         <span className="font-semibold truncate" data-testid="sidebar-project-name">
                           {project.companyName}
@@ -327,6 +338,17 @@ export default function ProjectLayout({
           <main className="flex-1 overflow-auto">{children}</main>
         </div>
       </div>
+
+      {/* Logo Edit Dialog */}
+      {project && (
+        <LogoEditDialog
+          open={editingLogo}
+          onOpenChange={setEditingLogo}
+          projectId={projectId}
+          companyName={project.companyName}
+          currentLogoUrl={project.companyLogoUrl}
+        />
+      )}
     </SidebarProvider>
   );
 }

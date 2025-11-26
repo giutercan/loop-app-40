@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -26,8 +26,10 @@ import {
   Briefcase,
   CheckCircle2,
   Clock,
-  Trash2
+  Trash2,
+  Pencil
 } from "lucide-react";
+import { LogoEditDialog } from "@/components/LogoEditDialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { AppTour } from "@/components/AppTour";
@@ -47,6 +49,7 @@ interface Project {
 export default function ProjectsDashboard() {
   const { toast } = useToast();
   const [_, setLocation] = useLocation();
+  const [editingLogoProject, setEditingLogoProject] = useState<Project | null>(null);
   const { data: projects = [], isLoading } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
   });
@@ -260,7 +263,14 @@ export default function ProjectsDashboard() {
                   <CardHeader className="space-y-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
+                        <div 
+                          className="relative w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shrink-0 overflow-hidden group/logo cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingLogoProject(project);
+                          }}
+                          data-testid={`button-edit-logo-${project.id}`}
+                        >
                           {project.companyLogoUrl ? (
                             <img 
                               src={project.companyLogoUrl} 
@@ -274,6 +284,9 @@ export default function ProjectsDashboard() {
                             />
                           ) : null}
                           <Building2 className={`w-5 h-5 text-primary ${project.companyLogoUrl ? 'hidden' : ''}`} />
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/logo:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
+                            <Pencil className="w-4 h-4 text-white" />
+                          </div>
                         </div>
                         <div className="min-w-0">
                           <CardTitle className="text-lg font-bold truncate" data-testid={`text-company-name-${project.id}`}>
@@ -375,6 +388,17 @@ export default function ProjectsDashboard() {
           )}
         </div>
       </main>
+
+      {/* Logo Edit Dialog */}
+      {editingLogoProject && (
+        <LogoEditDialog
+          open={!!editingLogoProject}
+          onOpenChange={(open) => !open && setEditingLogoProject(null)}
+          projectId={editingLogoProject.id}
+          companyName={editingLogoProject.companyName}
+          currentLogoUrl={editingLogoProject.companyLogoUrl}
+        />
+      )}
     </div>
   );
 }
