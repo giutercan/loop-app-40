@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -79,6 +80,42 @@ export default function ProjectsDashboard() {
       });
     },
   });
+
+  // Track which projects we've already attempted to fetch logos for
+  const attemptedLogosRef = useRef<Set<number>>(new Set());
+
+  // Auto-fetch logos for projects that don't have them (runs once per project)
+  useEffect(() => {
+    const fetchMissingLogos = async () => {
+      const projectsWithoutLogos = projects.filter(
+        p => !p.companyLogoUrl && !attemptedLogosRef.current.has(p.id)
+      );
+      if (projectsWithoutLogos.length === 0) return;
+
+      let updated = false;
+      for (const project of projectsWithoutLogos) {
+        attemptedLogosRef.current.add(project.id);
+        try {
+          const response = await apiRequest("POST", `/api/projects/${project.id}/fetch-logo`);
+          const data = await response.json();
+          if (data.updated) {
+            updated = true;
+          }
+        } catch (error) {
+          console.error(`Failed to fetch logo for project ${project.id}:`, error);
+        }
+      }
+
+      // Refresh projects list if any logos were updated
+      if (updated) {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      }
+    };
+
+    if (projects.length > 0) {
+      fetchMissingLogos();
+    }
+  }, [projects]);
 
   if (isLoading) {
     return (

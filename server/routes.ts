@@ -630,6 +630,77 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // Auto-fetch logo for a project using Clearout API
+  app.post("/api/projects/:projectId/fetch-logo", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // If project already has a logo, return it
+      if (project.companyLogoUrl) {
+        return res.json({ logoUrl: project.companyLogoUrl, updated: false });
+      }
+
+      // Helper to verify if a logo URL actually exists
+      const verifyLogoUrl = async (url: string): Promise<boolean> => {
+        try {
+          const headResponse = await fetch(url, { method: 'HEAD' });
+          return headResponse.ok && headResponse.headers.get('content-type')?.startsWith('image/');
+        } catch {
+          return false;
+        }
+      };
+
+      // Search for company using Clearout API
+      const response = await fetch(
+        `https://api.clearout.io/public/companies/autocomplete?query=${encodeURIComponent(project.companyName)}`
+      );
+      
+      let logoUrl: string | null = null;
+      
+      if (response.ok) {
+        const data = await response.json();
+        const companies = data.data || [];
+        
+        // Find a matching company (case-insensitive)
+        const match = companies.find((c: any) => 
+          c.name.toLowerCase() === project.companyName.toLowerCase()
+        ) || companies[0]; // Fall back to first result
+        
+        if (match) {
+          const candidateUrl = match.logo || `https://logo.clearbit.com/${match.domain}`;
+          // Verify the logo URL actually works
+          if (await verifyLogoUrl(candidateUrl)) {
+            logoUrl = candidateUrl;
+          }
+        }
+      }
+      
+      // If no verified logo found, try direct Clearbit with domain guess
+      if (!logoUrl) {
+        const domainGuess = project.companyName.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const candidateUrl = `https://logo.clearbit.com/${domainGuess}.com`;
+        if (await verifyLogoUrl(candidateUrl)) {
+          logoUrl = candidateUrl;
+        }
+      }
+
+      // Only update if we found a valid logo
+      if (logoUrl) {
+        await storage.updateProject(projectId, { companyLogoUrl: logoUrl });
+        res.json({ logoUrl, updated: true });
+      } else {
+        res.json({ logoUrl: null, updated: false });
+      }
+    } catch (error: any) {
+      console.error("Error fetching logo:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // AI Research
   app.post("/api/projects/:projectId/research", async (req, res) => {
     try {
