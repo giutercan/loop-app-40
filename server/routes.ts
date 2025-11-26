@@ -5040,6 +5040,7 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
           project: {
             name: project.name,
             companyName: project.companyName,
+            companyLogoUrl: project.companyLogoUrl,
           },
           jobThemes: [],
           permissions: shareLink.permissions,
@@ -5072,6 +5073,7 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
         project: {
           name: project.name,
           companyName: project.companyName,
+          companyLogoUrl: project.companyLogoUrl,
         },
         jobThemes: jobThemesWithKPIs,
         permissions: shareLink.permissions,

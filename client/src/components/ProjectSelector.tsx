@@ -230,7 +230,27 @@ export default function ProjectSelector({ currentProjectId, onProjectChange }: P
           <SelectContent>
             {projects.map((project) => (
               <SelectItem key={project.id} value={project.id.toString()}>
-                {project.name} - {project.companyName}
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                    {project.companyLogoUrl ? (
+                      <>
+                        <img 
+                          src={project.companyLogoUrl} 
+                          alt={project.companyName}
+                          className="w-5 h-5 object-contain rounded"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                            (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                          }}
+                        />
+                        <Building2 className="w-4 h-4 text-muted-foreground hidden" />
+                      </>
+                    ) : (
+                      <Building2 className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </div>
+                  <span>{project.name} - {project.companyName}</span>
+                </div>
               </SelectItem>
             ))}
           </SelectContent>

@@ -37,6 +37,7 @@ interface SharedAlignmentData {
   project: {
     name: string;
     companyName: string;
+    companyLogoUrl: string | null;
   };
   jobThemes: JobTheme[];
   permissions: string;
@@ -103,8 +104,20 @@ export default function SharedAlignmentPage() {
         <div className="container mx-auto p-6">
           {/* Company Logo and Name */}
           <div className="flex items-center gap-3 mb-6">
-            <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Building2 className="h-6 w-6 text-primary" />
+            <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden">
+              {data.project.companyLogoUrl ? (
+                <img 
+                  src={data.project.companyLogoUrl} 
+                  alt={`${data.project.companyName} logo`}
+                  className="w-full h-full object-contain p-1"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                    (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                  }}
+                  data-testid="img-company-logo"
+                />
+              ) : null}
+              <Building2 className={`h-6 w-6 text-primary ${data.project.companyLogoUrl ? 'hidden' : ''}`} />
             </div>
             <div>
               <h1 className="text-xl font-semibold" data-testid="text-company-name">

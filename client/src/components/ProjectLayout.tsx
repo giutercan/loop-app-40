@@ -141,7 +141,21 @@ export default function ProjectLayout({
                   ) : project ? (
                     <>
                       <div className="flex items-center gap-2">
-                        <Building2 className="w-4 h-4 text-sidebar-foreground/70 shrink-0" />
+                        <div className="w-6 h-6 rounded bg-sidebar-accent/50 flex items-center justify-center shrink-0 overflow-hidden">
+                          {project.companyLogoUrl ? (
+                            <img 
+                              src={project.companyLogoUrl} 
+                              alt={project.companyName}
+                              className="w-full h-full object-contain p-0.5"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                                (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                              }}
+                              data-testid="img-sidebar-company-logo"
+                            />
+                          ) : null}
+                          <Building2 className={`w-4 h-4 text-sidebar-foreground/70 ${project.companyLogoUrl ? 'hidden' : ''}`} />
+                        </div>
                         <span className="font-semibold truncate" data-testid="sidebar-project-name">
                           {project.companyName}
                         </span>
