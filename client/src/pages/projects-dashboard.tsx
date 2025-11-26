@@ -33,7 +33,6 @@ import {
   Users,
   Zap
 } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
 import { LogoEditDialog } from "@/components/LogoEditDialog";
 import { CommandPaletteHint } from "@/components/CommandPalette";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -230,22 +229,22 @@ export default function ProjectsDashboard() {
             </div>
           </div>
 
-          {/* Phase Distribution Bar */}
+          {/* Phase Distribution Bar - Using Korn Ferry Brand Colors */}
           {projects.length > 0 && (
             <div className="mt-8 bg-white/10 backdrop-blur-sm rounded-xl p-5 border border-white/20">
               <div className="flex items-center justify-between mb-4">
                 <span className="text-sm font-medium text-white/80">Phase Distribution</span>
                 <div className="flex items-center gap-4 text-xs">
                   <span className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-blue-400" />
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#005971' }} />
                     <span className="text-white/70">Discovery</span>
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-purple-400" />
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#A3238E' }} />
                     <span className="text-white/70">Alignment</span>
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#009B77' }} />
                     <span className="text-white/70">Realization</span>
                   </span>
                 </div>
@@ -260,20 +259,20 @@ export default function ProjectsDashboard() {
                     <>
                       {discovery > 0 && (
                         <div 
-                          className="bg-blue-400 transition-all duration-500" 
-                          style={{ width: `${(discovery / total) * 100}%` }}
+                          className="transition-all duration-500" 
+                          style={{ width: `${(discovery / total) * 100}%`, backgroundColor: '#005971' }}
                         />
                       )}
                       {alignment > 0 && (
                         <div 
-                          className="bg-purple-400 transition-all duration-500" 
-                          style={{ width: `${(alignment / total) * 100}%` }}
+                          className="transition-all duration-500" 
+                          style={{ width: `${(alignment / total) * 100}%`, backgroundColor: '#A3238E' }}
                         />
                       )}
                       {realisation > 0 && (
                         <div 
-                          className="bg-emerald-400 transition-all duration-500" 
-                          style={{ width: `${(realisation / total) * 100}%` }}
+                          className="transition-all duration-500" 
+                          style={{ width: `${(realisation / total) * 100}%`, backgroundColor: '#009B77' }}
                         />
                       )}
                     </>
@@ -436,12 +435,12 @@ export default function ProjectsDashboard() {
                           }}
                         />
                         
-                        {/* Phase Steps */}
+                        {/* Phase Steps - Korn Ferry Brand Colors */}
                         <div className="relative flex justify-between">
                           {[
-                            { id: "discovery", label: "Discovery", icon: Search, color: "bg-blue-500" },
-                            { id: "alignment", label: "Alignment", icon: Target, color: "bg-purple-500" },
-                            { id: "realisation", label: "Realization", icon: Activity, color: "bg-emerald-500" },
+                            { id: "discovery", label: "Discovery", icon: Search, color: '#005971' },
+                            { id: "alignment", label: "Alignment", icon: Target, color: '#A3238E' },
+                            { id: "realisation", label: "Realization", icon: Activity, color: '#009B77' },
                           ].map((phase, index) => {
                             const phaseOrder = ["discovery", "alignment", "realisation"];
                             const currentIndex = phaseOrder.indexOf(project.currentPhase);
@@ -453,12 +452,13 @@ export default function ProjectsDashboard() {
                               <div key={phase.id} className="flex flex-col items-center">
                                 <div 
                                   className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
-                                    isCurrent 
-                                      ? `${phase.color} text-white ring-4 ring-primary/20` 
-                                      : isCompleted 
-                                        ? "bg-primary text-primary-foreground"
-                                        : "bg-muted text-muted-foreground"
+                                    isCompleted 
+                                      ? "bg-primary text-primary-foreground"
+                                      : !isCurrent
+                                        ? "bg-muted text-muted-foreground"
+                                        : ""
                                   }`}
+                                  style={isCurrent ? { backgroundColor: phase.color, color: 'white', boxShadow: `0 0 0 4px ${phase.color}20` } : undefined}
                                 >
                                   {isCompleted ? (
                                     <CheckCircle2 className="w-4 h-4" />
