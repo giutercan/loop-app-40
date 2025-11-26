@@ -1619,7 +1619,7 @@ export default function Discovery() {
 
   const updateKPIMutation = useMutation({
     mutationFn: async ({ kpiId, data }: { kpiId: number; data: { isSelected?: boolean; baselineValue?: string; baselineSource?: string; targetValue?: string; targetSource?: string } }) => {
-      const currentSelectedCount = jobThemes.flatMap(t => t.kpis).filter(k => k.isSelected).length;
+      const currentSelectedCount = (jobThemesData || []).flatMap((t: JobThemeWithKPIs) => t.kpis).filter((k) => k.isSelected).length;
       const res = await apiRequest("PATCH", `/api/job-theme-kpis/${kpiId}`, data);
       if (!res.ok) throw new Error("Failed to update KPI");
       return { 
@@ -1970,88 +1970,215 @@ export default function Discovery() {
     );
   }
 
+  // Calculate discovery progress stats
+  const discoveryStats = {
+    insights: dataPoints.length,
+    pillars: strategicPillars.length,
+    jobs: (jobThemesData || []).length,
+    confirmedPillars: strategicPillars.filter(p => p.status === "confirmed").length,
+  };
+
+  // Determine step completion status
+  const stepStatus = {
+    research: dataPoints.length > 0,
+    pillars: strategicPillars.length > 0,
+    jobs: (jobThemesData || []).length > 0,
+  };
+
   return (
     <div className="h-full flex flex-col">
-      {/* Action Bar */}
-      <div className="border-b bg-card">
-        <div className="p-4">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-semibold">Research & Insights</h1>
-              <StatusBadge status="draft" />
+      {/* Hero Header with Gradient - Ocean Blue theme for Discovery */}
+      <section className="relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #005971 0%, #00634F 50%, #005971 100%)' }}>
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMzLjMxNCAwIDYgMi42ODYgNiA2cy0yLjY4NiA2LTYgNi02LTIuNjg2LTYtNiAyLjY4Ni02IDYtNiIgc3Ryb2tlPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMSkiIHN0cm9rZS13aWR0aD0iMiIvPjwvZz48L3N2Zz4=')] opacity-30" />
+        <div className="relative px-6 py-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            {/* Left: Company Info */}
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/20 overflow-hidden">
+                {project?.companyLogoUrl ? (
+                  <img 
+                    src={project.companyLogoUrl} 
+                    alt={project.companyName}
+                    className="w-full h-full object-contain p-2"
+                  />
+                ) : (
+                  <Building className="w-7 h-7 text-white" />
+                )}
+              </div>
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-white">
+                    {project?.companyName || "Discovery"}
+                  </h1>
+                  <StatusBadge status="draft" />
+                </div>
+                <p className="text-white/70 text-sm mt-0.5">
+                  {project?.sector || "Research & Insights"} • Discovery Phase
+                </p>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <AppTour context="discovery" />
-              <Button
-                variant="outline"
-                onClick={handleSaveDraft}
-                disabled={saveNotesMutation.isPending}
-                data-testid="button-save-draft"
+
+            {/* Right: Quick Stats */}
+            <div className="flex flex-wrap gap-3 lg:gap-4">
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/20 min-w-[90px]" data-testid="stat-insights">
+                <div className="flex items-center gap-1.5 text-white/70 text-xs font-medium mb-0.5">
+                  <Lightbulb className="w-3.5 h-3.5" />
+                  Insights
+                </div>
+                <div className="text-xl lg:text-2xl font-bold text-white" data-testid="stat-insights-value">{discoveryStats.insights}</div>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/20 min-w-[90px]" data-testid="stat-pillars">
+                <div className="flex items-center gap-1.5 text-white/70 text-xs font-medium mb-0.5">
+                  <Flag className="w-3.5 h-3.5" />
+                  Pillars
+                </div>
+                <div className="text-xl lg:text-2xl font-bold text-white" data-testid="stat-pillars-value">{discoveryStats.pillars}</div>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/20 min-w-[90px]" data-testid="stat-jobs">
+                <div className="flex items-center gap-1.5 text-white/70 text-xs font-medium mb-0.5">
+                  <Target className="w-3.5 h-3.5" />
+                  Jobs
+                </div>
+                <div className="text-xl lg:text-2xl font-bold text-white" data-testid="stat-jobs-value">{discoveryStats.jobs}</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <AppTour context="discovery" />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleSaveDraft}
+                  disabled={saveNotesMutation.isPending}
+                  className="bg-white/20 hover:bg-white/30 text-white border-white/20"
+                  data-testid="button-save-draft"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {saveNotesMutation.isPending ? "Saving..." : "Save"}
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Enhanced Step Progress Indicator */}
+          <div className="mt-6 bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+            <div className="flex items-center justify-between max-w-3xl mx-auto">
+              {/* Step 1: Research */}
+              <button 
+                onClick={() => setActiveTab("research")}
+                className="flex items-center gap-3 group"
+                data-testid="button-step-research"
               >
-                <Save className="w-4 h-4 mr-2" />
-                {saveNotesMutation.isPending ? "Saving..." : "Save Draft"}
-              </Button>
+                <div 
+                  className={`flex items-center justify-center w-10 h-10 rounded-full font-bold text-sm transition-all duration-300 ${
+                    activeTab === "research" 
+                      ? "text-white ring-4 ring-white/20" 
+                      : stepStatus.research
+                        ? "bg-white/20 text-white"
+                        : "border-2 border-white/30 text-white/60 group-hover:border-white/50 group-hover:text-white"
+                  }`}
+                  style={activeTab === "research" ? { backgroundColor: '#005971' } : undefined}
+                >
+                  {stepStatus.research && activeTab !== "research" ? (
+                    <CheckCircle className="w-5 h-5" />
+                  ) : (
+                    <Briefcase className="w-5 h-5" />
+                  )}
+                </div>
+                <div className="text-left hidden sm:block">
+                  <div className={`text-sm font-medium transition-colors ${
+                    activeTab === "research" ? "text-white" : "text-white/70 group-hover:text-white"
+                  }`}>Research</div>
+                  <div className="text-xs text-white/50">{discoveryStats.insights} insights</div>
+                </div>
+              </button>
+
+              {/* Connector Line 1 */}
+              <div className="flex-1 mx-4 h-1 rounded-full bg-white/10 relative overflow-hidden">
+                <div 
+                  className="absolute inset-y-0 left-0 rounded-full transition-all duration-500"
+                  style={{ 
+                    width: stepStatus.research ? '100%' : '0%',
+                    backgroundColor: '#009B77'
+                  }}
+                />
+              </div>
+
+              {/* Step 2: Organize */}
+              <button 
+                onClick={() => setActiveTab("pillars")}
+                className="flex items-center gap-3 group"
+                data-testid="button-step-organize"
+              >
+                <div 
+                  className={`flex items-center justify-center w-10 h-10 rounded-full font-bold text-sm transition-all duration-300 ${
+                    activeTab === "pillars" 
+                      ? "text-white ring-4 ring-white/20" 
+                      : stepStatus.pillars
+                        ? "bg-white/20 text-white"
+                        : "border-2 border-white/30 text-white/60 group-hover:border-white/50 group-hover:text-white"
+                  }`}
+                  style={activeTab === "pillars" ? { backgroundColor: '#A3238E' } : undefined}
+                >
+                  {stepStatus.pillars && activeTab !== "pillars" ? (
+                    <CheckCircle className="w-5 h-5" />
+                  ) : (
+                    <Layers className="w-5 h-5" />
+                  )}
+                </div>
+                <div className="text-left hidden sm:block">
+                  <div className={`text-sm font-medium transition-colors ${
+                    activeTab === "pillars" ? "text-white" : "text-white/70 group-hover:text-white"
+                  }`}>Organize</div>
+                  <div className="text-xs text-white/50">{discoveryStats.pillars} pillars</div>
+                </div>
+              </button>
+
+              {/* Connector Line 2 */}
+              <div className="flex-1 mx-4 h-1 rounded-full bg-white/10 relative overflow-hidden">
+                <div 
+                  className="absolute inset-y-0 left-0 rounded-full transition-all duration-500"
+                  style={{ 
+                    width: stepStatus.pillars ? '100%' : '0%',
+                    backgroundColor: '#009B77'
+                  }}
+                />
+              </div>
+
+              {/* Step 3: Prioritize */}
+              <button 
+                onClick={() => setActiveTab("jobs")}
+                className="flex items-center gap-3 group"
+                data-testid="button-step-prioritize"
+              >
+                <div 
+                  className={`flex items-center justify-center w-10 h-10 rounded-full font-bold text-sm transition-all duration-300 ${
+                    activeTab === "jobs" 
+                      ? "text-white ring-4 ring-white/20" 
+                      : stepStatus.jobs
+                        ? "bg-white/20 text-white"
+                        : "border-2 border-white/30 text-white/60 group-hover:border-white/50 group-hover:text-white"
+                  }`}
+                  style={activeTab === "jobs" ? { backgroundColor: '#009B77' } : undefined}
+                >
+                  {stepStatus.jobs && activeTab !== "jobs" ? (
+                    <CheckCircle className="w-5 h-5" />
+                  ) : (
+                    <Target className="w-5 h-5" />
+                  )}
+                </div>
+                <div className="text-left hidden sm:block">
+                  <div className={`text-sm font-medium transition-colors ${
+                    activeTab === "jobs" ? "text-white" : "text-white/70 group-hover:text-white"
+                  }`}>Prioritize</div>
+                  <div className="text-xs text-white/50">{discoveryStats.jobs} jobs</div>
+                </div>
+              </button>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       <main className="flex-1 overflow-auto p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          {/* Step Progress Indicator */}
-          <div className="max-w-4xl mx-auto mb-2">
-            <div className="flex items-center justify-between">
-              <button 
-                onClick={() => setActiveTab("research")}
-                className="flex items-center gap-2 group"
-                data-testid="button-step-research"
-              >
-                <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm transition-colors ${
-                  activeTab === "research" 
-                    ? "bg-primary text-primary-foreground" 
-                    : "border-2 border-muted-foreground/30 text-muted-foreground group-hover:border-primary/50 group-hover:text-primary"
-                }`}>1</div>
-                <span className={`text-sm transition-colors ${
-                  activeTab === "research" ? "font-medium" : "text-muted-foreground group-hover:text-foreground"
-                }`}>Research</span>
-              </button>
-              <div className={`h-0.5 flex-1 mx-4 transition-colors ${
-                activeTab === "pillars" || activeTab === "jobs" ? "bg-primary/30" : "bg-border"
-              }`} />
-              <button 
-                onClick={() => setActiveTab("pillars")}
-                className="flex items-center gap-2 group"
-                data-testid="button-step-organize"
-              >
-                <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm transition-colors ${
-                  activeTab === "pillars" 
-                    ? "bg-primary text-primary-foreground" 
-                    : "border-2 border-muted-foreground/30 text-muted-foreground group-hover:border-primary/50 group-hover:text-primary"
-                }`}>2</div>
-                <span className={`text-sm transition-colors ${
-                  activeTab === "pillars" ? "font-medium" : "text-muted-foreground group-hover:text-foreground"
-                }`}>Organize</span>
-              </button>
-              <div className={`h-0.5 flex-1 mx-4 transition-colors ${
-                activeTab === "jobs" ? "bg-primary/30" : "bg-border"
-              }`} />
-              <button 
-                onClick={() => setActiveTab("jobs")}
-                className="flex items-center gap-2 group"
-                data-testid="button-step-prioritize"
-              >
-                <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm transition-colors ${
-                  activeTab === "jobs" 
-                    ? "bg-primary text-primary-foreground" 
-                    : "border-2 border-muted-foreground/30 text-muted-foreground group-hover:border-primary/50 group-hover:text-primary"
-                }`}>3</div>
-                <span className={`text-sm transition-colors ${
-                  activeTab === "jobs" ? "font-medium" : "text-muted-foreground group-hover:text-foreground"
-                }`}>Prioritize</span>
-              </button>
-            </div>
-          </div>
-          
           <TabsList className="grid w-full grid-cols-3 max-w-2xl mx-auto" data-testid="tabs-discovery">
             <TabsTrigger value="research" data-testid="tab-research" className="gap-2">
               <Briefcase className="w-4 h-4" />
