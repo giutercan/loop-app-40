@@ -1021,6 +1021,7 @@ export default function Discovery() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [kpiEditMode, setKpiEditMode] = useState(false);
+  const [activeTab, setActiveTab] = useState("research");
 
   const { data: project } = useQuery<Project>({
     queryKey: [`/api/projects/${projectId}`],
@@ -1996,45 +1997,101 @@ export default function Discovery() {
       </div>
 
       <main className="flex-1 overflow-auto p-6">
-        <Tabs defaultValue="organisation" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 max-w-5xl" data-testid="tabs-discovery">
-            <TabsTrigger value="organisation" data-testid="tab-research">Organisation</TabsTrigger>
-            <TabsTrigger value="notes" data-testid="tab-value-case">Build Value Case</TabsTrigger>
-            <TabsTrigger value="pillars" data-testid="tab-strategic-pillars">Strategic Pillars</TabsTrigger>
-            <TabsTrigger value="jobs" data-testid="tab-jobs">Jobs & Priorities</TabsTrigger>
-            <TabsTrigger value="successStories" data-testid="tab-success-stories">Success Stories</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          {/* Step Progress Indicator */}
+          <div className="max-w-4xl mx-auto mb-2">
+            <div className="flex items-center justify-between">
+              <button 
+                onClick={() => setActiveTab("research")}
+                className="flex items-center gap-2 group"
+                data-testid="button-step-research"
+              >
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm transition-colors ${
+                  activeTab === "research" 
+                    ? "bg-primary text-primary-foreground" 
+                    : "border-2 border-muted-foreground/30 text-muted-foreground group-hover:border-primary/50 group-hover:text-primary"
+                }`}>1</div>
+                <span className={`text-sm transition-colors ${
+                  activeTab === "research" ? "font-medium" : "text-muted-foreground group-hover:text-foreground"
+                }`}>Research</span>
+              </button>
+              <div className={`h-0.5 flex-1 mx-4 transition-colors ${
+                activeTab === "pillars" || activeTab === "jobs" ? "bg-primary/30" : "bg-border"
+              }`} />
+              <button 
+                onClick={() => setActiveTab("pillars")}
+                className="flex items-center gap-2 group"
+                data-testid="button-step-organize"
+              >
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm transition-colors ${
+                  activeTab === "pillars" 
+                    ? "bg-primary text-primary-foreground" 
+                    : "border-2 border-muted-foreground/30 text-muted-foreground group-hover:border-primary/50 group-hover:text-primary"
+                }`}>2</div>
+                <span className={`text-sm transition-colors ${
+                  activeTab === "pillars" ? "font-medium" : "text-muted-foreground group-hover:text-foreground"
+                }`}>Organize</span>
+              </button>
+              <div className={`h-0.5 flex-1 mx-4 transition-colors ${
+                activeTab === "jobs" ? "bg-primary/30" : "bg-border"
+              }`} />
+              <button 
+                onClick={() => setActiveTab("jobs")}
+                className="flex items-center gap-2 group"
+                data-testid="button-step-prioritize"
+              >
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm transition-colors ${
+                  activeTab === "jobs" 
+                    ? "bg-primary text-primary-foreground" 
+                    : "border-2 border-muted-foreground/30 text-muted-foreground group-hover:border-primary/50 group-hover:text-primary"
+                }`}>3</div>
+                <span className={`text-sm transition-colors ${
+                  activeTab === "jobs" ? "font-medium" : "text-muted-foreground group-hover:text-foreground"
+                }`}>Prioritize</span>
+              </button>
+            </div>
+          </div>
+          
+          <TabsList className="grid w-full grid-cols-3 max-w-2xl mx-auto" data-testid="tabs-discovery">
+            <TabsTrigger value="research" data-testid="tab-research" className="gap-2">
+              <Briefcase className="w-4 h-4" />
+              Research
+            </TabsTrigger>
+            <TabsTrigger value="pillars" data-testid="tab-strategic-pillars" className="gap-2">
+              <Layers className="w-4 h-4" />
+              Organize
+            </TabsTrigger>
+            <TabsTrigger value="jobs" data-testid="tab-jobs" className="gap-2">
+              <Target className="w-4 h-4" />
+              Prioritize
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="organisation" className="space-y-6">
-            <Collapsible defaultOpen={true}>
-              <div className="rounded-lg border bg-card hover-elevate">
-                <CollapsibleTrigger className="w-full p-6 cursor-pointer">
-                  <div className="flex items-center justify-between w-full">
-                    <div className="text-left">
-                      <h3 className="text-lg font-semibold leading-none tracking-tight">AI-Powered Company Research</h3>
-                      <p className="text-sm text-muted-foreground mt-1.5">
-                        Automatically research and populate company data using AI
-                      </p>
-                    </div>
-                    <ChevronDown className="w-5 h-5 text-muted-foreground shrink-0 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+          <TabsContent value="research" className="space-y-6">
+            {/* AI Research Section */}
+            <Card className="border-primary/20">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-primary" />
+                      AI-Powered Research
+                    </CardTitle>
+                    <CardDescription className="mt-1">
+                      Gather strategic insights about {project?.companyName || "the company"}
+                    </CardDescription>
                   </div>
-                </CollapsibleTrigger>
-              </div>
-              <CollapsibleContent>
-                <Card className="mt-2">
-                  <CardContent className="pt-6">
-                    <Button
-                      onClick={() => researchCompanyMutation.mutate()}
-                      disabled={researchCompanyMutation.isPending || !projectId}
-                      data-testid="button-ai-research"
-                    >
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      {researchCompanyMutation.isPending ? "Researching..." : "AI Research Company"}
-                    </Button>
-                  </CardContent>
-                </Card>
-              </CollapsibleContent>
-            </Collapsible>
+                  <Button
+                    onClick={() => researchCompanyMutation.mutate()}
+                    disabled={researchCompanyMutation.isPending || !projectId}
+                    data-testid="button-ai-research"
+                  >
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    {researchCompanyMutation.isPending ? "Researching..." : "Run AI Research"}
+                  </Button>
+                </div>
+              </CardHeader>
+            </Card>
 
             {dataPoints.length > 0 && (
               <>
@@ -2183,22 +2240,19 @@ export default function Discovery() {
                 </CardContent>
               </Card>
             )}
-          </TabsContent>
 
-          <TabsContent value="notes" className="space-y-6">
-            {/* Step 1: Capture Information - Modernized */}
-            <div className="rounded-lg border bg-gradient-to-br from-background to-muted/20">
-              <div className="p-6 space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white font-bold shrink-0">
-                    1
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-xl font-semibold">Capture Client Information</h3>
-                    <p className="text-sm text-muted-foreground">Notes, files, or voice memos from client conversations</p>
-                  </div>
-                </div>
-                
+            {/* Notes & Files Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-primary" />
+                  Notes & Attachments
+                </CardTitle>
+                <CardDescription>
+                  Capture meeting notes, upload files, or record voice memos
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div className="space-y-3">
                   <Textarea
                     id="freeform"
@@ -2209,939 +2263,137 @@ export default function Discovery() {
                     data-testid="textarea-notes"
                   />
 
-                  <div className="flex items-center gap-3">
-                    <div className="h-px flex-1 bg-border" />
-                    <span className="text-xs text-muted-foreground uppercase tracking-wider">or attach</span>
-                    <div className="h-px flex-1 bg-border" />
-                  </div>
-
                   <div className="flex flex-wrap gap-2">
-                  <Input
-                    type="file"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    id="file-upload"
-                    data-testid="input-file-upload"
-                  />
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => document.getElementById('file-upload')?.click()}
-                    disabled={uploadFileMutation.isPending}
-                    data-testid="button-upload-file"
-                  >
-                    <Upload className="w-4 h-4 mr-2" />
-                    {uploadFileMutation.isPending ? "Uploading..." : "Upload File"}
-                  </Button>
-                  {!isRecording ? (
+                    <Input
+                      type="file"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      id="file-upload"
+                      data-testid="input-file-upload"
+                    />
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={handleStartRecording}
-                      data-testid="button-start-recording"
+                      onClick={() => document.getElementById('file-upload')?.click()}
+                      disabled={uploadFileMutation.isPending}
+                      data-testid="button-upload-file"
                     >
-                      <Mic className="w-4 h-4 mr-2" />
-                      Record Voice Note
+                      <Upload className="w-4 h-4 mr-2" />
+                      {uploadFileMutation.isPending ? "Uploading..." : "Upload File"}
                     </Button>
-                  ) : (
-                    <Button 
-                      variant="destructive" 
-                      size="sm"
-                      onClick={handleStopRecording}
-                      data-testid="button-stop-recording"
-                    >
-                      <X className="w-4 h-4 mr-2" />
-                      Stop Recording
-                    </Button>
-                  )}
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={() => saveNotesMutation.mutate()}
-                    disabled={saveNotesMutation.isPending}
-                    data-testid="button-save-notes"
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    {saveNotesMutation.isPending ? "Saving..." : "Save Notes"}
-                  </Button>
-                </div>
-
-                {isRecording && voiceTranscript && (
-                  <div className="bg-primary/5 border border-primary/20 rounded-md p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Mic className="w-4 h-4 text-primary animate-pulse" />
-                        <span className="text-sm font-medium">Recording in progress...</span>
-                      </div>
+                    {!isRecording ? (
                       <Button 
+                        variant="outline" 
                         size="sm"
-                        onClick={handleSaveVoiceNote}
-                        disabled={saveVoiceNoteMutation.isPending}
-                        data-testid="button-save-voice-note"
+                        onClick={handleStartRecording}
+                        data-testid="button-start-recording"
                       >
-                        <Save className="w-4 h-4 mr-2" />
-                        {saveVoiceNoteMutation.isPending ? "Saving..." : "Save Voice Note"}
+                        <Mic className="w-4 h-4 mr-2" />
+                        Record Voice Note
                       </Button>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{voiceTranscript}</p>
-                  </div>
-                )}
-
-                {attachments.length > 0 && (
-                  <div className="space-y-2 pt-2">
-                    <Label className="text-xs text-muted-foreground">Attachments ({attachments.length})</Label>
-                    <div className="space-y-2">
-                      {attachments.map((attachment) => (
-                        <div 
-                          key={attachment.id} 
-                          className="flex items-start justify-between gap-3 bg-muted/30 rounded-md p-2"
-                          data-testid={`attachment-${attachment.id}`}
-                        >
-                          <div className="flex items-start gap-2 flex-1 min-w-0">
-                            {attachment.type === "file" ? (
-                              <File className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-                            ) : (
-                              <Mic className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-                            )}
-                            <div className="flex-1 min-w-0">
-                              {attachment.type === "file" ? (
-                                <>
-                                  <p className="text-sm font-medium truncate">{attachment.fileName}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {attachment.fileSize && `${(attachment.fileSize / 1024).toFixed(1)} KB`}
-                                  </p>
-                                </>
-                              ) : (
-                                <p className="text-sm line-clamp-2">{attachment.content}</p>
-                              )}
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => deleteAttachmentMutation.mutate(attachment.id)}
-                            disabled={deleteAttachmentMutation.isPending}
-                            data-testid={`button-delete-attachment-${attachment.id}`}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                </div>
-              </div>
-            </div>
-
-            {/* Step 2: Extract Insights - Modernized */}
-            <div className="relative rounded-lg border bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50 dark:from-purple-950/20 dark:via-blue-950/20 dark:to-cyan-950/20 overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500" />
-              <div className="p-6 space-y-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 text-white font-bold shrink-0 shadow-md">
-                      2
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-xl font-semibold">Extract Strategic Insights</h3>
-                        <Sparkles className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                      </div>
-                      <p className="text-sm text-muted-foreground">AI analyzes your notes to identify metrics, challenges, and opportunities</p>
-                    </div>
-                  </div>
-                  <Button
-                    onClick={() => enrichFromNotesMutation.mutate()}
-                    disabled={enrichFromNotesMutation.isPending || (!notes?.freeformNotes && attachments.length === 0)}
-                    size="lg"
-                    className="shrink-0"
-                    data-testid="button-enrich-from-notes"
-                  >
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    {enrichFromNotesMutation.isPending ? "Analyzing..." : "Extract Insights"}
-                  </Button>
-                </div>
-                <div className="text-xs text-muted-foreground bg-background/60 rounded-md p-3 border">
-                  <strong>✓ Supported:</strong> Text files (.txt, .csv, .json) and voice notes
-                </div>
-              </div>
-            </div>
-
-            {/* Step 3: Combined Evidence - Modernized */}
-            <div className="rounded-lg border bg-gradient-to-br from-background to-muted/20">
-              <div className="p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-bold shrink-0 shadow-md">
-                    3
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-xl font-semibold mb-1">Evidence & Enriched Insights</h3>
-                    <div className="flex items-center gap-2">
-                      {(() => {
-                        const selectedCount = dataPoints.filter(dp => dp.selectedForNotes).length;
-                        const enrichedCount = dataPoints.filter(dp => (dp.provenance as any)?.type === 'notes_enrichment').length;
-                        const total = selectedCount + enrichedCount;
-                        
-                        if (total === 0) {
-                          return <p className="text-sm text-muted-foreground">No insights selected yet</p>;
-                        }
-                        
-                        return (
-                          <>
-                            {selectedCount > 0 && (
-                              <Badge variant="secondary" className="text-xs">
-                                {selectedCount} selected
-                              </Badge>
-                            )}
-                            {enrichedCount > 0 && (
-                              <Badge className="bg-gradient-to-r from-purple-600 to-blue-600 text-white border-0 text-xs">
-                                <Sparkles className="w-3 h-3 mr-1" />
-                                {enrichedCount} enriched
-                              </Badge>
-                            )}
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                </div>
-              {(() => {
-                const combinedPoints = dataPoints.filter(dp => 
-                  dp.selectedForNotes || (dp.provenance as any)?.type === 'notes_enrichment'
-                );
-                
-                if (combinedPoints.length === 0) {
-                  return (
-                    <div className="bg-muted/30 rounded-md p-6 text-center">
-                      <p className="text-sm text-muted-foreground">
-                        Go to the <strong>Organization tab</strong> and check the boxes next to insights you want to include as evidence. 
-                        You can also extract insights from your notes above using the "Extract Insights" button.
-                      </p>
-                    </div>
-                  );
-                }
-                
-                return (
-                  <div className="space-y-4">
-                    {[
-                        'Success Profiles & Role Design',
-                        'Standardised Assessments & Assessments at Scale',
-                        'Leadership & Development Journeys',
-                        'AI-Ready Leader (within L&D)',
-                        'Organisation Strategy & Transformation',
-                        'Total Rewards Optimisation (TRO)',
-                        'Sales & Service (KF Sell)',
-                        'People Analytics / KFI Analytics',
-                        'Value Management / Client Success & Talent Suite',
-                        null
-                      ].map(capabilityKey => {
-                        const capabilityPoints = combinedPoints.filter(dp => 
-                          capabilityKey === null ? !dp.relevantCapability : dp.relevantCapability === capabilityKey
-                        );
-                        if (capabilityPoints.length === 0) return null;
-
-                        const capabilityLabel = capabilityKey || 'Not Identified';
-
-                        return (
-                          <Collapsible key={capabilityKey || 'not-identified'} defaultOpen={true}>
-                            <CollapsibleTrigger className="w-full p-4 rounded-lg border bg-muted/30 hover-elevate group">
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2">
-                                  <Briefcase className="w-4 h-4 text-primary" />
-                                  <h3 className="font-semibold text-sm">{capabilityLabel}</h3>
-                                  <Badge variant="secondary" className="text-xs">{capabilityPoints.length}</Badge>
-                                </div>
-                                <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                              </div>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent>
-                              <div className="space-y-2 mt-2">
-                                {capabilityPoints.map((point, idx) => {
-                                  const isEnriched = (point.provenance as any)?.type === 'notes_enrichment';
-                                  
-                                  return (
-                                    <div 
-                                      key={point.id} 
-                                      className={`rounded-md p-3 space-y-1.5 ${
-                                        isEnriched 
-                                          ? 'bg-primary/10 border-2 border-primary/30' 
-                                          : 'bg-muted/30'
-                                      }`}
-                                      data-testid={`selected-point-${point.id}`}
-                                    >
-                                      <div className="flex items-start justify-between gap-2">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                          <p className="text-xs font-medium text-muted-foreground">{point.label}</p>
-                                          {isEnriched && (
-                                            <Badge className="bg-primary text-primary-foreground text-xs px-2 py-0">
-                                              <Sparkles className="w-3 h-3 mr-1" />
-                                              New from enrichment
-                                            </Badge>
-                                          )}
-                                        </div>
-                                        <ConfidenceBadge level={point.confidence as "high" | "medium" | "low"} />
-                                      </div>
-                                      <p className="text-sm leading-relaxed">{point.value}</p>
-                                      {point.source && (
-                                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                          <ExternalLink className="w-3 h-3" />
-                                          {point.source}
-                                        </p>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </CollapsibleContent>
-                          </Collapsible>
-                        );
-                      })}
-                  </div>
-                );
-              })()}
-              </div>
-            </div>
-
-            {/* Step 4: Discovery Questions - Modernized */}
-            {dataPoints.filter(dp => dp.selectedForNotes || (dp.provenance as any)?.type === 'notes_enrichment').length > 0 && (
-              <div className="relative rounded-lg border bg-gradient-to-br from-background to-muted/10 overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-500" />
-                <div className="p-6">
-                  <div className="flex items-center justify-between gap-4 mb-6">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-pink-600 text-white font-bold shrink-0 shadow-md">
-                        4
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-xl font-semibold">Discovery Questions</h3>
-                          {discoveryQuestions.length > 0 && (
-                            <Badge className="bg-gradient-to-r from-orange-600 to-pink-600 text-white border-0">
-                              {discoveryQuestions.length} questions
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">Top 10 high-impact questions to move the needle</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    ) : (
                       <Button 
-                        onClick={() => generateDiscoveryQuestionsMutation.mutate()}
-                        disabled={generateDiscoveryQuestionsMutation.isPending}
-                        data-testid="button-generate-questions"
+                        variant="destructive" 
+                        size="sm"
+                        onClick={handleStopRecording}
+                        data-testid="button-stop-recording"
                       >
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        {generateDiscoveryQuestionsMutation.isPending ? "Generating..." : "Generate Questions"}
+                        <X className="w-4 h-4 mr-2" />
+                        Stop Recording
                       </Button>
-                      {discoveryQuestions.length > 0 && (
-                        <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
-                          <DialogTrigger asChild>
-                            <Button variant="outline" data-testid="button-share-with-client">
-                              <Share2 className="w-4 h-4 mr-2" />
-                              Share with Client
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="sm:max-w-md">
-                            <DialogHeader>
-                              <DialogTitle className="flex items-center gap-2">
-                                <Users className="w-5 h-5 text-primary" />
-                                Share Questionnaire with Client
-                              </DialogTitle>
-                              <DialogDescription>
-                                Generate a shareable link for your client to answer discovery questions collaboratively.
-                              </DialogDescription>
-                            </DialogHeader>
-                            {!sharedQuestionnaire ? (
-                              <div className="space-y-4">
-                                <div className="space-y-2">
-                                  <Label htmlFor="clientName">Client Name (Optional)</Label>
-                                  <Input
-                                    id="clientName"
-                                    placeholder="e.g., John Smith"
-                                    value={clientName}
-                                    onChange={(e) => setClientName(e.target.value)}
-                                    data-testid="input-client-name"
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor="clientEmail">Client Email (Optional)</Label>
-                                  <Input
-                                    id="clientEmail"
-                                    type="email"
-                                    placeholder="e.g., john@company.com"
-                                    value={clientEmail}
-                                    onChange={(e) => setClientEmail(e.target.value)}
-                                    data-testid="input-client-email"
-                                  />
-                                </div>
-                                <Button 
-                                  onClick={handleShareQuestionnaire} 
-                                  disabled={shareQuestionnaireMutation.isPending}
-                                  className="w-full"
-                                  data-testid="button-generate-link"
-                                >
-                                  <Share2 className="w-4 h-4 mr-2" />
-                                  {shareQuestionnaireMutation.isPending ? "Generating..." : "Generate Shareable Link"}
-                                </Button>
-                              </div>
-                            ) : (
-                              <div className="space-y-4">
-                                <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
-                                  <Input
-                                    readOnly
-                                    value={`${window.location.origin}/questionnaire/${sharedQuestionnaire.shareToken}`}
-                                    className="flex-1 bg-background"
-                                    data-testid="input-share-link"
-                                  />
-                                  <Button onClick={handleCopyLink} size="icon" variant="outline" data-testid="button-copy-link">
-                                    {linkCopied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
-                                  </Button>
-                                </div>
-                                <div className="text-sm text-muted-foreground space-y-2">
-                                  <p>✓ Link generated and ready to share</p>
-                                  <p>• Send this link to your client via email or messaging</p>
-                                  <p>• They can answer questions without logging in</p>
-                                  <p>• You'll see their responses in real-time</p>
-                                </div>
-                              </div>
-                            )}
-                          </DialogContent>
-                        </Dialog>
-                      )}
-                    </div>
-                  </div>
-                  {discoveryQuestions.length === 0 ? (
-                    <div className="bg-muted/30 rounded-md p-6 text-center mt-6">
-                      <p className="text-sm text-muted-foreground">
-                        Click "Generate Questions" above to create 10 high-impact discovery questions based on your insights.
-                      </p>
-                    </div>
-                  ) : (
-                      <div className="space-y-6">
-                        {(() => {
-                          // Group questions by their actual capability name from the database
-                          const capabilityGroups = discoveryQuestions.reduce((acc: Record<string, typeof discoveryQuestions>, q) => {
-                            const cap = q.capabilityName || 'General';
-                            if (!acc[cap]) acc[cap] = [];
-                            acc[cap].push(q);
-                            return acc;
-                          }, {});
-                          
-                          // Sort capabilities alphabetically for consistent display
-                          return Object.entries(capabilityGroups)
-                            .sort(([a], [b]) => a.localeCompare(b))
-                            .map(([capability, capabilityQuestions]) => (
-                            <div key={capability} className="space-y-3">
-                              <div className="flex items-center gap-2 pb-2 border-b">
-                                <Briefcase className="w-4 h-4 text-primary" />
-                                <h3 className="font-semibold text-sm">{capability}</h3>
-                                <Badge variant="secondary" className="text-xs">{capabilityQuestions.length} question{capabilityQuestions.length !== 1 ? 's' : ''}</Badge>
-                              </div>
-                              <div className="space-y-3">
-                                {capabilityQuestions.map((question, idx) => {
-                                  const responses = questionResponses.filter(r => r.questionId === question.id);
-                                  const consultantResponse = responses.find(r => r.respondentType === 'consultant');
-                                  const clientResponse = responses.find(r => r.respondentType === 'client');
-
-                                  return (
-                                    <div 
-                                      key={question.id} 
-                                      className="bg-gradient-to-br from-background to-muted/20 rounded-lg border p-4 space-y-3 hover-elevate"
-                                      data-testid={`question-${question.id}`}
-                                    >
-                                      <div className="flex items-start gap-3">
-                                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-br from-orange-500 to-pink-600 text-white font-semibold text-xs shrink-0">
-                                          {idx + 1}
-                                        </div>
-                                        <div className="flex-1 space-y-2">
-                                          <p className="text-sm font-medium leading-relaxed">{question.question}</p>
-                                          <div className="flex items-center gap-2 flex-wrap">
-                                            <Badge 
-                                              variant={question.questionType === 'quantitative' ? 'default' : 'secondary'}
-                                              className="text-xs"
-                                            >
-                                              {question.questionType}
-                                            </Badge>
-                                            {question.relatedKPI && (
-                                              <Badge variant="outline" className="text-xs">
-                                                KPI: {question.relatedKPI}
-                                              </Badge>
-                                            )}
-                                          </div>
-                                          <p className="text-xs text-muted-foreground">{question.purpose}</p>
-                                        </div>
-                                      </div>
-
-                                      {/* Existing Responses */}
-                                      {responses.length > 0 && (
-                                        <div className="space-y-2 pt-2">
-                                          {clientResponse && (
-                                            <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-md p-3 space-y-1.5">
-                                              <div className="flex items-center gap-2">
-                                                <Badge className="bg-blue-600 text-white text-xs">
-                                                  <Users className="w-3 h-3 mr-1" />
-                                                  Client
-                                                </Badge>
-                                                {clientResponse.respondentName && (
-                                                  <span className="text-xs text-muted-foreground">{clientResponse.respondentName}</span>
-                                                )}
-                                              </div>
-                                              <p className="text-sm text-blue-900 dark:text-blue-100">{clientResponse.answer}</p>
-                                            </div>
-                                          )}
-                                          {consultantResponse && (
-                                            <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-md p-3 space-y-1.5">
-                                              <Badge className="bg-green-600 text-white text-xs">
-                                                <Briefcase className="w-3 h-3 mr-1" />
-                                                Consultant
-                                              </Badge>
-                                              <p className="text-sm text-green-900 dark:text-green-100">{consultantResponse.answer}</p>
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
-
-                                      {/* Consultant Input (if not answered yet) */}
-                                      {!consultantResponse && (
-                                        <div className="pt-2 space-y-2">
-                                          <Label className="text-xs text-muted-foreground">Your Answer (Consultant)</Label>
-                                          <Textarea
-                                            placeholder="Enter your answer..."
-                                            className="min-h-[80px] resize-none text-sm"
-                                            value={consultantAnswers[question.id] || ''}
-                                            onChange={(e) => setConsultantAnswers({ ...consultantAnswers, [question.id]: e.target.value })}
-                                            data-testid={`input-consultant-answer-${question.id}`}
-                                          />
-                                          <Button
-                                            size="sm"
-                                            onClick={() => {
-                                              const answer = consultantAnswers[question.id]?.trim();
-                                              if (!answer) {
-                                                toast({
-                                                  title: "Empty answer",
-                                                  description: "Please provide an answer before submitting.",
-                                                  variant: "destructive",
-                                                });
-                                                return;
-                                              }
-                                              submitConsultantResponseMutation.mutate({ questionId: question.id, response: answer });
-                                            }}
-                                            disabled={!consultantAnswers[question.id]?.trim() || submitConsultantResponseMutation.isPending}
-                                            data-testid={`button-submit-consultant-${question.id}`}
-                                          >
-                                            {submitConsultantResponseMutation.isPending ? "Submitting..." : "Submit Answer"}
-                                          </Button>
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          ));
-                        })()}
-                      </div>
                     )}
+                    <Button
+                      size="sm"
+                      onClick={() => saveNotesMutation.mutate()}
+                      disabled={saveNotesMutation.isPending}
+                      data-testid="button-save-notes"
+                    >
+                      <Save className="w-4 h-4 mr-2" />
+                      {saveNotesMutation.isPending ? "Saving..." : "Save Notes"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="ml-auto"
+                      onClick={() => enrichFromNotesMutation.mutate()}
+                      disabled={enrichFromNotesMutation.isPending || (!notes?.freeformNotes && attachments.length === 0)}
+                      data-testid="button-enrich-from-notes"
+                    >
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      {enrichFromNotesMutation.isPending ? "Analyzing..." : "Extract Insights"}
+                    </Button>
                   </div>
+
+                  {isRecording && voiceTranscript && (
+                    <div className="bg-primary/5 border border-primary/20 rounded-md p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Mic className="w-4 h-4 text-primary animate-pulse" />
+                          <span className="text-sm font-medium">Recording in progress...</span>
+                        </div>
+                        <Button 
+                          size="sm"
+                          onClick={handleSaveVoiceNote}
+                          disabled={saveVoiceNoteMutation.isPending}
+                          data-testid="button-save-voice-note"
+                        >
+                          <Save className="w-4 h-4 mr-2" />
+                          {saveVoiceNoteMutation.isPending ? "Saving..." : "Save Voice Note"}
+                        </Button>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{voiceTranscript}</p>
+                    </div>
+                  )}
+
+                  {attachments.length > 0 && (
+                    <div className="space-y-2 pt-2">
+                      <Label className="text-xs text-muted-foreground">Attachments ({attachments.length})</Label>
+                      <div className="space-y-2">
+                        {attachments.map((attachment) => (
+                          <div 
+                            key={attachment.id} 
+                            className="flex items-start justify-between gap-3 bg-muted/30 rounded-md p-2"
+                            data-testid={`attachment-${attachment.id}`}
+                          >
+                            <div className="flex items-start gap-2 flex-1 min-w-0">
+                              {attachment.type === "file" ? (
+                                <File className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                              ) : (
+                                <Mic className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                {attachment.type === "file" ? (
+                                  <>
+                                    <p className="text-sm font-medium truncate">{attachment.fileName}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {attachment.fileSize && `${(attachment.fileSize / 1024).toFixed(1)} KB`}
+                                    </p>
+                                  </>
+                                ) : (
+                                  <p className="text-sm line-clamp-2">{attachment.content}</p>
+                                )}
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteAttachmentMutation.mutate(attachment.id)}
+                              disabled={deleteAttachmentMutation.isPending}
+                              data-testid={`button-delete-attachment-${attachment.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-
-              {/* Key Discovery Insights - Actionable Summary */}
-              {(() => {
-                const researchInsights = dataPoints.filter(dp => !(dp.provenance as any)?.type);
-                const enrichedInsights = dataPoints.filter(dp => (dp.provenance as any)?.type === 'notes_enrichment');
-                
-                // Get top priority insights for client discussions
-                const topResearch = researchInsights
-                  .filter(dp => dp.priorityScore && dp.priorityScore >= 8)
-                  .sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0))
-                  .slice(0, 3);
-                
-                const topEnriched = enrichedInsights
-                  .filter(dp => dp.confidence === 'high')
-                  .slice(0, 3);
-                
-                // Get answered questions with responses
-                const answeredQuestionsWithResponses = discoveryQuestions
-                  .filter(q => questionResponses.some(r => r.questionId === q.id))
-                  .slice(0, 3)
-                  .map(q => ({
-                    question: q,
-                    responses: questionResponses.filter(r => r.questionId === q.id)
-                  }));
-                
-                const hasInsights = topResearch.length > 0 || topEnriched.length > 0 || answeredQuestionsWithResponses.length > 0;
-                if (!hasInsights) return null;
-
-                return (
-                  <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-background">
-                    <CardHeader>
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground font-bold text-lg shrink-0">
-                          ✓
-                        </div>
-                        <div className="flex-1">
-                          <CardTitle className="text-xl">Key Discovery Insights</CardTitle>
-                          <CardDescription>
-                            Top findings from your research - ready to discuss with client
-                          </CardDescription>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                      {/* Top Research Insights */}
-                      {topResearch.length > 0 && (
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2 pb-2 border-b">
-                            <Sparkles className="w-4 h-4 text-primary" />
-                            <h3 className="font-semibold text-sm">High-Priority Research Findings</h3>
-                          </div>
-                          <div className="space-y-2">
-                            {topResearch.map(insight => (
-                              <div key={insight.id} className="bg-card rounded-md p-3 space-y-2">
-                                <div className="flex items-start justify-between gap-2">
-                                  <p className="text-xs font-medium text-muted-foreground">{insight.label}</p>
-                                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                                    {insight.priorityScore && (
-                                      <Badge variant="default" className="text-xs">
-                                        Priority: {insight.priorityScore}/10
-                                      </Badge>
-                                    )}
-                                    {insight.relevantCapability && (
-                                      <Badge variant="outline" className="text-xs">
-                                        {insight.relevantCapability}
-                                      </Badge>
-                                    )}
-                                    <ConfidenceBadge level={insight.confidence as "high" | "medium" | "low"} />
-                                  </div>
-                                </div>
-                                <p className="text-sm leading-relaxed">{insight.value}</p>
-                                {(insight.solutionArea || (insight.relatedKPIs && insight.relatedKPIs.length > 0)) && (
-                                  <div className="flex items-start gap-3 text-xs text-muted-foreground border-t pt-2">
-                                    {insight.solutionArea && (
-                                      <span className="flex items-center gap-1">
-                                        <Target className="w-3 h-3" />
-                                        {insight.solutionArea}
-                                      </span>
-                                    )}
-                                    {insight.relatedKPIs && insight.relatedKPIs.length > 0 && (
-                                      <span className="flex items-center gap-1">
-                                        <TrendingUp className="w-3 h-3" />
-                                        {insight.relatedKPIs.slice(0, 2).join(', ')}
-                                        {insight.relatedKPIs.length > 2 && ` +${insight.relatedKPIs.length - 2} more`}
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Top Enriched Insights */}
-                      {topEnriched.length > 0 && (
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2 pb-2 border-b">
-                            <FileText className="w-4 h-4 text-primary" />
-                            <h3 className="font-semibold text-sm">High-Confidence Notes Insights</h3>
-                          </div>
-                          <div className="space-y-2">
-                            {topEnriched.map(insight => (
-                              <div key={insight.id} className="bg-primary/10 border-2 border-primary/30 rounded-md p-3 space-y-2">
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <p className="text-xs font-medium text-muted-foreground">{insight.label}</p>
-                                    <Badge className="bg-primary text-primary-foreground text-xs px-2 py-0">
-                                      <Sparkles className="w-3 h-3 mr-1" />
-                                      From notes
-                                    </Badge>
-                                  </div>
-                                  {insight.relevantCapability && (
-                                    <Badge variant="outline" className="text-xs shrink-0">
-                                      {insight.relevantCapability}
-                                    </Badge>
-                                  )}
-                                </div>
-                                <p className="text-sm leading-relaxed">{insight.value}</p>
-                                {(insight.solutionArea || (insight.relatedKPIs && insight.relatedKPIs.length > 0)) && (
-                                  <div className="flex items-start gap-3 text-xs text-muted-foreground border-t border-primary/20 pt-2">
-                                    {insight.solutionArea && (
-                                      <span className="flex items-center gap-1">
-                                        <Target className="w-3 h-3" />
-                                        {insight.solutionArea}
-                                      </span>
-                                    )}
-                                    {insight.relatedKPIs && insight.relatedKPIs.length > 0 && (
-                                      <span className="flex items-center gap-1">
-                                        <TrendingUp className="w-3 h-3" />
-                                        {insight.relatedKPIs.slice(0, 2).join(', ')}
-                                        {insight.relatedKPIs.length > 2 && ` +${insight.relatedKPIs.length - 2} more`}
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Strategic Questionnaire Analysis */}
-                      {(() => {
-                        const totalQuestions = discoveryQuestions.length;
-                        const answeredQuestions = new Set(questionResponses.map(r => r.questionId)).size;
-                        const clientResponses = questionResponses.filter(r => r.respondentType === 'client');
-                        const consultantResponses = questionResponses.filter(r => r.respondentType === 'consultant');
-                        
-                        // Analyze by capability
-                        const capabilityEngagement = discoveryQuestions.reduce((acc, q) => {
-                          const cap = q.capabilityName || 'General';
-                          if (!acc[cap]) acc[cap] = { total: 0, answered: 0, clientAnswered: 0 };
-                          acc[cap].total++;
-                          if (questionResponses.some(r => r.questionId === q.id)) {
-                            acc[cap].answered++;
-                            if (clientResponses.some(r => r.questionId === q.id)) {
-                              acc[cap].clientAnswered++;
-                            }
-                          }
-                          return acc;
-                        }, {} as Record<string, { total: number; answered: number; clientAnswered: number }>);
-                        
-                        const topEngagedCapabilities = Object.entries(capabilityEngagement)
-                          .sort((a, b) => b[1].answered - a[1].answered)
-                          .slice(0, 3);
-                        
-                        const unansweredCapabilities = Object.entries(capabilityEngagement)
-                          .filter(([_, stats]) => stats.answered === 0 && stats.total > 0)
-                          .slice(0, 3);
-
-                        if (totalQuestions === 0) return null;
-
-                        return (
-                          <div className="space-y-3">
-                            <div className="flex items-center gap-2 pb-2 border-b">
-                              <Users className="w-4 h-4 text-primary" />
-                              <h3 className="font-semibold text-sm">Discovery Engagement Analysis</h3>
-                            </div>
-                            
-                            {/* Overall Progress */}
-                            <div className="grid grid-cols-3 gap-3">
-                              <div className="bg-card rounded-md p-3">
-                                <div className="text-2xl font-bold text-primary">{answeredQuestions}/{totalQuestions}</div>
-                                <p className="text-xs text-muted-foreground mt-1">Questions Answered</p>
-                              </div>
-                              <div className="bg-card rounded-md p-3">
-                                <div className="text-2xl font-bold text-blue-600">{clientResponses.length}</div>
-                                <p className="text-xs text-muted-foreground mt-1">Client Responses</p>
-                              </div>
-                              <div className="bg-card rounded-md p-3">
-                                <div className="text-2xl font-bold text-green-600">{consultantResponses.length}</div>
-                                <p className="text-xs text-muted-foreground mt-1">Consultant Responses</p>
-                              </div>
-                            </div>
-
-                            {/* Top Engaged Capabilities */}
-                            {topEngagedCapabilities.length > 0 && (
-                              <div className="bg-primary/5 rounded-md p-3 space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <TrendingUp className="w-4 h-4 text-primary" />
-                                  <p className="text-sm font-semibold">Most Engaged Capabilities</p>
-                                </div>
-                                {topEngagedCapabilities.map(([capability, stats]) => (
-                                  <div key={capability} className="flex items-center justify-between gap-2">
-                                    <span className="text-xs">{capability}</span>
-                                    <div className="flex items-center gap-2">
-                                      <Badge variant="outline" className="text-xs">
-                                        {stats.answered}/{stats.total} answered
-                                      </Badge>
-                                      {stats.clientAnswered > 0 && (
-                                        <Badge variant="default" className="text-xs">
-                                          {stats.clientAnswered} from client
-                                        </Badge>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-
-                            {/* Discovery Gaps */}
-                            {unansweredCapabilities.length > 0 && (
-                              <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-3 space-y-3">
-                                <div className="space-y-2">
-                                  <div className="flex items-center gap-2">
-                                    <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-500" />
-                                    <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-300">Discovery Gaps - Need Attention</p>
-                                  </div>
-                                  <p className="text-xs text-yellow-700 dark:text-yellow-400 leading-relaxed">
-                                    <strong>What this means:</strong> These capabilities have unanswered discovery questions, meaning you lack the data needed to build a compelling value case in these areas.
-                                  </p>
-                                  <p className="text-xs text-yellow-700 dark:text-yellow-400 leading-relaxed">
-                                    <strong>What to do:</strong> Before finalizing discovery, either (1) get client responses for these areas via the shared questionnaire, or (2) focus your value case on the engaged capabilities above where you have solid data.
-                                  </p>
-                                </div>
-                                <div className="space-y-1 pt-1 border-t border-yellow-300 dark:border-yellow-700">
-                                  {unansweredCapabilities.map(([capability, stats]) => (
-                                    <div key={capability} className="flex items-center justify-between gap-2">
-                                      <span className="text-xs text-yellow-800 dark:text-yellow-300">{capability}</span>
-                                      <Badge variant="outline" className="text-xs border-yellow-400 text-yellow-700 dark:text-yellow-400">
-                                        {stats.total} unanswered
-                                      </Badge>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Strategic Response Insights */}
-                            {clientResponses.length > 0 && (
-                              <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 border border-blue-200 dark:border-blue-900 rounded-md p-4 space-y-3">
-                                <div className="flex items-center gap-2 pb-2 border-b border-blue-300 dark:border-blue-800">
-                                  <Lightbulb className="w-4 h-4 text-blue-600" />
-                                  <h4 className="font-semibold text-sm text-blue-900 dark:text-blue-100">Client Response Insights</h4>
-                                  <Badge variant="outline" className="ml-auto text-xs border-blue-400">
-                                    Based on {clientResponses.length} response{clientResponses.length !== 1 ? 's' : ''}
-                                  </Badge>
-                                </div>
-
-                                {/* Key Metrics Extracted */}
-                                {(() => {
-                                  const metrics: string[] = [];
-                                  clientResponses.forEach(r => {
-                                    // Extract numbers/percentages from responses
-                                    const matches = r.answer.match(/(\d+(?:\.\d+)?)\s*(?:percent|%|million|USD|accuracy|days?|months?)/gi);
-                                    if (matches && matches.length > 0) {
-                                      matches.slice(0, 2).forEach(m => metrics.push(m));
-                                    }
-                                  });
-                                  
-                                  if (metrics.length > 0) {
-                                    return (
-                                      <div className="space-y-2">
-                                        <p className="text-xs font-semibold text-blue-800 dark:text-blue-200 flex items-center gap-1">
-                                          <BarChart3 className="w-3 h-3" />
-                                          Key Metrics Mentioned
-                                        </p>
-                                        <div className="flex flex-wrap gap-2">
-                                          {metrics.slice(0, 6).map((metric, idx) => (
-                                            <Badge key={idx} variant="secondary" className="bg-white dark:bg-slate-800 text-xs">
-                                              {metric}
-                                            </Badge>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    );
-                                  }
-                                  return null;
-                                })()}
-
-                                {/* Key Themes from Responses */}
-                                {(() => {
-                                  const themes: string[] = [];
-                                  const keywords = ['challenge', 'problem', 'issue', 'opportunity', 'improvement', 'gap', 'risk', 'priority', 'goal', 'strategy'];
-                                  
-                                  clientResponses.forEach(r => {
-                                    keywords.forEach(keyword => {
-                                      const regex = new RegExp(`([^.!?]*${keyword}[s]?[^.!?]*[.!?])`, 'gi');
-                                      const matches = r.answer.match(regex);
-                                      if (matches && matches.length > 0) {
-                                        themes.push(matches[0].trim());
-                                      }
-                                    });
-                                  });
-                                  
-                                  if (themes.length > 0) {
-                                    return (
-                                      <div className="space-y-2">
-                                        <p className="text-xs font-semibold text-blue-800 dark:text-blue-200 flex items-center gap-1">
-                                          <MessageSquare className="w-3 h-3" />
-                                          Key Themes Identified
-                                        </p>
-                                        <div className="space-y-1">
-                                          {themes.slice(0, 3).map((theme, idx) => (
-                                            <div key={idx} className="text-xs text-blue-900 dark:text-blue-100 bg-white/60 dark:bg-slate-800/60 rounded px-2 py-1 italic">
-                                              "{theme.length > 120 ? theme.substring(0, 120) + '...' : theme}"
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    );
-                                  }
-                                  return null;
-                                })()}
-
-                                {/* Discussion Points */}
-                                <div className="space-y-2 pt-2 border-t border-blue-200 dark:border-blue-800">
-                                  <p className="text-xs font-semibold text-blue-800 dark:text-blue-200 flex items-center gap-1">
-                                    <Target className="w-3 h-3" />
-                                    For Your Next Client Discussion
-                                  </p>
-                                  <ul className="space-y-1 text-xs text-blue-900 dark:text-blue-100">
-                                    <li className="flex items-start gap-2">
-                                      <span className="text-blue-600 shrink-0">•</span>
-                                      <span>Validate the quantitative metrics mentioned - ensure you understand baseline context and measurement methods</span>
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                      <span className="text-blue-600 shrink-0">•</span>
-                                      <span>Probe deeper into challenges mentioned - ask "What have you tried?" and "What would success look like?"</span>
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                      <span className="text-blue-600 shrink-0">•</span>
-                                      <span>Connect insights to business impact - translate operational challenges into financial/strategic consequences</span>
-                                    </li>
-                                    {clientResponses.some(r => r.answer.toLowerCase().includes('forecast') || r.answer.toLowerCase().includes('predict')) && (
-                                      <li className="flex items-start gap-2">
-                                        <span className="text-blue-600 shrink-0">•</span>
-                                        <span>Explore forecasting/prediction challenges - opportunity for data-driven solutions and analytics capabilities</span>
-                                      </li>
-                                    )}
-                                  </ul>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Sample Responses */}
-                            {answeredQuestionsWithResponses.length > 0 && (
-                              <div className="space-y-2">
-                                <p className="text-xs font-semibold text-muted-foreground">Sample Responses</p>
-                                {answeredQuestionsWithResponses.slice(0, 2).map(({ question, responses }) => (
-                                  <div key={question.id} className="bg-card rounded-md p-2 space-y-2">
-                                    <p className="text-xs font-medium">{question.question}</p>
-                                    {responses.slice(0, 1).map((response, idx) => (
-                                      <div key={idx} className="pl-2 border-l-2 border-primary/30">
-                                        <Badge 
-                                          variant={response.respondentType === 'client' ? 'default' : 'secondary'} 
-                                          className="text-xs mb-1"
-                                        >
-                                          {response.respondentType === 'client' 
-                                            ? (response.respondentName || 'Client') 
-                                            : 'Consultant'}
-                                        </Badge>
-                                        <p className="text-xs text-muted-foreground italic line-clamp-2">"{response.answer}"</p>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })()}
-
-                      {/* Next Steps */}
-                      <div className="bg-primary/10 border border-primary/30 rounded-md p-4 space-y-2">
-                        <p className="text-sm font-medium text-primary">✓ Ready for Client Discussion</p>
-                        <p className="text-sm text-muted-foreground">
-                          Use these key insights to discuss value opportunities with your client. Move to Jobs & Priorities to select top 3 focus areas.
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })()}
+              </CardContent>
+            </Card>
           </TabsContent>
+
+
 
           <TabsContent value="pillars" className="space-y-6">
             {/* Strategic Pillars Introduction */}
@@ -4524,11 +3776,6 @@ export default function Discovery() {
                 </>
               );
             })()}
-          </TabsContent>
-
-          {/* Success Stories Tab */}
-          <TabsContent value="successStories" className="space-y-6">
-            <SuccessStoriesSection projectId={projectId} />
           </TabsContent>
         </Tabs>
       </main>
