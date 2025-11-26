@@ -8,6 +8,8 @@ import MomentumTimeline from "@/components/MomentumTimeline";
 import KPIProgressTracker from "@/components/KPIProgressTracker";
 import FinancialAppendix from "@/components/FinancialAppendix";
 import StatusBadge from "@/components/StatusBadge";
+import { RealizationDashboard } from "@/components/RealizationDashboard";
+import { QBRSummaryGenerator } from "@/components/QBRSummaryGenerator";
 import { Badge } from "@/components/ui/badge";
 import { Download, FileText, Clock, LayoutDashboard, CheckCircle2 } from "lucide-react";
 import { Link, useRoute } from "wouter";
@@ -99,8 +101,8 @@ export default function Realisation() {
           <TabsContent value="dashboard" className="space-y-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-lg font-semibold">Executive Pulse</h2>
-                <p className="text-sm text-muted-foreground">Real-time overview of value realization progress</p>
+                <h2 className="text-lg font-semibold">Value Realization Dashboard</h2>
+                <p className="text-sm text-muted-foreground">Real-time overview of value realization progress and KPI health</p>
               </div>
               <Link href={`/projects/${projectId}/dashboard`}>
                 <Button variant="outline" data-testid="button-open-dashboard">
@@ -109,12 +111,14 @@ export default function Realisation() {
                 </Button>
               </Link>
             </div>
-            <ExecutivePulse projectId={projectId} />
-            <KPITraction projectId={projectId} />
-            <MomentumTimeline 
-              projectId={projectId} 
-              onNavigateToKPITracking={() => setActiveTab("kpis")}
-            />
+            <RealizationDashboard projectId={projectId} />
+            <div className="pt-6 border-t">
+              <h3 className="text-lg font-semibold mb-4">Momentum & Timeline</h3>
+              <MomentumTimeline 
+                projectId={projectId} 
+                onNavigateToKPITracking={() => setActiveTab("kpis")}
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="kpis" className="space-y-6">
@@ -209,7 +213,9 @@ export default function Realisation() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="report">
+          <TabsContent value="report" className="space-y-6">
+            <QBRSummaryGenerator projectId={projectId} />
+            
             <Card>
               <CardHeader>
                 <CardTitle className="text-2xl">Final Report Export</CardTitle>

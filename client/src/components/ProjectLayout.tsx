@@ -176,7 +176,6 @@ export default function ProjectLayout({
                     const Icon = phase.icon;
                     const isActive = currentPhase === phase.id;
                     const isCompleted = index < currentPhaseIndex;
-                    const isAccessible = index <= currentPhaseIndex;
 
                     return (
                       <SidebarMenuItem key={phase.id}>
@@ -187,7 +186,6 @@ export default function ProjectLayout({
                         >
                           <Link
                             href={phase.path(projectId)}
-                            className={!isAccessible ? "opacity-50 pointer-events-none" : ""}
                             data-testid={`sidebar-phase-${phase.id}`}
                           >
                             <div className="relative">
@@ -292,9 +290,10 @@ export default function ProjectLayout({
                 const isCompleted = index < currentPhaseIndex;
 
                 return (
-                  <div
+                  <Link
                     key={phase.id}
-                    className={`hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-colors ${
+                    href={phase.path(projectId)}
+                    className={`hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-colors hover-elevate ${
                       isActive
                         ? "bg-primary text-primary-foreground"
                         : isCompleted
@@ -305,7 +304,7 @@ export default function ProjectLayout({
                   >
                     <phase.icon className="w-3.5 h-3.5" />
                     <span className="hidden md:inline">{phase.label}</span>
-                  </div>
+                  </Link>
                 );
               })}
             </div>

@@ -21,6 +21,7 @@ import { ValueCaseCreationDialog } from "@/components/value-case-creation-dialog
 import { AlignmentInteractive } from "@/components/alignment-interactive";
 import { ReprioritizeDialog } from "@/components/ReprioritizeDialog";
 import { ShareAlignmentDialog } from "@/components/ShareAlignmentDialog";
+import { EvidenceDrawer } from "@/components/EvidenceDrawer";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
@@ -156,6 +157,7 @@ export default function AlignmentPage() {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <EvidenceDrawer projectId={projectId} />
               {finalizedData && finalizedData.jobs.length > 0 && (
                 <Button 
                   onClick={() => setIsReprioritizeOpen(true)}

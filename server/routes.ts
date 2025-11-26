@@ -67,6 +67,29 @@ function sanitizeInput(input: string): string {
   return sanitized.trim();
 }
 
+// Helper function for defensive numeric parsing (handles blank/non-numeric strings)
+// Returns null for invalid inputs so callers can handle missing data appropriately
+function parseNumeric(value: string | number | null | undefined): number | null {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+  if (typeof value === 'number') {
+    return isFinite(value) ? value : null;
+  }
+  const trimmed = String(value).trim();
+  if (trimmed === '' || trimmed === 'N/A' || trimmed === 'n/a') {
+    return null;
+  }
+  const parsed = parseFloat(trimmed);
+  return isFinite(parsed) ? parsed : null;
+}
+
+// Safe version that returns 0 for invalid inputs (use when default value is acceptable)
+function safeParseFloat(value: string | number | null | undefined): number {
+  const parsed = parseNumeric(value);
+  return parsed !== null ? parsed : 0;
+}
+
 // Helper function to calculate project value metrics
 async function calculateProjectValueMetrics(projectId: number, storage: typeof import("./storage").storage) {
   // Bulk fetch all data in parallel with minimal queries
@@ -88,8 +111,9 @@ async function calculateProjectValueMetrics(projectId: number, storage: typeof i
   const valuePromisedBreakdown: Record<string, number> = {};
   const valueRealizedBreakdown: Record<string, number> = {};
   
-  // Create a map of KPI ID to its actuals for efficient lookup
-  const actualsMap = new Map<number, typeof allActuals>();
+  // Create a map of KPI ID to its actuals for efficient lookup (properly typed as array of individual actuals)
+  type MetricsKPIActualRecord = (typeof allActuals)[number];
+  const actualsMap = new Map<number, MetricsKPIActualRecord[]>();
   for (const actual of allActuals) {
     if (!actualsMap.has(actual.jobThemeKPIId)) {
       actualsMap.set(actual.jobThemeKPIId, []);
@@ -97,34 +121,90 @@ async function calculateProjectValueMetrics(projectId: number, storage: typeof i
     actualsMap.get(actual.jobThemeKPIId)!.push(actual);
   }
   
+  // Sort each KPI's actuals by date descending (newest first) for correct latest actual selection
+  actualsMap.forEach((actuals, kpiId) => {
+    actuals.sort((a, b) => new Date(b.actualDate).getTime() - new Date(a.actualDate).getTime());
+  });
+  
+  // Track KPIs with complete value configuration separately
+  let kpisWithValueConfig = 0;
+  let kpisFinancialNoData = 0;
+  let kpisNoActuals = 0;
+  
   // Process each KPI with its actuals
   allKPIs.forEach((kpi) => {
     const actuals = actualsMap.get(kpi.id) || [];
-    kpiCount++;
     
-    // Parse numeric values
-    const baseline = parseFloat(kpi.baselineValue || '0');
-    const target = parseFloat(kpi.targetValue || '0');
-    const targetDelta = target - baseline;
-    const valuePerUnit = kpi.estimatedValuePerUnit || 0;
+    // Parse numeric values using parseNumeric to detect missing/invalid data
+    const baselineParsed = parseNumeric(kpi.baselineValue);
+    const targetParsed = parseNumeric(kpi.targetValue);
+    const valuePerUnitParsed = parseNumeric(kpi.estimatedValuePerUnit);
     
-    // Calculate value promised for this KPI
-    const kpiValuePromised = Math.abs(targetDelta) * valuePerUnit;
-    totalValuePromised += kpiValuePromised;
-    valuePromisedBreakdown[kpi.jobThemeId] = (valuePromisedBreakdown[kpi.jobThemeId] || 0) + kpiValuePromised;
-    
-    // Process actuals
-    if (actuals.length === 0) {
+    // Skip KPI if essential metrics are missing (baseline or target)
+    if (baselineParsed === null || targetParsed === null) {
       kpisNoData++;
       return;
     }
     
-    const latestActual = actuals[0]; // Already sorted by date desc
-    const current = parseFloat(latestActual.actualValue);
+    const baseline = baselineParsed;
+    const target = targetParsed;
+    const targetDelta = target - baseline;
+    
+    // Check if this KPI has complete value configuration
+    const hasValueConfig = valuePerUnitParsed !== null;
+    
+    // Only count KPIs with complete value configuration for health metrics
+    // KPIs without value config are treated as financial-no-data and excluded from all aggregates
+    if (!hasValueConfig) {
+      // Track as missing value config but don't include in health scoring
+      kpisFinancialNoData++;
+      return;
+    }
+    
+    const valuePerUnit = valuePerUnitParsed;
+    
+    // Track configured KPIs and promised value (regardless of actuals)
+    // This reflects pipeline value from all configured KPIs
+    kpiCount++;
+    const kpiValuePromised = Math.abs(targetDelta) * valuePerUnit;
+    totalValuePromised += kpiValuePromised;
+    valuePromisedBreakdown[kpi.jobThemeId] = (valuePromisedBreakdown[kpi.jobThemeId] || 0) + kpiValuePromised;
+    
+    // Process actuals - health scoring requires valid actuals
+    if (actuals.length === 0) {
+      // Has value config but no actuals - track separately, exclude from health scoring
+      kpisNoActuals++;
+      return;
+    }
+    
+    // Find the most recent valid actual (fall back if latest is invalid)
+    let validActual = null;
+    for (const actual of actuals) {
+      const parsed = parseNumeric(actual.actualValue);
+      if (parsed !== null) {
+        validActual = { actual, value: parsed };
+        break;
+      }
+    }
+    
+    // Skip health scoring if no valid actual found
+    if (validActual === null) {
+      // Has value config but all actuals are invalid - track as no valid data
+      kpisNoActuals++;
+      return;
+    }
+    
+    const latestActual = validActual.actual;
+    const currentParsed = validActual.value;
+    
+    // Only now include this KPI in health scoring (has value config AND valid actuals)
+    kpisWithValueConfig++;
+    
+    const current = currentParsed;
     const currentDelta = current - baseline;
     const progressPercent = targetDelta !== 0 ? (currentDelta / targetDelta) * 100 : 0;
     
-    // Categorize KPI status
+    // Categorize KPI status (only reaches here if hasValueConfig is true AND has valid actuals)
     if (progressPercent >= 80) {
       kpisOnTrack++;
     } else if (progressPercent >= 50) {
@@ -133,18 +213,18 @@ async function calculateProjectValueMetrics(projectId: number, storage: typeof i
       kpisOffTrack++;
     }
     
-    // Calculate value realized for this KPI
-    let kpiValueRealized = 0;
-    if (latestActual.valueImpactAmount) {
+    // Calculate value realized for this KPI (only if value configuration exists)
+    const valueImpactParsed = parseNumeric(latestActual.valueImpactAmount);
+    if (valueImpactParsed !== null) {
       // Use explicit value impact if provided
-      kpiValueRealized = latestActual.valueImpactAmount;
-    } else if (valuePerUnit > 0) {
+      totalValueRealized += valueImpactParsed;
+      valueRealizedBreakdown[kpi.jobThemeId] = (valueRealizedBreakdown[kpi.jobThemeId] || 0) + valueImpactParsed;
+    } else if (hasValueConfig && valuePerUnitParsed > 0) {
       // Calculate based on progress and value per unit
-      kpiValueRealized = Math.abs(currentDelta) * valuePerUnit;
+      const kpiValueRealized = Math.abs(currentDelta) * valuePerUnitParsed;
+      totalValueRealized += kpiValueRealized;
+      valueRealizedBreakdown[kpi.jobThemeId] = (valueRealizedBreakdown[kpi.jobThemeId] || 0) + kpiValueRealized;
     }
-    
-    totalValueRealized += kpiValueRealized;
-    valueRealizedBreakdown[kpi.jobThemeId] = (valueRealizedBreakdown[kpi.jobThemeId] || 0) + kpiValueRealized;
     
     // Track confidence
     if (latestActual.confidenceScore) {
@@ -152,11 +232,12 @@ async function calculateProjectValueMetrics(projectId: number, storage: typeof i
     }
   });
   
-  const overallProgressPercent = kpiCount > 0 
-    ? Math.round(((kpisOnTrack + kpisAtRisk * 0.5) / kpiCount) * 100)
+  // Use kpisWithValueConfig as denominator (excludes KPIs without financial configuration)
+  const overallProgressPercent = kpisWithValueConfig > 0 
+    ? Math.round(((kpisOnTrack + kpisAtRisk * 0.5) / kpisWithValueConfig) * 100)
     : 0;
   
-  const confidenceLevel = kpiCount > 0 ? Math.round(totalConfidence / kpiCount) : 0;
+  const confidenceLevel = kpisWithValueConfig > 0 ? Math.round(totalConfidence / kpisWithValueConfig) : 0;
   
   // Get business review info
   const reviews = await storage.getBusinessReviews(projectId);
@@ -181,7 +262,7 @@ async function calculateProjectValueMetrics(projectId: number, storage: typeof i
     lastReviewDate: lastReview?.reviewDate,
     nextReviewDate: lastReview?.nextReviewDate,
     clientSentimentAvg,
-    calculationNotes: `Calculated based on ${kpiCount} KPIs across ${jobThemes.length} job themes`
+    calculationNotes: `Value promised from ${kpiCount} configured KPIs. Health score based on ${kpisWithValueConfig} with valid actuals. Excluded from health: ${kpisNoActuals} awaiting measurements. Excluded from all: ${kpisFinancialNoData} missing value-per-unit, ${kpisNoData} missing baseline/target. Job themes: ${jobThemes.length}.`
   });
   
   return metrics;
@@ -3831,6 +3912,648 @@ export function registerRoutes(app: Express) {
       const projectId = parseInt(req.params.projectId);
       const metrics = await calculateProjectValueMetrics(projectId, storage);
       res.json(metrics);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Enhanced Realization Dashboard Summary - comprehensive data for dashboard
+  app.get("/api/projects/:projectId/realization/dashboard", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      
+      // Fetch all data in parallel
+      const [jobThemes, allKPIs, allActuals, reviews, milestones, interventions] = await Promise.all([
+        storage.getJobThemes(projectId),
+        storage.getAllJobThemeKPIsForProject(projectId),
+        storage.getAllKPIActualsForProject(projectId),
+        storage.getBusinessReviews(projectId),
+        storage.getMilestones(projectId),
+        storage.getInterventions(projectId)
+      ]);
+      
+      // Create actuals map for efficient lookup (properly typed as array of individual actuals)
+      type KPIActualRecord = (typeof allActuals)[number];
+      const actualsMap = new Map<number, KPIActualRecord[]>();
+      for (const actual of allActuals) {
+        if (!actualsMap.has(actual.jobThemeKPIId)) {
+          actualsMap.set(actual.jobThemeKPIId, []);
+        }
+        actualsMap.get(actual.jobThemeKPIId)!.push(actual);
+      }
+      
+      // Sort each KPI's actuals by date descending (newest first) for correct latest actual selection
+      actualsMap.forEach((actuals) => {
+        actuals.sort((a, b) => new Date(b.actualDate).getTime() - new Date(a.actualDate).getTime());
+      });
+      
+      // Build KPI details with trend data and health scores
+      const kpiDetails: Array<{
+        id: number;
+        name: string;
+        jobName: string;
+        unit: string | null;
+        baseline: number;
+        target: number;
+        current: number | null;
+        progressPercent: number;
+        status: 'on-track' | 'at-risk' | 'off-track' | 'no-data' | 'financial-no-data';
+        healthScore: number;
+        trendDirection: 'up' | 'down' | 'stable';
+        trendPercent: number;
+        forecast: number | null;
+        forecastStatus: 'exceeding' | 'on-pace' | 'behind' | null;
+        lastUpdated: string | null;
+        history: Array<{ date: string; value: number }>;
+        alerts: Array<{ type: string; message: string; severity: 'warning' | 'critical' }>;
+      }> = [];
+      
+      let totalHealthScore = 0;
+      let kpiCount = 0;
+      const alerts: Array<{ kpiId: number; kpiName: string; type: string; message: string; severity: 'warning' | 'critical' }> = [];
+      
+      // Create job theme name map
+      const jobThemeMap = new Map(jobThemes.map(jt => [jt.id, jt.jobName]));
+      
+      for (const kpi of allKPIs) {
+        if (!kpi.isSelected) continue;
+        
+        const actuals = actualsMap.get(kpi.id) || [];
+        const jobName = jobThemeMap.get(kpi.jobThemeId) || 'Unknown';
+        
+        // Parse baseline and target using parseNumeric to detect missing data
+        const baselineParsed = parseNumeric(kpi.baselineValue);
+        const targetParsed = parseNumeric(kpi.targetValue);
+        
+        // If essential metrics are missing, mark as no-data with alert
+        if (baselineParsed === null || targetParsed === null) {
+          kpiDetails.push({
+            id: kpi.id,
+            name: kpi.kpiName,
+            jobName,
+            unit: kpi.unit,
+            baseline: baselineParsed !== null ? baselineParsed : 0,
+            target: targetParsed !== null ? targetParsed : 0,
+            current: null,
+            progressPercent: 0,
+            status: 'no-data',
+            healthScore: 0,
+            trendDirection: 'stable',
+            trendPercent: 0,
+            forecast: null,
+            forecastStatus: null,
+            lastUpdated: null,
+            history: [],
+            alerts: [{ type: 'missing-config', message: `Missing baseline or target for ${kpi.kpiName}`, severity: 'warning' }]
+          });
+          
+          alerts.push({
+            kpiId: kpi.id,
+            kpiName: kpi.kpiName,
+            type: 'missing-config',
+            message: `${kpi.kpiName} is missing baseline or target configuration`,
+            severity: 'warning'
+          });
+          continue;
+        }
+        
+        const baseline = baselineParsed;
+        const target = targetParsed;
+        const targetDelta = target - baseline;
+        
+        // Check if value configuration is missing (for value metrics alerts)
+        const valuePerUnitParsed = parseNumeric(kpi.estimatedValuePerUnit);
+        const hasMissingValueConfig = valuePerUnitParsed === null;
+        
+        kpiCount++;
+        
+        // Build history from actuals (sorted by date, oldest first for charts)
+        // Filter out invalid values to avoid skewing trend/forecast calculations
+        const history = actuals
+          .map(a => {
+            const parsedValue = parseNumeric(a.actualValue);
+            return parsedValue !== null ? {
+              date: new Date(a.actualDate).toISOString(),
+              value: parsedValue
+            } : null;
+          })
+          .filter((h): h is { date: string; value: number } => h !== null)
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        
+        if (actuals.length === 0) {
+          // Determine status based on value configuration
+          const noActualsStatus = hasMissingValueConfig ? 'financial-no-data' : 'no-data';
+          const noActualsAlerts: Array<{ type: string; message: string; severity: 'warning' | 'critical' }> = [];
+          
+          if (hasMissingValueConfig) {
+            noActualsAlerts.push({ 
+              type: 'missing-value-config', 
+              message: `${kpi.kpiName} is missing value-per-unit configuration`, 
+              severity: 'warning' 
+            });
+            alerts.push({
+              kpiId: kpi.id,
+              kpiName: kpi.kpiName,
+              type: 'missing-value-config',
+              message: `${kpi.kpiName} is missing value-per-unit configuration`,
+              severity: 'warning'
+            });
+          }
+          
+          kpiDetails.push({
+            id: kpi.id,
+            name: kpi.kpiName,
+            jobName,
+            unit: kpi.unit,
+            baseline,
+            target,
+            current: null,
+            progressPercent: 0,
+            status: noActualsStatus,
+            healthScore: 0,
+            trendDirection: 'stable',
+            trendPercent: 0,
+            forecast: null,
+            forecastStatus: null,
+            lastUpdated: null,
+            history,
+            alerts: noActualsAlerts
+          });
+          
+          // Add alert for no data only if not already flagged as missing value config
+          if (!hasMissingValueConfig) {
+            alerts.push({
+              kpiId: kpi.id,
+              kpiName: kpi.kpiName,
+              type: 'no-data',
+              message: `No measurements recorded for ${kpi.kpiName}`,
+              severity: 'warning'
+            });
+          }
+          continue;
+        }
+        
+        // Find the most recent valid actual (fall back if latest is invalid)
+        let validActual: { actual: typeof actuals[0]; value: number } | null = null;
+        let hasInvalidLatest = false;
+        
+        for (let i = 0; i < actuals.length; i++) {
+          const parsed = parseNumeric(actuals[i].actualValue);
+          if (parsed !== null) {
+            validActual = { actual: actuals[i], value: parsed };
+            if (i > 0) hasInvalidLatest = true; // Latest was invalid but found valid fallback
+            break;
+          }
+          if (i === 0) hasInvalidLatest = true;
+        }
+        
+        // If no valid actual found, treat as no-data with alert
+        if (validActual === null) {
+          const invalidDataStatus = hasMissingValueConfig ? 'financial-no-data' : 'no-data';
+          const invalidDataAlerts: Array<{ type: string; message: string; severity: 'warning' | 'critical' }> = [
+            { type: 'invalid-data', message: `All measurements for ${kpi.kpiName} are invalid`, severity: 'warning' }
+          ];
+          
+          if (hasMissingValueConfig) {
+            invalidDataAlerts.push({ 
+              type: 'missing-value-config', 
+              message: `${kpi.kpiName} is missing value-per-unit configuration`, 
+              severity: 'warning' 
+            });
+          }
+          
+          kpiDetails.push({
+            id: kpi.id,
+            name: kpi.kpiName,
+            jobName,
+            unit: kpi.unit,
+            baseline,
+            target,
+            current: null,
+            progressPercent: 0,
+            status: invalidDataStatus,
+            healthScore: 0,
+            trendDirection: 'stable',
+            trendPercent: 0,
+            forecast: null,
+            forecastStatus: null,
+            lastUpdated: new Date(actuals[0].actualDate).toISOString(),
+            history: history.filter(h => h.value !== null && isFinite(h.value)),
+            alerts: invalidDataAlerts
+          });
+          
+          alerts.push({
+            kpiId: kpi.id,
+            kpiName: kpi.kpiName,
+            type: 'invalid-data',
+            message: `${kpi.kpiName} has invalid measurement data`,
+            severity: 'warning'
+          });
+          continue;
+        }
+        
+        const latestActual = validActual.actual;
+        const current = validActual.value;
+        const currentDelta = current - baseline;
+        const progressPercent = targetDelta !== 0 ? Math.round((currentDelta / targetDelta) * 100) : 0;
+        
+        // Determine status - KPIs with missing value config get dedicated status
+        let status: 'on-track' | 'at-risk' | 'off-track' | 'no-data' | 'financial-no-data';
+        let healthScore: number;
+        
+        if (hasMissingValueConfig) {
+          // Missing value configuration - exclude from health aggregates
+          status = 'financial-no-data';
+          healthScore = 0;
+        } else {
+          // Has complete value configuration - include in health aggregates
+          if (progressPercent >= 80) {
+            status = 'on-track';
+          } else if (progressPercent >= 50) {
+            status = 'at-risk';
+          } else {
+            status = 'off-track';
+          }
+          healthScore = Math.min(100, Math.max(0, progressPercent));
+          totalHealthScore += healthScore;
+        }
+        
+        // Calculate trend (compare last 2 measurements)
+        let trendDirection: 'up' | 'down' | 'stable' = 'stable';
+        let trendPercent = 0;
+        if (actuals.length >= 2) {
+          const prevParsed = parseNumeric(actuals[1].actualValue);
+          if (prevParsed !== null) {
+            const prev = prevParsed;
+            const change = current - prev;
+            const isPositiveDirection = target > baseline; // Determines if increase is good
+            
+            if (Math.abs(change) > 0.01) {
+              trendDirection = (isPositiveDirection ? change > 0 : change < 0) ? 'up' : 'down';
+              trendPercent = prev !== 0 ? Math.round((change / prev) * 100) : 0;
+            }
+          }
+        }
+        
+        // Simple linear forecast
+        let forecast: number | null = null;
+        let forecastStatus: 'exceeding' | 'on-pace' | 'behind' | null = null;
+        if (history.length >= 2) {
+          const firstPoint = history[0];
+          const lastPoint = history[history.length - 1];
+          const daysDiff = (new Date(lastPoint.date).getTime() - new Date(firstPoint.date).getTime()) / (1000 * 60 * 60 * 24);
+          
+          if (daysDiff > 0) {
+            const dailyRate = (lastPoint.value - firstPoint.value) / daysDiff;
+            const daysRemaining = 365; // Assume 1 year target window
+            forecast = Math.round((current + (dailyRate * daysRemaining)) * 100) / 100;
+            
+            if (targetDelta > 0) {
+              forecastStatus = forecast >= target ? 'exceeding' : forecast >= baseline + (targetDelta * 0.8) ? 'on-pace' : 'behind';
+            } else {
+              forecastStatus = forecast <= target ? 'exceeding' : forecast <= baseline + (targetDelta * 0.8) ? 'on-pace' : 'behind';
+            }
+          }
+        }
+        
+        // Generate alerts
+        const kpiAlerts: Array<{ type: string; message: string; severity: 'warning' | 'critical' }> = [];
+        
+        // Alert when latest actual is invalid but using fallback
+        if (hasInvalidLatest) {
+          const alertItem = {
+            kpiId: kpi.id,
+            kpiName: kpi.kpiName,
+            type: 'invalid-latest-data',
+            message: `Latest measurement for ${kpi.kpiName} is invalid - using older valid data`,
+            severity: 'warning' as const
+          };
+          alerts.push(alertItem);
+          kpiAlerts.push({ type: alertItem.type, message: alertItem.message, severity: alertItem.severity });
+        }
+        
+        if (status === 'off-track') {
+          const alertItem = {
+            kpiId: kpi.id,
+            kpiName: kpi.kpiName,
+            type: 'off-track',
+            message: `${kpi.kpiName} is significantly behind target (${progressPercent}% progress)`,
+            severity: 'critical' as const
+          };
+          alerts.push(alertItem);
+          kpiAlerts.push({ type: alertItem.type, message: alertItem.message, severity: alertItem.severity });
+        } else if (status === 'at-risk') {
+          const alertItem = {
+            kpiId: kpi.id,
+            kpiName: kpi.kpiName,
+            type: 'at-risk',
+            message: `${kpi.kpiName} needs attention (${progressPercent}% progress)`,
+            severity: 'warning' as const
+          };
+          alerts.push(alertItem);
+          kpiAlerts.push({ type: alertItem.type, message: alertItem.message, severity: alertItem.severity });
+        }
+        
+        if (trendDirection === 'down' && status !== 'on-track') {
+          kpiAlerts.push({
+            type: 'declining',
+            message: 'Trending in wrong direction',
+            severity: 'warning'
+          });
+        }
+        
+        // Add alert for missing value configuration (so users know value metrics are incomplete)
+        if (hasMissingValueConfig) {
+          const alertItem = {
+            kpiId: kpi.id,
+            kpiName: kpi.kpiName,
+            type: 'missing-value-config',
+            message: `${kpi.kpiName} is missing value-per-unit configuration for financial tracking`,
+            severity: 'warning' as const
+          };
+          alerts.push(alertItem);
+          kpiAlerts.push({ type: alertItem.type, message: alertItem.message, severity: alertItem.severity });
+        }
+        
+        kpiDetails.push({
+          id: kpi.id,
+          name: kpi.kpiName,
+          jobName,
+          unit: kpi.unit,
+          baseline,
+          target,
+          current,
+          progressPercent,
+          status,
+          healthScore,
+          trendDirection,
+          trendPercent,
+          forecast,
+          forecastStatus,
+          lastUpdated: new Date(latestActual.actualDate).toISOString(),
+          history,
+          alerts: kpiAlerts
+        });
+      }
+      
+      // Count KPIs with complete value configuration for health score denominator
+      // Uses dedicated 'financial-no-data' status instead of alert filtering
+      const kpisWithCompleteConfig = kpiDetails.filter(k => 
+        k.status !== 'no-data' && k.status !== 'financial-no-data'
+      ).length;
+      
+      // Calculate overall health score (only include KPIs with complete configuration)
+      const overallHealthScore = kpisWithCompleteConfig > 0 ? Math.round(totalHealthScore / kpisWithCompleteConfig) : 0;
+      
+      // Health status breakdown uses dedicated status values
+      const healthBreakdown = {
+        onTrack: kpiDetails.filter(k => k.status === 'on-track').length,
+        atRisk: kpiDetails.filter(k => k.status === 'at-risk').length,
+        offTrack: kpiDetails.filter(k => k.status === 'off-track').length,
+        noData: kpiDetails.filter(k => k.status === 'no-data').length,
+        financialNoData: kpiDetails.filter(k => k.status === 'financial-no-data').length
+      };
+      
+      // Calculate value metrics using parseNumeric to handle missing data properly
+      let totalValuePromised = 0;
+      let totalValueRealized = 0;
+      let kpisWithValueConfig = 0;
+      
+      for (const kpi of allKPIs) {
+        if (!kpi.isSelected) continue;
+        
+        const baselineParsed = parseNumeric(kpi.baselineValue);
+        const targetParsed = parseNumeric(kpi.targetValue);
+        const valuePerUnitParsed = parseNumeric(kpi.estimatedValuePerUnit);
+        
+        // Skip if essential metrics are missing
+        if (baselineParsed === null || targetParsed === null) continue;
+        
+        // Only calculate value if valuePerUnit is valid
+        if (valuePerUnitParsed !== null) {
+          kpisWithValueConfig++;
+          totalValuePromised += Math.abs(targetParsed - baselineParsed) * valuePerUnitParsed;
+          
+          const actuals = actualsMap.get(kpi.id) || [];
+          if (actuals.length > 0) {
+            const currentParsed = parseNumeric(actuals[0].actualValue);
+            if (currentParsed !== null) {
+              const valueImpactParsed = parseNumeric(actuals[0].valueImpactAmount);
+              if (valueImpactParsed !== null) {
+                totalValueRealized += valueImpactParsed;
+              } else {
+                totalValueRealized += Math.abs(currentParsed - baselineParsed) * valuePerUnitParsed;
+              }
+            }
+          }
+        }
+      }
+      
+      // Milestones summary
+      const milestonesSummary = {
+        total: milestones.length,
+        achieved: milestones.filter(m => m.status === 'achieved').length,
+        planned: milestones.filter(m => m.status === 'planned').length,
+        missed: milestones.filter(m => m.status === 'missed').length,
+        upcoming: milestones.filter(m => m.status === 'planned' && new Date(m.milestoneDate) > new Date()).slice(0, 3)
+      };
+      
+      // Next review
+      const lastReview = reviews.length > 0 ? reviews[0] : null;
+      
+      res.json({
+        overallHealthScore,
+        healthBreakdown,
+        kpiDetails,
+        alerts: alerts.sort((a, b) => (a.severity === 'critical' ? -1 : 1)),
+        valueMetrics: {
+          promised: totalValuePromised,
+          realized: totalValueRealized,
+          realizationPercent: totalValuePromised > 0 ? Math.round((totalValueRealized / totalValuePromised) * 100) : 0
+        },
+        milestonesSummary,
+        lastReviewDate: lastReview?.reviewDate,
+        nextReviewDate: lastReview?.nextReviewDate,
+        interventionsActive: interventions.filter(i => i.status === 'in_progress').length
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // QBR Summary Generation
+  app.post("/api/projects/:projectId/qbr-summary/generate", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const { summaryType } = req.body;
+      
+      // Fetch all necessary data
+      const [project, jobThemes, allKPIs, allActuals, reviews, milestones] = await Promise.all([
+        storage.getProject(projectId),
+        storage.getJobThemes(projectId),
+        storage.getAllJobThemeKPIsForProject(projectId),
+        storage.getAllKPIActualsForProject(projectId),
+        storage.getBusinessReviews(projectId),
+        storage.getMilestones(projectId)
+      ]);
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Calculate metrics for AI context (properly typed as array of individual actuals)
+      type QBRKPIActualRecord = (typeof allActuals)[number];
+      const actualsMap = new Map<number, QBRKPIActualRecord[]>();
+      for (const actual of allActuals) {
+        if (!actualsMap.has(actual.jobThemeKPIId)) {
+          actualsMap.set(actual.jobThemeKPIId, []);
+        }
+        actualsMap.get(actual.jobThemeKPIId)!.push(actual);
+      }
+      
+      // Sort each KPI's actuals by date descending (newest first) for correct latest actual selection
+      actualsMap.forEach((actuals) => {
+        actuals.sort((a, b) => new Date(b.actualDate).getTime() - new Date(a.actualDate).getTime());
+      });
+      
+      let kpisOnTrack = 0, kpisAtRisk = 0, kpisOffTrack = 0, kpisNoData = 0;
+      let totalValuePromised = 0, totalValueRealized = 0;
+      const kpiSummaries: string[] = [];
+      
+      for (const kpi of allKPIs) {
+        if (!kpi.isSelected) continue;
+        
+        const actuals = actualsMap.get(kpi.id) || [];
+        
+        // Parse numeric values using parseNumeric to detect missing/invalid data
+        const baselineParsed = parseNumeric(kpi.baselineValue);
+        const targetParsed = parseNumeric(kpi.targetValue);
+        const valuePerUnitParsed = parseNumeric(kpi.estimatedValuePerUnit);
+        
+        // Skip KPI if essential metrics are missing (baseline or target)
+        if (baselineParsed === null || targetParsed === null) {
+          kpisNoData++;
+          kpiSummaries.push(`- ${kpi.kpiName}: Missing baseline or target data`);
+          continue;
+        }
+        
+        const baseline = baselineParsed;
+        const target = targetParsed;
+        const targetDelta = target - baseline;
+        const valuePerUnit = valuePerUnitParsed !== null ? valuePerUnitParsed : 0;
+        
+        // Calculate value promised (only if valuePerUnit is valid)
+        if (valuePerUnitParsed !== null) {
+          totalValuePromised += Math.abs(targetDelta) * valuePerUnit;
+        }
+        
+        if (actuals.length === 0) {
+          kpisNoData++;
+          kpiSummaries.push(`- ${kpi.kpiName}: No data collected yet`);
+          continue;
+        }
+        
+        const currentParsed = parseNumeric(actuals[0].actualValue);
+        
+        // If the actual value is invalid, treat as no-data
+        if (currentParsed === null) {
+          kpisNoData++;
+          kpiSummaries.push(`- ${kpi.kpiName}: Invalid measurement data`);
+          continue;
+        }
+        
+        const current = currentParsed;
+        const currentDelta = current - baseline;
+        const progressPercent = targetDelta !== 0 ? Math.round((currentDelta / targetDelta) * 100) : 0;
+        
+        const valueImpact = parseNumeric(actuals[0].valueImpactAmount);
+        if (valueImpact !== null) {
+          totalValueRealized += valueImpact;
+        } else if (valuePerUnitParsed !== null && valuePerUnit > 0) {
+          totalValueRealized += Math.abs(currentDelta) * valuePerUnit;
+        }
+        
+        if (progressPercent >= 80) {
+          kpisOnTrack++;
+          kpiSummaries.push(`- ${kpi.kpiName}: On track (${progressPercent}% to target)`);
+        } else if (progressPercent >= 50) {
+          kpisAtRisk++;
+          kpiSummaries.push(`- ${kpi.kpiName}: At risk (${progressPercent}% to target)`);
+        } else {
+          kpisOffTrack++;
+          kpiSummaries.push(`- ${kpi.kpiName}: Off track (${progressPercent}% to target)`);
+        }
+      }
+      
+      const totalKPIs = kpisOnTrack + kpisAtRisk + kpisOffTrack + kpisNoData;
+      const healthScore = totalKPIs > 0 ? Math.round((kpisOnTrack / totalKPIs) * 100) : 0;
+      
+      // Generate summary using AI
+      const prompt = `Generate a ${summaryType === 'executive' ? 'concise executive' : summaryType === 'detailed' ? 'comprehensive detailed' : 'action-focused'} summary for a Quarterly Business Review.
+
+Company: ${project.companyName}
+Project: ${project.name}
+Sector: ${project.sector || 'Not specified'}
+
+Key Metrics:
+- Overall Health Score: ${healthScore}%
+- KPIs On Track: ${kpisOnTrack} of ${totalKPIs}
+- KPIs At Risk: ${kpisAtRisk}
+- KPIs Off Track: ${kpisOffTrack}
+- Value Promised: $${(totalValuePromised / 1000000).toFixed(2)}M
+- Value Realized: $${(totalValueRealized / 1000000).toFixed(2)}M (${totalValuePromised > 0 ? Math.round((totalValueRealized / totalValuePromised) * 100) : 0}%)
+
+Milestones:
+- Achieved: ${milestones.filter(m => m.status === 'achieved').length} of ${milestones.length}
+- Planned: ${milestones.filter(m => m.status === 'planned').length}
+- Missed: ${milestones.filter(m => m.status === 'missed').length}
+
+KPI Details:
+${kpiSummaries.join('\n')}
+
+Last Business Review: ${reviews.length > 0 ? new Date(reviews[0].reviewDate).toLocaleDateString() : 'None scheduled'}
+
+${summaryType === 'executive' ? 'Provide a brief 2-3 paragraph executive summary highlighting key achievements, concerns, and recommended actions.' : 
+  summaryType === 'detailed' ? 'Provide a comprehensive report with sections for Overview, Value Metrics, KPI Analysis, Milestones, and Recommendations.' :
+  'List the top 5-7 priority action items with owners and suggested timelines based on the current status.'}
+
+Format in Markdown.`;
+
+      try {
+        const aiResponse = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            {
+              role: "system",
+              content: "You are a management consultant preparing quarterly business review materials. Be concise, data-driven, and actionable."
+            },
+            { role: "user", content: prompt }
+          ],
+          temperature: 0.7,
+          max_tokens: 2000
+        });
+        
+        res.json({ 
+          summary: aiResponse.choices[0].message.content || "Summary generation failed"
+        });
+      } catch (aiError) {
+        // Fallback to a templated summary if AI fails
+        const fallbackSummary = `# Quarterly Business Review Summary
+## ${project.companyName} - ${new Date().toLocaleDateString()}
+
+### Executive Overview
+${project.name} shows ${healthScore >= 80 ? 'strong performance' : healthScore >= 50 ? 'moderate progress with areas needing attention' : 'significant challenges requiring immediate action'}.
+
+### Key Metrics
+- **Health Score:** ${healthScore}%
+- **Value Realized:** $${(totalValueRealized / 1000000).toFixed(2)}M of $${(totalValuePromised / 1000000).toFixed(2)}M promised (${totalValuePromised > 0 ? Math.round((totalValueRealized / totalValuePromised) * 100) : 0}%)
+- **KPI Status:** ${kpisOnTrack} on track, ${kpisAtRisk} at risk, ${kpisOffTrack} off track
+
+### Recommendations
+${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk > 0 ? '2. Review at-risk KPIs and develop intervention plans\n' : ''}3. Continue monitoring progress and celebrate wins`;
+        
+        res.json({ summary: fallbackSummary });
+      }
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
