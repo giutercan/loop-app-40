@@ -31,6 +31,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { AppTour } from "@/components/AppTour";
+import { PhaseChecklist } from "@/components/PhaseChecklist";
 import type { Project } from "@shared/schema";
 
 interface ProjectLayoutProps {
@@ -215,6 +216,17 @@ export default function ProjectLayout({
                     );
                   })}
                 </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+              <SidebarGroupLabel className="text-xs uppercase tracking-wider text-sidebar-foreground/60">
+                Checklist
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <div className="px-2">
+                  <PhaseChecklist projectId={projectId} currentPhase={currentPhase} />
+                </div>
               </SidebarGroupContent>
             </SidebarGroup>
 

@@ -288,6 +288,98 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // Project progress checklist for phase tracking
+  app.get("/api/projects/:id/progress", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Fetch all required data in parallel
+      const [strategicPillars, allKPIs, valueCases, jobThemes] = await Promise.all([
+        storage.getStrategicPillars(projectId),
+        storage.getAllJobThemeKPIsForProject(projectId),
+        storage.getValueCases(projectId),
+        storage.getJobThemes(projectId),
+      ]);
+
+      // Calculate Discovery milestones
+      const hasCompanyResearch = !!(project.companyName && project.companyName.trim() !== "");
+      const hasStrategicPillars = strategicPillars.length > 0;
+      const selectedKPIs = allKPIs.filter(k => k.isSelected);
+      const hasMinimumKPIs = selectedKPIs.length >= 3;
+      const hasPrioritizedJobs = jobThemes.some(j => j.priorityRank !== null && j.priorityRank > 0);
+
+      // Calculate Alignment milestones
+      const kpisWithBaselines = selectedKPIs.filter(k => k.baselineValue && k.baselineValue.trim() !== "");
+      const kpisWithTargets = selectedKPIs.filter(k => k.targetValue && k.targetValue.trim() !== "");
+      const hasAllBaselines = selectedKPIs.length > 0 && kpisWithBaselines.length === selectedKPIs.length;
+      const hasAllTargets = selectedKPIs.length > 0 && kpisWithTargets.length === selectedKPIs.length;
+      const hasValueCase = valueCases.length > 0;
+
+      // Calculate Realization milestones (simplified for now)
+      const hasKPIActuals = await storage.getAllKPIActualsForProject(projectId);
+      const hasProgressTracking = hasKPIActuals.length > 0;
+
+      const progress = {
+        discovery: {
+          milestones: [
+            { id: "company_research", label: "Complete company research", completed: hasCompanyResearch },
+            { id: "strategic_pillars", label: "Define strategic pillars", completed: hasStrategicPillars, count: strategicPillars.length },
+            { id: "prioritize_jobs", label: "Prioritize key jobs", completed: hasPrioritizedJobs },
+            { id: "select_kpis", label: "Select KPIs (3+ recommended)", completed: hasMinimumKPIs, count: selectedKPIs.length, target: 3 },
+          ],
+          completedCount: [hasCompanyResearch, hasStrategicPillars, hasPrioritizedJobs, hasMinimumKPIs].filter(Boolean).length,
+          totalCount: 4,
+        },
+        alignment: {
+          milestones: [
+            { 
+              id: "set_baselines", 
+              label: "Set KPI baselines", 
+              completed: hasAllBaselines, 
+              count: kpisWithBaselines.length, 
+              target: selectedKPIs.length,
+              progressText: selectedKPIs.length > 0 ? `${kpisWithBaselines.length}/${selectedKPIs.length}` : "No KPIs selected"
+            },
+            { 
+              id: "define_targets", 
+              label: "Define KPI targets", 
+              completed: hasAllTargets, 
+              count: kpisWithTargets.length, 
+              target: selectedKPIs.length,
+              progressText: selectedKPIs.length > 0 ? `${kpisWithTargets.length}/${selectedKPIs.length}` : "No KPIs selected"
+            },
+            { id: "build_value_case", label: "Build value case", completed: hasValueCase, count: valueCases.length },
+          ],
+          completedCount: [hasAllBaselines, hasAllTargets, hasValueCase].filter(Boolean).length,
+          totalCount: 3,
+        },
+        realization: {
+          milestones: [
+            { id: "track_progress", label: "Track KPI progress", completed: hasProgressTracking },
+          ],
+          completedCount: [hasProgressTracking].filter(Boolean).length,
+          totalCount: 1,
+        },
+        summary: {
+          discoveryComplete: hasCompanyResearch && hasStrategicPillars && hasPrioritizedJobs && hasMinimumKPIs,
+          alignmentComplete: hasAllBaselines && hasAllTargets && hasValueCase,
+          realizationComplete: hasProgressTracking,
+          totalKPIs: selectedKPIs.length,
+          totalPillars: strategicPillars.length,
+          totalValueCases: valueCases.length,
+        }
+      };
+
+      res.json(progress);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/projects", async (req, res) => {
     try {
       const validated = insertProjectSchema.parse(req.body);
