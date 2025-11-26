@@ -235,35 +235,31 @@ export default function AlignmentPage() {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Compact Header */}
-      <div className="border-b bg-card shrink-0">
-        <div className="p-3">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-4">
+      {/* Clean Minimal Header */}
+      <motion.div 
+        className="border-b bg-background shrink-0"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between gap-6">
+            <div className="flex items-center gap-6">
               <div>
-                <h1 className="text-lg font-semibold">Alignment</h1>
-                <p className="text-xs text-muted-foreground">
-                  {project.companyName} • {overallCompletion}% complete
-                </p>
-              </div>
-              {/* Progress indicator */}
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-24 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-primary transition-all"
-                    style={{ width: `${overallCompletion}%` }}
-                  />
+                <div className="flex items-center gap-3">
+                  <h1 className="text-xl font-semibold tracking-tight">Alignment</h1>
+                  <div className="h-5 w-px bg-border" />
+                  <span className="text-sm text-muted-foreground">{project.companyName}</span>
                 </div>
-                <span className="text-xs font-medium">{completedKPIs.length}/{allKPIs.length} KPIs</span>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <EvidenceDrawer projectId={projectId} />
               {finalizedData && finalizedData.jobs.length > 0 && (
                 <Button 
                   onClick={() => setIsReprioritizeOpen(true)}
                   size="sm"
-                  variant="outline"
+                  variant="ghost"
                   data-testid="button-reprioritize-jobs"
                 >
                   <RefreshCw className="h-4 w-4 mr-2" />
@@ -274,6 +270,7 @@ export default function AlignmentPage() {
               <Button 
                 onClick={handleCreate}
                 size="sm"
+                variant="outline"
                 data-testid="button-create-value-case"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -282,8 +279,7 @@ export default function AlignmentPage() {
               {hasReadyKPIs && project.currentPhase === "alignment" && (
                 <Button 
                   size="sm"
-                  variant="default"
-                  className="bg-emerald-600 hover:bg-emerald-700"
+                  className="bg-primary hover:bg-primary/90"
                   onClick={() => startTrackingMutation.mutate()}
                   disabled={startTrackingMutation.isPending}
                   data-testid="button-start-tracking-realization"
@@ -293,41 +289,37 @@ export default function AlignmentPage() {
                   ) : (
                     <ArrowRight className="h-4 w-4 mr-2" />
                   )}
-                  Start Tracking
+                  Start Realization
                 </Button>
               )}
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Clean Two-Column Layout */}
       <div className="flex-1 overflow-hidden flex">
-        {/* Left Sidebar - Tabbed Navigation */}
-        <div className="w-72 shrink-0 border-r bg-muted/20 flex flex-col">
+        {/* Left Sidebar - Clean List */}
+        <div className="w-80 shrink-0 border-r bg-muted/30 flex flex-col">
           <Tabs defaultValue="jobs" className="flex-1 flex flex-col">
-            <div className="p-4 border-b">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="jobs" className="gap-2" data-testid="tab-jobs">
-                  <Briefcase className="w-4 h-4" />
+            <div className="px-4 pt-4 pb-3 space-y-3">
+              <TabsList className="grid w-full grid-cols-2 h-9">
+                <TabsTrigger value="jobs" className="text-xs gap-1.5" data-testid="tab-jobs">
+                  <Briefcase className="w-3.5 h-3.5" />
                   Jobs ({filteredJobs.length})
                 </TabsTrigger>
-                <TabsTrigger value="cases" className="gap-2" data-testid="tab-value-cases">
-                  <FileText className="w-4 h-4" />
+                <TabsTrigger value="cases" className="text-xs gap-1.5" data-testid="tab-value-cases">
+                  <FileText className="w-3.5 h-3.5" />
                   Cases ({filteredValueCases.length})
                 </TabsTrigger>
               </TabsList>
-            </div>
-
-            {/* Search */}
-            <div className="px-4 py-3">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
                 <Input
                   placeholder="Search..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 h-9"
+                  className="pl-9 h-9 bg-background/60 border-0 focus-visible:ring-1"
                   data-testid="input-search-alignment"
                 />
               </div>
@@ -336,64 +328,54 @@ export default function AlignmentPage() {
             {/* Jobs Tab */}
             <TabsContent value="jobs" className="flex-1 m-0 overflow-hidden">
               <ScrollArea className="h-full">
-                <div className="p-4 space-y-2">
+                <div className="px-3 pb-4 space-y-1">
                   {isLoadingJobs ? (
-                    <div className="p-8 text-center text-muted-foreground text-sm">
+                    <div className="p-12 text-center text-muted-foreground text-sm">
                       <Loader2 className="w-5 h-5 animate-spin mx-auto mb-3" />
-                      Loading jobs...
+                      Loading...
                     </div>
                   ) : filteredJobs.length === 0 ? (
-                    <div className="p-8 text-center text-muted-foreground text-sm">
+                    <div className="p-12 text-center text-muted-foreground text-sm">
                       No finalized jobs yet
                     </div>
                   ) : (
                     filteredJobs.map((job, index) => {
                       const completion = getJobCompletion(job);
                       const isSelected = selectedItem?.type === 'job' && selectedItem.id === job.id;
+                      const isComplete = completion.percentage === 100;
                       
                       return (
                         <motion.button
                           key={job.id}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.2, delay: index * 0.05 }}
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.15, delay: index * 0.03 }}
                           onClick={() => setSelectedItem({ type: 'job', id: job.id })}
-                          className={`w-full text-left p-4 rounded-lg transition-all ${
+                          className={`w-full text-left px-3 py-3 rounded-lg transition-all group ${
                             isSelected 
-                              ? 'bg-primary text-primary-foreground shadow-md' 
-                              : 'bg-background hover-elevate border'
+                              ? 'bg-primary text-primary-foreground' 
+                              : 'hover:bg-background/80'
                           }`}
                           data-testid={`button-select-job-${job.id}`}
                         >
-                          <div className="flex items-center gap-3">
-                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                              isSelected ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-primary/10 text-primary'
+                          <div className="flex items-start gap-3">
+                            <div className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-semibold shrink-0 mt-0.5 ${
+                              isSelected 
+                                ? 'bg-primary-foreground/20 text-primary-foreground' 
+                                : isComplete 
+                                  ? 'bg-emerald-500/10 text-emerald-600' 
+                                  : 'bg-muted text-muted-foreground'
                             }`}>
-                              {index + 1}
+                              {isComplete ? <Check className="w-3.5 h-3.5" /> : index + 1}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm truncate">
+                              <p className={`text-sm font-medium leading-tight ${isSelected ? '' : 'text-foreground'}`}>
                                 {job.jobName}
                               </p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <div className="flex-1 h-1 bg-muted/50 rounded-full overflow-hidden">
-                                  <div 
-                                    className={`h-full transition-all ${
-                                      isSelected 
-                                        ? 'bg-primary-foreground/60'
-                                        : completion.percentage === 100 ? 'bg-emerald-500' : 'bg-primary/60'
-                                    }`}
-                                    style={{ width: `${completion.percentage}%` }}
-                                  />
-                                </div>
-                                <span className={`text-xs ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                                  {completion.completed}/{completion.total}
-                                </span>
-                              </div>
+                              <p className={`text-xs mt-1 ${isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                                {completion.completed}/{completion.total} KPIs ready
+                              </p>
                             </div>
-                            {completion.percentage === 100 && (
-                              <Check className={`w-4 h-4 shrink-0 ${isSelected ? 'text-primary-foreground' : 'text-emerald-500'}`} />
-                            )}
                           </div>
                         </motion.button>
                       );
@@ -406,14 +388,14 @@ export default function AlignmentPage() {
             {/* Value Cases Tab */}
             <TabsContent value="cases" className="flex-1 m-0 overflow-hidden">
               <ScrollArea className="h-full">
-                <div className="p-4 space-y-2">
+                <div className="px-3 pb-4 space-y-1">
                   {filteredValueCases.length === 0 ? (
                     <button
                       onClick={handleCreate}
-                      className="w-full p-6 rounded-lg border-2 border-dashed text-center text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                      className="w-full p-8 rounded-lg border border-dashed text-center text-sm text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors"
                       data-testid="button-create-first-value-case-sidebar"
                     >
-                      <Plus className="w-6 h-6 mx-auto mb-2" />
+                      <Plus className="w-5 h-5 mx-auto mb-2" />
                       Create Value Case
                     </button>
                   ) : (
@@ -423,36 +405,42 @@ export default function AlignmentPage() {
                       return (
                         <motion.button
                           key={valueCase.id}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.2, delay: index * 0.05 }}
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.15, delay: index * 0.03 }}
                           onClick={() => setSelectedItem({ type: 'valueCase', id: valueCase.id })}
-                          className={`w-full text-left p-4 rounded-lg transition-all ${
+                          className={`w-full text-left px-3 py-3 rounded-lg transition-all ${
                             isSelected 
-                              ? 'bg-primary text-primary-foreground shadow-md' 
-                              : 'bg-background hover-elevate border'
+                              ? 'bg-primary text-primary-foreground' 
+                              : 'hover:bg-background/80'
                           }`}
                           data-testid={`button-select-value-case-${valueCase.id}`}
                         >
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="font-medium text-sm">
-                              {valueCase.title}
-                            </p>
-                            <Badge 
-                              variant={isSelected ? "secondary" : (
-                                valueCase.status === 'approved' ? 'default' :
-                                valueCase.status === 'sent' ? 'secondary' : 'outline'
-                              )}
-                              className="shrink-0 text-xs"
-                            >
-                              {valueCase.status}
-                            </Badge>
+                          <div className="flex items-start gap-3">
+                            <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 mt-0.5 ${
+                              isSelected ? 'bg-primary-foreground/20' : 'bg-muted'
+                            }`}>
+                              <FileText className={`w-3.5 h-3.5 ${isSelected ? 'text-primary-foreground' : 'text-muted-foreground'}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-medium leading-tight ${isSelected ? '' : 'text-foreground'}`}>
+                                {valueCase.title}
+                              </p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className={`text-xs ${isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                                  {valueCase.status}
+                                </span>
+                                {valueCase.estimatedNPV && (
+                                  <>
+                                    <span className={`text-xs ${isSelected ? 'text-primary-foreground/50' : 'text-muted-foreground/50'}`}>•</span>
+                                    <span className={`text-xs ${isSelected ? 'text-primary-foreground/70' : 'text-emerald-600'}`}>
+                                      {valueCase.estimatedNPV}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                          {valueCase.estimatedNPV && (
-                            <p className={`text-xs mt-2 ${isSelected ? 'text-primary-foreground/80' : 'text-emerald-600'}`}>
-                              {valueCase.estimatedNPV}
-                            </p>
-                          )}
                         </motion.button>
                       );
                     })
@@ -464,63 +452,89 @@ export default function AlignmentPage() {
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden bg-background">
           <ScrollArea className="h-full">
-            <div className="p-8 max-w-4xl mx-auto">
-              {!selectedItem ? (
-                <div className="flex items-center justify-center h-[calc(100vh-200px)]">
-                  <div className="text-center">
-                    <TargetIcon className="w-16 h-16 mx-auto mb-6 text-muted-foreground/30" />
-                    <p className="text-xl font-medium">Select an item</p>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Choose a job or value case from the sidebar
-                    </p>
-                  </div>
-                </div>
-              ) : selectedJob ? (
-                <JobDetailView 
-                  job={selectedJob}
-                  projectId={projectId}
-                  updateKPIMutation={updateKPIMutation}
-                  onShowRecommendations={() => {
-                    setActiveRecommendationJob(selectedJob);
-                    setShowRecommendations(true);
-                  }}
-                />
-              ) : selectedValueCase ? (
-                <div className="space-y-8">
-                  <div className="flex items-start justify-between gap-4 flex-wrap">
-                    <div>
-                      <div className="flex items-center gap-3 mb-2">
-                        <h2 className="text-2xl font-semibold">{selectedValueCase.title}</h2>
-                        <Badge 
-                          variant={
-                            selectedValueCase.status === 'approved' ? 'default' :
-                            selectedValueCase.status === 'sent' ? 'secondary' : 'outline'
-                          }
-                        >
-                          {selectedValueCase.status}
-                        </Badge>
+            <div className="p-8 max-w-3xl">
+              <AnimatePresence mode="wait">
+                {!selectedItem ? (
+                  <motion.div 
+                    key="empty"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex items-center justify-center h-[calc(100vh-200px)]"
+                  >
+                    <div className="text-center">
+                      <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-6">
+                        <TargetIcon className="w-8 h-8 text-muted-foreground/50" />
                       </div>
-                      <p className="text-muted-foreground">
-                        {selectedValueCase.capabilityName}
-                        {selectedValueCase.solutionArea && ` • ${selectedValueCase.solutionArea}`}
+                      <p className="text-lg font-medium">Select a job or case</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Choose from the sidebar to view details
                       </p>
                     </div>
-                    <Button
-                      variant="outline"
-                      onClick={() => handleEdit(selectedValueCase)}
-                      data-testid={`button-edit-value-case-${selectedValueCase.id}`}
-                    >
-                      Edit
-                    </Button>
-                  </div>
-                  <ValueCaseCard
-                    valueCase={selectedValueCase}
-                    onEdit={handleEdit}
-                  />
-                </div>
-              ) : null}
+                  </motion.div>
+                ) : selectedJob ? (
+                  <motion.div
+                    key={`job-${selectedJob.id}`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <JobDetailView 
+                      job={selectedJob}
+                      projectId={projectId}
+                      updateKPIMutation={updateKPIMutation}
+                      onShowRecommendations={() => {
+                        setActiveRecommendationJob(selectedJob);
+                        setShowRecommendations(true);
+                      }}
+                    />
+                  </motion.div>
+                ) : selectedValueCase ? (
+                  <motion.div 
+                    key={`case-${selectedValueCase.id}`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-6"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h2 className="text-xl font-semibold tracking-tight">{selectedValueCase.title}</h2>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Badge 
+                            variant={
+                              selectedValueCase.status === 'approved' ? 'default' :
+                              selectedValueCase.status === 'sent' ? 'secondary' : 'outline'
+                            }
+                          >
+                            {selectedValueCase.status}
+                          </Badge>
+                          <span className="text-sm text-muted-foreground">
+                            {selectedValueCase.capabilityName}
+                            {selectedValueCase.solutionArea && ` • ${selectedValueCase.solutionArea}`}
+                          </span>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(selectedValueCase)}
+                        data-testid={`button-edit-value-case-${selectedValueCase.id}`}
+                      >
+                        Edit
+                      </Button>
+                    </div>
+                    <ValueCaseCard
+                      valueCase={selectedValueCase}
+                      onEdit={handleEdit}
+                    />
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
             </div>
           </ScrollArea>
         </div>
@@ -587,46 +601,48 @@ function JobDetailView({ job, projectId, updateKPIMutation, onShowRecommendation
     : 0;
 
   return (
-    <div className="space-y-8">
-      {/* Clean Header */}
+    <div className="space-y-6">
+      {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold mb-2">{job.jobName}</h1>
-        <div className="flex items-center gap-3 flex-wrap">
-          <Badge variant="outline">{job.capabilityName}</Badge>
+        <h1 className="text-xl font-semibold tracking-tight mb-3">{job.jobName}</h1>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant="secondary" className="font-normal">{job.capabilityName}</Badge>
           {job.solutionArea && (
-            <Badge variant="secondary">{job.solutionArea}</Badge>
+            <Badge variant="outline" className="font-normal">{job.solutionArea}</Badge>
           )}
         </div>
         {job.aggregationSummary && (
-          <p className="text-muted-foreground mt-4 leading-relaxed">
+          <p className="text-sm text-muted-foreground mt-4 leading-relaxed">
             {job.aggregationSummary}
           </p>
         )}
       </div>
 
-      {/* Stats Row */}
-      <div className="flex items-center gap-6 p-4 rounded-lg bg-muted/30 border">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-            <span className="text-lg font-bold text-primary">{completedKPIs.length}/{selectedKPIs.length}</span>
+      {/* Progress Bar */}
+      <div className="flex items-center gap-4 py-4 border-y">
+        <div className="flex items-center gap-3 min-w-fit">
+          <div className="text-2xl font-semibold tabular-nums">
+            {completedKPIs.length}<span className="text-muted-foreground font-normal">/{selectedKPIs.length}</span>
           </div>
-          <div>
-            <p className="text-sm font-medium">KPIs Ready</p>
-            <p className="text-xs text-muted-foreground">{completionPercentage}% complete</p>
+          <div className="text-sm text-muted-foreground">
+            KPIs<br />ready
           </div>
         </div>
-        <div className="flex-1 max-w-xs">
+        <div className="flex-1">
           <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-primary to-emerald-500 transition-all duration-500"
-              style={{ width: `${completionPercentage}%` }}
+            <motion.div 
+              className="h-full bg-primary rounded-full"
+              initial={{ width: 0 }}
+              animate={{ width: `${completionPercentage}%` }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
             />
           </div>
         </div>
         <Button
-          variant="outline"
+          variant="ghost"
+          size="sm"
           onClick={onShowRecommendations}
-          className="gap-2 ml-auto"
+          className="gap-2"
           data-testid={`button-recommend-kpis-${job.id}`}
         >
           <Sparkles className="h-4 w-4" />
@@ -634,24 +650,25 @@ function JobDetailView({ job, projectId, updateKPIMutation, onShowRecommendation
         </Button>
       </div>
 
-      {/* KPI Cards Section */}
+      {/* KPI List */}
       {selectedKPIs.length > 0 ? (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Primary KPIs */}
           {primaryKPIs.length > 0 && (
             <Collapsible open={primaryOpen} onOpenChange={setPrimaryOpen}>
-              <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 group">
+              <CollapsibleTrigger className="flex items-center gap-2 w-full text-left group mb-3">
                 <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${primaryOpen ? '' : '-rotate-90'}`} />
-                <span className="font-semibold">Primary KPIs</span>
-                <Badge variant="default" className="ml-2">{primaryKPIs.length}</Badge>
+                <span className="text-sm font-medium text-muted-foreground">Primary KPIs</span>
+                <span className="text-xs text-muted-foreground/60">{primaryKPIs.length}</span>
               </CollapsibleTrigger>
-              <CollapsibleContent className="pt-4">
-                <div className="space-y-4">
-                  {primaryKPIs.map((kpi) => (
+              <CollapsibleContent>
+                <div className="space-y-3">
+                  {primaryKPIs.map((kpi, idx) => (
                     <KPICard 
                       key={kpi.id} 
                       kpi={kpi} 
-                      updateKPIMutation={updateKPIMutation} 
+                      updateKPIMutation={updateKPIMutation}
+                      index={idx}
                     />
                   ))}
                 </div>
@@ -662,18 +679,19 @@ function JobDetailView({ job, projectId, updateKPIMutation, onShowRecommendation
           {/* Supporting KPIs */}
           {supportingKPIs.length > 0 && (
             <Collapsible open={supportingOpen} onOpenChange={setSupportingOpen}>
-              <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 group">
+              <CollapsibleTrigger className="flex items-center gap-2 w-full text-left group mb-3">
                 <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${supportingOpen ? '' : '-rotate-90'}`} />
-                <span className="font-semibold">Supporting KPIs</span>
-                <Badge variant="secondary" className="ml-2">{supportingKPIs.length}</Badge>
+                <span className="text-sm font-medium text-muted-foreground">Supporting KPIs</span>
+                <span className="text-xs text-muted-foreground/60">{supportingKPIs.length}</span>
               </CollapsibleTrigger>
-              <CollapsibleContent className="pt-4">
-                <div className="space-y-4">
-                  {supportingKPIs.map((kpi) => (
+              <CollapsibleContent>
+                <div className="space-y-3">
+                  {supportingKPIs.map((kpi, idx) => (
                     <KPICard 
                       key={kpi.id} 
                       kpi={kpi} 
-                      updateKPIMutation={updateKPIMutation} 
+                      updateKPIMutation={updateKPIMutation}
+                      index={idx}
                     />
                   ))}
                 </div>
@@ -682,39 +700,40 @@ function JobDetailView({ job, projectId, updateKPIMutation, onShowRecommendation
           )}
         </div>
       ) : (
-        <Card className="border-dashed">
-          <CardContent className="py-16 text-center">
-            <TargetIcon className="w-12 h-12 mx-auto mb-4 text-muted-foreground/40" />
-            <p className="text-lg font-medium mb-2">No KPIs selected</p>
-            <p className="text-muted-foreground mb-6">Add KPIs to track progress for this job</p>
-            <Button
-              variant="default"
-              onClick={onShowRecommendations}
-              className="gap-2"
-            >
-              <Sparkles className="h-4 w-4" />
-              Get AI Suggestions
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="py-12 text-center">
+          <div className="w-12 h-12 rounded-xl bg-muted/50 flex items-center justify-center mx-auto mb-4">
+            <TargetIcon className="w-6 h-6 text-muted-foreground/50" />
+          </div>
+          <p className="font-medium mb-1">No KPIs selected</p>
+          <p className="text-sm text-muted-foreground mb-4">Add KPIs to track progress</p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onShowRecommendations}
+            className="gap-2"
+          >
+            <Sparkles className="h-4 w-4" />
+            Get AI Suggestions
+          </Button>
+        </div>
       )}
     </div>
   );
 }
 
-// KPI Card Component - Clean card-based layout
+// KPI Card Component - Clean minimal design
 interface KPICardProps {
   kpi: KPI;
   updateKPIMutation: any;
+  index?: number;
 }
 
-function KPICard({ kpi, updateKPIMutation }: KPICardProps) {
+function KPICard({ kpi, updateKPIMutation, index = 0 }: KPICardProps) {
   const { toast } = useToast();
   const [isGeneratingBenchmark, setIsGeneratingBenchmark] = useState(false);
   
   const [localBaselineValue, setLocalBaselineValue] = useState(kpi.baselineValue || "");
   const [localTargetValue, setLocalTargetValue] = useState(kpi.targetValue || "");
-  const [localTargetSource, setLocalTargetSource] = useState(kpi.targetSource || "");
   
   useEffect(() => {
     setLocalBaselineValue(kpi.baselineValue || "");
@@ -724,15 +743,10 @@ function KPICard({ kpi, updateKPIMutation }: KPICardProps) {
     setLocalTargetValue(kpi.targetValue || "");
   }, [kpi.targetValue]);
   
-  useEffect(() => {
-    setLocalTargetSource(kpi.targetSource || "");
-  }, [kpi.targetSource]);
-  
   const baselineNum = parseFloat(localBaselineValue || "0");
   const targetNum = parseFloat(localTargetValue || "0");
   const hasValues = localBaselineValue && localTargetValue;
   
-  const gap = hasValues ? Math.abs(targetNum - baselineNum) : 0;
   const improvement = hasValues && baselineNum > 0 
     ? ((targetNum - baselineNum) / baselineNum * 100)
     : 0;
@@ -778,203 +792,143 @@ function KPICard({ kpi, updateKPIMutation }: KPICardProps) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
+      transition={{ duration: 0.2, delay: index * 0.05 }}
+      className={`p-4 rounded-lg border bg-card transition-colors ${
+        isComplete ? 'border-emerald-500/30 bg-emerald-500/5' : ''
+      }`}
+      data-testid={`kpi-card-${kpi.id}`}
     >
-      <Card 
-        className={`transition-all ${isComplete ? 'border-emerald-200 dark:border-emerald-800' : ''}`}
-        data-testid={`kpi-card-${kpi.id}`}
-      >
-        <CardContent className="p-6">
-        {/* KPI Header */}
-        <div className="flex items-start justify-between gap-4 mb-6">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <h3 className="font-semibold text-lg" data-testid={`text-kpi-name-${kpi.id}`}>
-                {kpi.kpiName}
-              </h3>
-              {isComplete && (
-                <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
-                  <Check className="w-3 h-3 text-white" />
-                </div>
-              )}
-            </div>
-            {kpi.definition && (
-              <p className="text-sm text-muted-foreground">
-                {kpi.definition}
-              </p>
+      {/* Header Row */}
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="font-medium" data-testid={`text-kpi-name-${kpi.id}`}>
+              {kpi.kpiName}
+            </h3>
+            {isComplete && (
+              <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+                <Check className="w-2.5 h-2.5 text-white" />
+              </div>
             )}
           </div>
-          <Badge variant="outline" className="shrink-0">{kpi.unit}</Badge>
+          {kpi.definition && (
+            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+              {kpi.definition}
+            </p>
+          )}
         </div>
+        <Badge variant="outline" className="shrink-0 text-xs font-normal">{kpi.unit}</Badge>
+      </div>
 
-        {/* Benchmark hint */}
-        {kpi.benchmarkValue && (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-primary/5 border border-primary/20 mb-6">
-            <Award className="w-4 h-4 text-primary shrink-0" />
-            <span className="text-sm">
-              <span className="text-muted-foreground">Korn Ferry Benchmark:</span>{" "}
-              <span className="font-semibold">{kpi.benchmarkValue} {kpi.unit}</span>
-            </span>
-          </div>
-        )}
+      {/* Benchmark hint */}
+      {kpi.benchmarkValue && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-primary/5 text-xs mb-4">
+          <Award className="w-3.5 h-3.5 text-primary shrink-0" />
+          <span className="text-muted-foreground">Benchmark:</span>
+          <span className="font-medium">{kpi.benchmarkValue} {kpi.unit}</span>
+        </div>
+      )}
 
-        {/* Two Column Layout: Baseline & Target */}
-        <div className="grid grid-cols-2 gap-6">
-          {/* Baseline Column */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium text-muted-foreground">Current (Baseline)</label>
-            <div className="flex items-center gap-2">
-              <Input
-                type="text"
-                placeholder={`Enter value`}
-                value={localBaselineValue}
-                onChange={(e) => setLocalBaselineValue(e.target.value)}
-                onBlur={(e) => {
-                  if (e.target.value !== kpi.baselineValue) {
-                    updateKPIMutation.mutate({
-                      kpiId: kpi.id,
-                      data: { baselineValue: e.target.value }
-                    });
-                  }
-                }}
-                className="text-base font-semibold"
-                data-testid={`input-baseline-${kpi.id}`}
-              />
-            </div>
-            {kpi.baselineEnteredBy === "customer" && kpi.baselineEnteredByName && (
-              <Badge variant="secondary" className="text-xs">
-                by {kpi.baselineEnteredByName}
-              </Badge>
-            )}
+      {/* Two Column Input Layout */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Baseline */}
+        <div className="space-y-2">
+          <label className="text-xs text-muted-foreground">Baseline</label>
+          <Input
+            type="text"
+            placeholder="Current value"
+            value={localBaselineValue}
+            onChange={(e) => setLocalBaselineValue(e.target.value)}
+            onBlur={(e) => {
+              if (e.target.value !== kpi.baselineValue) {
+                updateKPIMutation.mutate({
+                  kpiId: kpi.id,
+                  data: { baselineValue: e.target.value }
+                });
+              }
+            }}
+            className="h-9"
+            data-testid={`input-baseline-${kpi.id}`}
+          />
+          {!localBaselineValue && (
             <Button
               onClick={generateAIBenchmark}
               disabled={isGeneratingBenchmark}
-              variant="outline"
+              variant="ghost"
               size="sm"
-              className="w-full gap-2"
+              className="w-full h-7 text-xs gap-1.5"
               data-testid={`button-generate-benchmark-${kpi.id}`}
             >
               {isGeneratingBenchmark ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-3 h-3 animate-spin" />
               ) : (
-                <Sparkles className="w-4 h-4" />
+                <Sparkles className="w-3 h-3" />
               )}
-              {isGeneratingBenchmark ? "Generating..." : "AI Suggest Baseline"}
+              {isGeneratingBenchmark ? "..." : "AI suggest"}
             </Button>
-          </div>
-
-          {/* Target Column */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium text-muted-foreground">Target (Desired)</label>
-            <div className="flex items-center gap-2">
-              <Input
-                type="text"
-                placeholder={`Enter target`}
-                value={localTargetValue}
-                onChange={(e) => setLocalTargetValue(e.target.value)}
-                onBlur={(e) => {
-                  if (e.target.value !== kpi.targetValue) {
-                    updateKPIMutation.mutate({
-                      kpiId: kpi.id,
-                      data: { targetValue: e.target.value }
-                    });
-                  }
-                }}
-                className="text-base font-semibold"
-                data-testid={`input-target-${kpi.id}`}
-              />
-            </div>
-            {kpi.targetEnteredBy === "customer" && kpi.targetEnteredByName && (
-              <Badge variant="secondary" className="text-xs">
-                by {kpi.targetEnteredByName}
-              </Badge>
-            )}
-            <Input
-              type="text"
-              placeholder="Rationale for target..."
-              value={localTargetSource}
-              onChange={(e) => setLocalTargetSource(e.target.value)}
-              onBlur={(e) => {
-                if (e.target.value !== kpi.targetSource) {
-                  updateKPIMutation.mutate({
-                    kpiId: kpi.id,
-                    data: { targetSource: e.target.value }
-                  });
-                }
-              }}
-              className="text-sm"
-              data-testid={`input-target-source-${kpi.id}`}
-            />
-          </div>
+          )}
         </div>
 
-        {/* Customer Comment */}
-        {kpi.customerComment && (
-          <div className="mt-4 p-3 rounded-md bg-muted/50 border">
-            <p className="text-xs font-medium mb-1">Customer Note:</p>
-            <p className="text-sm text-muted-foreground">{kpi.customerComment}</p>
-          </div>
-        )}
+        {/* Target */}
+        <div className="space-y-2">
+          <label className="text-xs text-muted-foreground">Target</label>
+          <Input
+            type="text"
+            placeholder="Target value"
+            value={localTargetValue}
+            onChange={(e) => setLocalTargetValue(e.target.value)}
+            onBlur={(e) => {
+              if (e.target.value !== kpi.targetValue) {
+                updateKPIMutation.mutate({
+                  kpiId: kpi.id,
+                  data: { targetValue: e.target.value }
+                });
+              }
+            }}
+            className="h-9"
+            data-testid={`input-target-${kpi.id}`}
+          />
+        </div>
+      </div>
 
-        {/* Impact Summary - only show when both values are set */}
-        <AnimatePresence>
-          {hasValues && (
-            <motion.div 
-              className="mt-6 pt-6 border-t"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <motion.div 
-                    className={`flex items-center gap-2 px-3 py-2 rounded-md ${
-                      isImproving ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-orange-50 dark:bg-orange-900/20'
-                    }`}
-                    initial={{ scale: 0.9 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                  >
-                    {isImproving ? (
-                      <TrendingUp className="w-4 h-4 text-emerald-600" />
-                    ) : (
-                      <TrendingDown className="w-4 h-4 text-orange-600" />
-                    )}
-                    <span className={`font-semibold ${isImproving ? 'text-emerald-700 dark:text-emerald-400' : 'text-orange-700 dark:text-orange-400'}`}>
-                      {gap.toFixed(1)} {kpi.unit} gap
-                    </span>
-                  </motion.div>
-                  <div className="text-center">
-                    <motion.div 
-                      className={`text-2xl font-bold ${isImproving ? 'text-emerald-600' : 'text-orange-600'}`}
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 }}
-                    >
-                      {isImproving ? '+' : ''}{improvement.toFixed(1)}%
-                    </motion.div>
-                    <div className="text-xs text-muted-foreground">improvement</div>
-                  </div>
-                </div>
-                <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
-                  <motion.div 
-                    className={`h-full rounded-full ${
-                      isImproving ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' : 'bg-gradient-to-r from-orange-500 to-orange-400'
-                    }`}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${Math.min(100, Math.abs(improvement))}%` }}
-                    transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
-                  />
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        </CardContent>
-      </Card>
+      {/* Customer Comment */}
+      {kpi.customerComment && (
+        <div className="mt-3 p-2 rounded bg-muted/30 text-xs">
+          <span className="text-muted-foreground">Note:</span> {kpi.customerComment}
+        </div>
+      )}
+
+      {/* Impact indicator when complete */}
+      <AnimatePresence>
+        {hasValues && (
+          <motion.div 
+            className="mt-4 pt-3 border-t flex items-center justify-between"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="flex items-center gap-2">
+              {isImproving ? (
+                <TrendingUp className="w-4 h-4 text-emerald-600" />
+              ) : (
+                <TrendingDown className="w-4 h-4 text-orange-600" />
+              )}
+              <span className={`text-sm font-medium ${isImproving ? 'text-emerald-600' : 'text-orange-600'}`}>
+                {isImproving ? '+' : ''}{improvement.toFixed(0)}%
+              </span>
+              <span className="text-xs text-muted-foreground">improvement</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>{localBaselineValue}</span>
+              <ArrowRight className="w-3 h-3" />
+              <span className="font-medium text-foreground">{localTargetValue}</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
