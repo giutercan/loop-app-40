@@ -6,11 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   Plus, 
   TrendingUp,
@@ -20,9 +18,7 @@ import {
   Briefcase,
   FileText,
   Check,
-  Circle,
-  AlertCircle,
-  ChevronRight,
+  ChevronDown,
   Sparkles,
   Loader2,
   Award,
@@ -305,246 +301,223 @@ export default function AlignmentPage() {
         </div>
       </div>
 
-      {/* Master-Detail Layout */}
-      <div className="flex-1 overflow-hidden">
-        <ResizablePanelGroup direction="horizontal" className="h-full">
-          {/* Master Panel - List */}
-          <ResizablePanel defaultSize={30} minSize={20} maxSize={40}>
-            <div className="h-full flex flex-col border-r">
-              {/* Search */}
-              <div className="p-3 border-b">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search jobs & cases..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 h-9"
-                    data-testid="input-search-alignment"
-                  />
-                </div>
-              </div>
+      {/* Clean Two-Column Layout */}
+      <div className="flex-1 overflow-hidden flex">
+        {/* Left Sidebar - Tabbed Navigation */}
+        <div className="w-72 shrink-0 border-r bg-muted/20 flex flex-col">
+          <Tabs defaultValue="jobs" className="flex-1 flex flex-col">
+            <div className="p-4 border-b">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="jobs" className="gap-2" data-testid="tab-jobs">
+                  <Briefcase className="w-4 h-4" />
+                  Jobs ({filteredJobs.length})
+                </TabsTrigger>
+                <TabsTrigger value="cases" className="gap-2" data-testid="tab-value-cases">
+                  <FileText className="w-4 h-4" />
+                  Cases ({filteredValueCases.length})
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
-              <ScrollArea className="flex-1">
-                <div className="p-2 space-y-4">
-                  {/* Jobs Section */}
-                  <div>
-                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                      <Briefcase className="w-3.5 h-3.5" />
-                      Priority Jobs ({filteredJobs.length})
+            {/* Search */}
+            <div className="px-4 py-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 h-9"
+                  data-testid="input-search-alignment"
+                />
+              </div>
+            </div>
+
+            {/* Jobs Tab */}
+            <TabsContent value="jobs" className="flex-1 m-0 overflow-hidden">
+              <ScrollArea className="h-full">
+                <div className="p-4 space-y-2">
+                  {isLoadingJobs ? (
+                    <div className="p-8 text-center text-muted-foreground text-sm">
+                      <Loader2 className="w-5 h-5 animate-spin mx-auto mb-3" />
+                      Loading jobs...
                     </div>
-                    <div className="space-y-1">
-                      {isLoadingJobs ? (
-                        <div className="p-4 text-center text-muted-foreground text-sm">
-                          <Loader2 className="w-4 h-4 animate-spin mx-auto mb-2" />
-                          Loading jobs...
-                        </div>
-                      ) : filteredJobs.length === 0 ? (
-                        <div className="p-4 text-center text-muted-foreground text-sm">
-                          No finalized jobs yet
-                        </div>
-                      ) : (
-                        filteredJobs.map((job, index) => {
-                          const completion = getJobCompletion(job);
-                          const isSelected = selectedItem?.type === 'job' && selectedItem.id === job.id;
-                          
-                          return (
-                            <button
-                              key={job.id}
-                              onClick={() => setSelectedItem({ type: 'job', id: job.id })}
-                              className={`w-full text-left p-3 rounded-md transition-colors ${
-                                isSelected 
-                                  ? 'bg-primary/10 border border-primary/30' 
-                                  : 'hover-elevate'
-                              }`}
-                              data-testid={`button-select-job-${job.id}`}
-                            >
-                              <div className="flex items-start gap-2">
-                                <Badge variant="outline" className="shrink-0 text-xs">
-                                  #{index + 1}
-                                </Badge>
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-sm truncate">
-                                    {job.jobName}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground truncate">
-                                    {job.capabilityName}
-                                  </p>
-                                </div>
-                                <div className="text-right shrink-0">
-                                  {completion.percentage === 100 ? (
-                                    <Check className="w-4 h-4 text-emerald-500" />
-                                  ) : completion.percentage > 0 ? (
-                                    <div className="w-4 h-4 relative">
-                                      <Circle className="w-4 h-4 text-muted-foreground/30" />
-                                      <div 
-                                        className="absolute inset-0 w-4 h-4 rounded-full border-2 border-primary"
-                                        style={{ 
-                                          clipPath: `polygon(0 0, 100% 0, 100% ${completion.percentage}%, 0 ${completion.percentage}%)`
-                                        }}
-                                      />
-                                    </div>
-                                  ) : (
-                                    <AlertCircle className="w-4 h-4 text-amber-500" />
-                                  )}
-                                </div>
-                              </div>
-                              <div className="mt-2 flex items-center gap-2">
-                                <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                  ) : filteredJobs.length === 0 ? (
+                    <div className="p-8 text-center text-muted-foreground text-sm">
+                      No finalized jobs yet
+                    </div>
+                  ) : (
+                    filteredJobs.map((job, index) => {
+                      const completion = getJobCompletion(job);
+                      const isSelected = selectedItem?.type === 'job' && selectedItem.id === job.id;
+                      
+                      return (
+                        <button
+                          key={job.id}
+                          onClick={() => setSelectedItem({ type: 'job', id: job.id })}
+                          className={`w-full text-left p-4 rounded-lg transition-all ${
+                            isSelected 
+                              ? 'bg-primary text-primary-foreground shadow-md' 
+                              : 'bg-background hover-elevate border'
+                          }`}
+                          data-testid={`button-select-job-${job.id}`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                              isSelected ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-primary/10 text-primary'
+                            }`}>
+                              {index + 1}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">
+                                {job.jobName}
+                              </p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <div className="flex-1 h-1 bg-muted/50 rounded-full overflow-hidden">
                                   <div 
                                     className={`h-full transition-all ${
-                                      completion.percentage === 100 ? 'bg-emerald-500' : 'bg-primary'
+                                      isSelected 
+                                        ? 'bg-primary-foreground/60'
+                                        : completion.percentage === 100 ? 'bg-emerald-500' : 'bg-primary/60'
                                     }`}
                                     style={{ width: `${completion.percentage}%` }}
                                   />
                                 </div>
-                                <span className="text-xs text-muted-foreground">
+                                <span className={`text-xs ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
                                   {completion.completed}/{completion.total}
                                 </span>
                               </div>
-                            </button>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Value Cases Section */}
-                  <div>
-                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                      <FileText className="w-3.5 h-3.5" />
-                      Value Cases ({filteredValueCases.length})
-                    </div>
-                    <div className="space-y-1">
-                      {filteredValueCases.length === 0 ? (
-                        <button
-                          onClick={handleCreate}
-                          className="w-full p-3 rounded-md border border-dashed text-center text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-                          data-testid="button-create-first-value-case-sidebar"
-                        >
-                          <Plus className="w-4 h-4 mx-auto mb-1" />
-                          Create Value Case
+                            </div>
+                            {completion.percentage === 100 && (
+                              <Check className={`w-4 h-4 shrink-0 ${isSelected ? 'text-primary-foreground' : 'text-emerald-500'}`} />
+                            )}
+                          </div>
                         </button>
-                      ) : (
-                        filteredValueCases.map((valueCase) => {
-                          const isSelected = selectedItem?.type === 'valueCase' && selectedItem.id === valueCase.id;
-                          
-                          return (
-                            <button
-                              key={valueCase.id}
-                              onClick={() => setSelectedItem({ type: 'valueCase', id: valueCase.id })}
-                              className={`w-full text-left p-3 rounded-md transition-colors ${
-                                isSelected 
-                                  ? 'bg-primary/10 border border-primary/30' 
-                                  : 'hover-elevate'
-                              }`}
-                              data-testid={`button-select-value-case-${valueCase.id}`}
-                            >
-                              <div className="flex items-start gap-2">
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-sm truncate">
-                                    {valueCase.title}
-                                  </p>
-                                </div>
-                                <Badge 
-                                  variant={
-                                    valueCase.status === 'approved' ? 'default' :
-                                    valueCase.status === 'sent' ? 'secondary' : 'outline'
-                                  }
-                                  className="shrink-0 text-xs"
-                                >
-                                  {valueCase.status}
-                                </Badge>
-                              </div>
-                              {valueCase.estimatedNPV && (
-                                <p className="text-xs text-emerald-600 mt-1">
-                                  {valueCase.estimatedNPV}
-                                </p>
-                              )}
-                            </button>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
+                      );
+                    })
+                  )}
                 </div>
               </ScrollArea>
-            </div>
-          </ResizablePanel>
+            </TabsContent>
 
-          <ResizableHandle withHandle />
+            {/* Value Cases Tab */}
+            <TabsContent value="cases" className="flex-1 m-0 overflow-hidden">
+              <ScrollArea className="h-full">
+                <div className="p-4 space-y-2">
+                  {filteredValueCases.length === 0 ? (
+                    <button
+                      onClick={handleCreate}
+                      className="w-full p-6 rounded-lg border-2 border-dashed text-center text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                      data-testid="button-create-first-value-case-sidebar"
+                    >
+                      <Plus className="w-6 h-6 mx-auto mb-2" />
+                      Create Value Case
+                    </button>
+                  ) : (
+                    filteredValueCases.map((valueCase) => {
+                      const isSelected = selectedItem?.type === 'valueCase' && selectedItem.id === valueCase.id;
+                      
+                      return (
+                        <button
+                          key={valueCase.id}
+                          onClick={() => setSelectedItem({ type: 'valueCase', id: valueCase.id })}
+                          className={`w-full text-left p-4 rounded-lg transition-all ${
+                            isSelected 
+                              ? 'bg-primary text-primary-foreground shadow-md' 
+                              : 'bg-background hover-elevate border'
+                          }`}
+                          data-testid={`button-select-value-case-${valueCase.id}`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="font-medium text-sm">
+                              {valueCase.title}
+                            </p>
+                            <Badge 
+                              variant={isSelected ? "secondary" : (
+                                valueCase.status === 'approved' ? 'default' :
+                                valueCase.status === 'sent' ? 'secondary' : 'outline'
+                              )}
+                              className="shrink-0 text-xs"
+                            >
+                              {valueCase.status}
+                            </Badge>
+                          </div>
+                          {valueCase.estimatedNPV && (
+                            <p className={`text-xs mt-2 ${isSelected ? 'text-primary-foreground/80' : 'text-emerald-600'}`}>
+                              {valueCase.estimatedNPV}
+                            </p>
+                          )}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
+        </div>
 
-          {/* Detail Panel */}
-          <ResizablePanel defaultSize={70}>
-            <ScrollArea className="h-full">
-              <div className="p-6">
-                {!selectedItem ? (
-                  // Empty state
-                  <div className="flex items-center justify-center h-[calc(100vh-200px)]">
-                    <div className="text-center">
-                      <TargetIcon className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
-                      <p className="text-lg font-medium">Select an item</p>
-                      <p className="text-sm text-muted-foreground">
-                        Choose a job or value case from the list to view details
+        {/* Main Content Area */}
+        <div className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full">
+            <div className="p-8 max-w-4xl mx-auto">
+              {!selectedItem ? (
+                <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+                  <div className="text-center">
+                    <TargetIcon className="w-16 h-16 mx-auto mb-6 text-muted-foreground/30" />
+                    <p className="text-xl font-medium">Select an item</p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Choose a job or value case from the sidebar
+                    </p>
+                  </div>
+                </div>
+              ) : selectedJob ? (
+                <JobDetailView 
+                  job={selectedJob}
+                  projectId={projectId}
+                  updateKPIMutation={updateKPIMutation}
+                  onShowRecommendations={() => {
+                    setActiveRecommendationJob(selectedJob);
+                    setShowRecommendations(true);
+                  }}
+                />
+              ) : selectedValueCase ? (
+                <div className="space-y-8">
+                  <div className="flex items-start justify-between gap-4 flex-wrap">
+                    <div>
+                      <div className="flex items-center gap-3 mb-2">
+                        <h2 className="text-2xl font-semibold">{selectedValueCase.title}</h2>
+                        <Badge 
+                          variant={
+                            selectedValueCase.status === 'approved' ? 'default' :
+                            selectedValueCase.status === 'sent' ? 'secondary' : 'outline'
+                          }
+                        >
+                          {selectedValueCase.status}
+                        </Badge>
+                      </div>
+                      <p className="text-muted-foreground">
+                        {selectedValueCase.capabilityName}
+                        {selectedValueCase.solutionArea && ` • ${selectedValueCase.solutionArea}`}
                       </p>
                     </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => handleEdit(selectedValueCase)}
+                      data-testid={`button-edit-value-case-${selectedValueCase.id}`}
+                    >
+                      Edit
+                    </Button>
                   </div>
-                ) : selectedJob ? (
-                  // Job Detail View
-                  <JobDetailView 
-                    job={selectedJob}
-                    projectId={projectId}
-                    updateKPIMutation={updateKPIMutation}
-                    onShowRecommendations={() => {
-                      setActiveRecommendationJob(selectedJob);
-                      setShowRecommendations(true);
-                    }}
+                  <ValueCaseCard
+                    valueCase={selectedValueCase}
+                    onEdit={handleEdit}
                   />
-                ) : selectedValueCase ? (
-                  // Value Case Detail View
-                  <div className="space-y-6">
-                    {/* Value Case Header */}
-                    <div className="flex items-start justify-between gap-4 flex-wrap">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <h2 className="text-xl font-semibold">{selectedValueCase.title}</h2>
-                          <Badge 
-                            variant={
-                              selectedValueCase.status === 'approved' ? 'default' :
-                              selectedValueCase.status === 'sent' ? 'secondary' : 'outline'
-                            }
-                          >
-                            {selectedValueCase.status}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {selectedValueCase.capabilityName}
-                          {selectedValueCase.solutionArea && ` • ${selectedValueCase.solutionArea}`}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(selectedValueCase)}
-                          data-testid={`button-edit-value-case-${selectedValueCase.id}`}
-                        >
-                          Edit
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    {/* Value Case Card with full details */}
-                    <ValueCaseCard
-                      valueCase={selectedValueCase}
-                      onEdit={handleEdit}
-                    />
-                  </div>
-                ) : null}
-              </div>
-            </ScrollArea>
-          </ResizablePanel>
-        </ResizablePanelGroup>
+                </div>
+              ) : null}
+            </div>
+          </ScrollArea>
+        </div>
       </div>
 
       {/* Dialogs */}
@@ -596,113 +569,125 @@ interface JobDetailViewProps {
 }
 
 function JobDetailView({ job, projectId, updateKPIMutation, onShowRecommendations }: JobDetailViewProps) {
+  const [primaryOpen, setPrimaryOpen] = useState(true);
+  const [supportingOpen, setSupportingOpen] = useState(true);
+  
   const selectedKPIs = job.kpis.filter(k => k.isSelected);
+  const primaryKPIs = selectedKPIs.filter(k => k.kpiType === "primary");
+  const supportingKPIs = selectedKPIs.filter(k => k.kpiType === "supporting");
   const completedKPIs = selectedKPIs.filter(k => k.baselineValue && k.targetValue);
   const completionPercentage = selectedKPIs.length > 0 
     ? Math.round((completedKPIs.length / selectedKPIs.length) * 100) 
     : 0;
 
   return (
-    <div className="space-y-6">
-      {/* Job Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h2 className="text-xl font-semibold">{job.jobName}</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            {job.capabilityName} {job.solutionArea && `• ${job.solutionArea}`}
-          </p>
-          {job.aggregationSummary && (
-            <p className="text-sm text-muted-foreground mt-2 max-w-2xl">
-              {job.aggregationSummary}
-            </p>
+    <div className="space-y-8">
+      {/* Clean Header */}
+      <div>
+        <h1 className="text-2xl font-semibold mb-2">{job.jobName}</h1>
+        <div className="flex items-center gap-3 flex-wrap">
+          <Badge variant="outline">{job.capabilityName}</Badge>
+          {job.solutionArea && (
+            <Badge variant="secondary">{job.solutionArea}</Badge>
           )}
         </div>
+        {job.aggregationSummary && (
+          <p className="text-muted-foreground mt-4 leading-relaxed">
+            {job.aggregationSummary}
+          </p>
+        )}
+      </div>
+
+      {/* Stats Row */}
+      <div className="flex items-center gap-6 p-4 rounded-lg bg-muted/30 border">
         <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onShowRecommendations}
-            className="gap-2"
-            data-testid={`button-recommend-kpis-${job.id}`}
-          >
-            <Sparkles className="h-4 w-4" />
-            Suggest KPIs
-          </Button>
-          <div className="text-right">
-            <div className="text-2xl font-bold text-primary">
-              {completedKPIs.length}/{selectedKPIs.length}
-            </div>
-            <div className="text-xs text-muted-foreground">KPIs Ready</div>
+          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+            <span className="text-lg font-bold text-primary">{completedKPIs.length}/{selectedKPIs.length}</span>
+          </div>
+          <div>
+            <p className="text-sm font-medium">KPIs Ready</p>
+            <p className="text-xs text-muted-foreground">{completionPercentage}% complete</p>
           </div>
         </div>
+        <div className="flex-1 max-w-xs">
+          <div className="h-2 bg-muted rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-primary to-emerald-500 transition-all duration-500"
+              style={{ width: `${completionPercentage}%` }}
+            />
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          onClick={onShowRecommendations}
+          className="gap-2 ml-auto"
+          data-testid={`button-recommend-kpis-${job.id}`}
+        >
+          <Sparkles className="h-4 w-4" />
+          Suggest KPIs
+        </Button>
       </div>
 
-      {/* Progress Bar */}
-      <div className="space-y-2">
-        <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">Alignment Progress</span>
-          <span className="font-semibold">{completionPercentage}%</span>
-        </div>
-        <div className="h-2 bg-muted rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-gradient-to-r from-primary to-emerald-500 transition-all duration-500"
-            style={{ width: `${completionPercentage}%` }}
-          />
-        </div>
-      </div>
-
-      {/* KPI Table */}
+      {/* KPI Cards Section */}
       {selectedKPIs.length > 0 ? (
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b-2 border-primary/20 bg-muted/30">
-                    <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      KPI Metric
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Current (Baseline)
-                    </th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      <ArrowRight className="w-4 h-4 mx-auto" />
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Target (Desired)
-                    </th>
-                    <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Gap & Benefit
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedKPIs.map((kpi, index) => (
-                    <KPIRow 
+        <div className="space-y-6">
+          {/* Primary KPIs */}
+          {primaryKPIs.length > 0 && (
+            <Collapsible open={primaryOpen} onOpenChange={setPrimaryOpen}>
+              <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 group">
+                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${primaryOpen ? '' : '-rotate-90'}`} />
+                <span className="font-semibold">Primary KPIs</span>
+                <Badge variant="default" className="ml-2">{primaryKPIs.length}</Badge>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-4">
+                <div className="space-y-4">
+                  {primaryKPIs.map((kpi) => (
+                    <KPICard 
                       key={kpi.id} 
                       kpi={kpi} 
-                      index={index}
                       updateKPIMutation={updateKPIMutation} 
                     />
                   ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+
+          {/* Supporting KPIs */}
+          {supportingKPIs.length > 0 && (
+            <Collapsible open={supportingOpen} onOpenChange={setSupportingOpen}>
+              <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 group">
+                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${supportingOpen ? '' : '-rotate-90'}`} />
+                <span className="font-semibold">Supporting KPIs</span>
+                <Badge variant="secondary" className="ml-2">{supportingKPIs.length}</Badge>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-4">
+                <div className="space-y-4">
+                  {supportingKPIs.map((kpi) => (
+                    <KPICard 
+                      key={kpi.id} 
+                      kpi={kpi} 
+                      updateKPIMutation={updateKPIMutation} 
+                    />
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+        </div>
       ) : (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <TargetIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p className="text-muted-foreground">No KPIs selected for this job in Discovery phase</p>
+        <Card className="border-dashed">
+          <CardContent className="py-16 text-center">
+            <TargetIcon className="w-12 h-12 mx-auto mb-4 text-muted-foreground/40" />
+            <p className="text-lg font-medium mb-2">No KPIs selected</p>
+            <p className="text-muted-foreground mb-6">Add KPIs to track progress for this job</p>
             <Button
-              variant="outline"
-              size="sm"
+              variant="default"
               onClick={onShowRecommendations}
-              className="mt-4 gap-2"
+              className="gap-2"
             >
               <Sparkles className="h-4 w-4" />
-              Get AI KPI Suggestions
+              Get AI Suggestions
             </Button>
           </CardContent>
         </Card>
@@ -711,14 +696,13 @@ function JobDetailView({ job, projectId, updateKPIMutation, onShowRecommendation
   );
 }
 
-// KPI Row Component
-interface KPIRowProps {
+// KPI Card Component - Clean card-based layout
+interface KPICardProps {
   kpi: KPI;
-  index: number;
   updateKPIMutation: any;
 }
 
-function KPIRow({ kpi, index, updateKPIMutation }: KPIRowProps) {
+function KPICard({ kpi, updateKPIMutation }: KPICardProps) {
   const { toast } = useToast();
   const [isGeneratingBenchmark, setIsGeneratingBenchmark] = useState(false);
   
@@ -747,6 +731,7 @@ function KPIRow({ kpi, index, updateKPIMutation }: KPIRowProps) {
     ? ((targetNum - baselineNum) / baselineNum * 100)
     : 0;
   const isImproving = improvement > 0;
+  const isComplete = hasValues;
 
   const generateAIBenchmark = async () => {
     setIsGeneratingBenchmark(true);
@@ -786,184 +771,178 @@ function KPIRow({ kpi, index, updateKPIMutation }: KPIRowProps) {
   };
 
   return (
-    <tr 
-      className={`border-b border-muted ${index % 2 === 0 ? 'bg-background' : 'bg-muted/20'}`}
-      data-testid={`kpi-row-${kpi.id}`}
+    <Card 
+      className={`transition-all ${isComplete ? 'border-emerald-200 dark:border-emerald-800' : ''}`}
+      data-testid={`kpi-card-${kpi.id}`}
     >
-      <td className="px-6 py-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-sm" data-testid={`text-kpi-name-${kpi.id}`}>
-              {kpi.kpiName}
-            </span>
-            <Badge variant={kpi.kpiType === "primary" ? "default" : "secondary"} className="text-xs">
-              {kpi.kpiType}
-            </Badge>
-          </div>
-          {kpi.definition && (
-            <p className="text-xs text-muted-foreground line-clamp-2">
-              {kpi.definition}
-            </p>
-          )}
-          {kpi.benchmarkValue && (
-            <div className="flex items-center gap-1 text-xs text-primary mt-1">
-              <Award className="w-3 h-3" />
-              <span>KF Benchmark: {kpi.benchmarkValue} {kpi.unit}</span>
+      <CardContent className="p-6">
+        {/* KPI Header */}
+        <div className="flex items-start justify-between gap-4 mb-6">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              <h3 className="font-semibold text-lg" data-testid={`text-kpi-name-${kpi.id}`}>
+                {kpi.kpiName}
+              </h3>
+              {isComplete && (
+                <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
+                  <Check className="w-3 h-3 text-white" />
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </td>
-
-      <td className="px-4 py-4">
-        <div className="space-y-2 min-w-[180px]">
-          <div className="flex items-center gap-2">
-            <Input
-              type="text"
-              placeholder={`Enter ${kpi.unit}`}
-              value={localBaselineValue}
-              onChange={(e) => setLocalBaselineValue(e.target.value)}
-              onBlur={(e) => {
-                if (e.target.value !== kpi.baselineValue) {
-                  updateKPIMutation.mutate({
-                    kpiId: kpi.id,
-                    data: { baselineValue: e.target.value }
-                  });
-                }
-              }}
-              className="text-sm font-semibold"
-              data-testid={`input-baseline-${kpi.id}`}
-            />
-            <span className="text-xs text-muted-foreground whitespace-nowrap">{kpi.unit}</span>
-          </div>
-          {kpi.baselineEnteredBy === "customer" && kpi.baselineEnteredByName && (
-            <Badge variant="secondary" className="text-xs">
-              by {kpi.baselineEnteredByName}
-            </Badge>
-          )}
-          <Button
-            onClick={generateAIBenchmark}
-            disabled={isGeneratingBenchmark}
-            variant="ghost"
-            size="sm"
-            className="w-full h-7 text-xs gap-1"
-            data-testid={`button-generate-benchmark-${kpi.id}`}
-          >
-            {isGeneratingBenchmark ? (
-              <Loader2 className="w-3 h-3 animate-spin" />
-            ) : (
-              <Sparkles className="w-3 h-3" />
+            {kpi.definition && (
+              <p className="text-sm text-muted-foreground">
+                {kpi.definition}
+              </p>
             )}
-            {isGeneratingBenchmark ? "Generating..." : "AI Suggest"}
-          </Button>
-        </div>
-      </td>
-
-      <td className="px-4 py-4">
-        <div className="flex justify-center">
-          <div className={`rounded-full p-2 ${hasValues ? 'bg-primary/10' : 'bg-muted/30'}`}>
-            <ArrowRight className={`w-4 h-4 ${hasValues ? 'text-primary' : 'text-muted-foreground'}`} />
           </div>
+          <Badge variant="outline" className="shrink-0">{kpi.unit}</Badge>
         </div>
-      </td>
 
-      <td className="px-4 py-4">
-        <div className="space-y-2 min-w-[180px]">
-          <div className="flex items-center gap-2">
+        {/* Benchmark hint */}
+        {kpi.benchmarkValue && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-primary/5 border border-primary/20 mb-6">
+            <Award className="w-4 h-4 text-primary shrink-0" />
+            <span className="text-sm">
+              <span className="text-muted-foreground">Korn Ferry Benchmark:</span>{" "}
+              <span className="font-semibold">{kpi.benchmarkValue} {kpi.unit}</span>
+            </span>
+          </div>
+        )}
+
+        {/* Two Column Layout: Baseline & Target */}
+        <div className="grid grid-cols-2 gap-6">
+          {/* Baseline Column */}
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-muted-foreground">Current (Baseline)</label>
+            <div className="flex items-center gap-2">
+              <Input
+                type="text"
+                placeholder={`Enter value`}
+                value={localBaselineValue}
+                onChange={(e) => setLocalBaselineValue(e.target.value)}
+                onBlur={(e) => {
+                  if (e.target.value !== kpi.baselineValue) {
+                    updateKPIMutation.mutate({
+                      kpiId: kpi.id,
+                      data: { baselineValue: e.target.value }
+                    });
+                  }
+                }}
+                className="text-base font-semibold"
+                data-testid={`input-baseline-${kpi.id}`}
+              />
+            </div>
+            {kpi.baselineEnteredBy === "customer" && kpi.baselineEnteredByName && (
+              <Badge variant="secondary" className="text-xs">
+                by {kpi.baselineEnteredByName}
+              </Badge>
+            )}
+            <Button
+              onClick={generateAIBenchmark}
+              disabled={isGeneratingBenchmark}
+              variant="outline"
+              size="sm"
+              className="w-full gap-2"
+              data-testid={`button-generate-benchmark-${kpi.id}`}
+            >
+              {isGeneratingBenchmark ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Sparkles className="w-4 h-4" />
+              )}
+              {isGeneratingBenchmark ? "Generating..." : "AI Suggest Baseline"}
+            </Button>
+          </div>
+
+          {/* Target Column */}
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-muted-foreground">Target (Desired)</label>
+            <div className="flex items-center gap-2">
+              <Input
+                type="text"
+                placeholder={`Enter target`}
+                value={localTargetValue}
+                onChange={(e) => setLocalTargetValue(e.target.value)}
+                onBlur={(e) => {
+                  if (e.target.value !== kpi.targetValue) {
+                    updateKPIMutation.mutate({
+                      kpiId: kpi.id,
+                      data: { targetValue: e.target.value }
+                    });
+                  }
+                }}
+                className="text-base font-semibold"
+                data-testid={`input-target-${kpi.id}`}
+              />
+            </div>
+            {kpi.targetEnteredBy === "customer" && kpi.targetEnteredByName && (
+              <Badge variant="secondary" className="text-xs">
+                by {kpi.targetEnteredByName}
+              </Badge>
+            )}
             <Input
               type="text"
-              placeholder={`Target ${kpi.unit}`}
-              value={localTargetValue}
-              onChange={(e) => setLocalTargetValue(e.target.value)}
+              placeholder="Rationale for target..."
+              value={localTargetSource}
+              onChange={(e) => setLocalTargetSource(e.target.value)}
               onBlur={(e) => {
-                if (e.target.value !== kpi.targetValue) {
+                if (e.target.value !== kpi.targetSource) {
                   updateKPIMutation.mutate({
                     kpiId: kpi.id,
-                    data: { targetValue: e.target.value }
+                    data: { targetSource: e.target.value }
                   });
                 }
               }}
-              className="text-sm font-semibold"
-              data-testid={`input-target-${kpi.id}`}
+              className="text-sm"
+              data-testid={`input-target-source-${kpi.id}`}
             />
-            <span className="text-xs text-muted-foreground whitespace-nowrap">{kpi.unit}</span>
           </div>
-          {kpi.targetEnteredBy === "customer" && kpi.targetEnteredByName && (
-            <Badge variant="secondary" className="text-xs">
-              by {kpi.targetEnteredByName}
-            </Badge>
-          )}
-          {kpi.customerComment && (
-            <div className="bg-muted/50 p-2 rounded-md mt-2">
-              <p className="text-xs font-medium mb-0.5">Customer Note:</p>
-              <p className="text-xs text-muted-foreground">{kpi.customerComment}</p>
-            </div>
-          )}
-          <Input
-            type="text"
-            placeholder="Rationale..."
-            value={localTargetSource}
-            onChange={(e) => setLocalTargetSource(e.target.value)}
-            onBlur={(e) => {
-              if (e.target.value !== kpi.targetSource) {
-                updateKPIMutation.mutate({
-                  kpiId: kpi.id,
-                  data: { targetSource: e.target.value }
-                });
-              }
-            }}
-            className="text-xs h-7"
-            data-testid={`input-target-source-${kpi.id}`}
-          />
         </div>
-      </td>
 
-      <td className="px-6 py-4">
-        {hasValues ? (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <div className={`rounded-md px-3 py-1.5 ${isImproving ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-orange-50 dark:bg-orange-900/20'}`}>
-                <div className="text-sm font-bold flex items-center gap-1">
+        {/* Customer Comment */}
+        {kpi.customerComment && (
+          <div className="mt-4 p-3 rounded-md bg-muted/50 border">
+            <p className="text-xs font-medium mb-1">Customer Note:</p>
+            <p className="text-sm text-muted-foreground">{kpi.customerComment}</p>
+          </div>
+        )}
+
+        {/* Impact Summary - only show when both values are set */}
+        {hasValues && (
+          <div className="mt-6 pt-6 border-t">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className={`flex items-center gap-2 px-3 py-2 rounded-md ${
+                  isImproving ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-orange-50 dark:bg-orange-900/20'
+                }`}>
                   {isImproving ? (
                     <TrendingUp className="w-4 h-4 text-emerald-600" />
                   ) : (
                     <TrendingDown className="w-4 h-4 text-orange-600" />
                   )}
-                  <span className={isImproving ? 'text-emerald-700 dark:text-emerald-400' : 'text-orange-700 dark:text-orange-400'}>
-                    {gap.toFixed(1)} {kpi.unit}
+                  <span className={`font-semibold ${isImproving ? 'text-emerald-700 dark:text-emerald-400' : 'text-orange-700 dark:text-orange-400'}`}>
+                    {gap.toFixed(1)} {kpi.unit} gap
                   </span>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  gap to close
+                <div className="text-center">
+                  <div className={`text-2xl font-bold ${isImproving ? 'text-emerald-600' : 'text-orange-600'}`}>
+                    {isImproving ? '+' : ''}{improvement.toFixed(1)}%
+                  </div>
+                  <div className="text-xs text-muted-foreground">improvement</div>
                 </div>
               </div>
-            </div>
-
-            <div className={`rounded-md px-3 py-1.5 ${isImproving ? 'bg-primary/10 border border-primary/20' : 'bg-muted/50'}`}>
-              <div className="text-lg font-bold">
-                {isImproving ? '+' : ''}{improvement.toFixed(1)}%
+              <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full ${
+                    isImproving ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' : 'bg-gradient-to-r from-orange-500 to-orange-400'
+                  }`}
+                  style={{ width: `${Math.min(100, Math.abs(improvement))}%` }}
+                />
               </div>
-              <div className="text-xs text-muted-foreground">
-                improvement if achieved
-              </div>
             </div>
-
-            <div className="relative h-2 bg-muted/30 rounded-full overflow-hidden">
-              <div 
-                className={`absolute top-0 left-0 h-full rounded-full ${
-                  isImproving ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' : 'bg-gradient-to-r from-orange-500 to-orange-400'
-                }`}
-                style={{ width: `${Math.min(100, Math.abs(improvement))}%` }}
-              />
-            </div>
-          </div>
-        ) : (
-          <div className="text-center py-4">
-            <p className="text-xs text-muted-foreground italic">
-              Enter baseline & target<br/>to see benefit
-            </p>
           </div>
         )}
-      </td>
-    </tr>
+      </CardContent>
+    </Card>
   );
 }
