@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -242,7 +243,7 @@ function TrendIndicator({ direction, percent }: { direction: 'up' | 'down' | 'st
   );
 }
 
-function KPICard({ kpi }: { kpi: DashboardData['kpiDetails'][0] }) {
+function KPICard({ kpi, index = 0 }: { kpi: DashboardData['kpiDetails'][0]; index?: number }) {
   const isFinancialNoData = kpi.status === 'financial-no-data';
   
   const getStatusColor = () => {
@@ -275,8 +276,13 @@ function KPICard({ kpi }: { kpi: DashboardData['kpiDetails'][0] }) {
   const hasMeasurementIssue = (isNoData || isFinancialNoData) && !hasValueConfigIssue;
 
   return (
-    <Card className={`hover-elevate transition-all ${getStatusColor()}`} data-testid={`card-kpi-${kpi.id}`}>
-      <CardHeader className="pb-2">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, delay: index * 0.03 }}
+    >
+      <Card className={`hover-elevate transition-all ${getStatusColor()}`} data-testid={`card-kpi-${kpi.id}`}>
+        <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <CardTitle className="text-sm font-medium truncate">{kpi.name}</CardTitle>
@@ -371,8 +377,9 @@ function KPICard({ kpi }: { kpi: DashboardData['kpiDetails'][0] }) {
             Last updated: {format(new Date(kpi.lastUpdated), 'MMM d, yyyy')}
           </div>
         )}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 }
 
@@ -489,126 +496,150 @@ export function RealizationDashboard({ projectId }: RealizationDashboardProps) {
       {/* Top Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Health Score */}
-        <Card data-testid="card-health-score">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Activity className="w-4 h-4 text-primary" />
-              Overall Health
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex justify-center">
-            <HealthScoreGauge score={dashboard.overallHealthScore} />
-          </CardContent>
-        </Card>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0 }}
+        >
+          <Card data-testid="card-health-score">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Activity className="w-4 h-4 text-primary" />
+                Overall Health
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex justify-center">
+              <HealthScoreGauge score={dashboard.overallHealthScore} />
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* KPI Status Breakdown */}
-        <Card data-testid="card-kpi-breakdown">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Target className="w-4 h-4 text-primary" />
-              KPI Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-primary" />
-                  <span className="text-sm">On Track</span>
-                </div>
-                <span className="font-bold">{healthBreakdown.onTrack}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-amber-500" />
-                  <span className="text-sm">At Risk</span>
-                </div>
-                <span className="font-bold">{healthBreakdown.atRisk}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-destructive" />
-                  <span className="text-sm">Off Track</span>
-                </div>
-                <span className="font-bold">{healthBreakdown.offTrack}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-muted-foreground" />
-                  <span className="text-sm">No Data</span>
-                </div>
-                <span className="font-bold">{healthBreakdown.noData}</span>
-              </div>
-              {healthBreakdown.financialNoData !== undefined && healthBreakdown.financialNoData > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+        >
+          <Card data-testid="card-kpi-breakdown">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Target className="w-4 h-4 text-primary" />
+                KPI Status
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-slate-400" />
-                    <span className="text-sm text-muted-foreground">Missing Value Config</span>
+                    <div className="w-3 h-3 rounded-full bg-primary" />
+                    <span className="text-sm">On Track</span>
                   </div>
-                  <span className="font-bold text-muted-foreground">{healthBreakdown.financialNoData}</span>
+                  <span className="font-bold">{healthBreakdown.onTrack}</span>
                 </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-amber-500" />
+                    <span className="text-sm">At Risk</span>
+                  </div>
+                  <span className="font-bold">{healthBreakdown.atRisk}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-destructive" />
+                    <span className="text-sm">Off Track</span>
+                  </div>
+                  <span className="font-bold">{healthBreakdown.offTrack}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-muted-foreground" />
+                    <span className="text-sm">No Data</span>
+                  </div>
+                  <span className="font-bold">{healthBreakdown.noData}</span>
+                </div>
+                {healthBreakdown.financialNoData !== undefined && healthBreakdown.financialNoData > 0 && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-slate-400" />
+                      <span className="text-sm text-muted-foreground">Missing Value Config</span>
+                    </div>
+                    <span className="font-bold text-muted-foreground">{healthBreakdown.financialNoData}</span>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Value Realization */}
-        <Card data-testid="card-value-realization">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <DollarSign className="w-4 h-4 text-primary" />
-              Value Realized
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center">
-              <div className="text-3xl font-bold font-mono text-primary">
-                {formatCurrency(valueMetrics.realized)}
-              </div>
-              <div className="text-sm text-muted-foreground mt-1">
-                of {formatCurrency(valueMetrics.promised)} promised
-              </div>
-              <div className="mt-3">
-                <Progress value={valueMetrics.realizationPercent} className="h-2" />
-                <div className="text-xs text-muted-foreground mt-1">
-                  {valueMetrics.realizationPercent}% realized
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.2 }}
+        >
+          <Card data-testid="card-value-realization">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-primary" />
+                Value Realized
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center">
+                <div className="text-3xl font-bold font-mono text-primary">
+                  {formatCurrency(valueMetrics.realized)}
+                </div>
+                <div className="text-sm text-muted-foreground mt-1">
+                  of {formatCurrency(valueMetrics.promised)} promised
+                </div>
+                <div className="mt-3">
+                  <Progress value={valueMetrics.realizationPercent} className="h-2" />
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {valueMetrics.realizationPercent}% realized
+                  </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Milestones */}
-        <Card data-testid="card-milestones">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Zap className="w-4 h-4 text-primary" />
-              Milestones
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div>
-                <div className="text-2xl font-bold text-primary">{milestonesSummary.achieved}</div>
-                <div className="text-xs text-muted-foreground">Achieved</div>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.3 }}
+        >
+          <Card data-testid="card-milestones">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Zap className="w-4 h-4 text-primary" />
+                Milestones
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <div className="text-2xl font-bold text-primary">{milestonesSummary.achieved}</div>
+                  <div className="text-xs text-muted-foreground">Achieved</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-amber-500">{milestonesSummary.planned}</div>
+                  <div className="text-xs text-muted-foreground">Planned</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-destructive">{milestonesSummary.missed}</div>
+                  <div className="text-xs text-muted-foreground">Missed</div>
+                </div>
               </div>
-              <div>
-                <div className="text-2xl font-bold text-amber-500">{milestonesSummary.planned}</div>
-                <div className="text-xs text-muted-foreground">Planned</div>
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-destructive">{milestonesSummary.missed}</div>
-                <div className="text-xs text-muted-foreground">Missed</div>
-              </div>
-            </div>
-            {dashboard.nextReviewDate && (
-              <div className="mt-3 pt-3 border-t flex items-center gap-2 text-xs text-muted-foreground">
-                <Calendar className="w-3 h-3" />
-                Next Review: {format(new Date(dashboard.nextReviewDate), 'MMM d, yyyy')}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              {dashboard.nextReviewDate && (
+                <div className="mt-3 pt-3 border-t flex items-center gap-2 text-xs text-muted-foreground">
+                  <Calendar className="w-3 h-3" />
+                  Next Review: {format(new Date(dashboard.nextReviewDate), 'MMM d, yyyy')}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
 
       {/* Alerts Section */}
@@ -646,8 +677,8 @@ export function RealizationDashboard({ projectId }: RealizationDashboardProps) {
               };
               return (statusOrder[a.status] ?? 5) - (statusOrder[b.status] ?? 5);
             })
-            .map(kpi => (
-              <KPICard key={kpi.id} kpi={kpi} />
+            .map((kpi, idx) => (
+              <KPICard key={kpi.id} kpi={kpi} index={idx} />
             ))}
         </div>
       </div>

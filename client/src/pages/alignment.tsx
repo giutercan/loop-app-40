@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute } from "wouter";
+import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   Plus, 
   TrendingUp,
@@ -352,8 +352,11 @@ export default function AlignmentPage() {
                       const isSelected = selectedItem?.type === 'job' && selectedItem.id === job.id;
                       
                       return (
-                        <button
+                        <motion.button
                           key={job.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.2, delay: index * 0.05 }}
                           onClick={() => setSelectedItem({ type: 'job', id: job.id })}
                           className={`w-full text-left p-4 rounded-lg transition-all ${
                             isSelected 
@@ -392,7 +395,7 @@ export default function AlignmentPage() {
                               <Check className={`w-4 h-4 shrink-0 ${isSelected ? 'text-primary-foreground' : 'text-emerald-500'}`} />
                             )}
                           </div>
-                        </button>
+                        </motion.button>
                       );
                     })
                   )}
@@ -414,12 +417,15 @@ export default function AlignmentPage() {
                       Create Value Case
                     </button>
                   ) : (
-                    filteredValueCases.map((valueCase) => {
+                    filteredValueCases.map((valueCase, index) => {
                       const isSelected = selectedItem?.type === 'valueCase' && selectedItem.id === valueCase.id;
                       
                       return (
-                        <button
+                        <motion.button
                           key={valueCase.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.2, delay: index * 0.05 }}
                           onClick={() => setSelectedItem({ type: 'valueCase', id: valueCase.id })}
                           className={`w-full text-left p-4 rounded-lg transition-all ${
                             isSelected 
@@ -447,7 +453,7 @@ export default function AlignmentPage() {
                               {valueCase.estimatedNPV}
                             </p>
                           )}
-                        </button>
+                        </motion.button>
                       );
                     })
                   )}
@@ -771,11 +777,16 @@ function KPICard({ kpi, updateKPIMutation }: KPICardProps) {
   };
 
   return (
-    <Card 
-      className={`transition-all ${isComplete ? 'border-emerald-200 dark:border-emerald-800' : ''}`}
-      data-testid={`kpi-card-${kpi.id}`}
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
     >
-      <CardContent className="p-6">
+      <Card 
+        className={`transition-all ${isComplete ? 'border-emerald-200 dark:border-emerald-800' : ''}`}
+        data-testid={`kpi-card-${kpi.id}`}
+      >
+        <CardContent className="p-6">
         {/* KPI Header */}
         <div className="flex items-start justify-between gap-4 mb-6">
           <div className="flex-1">
@@ -908,41 +919,62 @@ function KPICard({ kpi, updateKPIMutation }: KPICardProps) {
         )}
 
         {/* Impact Summary - only show when both values are set */}
-        {hasValues && (
-          <div className="mt-6 pt-6 border-t">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className={`flex items-center gap-2 px-3 py-2 rounded-md ${
-                  isImproving ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-orange-50 dark:bg-orange-900/20'
-                }`}>
-                  {isImproving ? (
-                    <TrendingUp className="w-4 h-4 text-emerald-600" />
-                  ) : (
-                    <TrendingDown className="w-4 h-4 text-orange-600" />
-                  )}
-                  <span className={`font-semibold ${isImproving ? 'text-emerald-700 dark:text-emerald-400' : 'text-orange-700 dark:text-orange-400'}`}>
-                    {gap.toFixed(1)} {kpi.unit} gap
-                  </span>
-                </div>
-                <div className="text-center">
-                  <div className={`text-2xl font-bold ${isImproving ? 'text-emerald-600' : 'text-orange-600'}`}>
-                    {isImproving ? '+' : ''}{improvement.toFixed(1)}%
+        <AnimatePresence>
+          {hasValues && (
+            <motion.div 
+              className="mt-6 pt-6 border-t"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <motion.div 
+                    className={`flex items-center gap-2 px-3 py-2 rounded-md ${
+                      isImproving ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-orange-50 dark:bg-orange-900/20'
+                    }`}
+                    initial={{ scale: 0.9 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  >
+                    {isImproving ? (
+                      <TrendingUp className="w-4 h-4 text-emerald-600" />
+                    ) : (
+                      <TrendingDown className="w-4 h-4 text-orange-600" />
+                    )}
+                    <span className={`font-semibold ${isImproving ? 'text-emerald-700 dark:text-emerald-400' : 'text-orange-700 dark:text-orange-400'}`}>
+                      {gap.toFixed(1)} {kpi.unit} gap
+                    </span>
+                  </motion.div>
+                  <div className="text-center">
+                    <motion.div 
+                      className={`text-2xl font-bold ${isImproving ? 'text-emerald-600' : 'text-orange-600'}`}
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 }}
+                    >
+                      {isImproving ? '+' : ''}{improvement.toFixed(1)}%
+                    </motion.div>
+                    <div className="text-xs text-muted-foreground">improvement</div>
                   </div>
-                  <div className="text-xs text-muted-foreground">improvement</div>
+                </div>
+                <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+                  <motion.div 
+                    className={`h-full rounded-full ${
+                      isImproving ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' : 'bg-gradient-to-r from-orange-500 to-orange-400'
+                    }`}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.min(100, Math.abs(improvement))}%` }}
+                    transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
+                  />
                 </div>
               </div>
-              <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
-                <div 
-                  className={`h-full rounded-full ${
-                    isImproving ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' : 'bg-gradient-to-r from-orange-500 to-orange-400'
-                  }`}
-                  style={{ width: `${Math.min(100, Math.abs(improvement))}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 }

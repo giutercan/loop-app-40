@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   CheckCircle2, 
   Circle, 
@@ -197,23 +198,34 @@ function NextStepPrompt({
 function MilestoneItem({ 
   milestone, 
   projectId, 
-  phase 
+  phase,
+  index = 0
 }: { 
   milestone: Milestone; 
   projectId: number; 
   phase: PhaseKey;
+  index?: number;
 }) {
   const config = phaseConfig[phase];
 
   return (
-    <div 
+    <motion.div 
+      initial={{ opacity: 0, x: -5 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.2, delay: index * 0.05 }}
       className={`flex items-start gap-2 py-1.5 text-sm ${
         milestone.completed ? "text-muted-foreground" : "text-foreground"
       }`}
       data-testid={`milestone-${milestone.id}`}
     >
       {milestone.completed ? (
-        <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        >
+          <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+        </motion.div>
       ) : (
         <Circle className="w-4 h-4 text-muted-foreground/50 shrink-0 mt-0.5" />
       )}
@@ -232,7 +244,7 @@ function MilestoneItem({
           </Badge>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -285,12 +297,13 @@ function PhaseSection({
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="pl-6 pb-2 space-y-0.5">
-          {progress.milestones.map((milestone) => (
+          {progress.milestones.map((milestone, idx) => (
             <MilestoneItem
               key={milestone.id}
               milestone={milestone}
               projectId={projectId}
               phase={phase}
+              index={idx}
             />
           ))}
         </div>
