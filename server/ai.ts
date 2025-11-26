@@ -2030,3 +2030,327 @@ IMPORTANT:
     throw error;
   }
 }
+
+// ============================================================================
+// AI Value Justification Generation
+// ============================================================================
+
+interface ValueJustificationInput {
+  priority: {
+    name: string;
+    capabilityName: string;
+    solutionArea?: string | null;
+    summary?: string | null;
+  };
+  company?: {
+    name: string;
+    sector?: string | null;
+  };
+  insights: Array<{
+    label: string;
+    value: string;
+    confidence: string;
+  }>;
+  notes?: {
+    freeformNotes?: string | null;
+    challenges?: string | null;
+  };
+  responses: Array<{
+    question: string;
+    answer: string | null;
+  }>;
+  kpis: Array<{
+    name: string;
+    unit: string;
+    baseline?: string | null;
+    target?: string | null;
+    benchmark?: string | null;
+  }>;
+  tone: "executive" | "technical" | "persuasive";
+  focusAreas?: string[];
+  includeFinancials?: boolean;
+}
+
+interface ValueJustificationResult {
+  draftContent: string;
+  executiveSummary: string;
+  projectedValue?: number | null;
+  projectedValueTimeframe?: string;
+  confidenceLevel: "high" | "medium" | "low";
+}
+
+const valueJustificationSchema = z.object({
+  draftContent: z.string().min(100),
+  executiveSummary: z.string().min(50).max(500),
+  projectedValue: z.number().nullable().optional(),
+  projectedValueTimeframe: z.string().optional(),
+  confidenceLevel: z.enum(["high", "medium", "low"])
+});
+
+export async function generateValueJustificationDraft(
+  input: ValueJustificationInput
+): Promise<ValueJustificationResult> {
+  const knowledgeBase = getSolutionSummary();
+  
+  const insightsContext = input.insights.length > 0
+    ? `Discovery Insights:\n${input.insights.map(i => `- [${i.confidence}] ${i.label}: ${i.value}`).join('\n')}`
+    : 'No discovery insights available.';
+  
+  const notesContext = input.notes?.freeformNotes 
+    ? `Consultant Notes:\n${input.notes.freeformNotes}`
+    : '';
+  
+  const challengesContext = input.notes?.challenges
+    ? `Client Challenges:\n${input.notes.challenges}`
+    : '';
+  
+  const responsesContext = input.responses.length > 0
+    ? `Client Questionnaire Responses:\n${input.responses.filter(r => r.answer).map(r => `Q: ${r.question}\nA: ${r.answer}`).join('\n\n')}`
+    : '';
+  
+  const kpisContext = input.kpis.length > 0
+    ? `Target KPIs:\n${input.kpis.map(k => {
+        const gap = k.baseline && k.target 
+          ? ` (Gap: ${parseFloat(k.target) - parseFloat(k.baseline)} ${k.unit})`
+          : '';
+        return `- ${k.name}: Baseline ${k.baseline || 'TBD'} → Target ${k.target || 'TBD'} ${k.unit}${k.benchmark ? ` [Benchmark: ${k.benchmark}]` : ''}${gap}`;
+      }).join('\n')}`
+    : '';
+  
+  const toneInstructions = {
+    executive: "Write for a C-level audience. Focus on strategic impact, ROI, and competitive advantage. Be concise and action-oriented.",
+    technical: "Include more detail on methodology, implementation approach, and measurement frameworks. Be specific about how value will be created.",
+    persuasive: "Emphasize the compelling case for change, using data to create urgency. Highlight risks of inaction and benefits of partnership."
+  };
+  
+  const focusAreasText = input.focusAreas?.length 
+    ? `\nSPECIFIC FOCUS AREAS TO EMPHASIZE:\n${input.focusAreas.map(a => `- ${a}`).join('\n')}`
+    : '';
+
+  const prompt = `You are a senior Korn Ferry management consultant creating a compelling value justification document for a client engagement.
+
+CONTEXT:
+Company: ${input.company?.name || 'Client Company'}${input.company?.sector ? ` (${input.company.sector})` : ''}
+Priority Area: ${input.priority.name}
+Korn Ferry Capability: ${input.priority.capabilityName}
+Solution Area: ${input.priority.solutionArea || 'Not specified'}
+
+${input.priority.summary ? `AI Summary: ${input.priority.summary}` : ''}
+
+${insightsContext}
+
+${notesContext}
+
+${challengesContext}
+
+${responsesContext}
+
+${kpisContext}
+
+KORN FERRY KNOWLEDGE BASE:
+${knowledgeBase}
+
+WRITING TONE: ${input.tone.toUpperCase()}
+${toneInstructions[input.tone]}
+${focusAreasText}
+
+TASK: Generate a comprehensive value justification document that will convince client stakeholders to invest in this initiative.
+
+STRUCTURE YOUR RESPONSE AS FOLLOWS:
+
+## Executive Summary
+A powerful one-paragraph summary (3-4 sentences) that captures the strategic opportunity and expected value.
+
+## The Business Challenge
+- What specific problems does the client face?
+- What is the cost of inaction?
+- Use insights from discovery data to ground the narrative.
+
+## The Opportunity
+- How does addressing this priority create value?
+- What outcomes can the client expect?
+- Reference specific KPI improvements with targets.
+
+## Korn Ferry's Approach
+- How will Korn Ferry help achieve these outcomes?
+- What makes our approach differentiated?
+- Reference relevant capabilities and methodologies.
+
+## Expected Value & ROI
+${input.includeFinancials ? `- Provide specific financial projections based on KPI improvements
+- Calculate potential value creation (use conservative estimates)
+- Include payback period and multi-year value projection` : '- Focus on qualitative value creation and strategic benefits'}
+
+## Next Steps
+- Clear call to action
+- Proposed timeline
+
+IMPORTANT GUIDELINES:
+1. Be specific - use actual data from the discovery insights
+2. Be credible - cite Korn Ferry benchmarks and methodologies
+3. Be compelling - create urgency without being alarmist
+4. Be concise - each section should be impactful, not lengthy
+5. Connect the dots - show how discovery insights lead to KPI targets lead to value
+
+Return your response in JSON format:
+{
+  "draftContent": "Full markdown document with all sections",
+  "executiveSummary": "The one-paragraph executive summary only",
+  "projectedValue": null or number (estimated dollar value if calculable),
+  "projectedValueTimeframe": "timeframe for projected value (e.g., '3 years', '12 months')",
+  "confidenceLevel": "high" | "medium" | "low" (based on quality of input data)
+}`;
+
+  try {
+    console.log(`[AI Value Justification] Generating draft for priority: ${input.priority.name}`);
+    
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 4000,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    
+    if (!content) {
+      throw new Error("AI returned empty response");
+    }
+    
+    const parsedContent = JSON.parse(content);
+    
+    const validationResult = valueJustificationSchema.safeParse(parsedContent);
+    if (!validationResult.success) {
+      console.error("[AI Value Justification] Validation failed:", validationResult.error);
+      throw new Error(`AI value justification validation failed: ${validationResult.error.message}`);
+    }
+    
+    console.log(`[AI Value Justification] Success! Generated draft with confidence: ${validationResult.data.confidenceLevel}`);
+    return validationResult.data;
+  } catch (error) {
+    console.error("[AI Value Justification] Error:", error);
+    throw error;
+  }
+}
+
+// ============================================================================
+// AI Value Justification Refinement (Chat)
+// ============================================================================
+
+interface RefineValueJustificationInput {
+  currentDraft: string;
+  executiveSummary: string;
+  userMessage: string;
+  action?: "refine" | "expand" | "simplify" | "add_metrics" | "change_tone";
+  conversationHistory: Array<{
+    role: "user" | "assistant" | "system";
+    content: string;
+  }>;
+}
+
+interface RefineValueJustificationResult {
+  updatedDraft: string;
+  updatedSummary?: string;
+  responseMessage: string;
+  changes?: Array<{
+    section: string;
+    changeType: string;
+    description: string;
+  }>;
+}
+
+const refineValueJustificationSchema = z.object({
+  updatedDraft: z.string(),
+  updatedSummary: z.string().optional(),
+  responseMessage: z.string(),
+  changes: z.array(z.object({
+    section: z.string(),
+    changeType: z.string(),
+    description: z.string()
+  })).optional()
+});
+
+export async function refineValueJustification(
+  input: RefineValueJustificationInput
+): Promise<RefineValueJustificationResult> {
+  const actionInstructions = {
+    refine: "Make the requested changes while maintaining the overall structure and quality.",
+    expand: "Add more detail and depth to the specified sections or areas.",
+    simplify: "Reduce complexity and make the content more accessible while retaining key messages.",
+    add_metrics: "Incorporate additional quantitative data, benchmarks, or financial projections.",
+    change_tone: "Adjust the writing style while preserving the content and arguments."
+  };
+  
+  const conversationContext = input.conversationHistory.length > 0
+    ? `\nPREVIOUS CONVERSATION:\n${input.conversationHistory.slice(-6).map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n')}`
+    : '';
+
+  const prompt = `You are a Korn Ferry AI assistant helping a consultant refine a value justification document through conversation.
+
+CURRENT DRAFT:
+${input.currentDraft}
+
+CURRENT EXECUTIVE SUMMARY:
+${input.executiveSummary}
+${conversationContext}
+
+USER REQUEST:
+${input.userMessage}
+
+${input.action ? `ACTION TYPE: ${input.action}\n${actionInstructions[input.action]}` : ''}
+
+TASK: Respond to the user's request and provide an updated version of the document.
+
+GUIDELINES:
+1. Be conversational and helpful in your response
+2. Make precise changes based on the request
+3. Preserve sections that don't need changes
+4. Explain what changes you made and why
+5. If the request is unclear, ask for clarification
+6. Update the executive summary if the changes warrant it
+
+Return your response in JSON format:
+{
+  "updatedDraft": "The complete updated draft (markdown format)",
+  "updatedSummary": "Updated executive summary if changed, or omit if unchanged",
+  "responseMessage": "Your conversational response explaining what you did",
+  "changes": [
+    {
+      "section": "Section name that was changed",
+      "changeType": "added|modified|removed|restructured",
+      "description": "Brief description of the change"
+    }
+  ]
+}`;
+
+  try {
+    console.log(`[AI Value Justification Refine] Processing user request: ${input.userMessage.slice(0, 50)}...`);
+    
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 4000,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    
+    if (!content) {
+      throw new Error("AI returned empty response");
+    }
+    
+    const parsedContent = JSON.parse(content);
+    
+    const validationResult = refineValueJustificationSchema.safeParse(parsedContent);
+    if (!validationResult.success) {
+      console.error("[AI Value Justification Refine] Validation failed:", validationResult.error);
+      throw new Error(`AI refinement validation failed: ${validationResult.error.message}`);
+    }
+    
+    console.log(`[AI Value Justification Refine] Success! Made ${validationResult.data.changes?.length || 0} changes`);
+    return validationResult.data;
+  } catch (error) {
+    console.error("[AI Value Justification Refine] Error:", error);
+    throw error;
+  }
+}

@@ -5291,4 +5291,464 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
       res.status(500).json({ error: error.message || "Failed to save dashboard layout" });
     }
   });
+  
+  // ============================================================================
+  // AI VALUE JUSTIFICATION SYSTEM
+  // ============================================================================
+  
+  // Get aggregated Discovery context for a priority (for AI value justification)
+  app.get("/api/projects/:projectId/priorities/:priorityId/context", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const priorityId = parseInt(req.params.priorityId);
+      
+      // Fetch the priority (job theme)
+      const jobThemes = await storage.getJobThemes(projectId);
+      const priority = jobThemes.find(jt => jt.id === priorityId);
+      
+      if (!priority) {
+        return res.status(404).json({ error: "Priority not found" });
+      }
+      
+      // Fetch all related Discovery data in parallel
+      const [
+        project,
+        companyDataPoints,
+        discoveryNotes,
+        discoveryQuestions,
+        questionResponses,
+        kpis
+      ] = await Promise.all([
+        storage.getProject(projectId),
+        storage.getCompanyDataPoints(projectId),
+        storage.getDiscoveryNotes(projectId),
+        storage.getDiscoveryQuestions(projectId),
+        storage.getQuestionResponses(projectId),
+        storage.getJobThemeKPIs(priorityId)
+      ]);
+      
+      // Filter insights linked to this priority
+      const linkedInsights = companyDataPoints.filter(dp => 
+        priority.sourceInsightIds?.includes(dp.id)
+      );
+      
+      // Filter question responses linked to this priority  
+      const linkedResponses = questionResponses.filter(qr =>
+        priority.sourceResponseIds?.includes(qr.id)
+      );
+      
+      // Get questions for the linked responses
+      const linkedQuestionIds = linkedResponses.map(r => r.questionId);
+      const linkedQuestions = discoveryQuestions.filter(q => 
+        linkedQuestionIds.includes(q.id)
+      );
+      
+      // Build context object
+      const context = {
+        priority: {
+          id: priority.id,
+          name: priority.jobName,
+          capabilityName: priority.capabilityName,
+          solutionArea: priority.solutionArea,
+          aggregationSummary: priority.aggregationSummary,
+          priorityRank: priority.priorityRank
+        },
+        company: project ? {
+          name: project.companyName,
+          sector: project.sector,
+          businessUnit: project.businessUnit
+        } : null,
+        discoveryInsights: linkedInsights.map(insight => ({
+          id: insight.id,
+          label: insight.label,
+          value: insight.value,
+          confidence: insight.confidence,
+          source: insight.source,
+          kornFerryPillar: insight.kornFerryPillar,
+          solutionArea: insight.solutionArea,
+          relatedKPIs: insight.relatedKPIs
+        })),
+        discoveryNotes: discoveryNotes ? {
+          freeformNotes: discoveryNotes.freeformNotes,
+          keyStakeholder: discoveryNotes.keyStakeholder,
+          topChallenges: discoveryNotes.topChallenges,
+          timeline: discoveryNotes.timeline
+        } : null,
+        questionnaireResponses: linkedResponses.map(response => {
+          const question = linkedQuestions.find(q => q.id === response.questionId);
+          return {
+            id: response.id,
+            question: question?.question || "Unknown question",
+            answer: response.answer,
+            respondentType: response.respondentType,
+            respondentName: response.respondentName
+          };
+        }),
+        kpis: kpis.filter(k => k.isSelected).map(kpi => ({
+          id: kpi.id,
+          name: kpi.kpiName,
+          type: kpi.kpiType,
+          unit: kpi.unit,
+          baselineValue: kpi.baselineValue,
+          baselineSource: kpi.baselineSource,
+          targetValue: kpi.targetValue,
+          targetSource: kpi.targetSource,
+          benchmarkValue: kpi.benchmarkValue,
+          benchmarkSource: kpi.benchmarkSource,
+          definition: kpi.definition,
+          aiStrategicRationale: kpi.aiStrategicRationale,
+          aiKornFerryBenchmark: kpi.aiKornFerryBenchmark
+        })),
+        // Calculate KPI gaps for financial context
+        kpiGaps: kpis.filter(k => k.isSelected && k.baselineValue && k.targetValue).map(kpi => {
+          const baseline = parseNumeric(kpi.baselineValue);
+          const target = parseNumeric(kpi.targetValue);
+          const gap = baseline !== null && target !== null ? target - baseline : null;
+          const percentImprovement = baseline !== null && target !== null && baseline !== 0 
+            ? ((target - baseline) / baseline * 100).toFixed(1) 
+            : null;
+          return {
+            kpiName: kpi.kpiName,
+            baseline,
+            target,
+            gap,
+            percentImprovement,
+            unit: kpi.unit
+          };
+        })
+      };
+      
+      res.json(context);
+    } catch (error: any) {
+      console.error("Error fetching priority context:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch priority context" });
+    }
+  });
+  
+  // Generate AI value justification draft for a priority
+  app.post("/api/projects/:projectId/priorities/:priorityId/value-justification/generate", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const priorityId = parseInt(req.params.priorityId);
+      const { tone = "executive", focusAreas = [], includeFinancials = true } = req.body;
+      
+      // First get the context
+      const jobThemes = await storage.getJobThemes(projectId);
+      const priority = jobThemes.find(jt => jt.id === priorityId);
+      
+      if (!priority) {
+        return res.status(404).json({ error: "Priority not found" });
+      }
+      
+      // Fetch all context data
+      const [
+        project,
+        companyDataPoints,
+        discoveryNotes,
+        questionResponses,
+        kpis
+      ] = await Promise.all([
+        storage.getProject(projectId),
+        storage.getCompanyDataPoints(projectId),
+        storage.getDiscoveryNotes(projectId),
+        storage.getQuestionResponses(projectId),
+        storage.getJobThemeKPIs(priorityId)
+      ]);
+      
+      // Filter linked data
+      const linkedInsights = companyDataPoints.filter(dp => 
+        priority.sourceInsightIds?.includes(dp.id)
+      );
+      const linkedResponses = questionResponses.filter(qr =>
+        priority.sourceResponseIds?.includes(qr.id)
+      );
+      const selectedKPIs = kpis.filter(k => k.isSelected);
+      
+      // Check if a value justification already exists for this priority
+      let existingJustification = await storage.getValueJustification(priorityId);
+      
+      // Generate AI draft using OpenAI
+      const { generateValueJustificationDraft } = await import("./ai");
+      const aiResult = await generateValueJustificationDraft({
+        priority: {
+          name: priority.jobName,
+          capabilityName: priority.capabilityName,
+          solutionArea: priority.solutionArea,
+          summary: priority.aggregationSummary
+        },
+        company: project ? {
+          name: project.companyName,
+          sector: project.sector
+        } : undefined,
+        insights: linkedInsights.map(i => ({
+          label: i.label,
+          value: i.value,
+          confidence: i.confidence
+        })),
+        notes: discoveryNotes ? {
+          freeformNotes: discoveryNotes.freeformNotes,
+          challenges: discoveryNotes.topChallenges
+        } : undefined,
+        responses: linkedResponses.map(r => ({
+          question: "Client feedback",
+          answer: r.answer
+        })),
+        kpis: selectedKPIs.map(k => ({
+          name: k.kpiName,
+          unit: k.unit,
+          baseline: k.baselineValue,
+          target: k.targetValue,
+          benchmark: k.aiKornFerryBenchmark
+        })),
+        tone,
+        focusAreas,
+        includeFinancials
+      });
+      
+      // Create or update the value justification
+      const sessionId = crypto.randomUUID();
+      
+      if (existingJustification) {
+        // Update existing
+        const updated = await storage.updateValueJustification(existingJustification.id, {
+          draftContent: aiResult.draftContent,
+          executiveSummary: aiResult.executiveSummary,
+          aiSessionId: sessionId,
+          aiModelVersion: "gpt-4o",
+          linkedDiscoveryInsightIds: linkedInsights.map(i => i.id),
+          linkedQuestionResponseIds: linkedResponses.map(r => r.id),
+          linkedKPIIds: selectedKPIs.map(k => k.id),
+          projectedValue: aiResult.projectedValue,
+          projectedValueTimeframe: aiResult.projectedValueTimeframe,
+          confidenceLevel: aiResult.confidenceLevel,
+          version: existingJustification.version + 1,
+          status: "draft"
+        });
+        
+        // Clear old messages for new session
+        await storage.deleteValueJustificationMessages(existingJustification.id);
+        
+        // Add system message
+        await storage.createValueJustificationMessage({
+          valueJustificationId: existingJustification.id,
+          role: "system",
+          content: `Value justification regenerated with ${tone} tone. Ready for refinement.`,
+          appliedToVersion: existingJustification.version + 1
+        });
+        
+        res.json({
+          justification: updated,
+          isNew: false
+        });
+      } else {
+        // Create new
+        const newJustification = await storage.createValueJustification({
+          projectId,
+          jobThemeId: priorityId,
+          title: `${priority.jobName} - Value Justification`,
+          draftContent: aiResult.draftContent,
+          executiveSummary: aiResult.executiveSummary,
+          aiSessionId: sessionId,
+          aiModelVersion: "gpt-4o",
+          linkedDiscoveryInsightIds: linkedInsights.map(i => i.id),
+          linkedQuestionResponseIds: linkedResponses.map(r => r.id),
+          linkedKPIIds: selectedKPIs.map(k => k.id),
+          projectedValue: aiResult.projectedValue,
+          projectedValueTimeframe: aiResult.projectedValueTimeframe,
+          confidenceLevel: aiResult.confidenceLevel,
+          status: "draft"
+        });
+        
+        // Add system message
+        await storage.createValueJustificationMessage({
+          valueJustificationId: newJustification.id,
+          role: "system",
+          content: `Value justification generated with ${tone} tone. You can refine it by asking me to make changes.`,
+          appliedToVersion: 1
+        });
+        
+        res.json({
+          justification: newJustification,
+          isNew: true
+        });
+      }
+    } catch (error: any) {
+      console.error("Error generating value justification:", error);
+      res.status(500).json({ error: error.message || "Failed to generate value justification" });
+    }
+  });
+  
+  // Get value justification with chat messages
+  app.get("/api/value-justifications/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      const [justification, messages] = await Promise.all([
+        storage.getValueJustificationById(id),
+        storage.getValueJustificationMessages(id)
+      ]);
+      
+      if (!justification) {
+        return res.status(404).json({ error: "Value justification not found" });
+      }
+      
+      res.json({
+        ...justification,
+        messages
+      });
+    } catch (error: any) {
+      console.error("Error fetching value justification:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch value justification" });
+    }
+  });
+  
+  // Get value justification by priority ID
+  app.get("/api/projects/:projectId/priorities/:priorityId/value-justification", async (req, res) => {
+    try {
+      const priorityId = parseInt(req.params.priorityId);
+      
+      const justification = await storage.getValueJustification(priorityId);
+      
+      if (!justification) {
+        return res.json({ justification: null });
+      }
+      
+      const messages = await storage.getValueJustificationMessages(justification.id);
+      
+      res.json({
+        justification: {
+          ...justification,
+          messages
+        }
+      });
+    } catch (error: any) {
+      console.error("Error fetching value justification for priority:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch value justification" });
+    }
+  });
+  
+  // Chat with AI to refine value justification
+  app.post("/api/value-justifications/:id/chat", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { message, action } = req.body;
+      
+      if (!message || typeof message !== "string") {
+        return res.status(400).json({ error: "Message is required" });
+      }
+      
+      const justification = await storage.getValueJustificationById(id);
+      
+      if (!justification) {
+        return res.status(404).json({ error: "Value justification not found" });
+      }
+      
+      if (justification.isLocked) {
+        return res.status(403).json({ error: "This value justification is locked and cannot be edited" });
+      }
+      
+      // Get existing messages for context
+      const existingMessages = await storage.getValueJustificationMessages(id);
+      
+      // Store user message
+      await storage.createValueJustificationMessage({
+        valueJustificationId: id,
+        role: "user",
+        content: sanitizeInput(message),
+        appliedToVersion: justification.version
+      });
+      
+      // Call AI to refine the draft
+      const { refineValueJustification } = await import("./ai");
+      const aiResult = await refineValueJustification({
+        currentDraft: justification.draftContent || "",
+        executiveSummary: justification.executiveSummary || "",
+        userMessage: message,
+        action,
+        conversationHistory: existingMessages.map(m => ({
+          role: m.role as "user" | "assistant" | "system",
+          content: m.content
+        }))
+      });
+      
+      // Update the justification with new content
+      const updatedJustification = await storage.updateValueJustification(id, {
+        draftContent: aiResult.updatedDraft,
+        executiveSummary: aiResult.updatedSummary || justification.executiveSummary,
+        version: justification.version + 1,
+        status: "refined"
+      });
+      
+      // Store assistant response
+      const assistantMessage = await storage.createValueJustificationMessage({
+        valueJustificationId: id,
+        role: "assistant",
+        content: aiResult.responseMessage,
+        suggestedChanges: aiResult.changes,
+        appliedToVersion: justification.version + 1
+      });
+      
+      res.json({
+        justification: updatedJustification,
+        assistantMessage
+      });
+    } catch (error: any) {
+      console.error("Error in value justification chat:", error);
+      res.status(500).json({ error: error.message || "Failed to process chat message" });
+    }
+  });
+  
+  // Update value justification (manual edits)
+  app.patch("/api/value-justifications/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { draftContent, executiveSummary, status } = req.body;
+      
+      const justification = await storage.getValueJustificationById(id);
+      
+      if (!justification) {
+        return res.status(404).json({ error: "Value justification not found" });
+      }
+      
+      if (justification.isLocked) {
+        return res.status(403).json({ error: "This value justification is locked and cannot be edited" });
+      }
+      
+      const updateData: any = {};
+      if (draftContent !== undefined) updateData.draftContent = draftContent;
+      if (executiveSummary !== undefined) updateData.executiveSummary = executiveSummary;
+      if (status !== undefined) updateData.status = status;
+      
+      const updated = await storage.updateValueJustification(id, updateData);
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating value justification:", error);
+      res.status(500).json({ error: error.message || "Failed to update value justification" });
+    }
+  });
+  
+  // Lock/approve value justification
+  app.post("/api/value-justifications/:id/lock", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { lockedBy } = req.body;
+      
+      const updated = await storage.updateValueJustification(id, {
+        isLocked: true,
+        lockedAt: new Date(),
+        lockedBy: lockedBy ? sanitizeInput(lockedBy) : "Consultant",
+        status: "approved"
+      });
+      
+      if (!updated) {
+        return res.status(404).json({ error: "Value justification not found" });
+      }
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error locking value justification:", error);
+      res.status(500).json({ error: error.message || "Failed to lock value justification" });
+    }
+  });
 }

@@ -33,7 +33,9 @@ import type {
   PillarObjective, InsertPillarObjective,
   PillarShareLink, InsertPillarShareLink,
   PillarOkrTheme, InsertPillarOkrTheme,
-  DashboardLayout, InsertDashboardLayout
+  DashboardLayout, InsertDashboardLayout,
+  ValueJustification, InsertValueJustification,
+  ValueJustificationMessage, InsertValueJustificationMessage
 } from "@shared/schema";
 
 export interface IStorage {
@@ -254,6 +256,19 @@ export interface IStorage {
   // Dashboard Layouts (user-configurable widget arrangements)
   getDashboardLayout(projectId: number): Promise<DashboardLayout | undefined>;
   upsertDashboardLayout(layout: InsertDashboardLayout): Promise<DashboardLayout>;
+  
+  // Value Justifications (AI-generated value narratives)
+  getValueJustification(jobThemeId: number): Promise<ValueJustification | undefined>;
+  getValueJustificationById(id: number): Promise<ValueJustification | undefined>;
+  getAllValueJustificationsForProject(projectId: number): Promise<ValueJustification[]>;
+  createValueJustification(justification: InsertValueJustification): Promise<ValueJustification>;
+  updateValueJustification(id: number, justification: Partial<InsertValueJustification>): Promise<ValueJustification | undefined>;
+  deleteValueJustification(id: number): Promise<void>;
+  
+  // Value Justification Messages (AI chat history)
+  getValueJustificationMessages(valueJustificationId: number): Promise<ValueJustificationMessage[]>;
+  createValueJustificationMessage(message: InsertValueJustificationMessage): Promise<ValueJustificationMessage>;
+  deleteValueJustificationMessages(valueJustificationId: number): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -1242,6 +1257,60 @@ export class DbStorage implements IStorage {
       const results = await db.insert(schema.dashboardLayouts).values(layout).returning();
       return results[0];
     }
+  }
+  
+  // Value Justifications (AI-generated value narratives)
+  async getValueJustification(jobThemeId: number): Promise<ValueJustification | undefined> {
+    const results = await db.select().from(schema.valueJustifications)
+      .where(eq(schema.valueJustifications.jobThemeId, jobThemeId))
+      .orderBy(desc(schema.valueJustifications.updatedAt));
+    return results[0];
+  }
+  
+  async getValueJustificationById(id: number): Promise<ValueJustification | undefined> {
+    const results = await db.select().from(schema.valueJustifications)
+      .where(eq(schema.valueJustifications.id, id));
+    return results[0];
+  }
+  
+  async getAllValueJustificationsForProject(projectId: number): Promise<ValueJustification[]> {
+    return await db.select().from(schema.valueJustifications)
+      .where(eq(schema.valueJustifications.projectId, projectId))
+      .orderBy(desc(schema.valueJustifications.updatedAt));
+  }
+  
+  async createValueJustification(justification: InsertValueJustification): Promise<ValueJustification> {
+    const results = await db.insert(schema.valueJustifications).values(justification).returning();
+    return results[0];
+  }
+  
+  async updateValueJustification(id: number, justification: Partial<InsertValueJustification>): Promise<ValueJustification | undefined> {
+    const results = await db.update(schema.valueJustifications)
+      .set({ ...justification, updatedAt: new Date() })
+      .where(eq(schema.valueJustifications.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deleteValueJustification(id: number): Promise<void> {
+    await db.delete(schema.valueJustifications).where(eq(schema.valueJustifications.id, id));
+  }
+  
+  // Value Justification Messages (AI chat history)
+  async getValueJustificationMessages(valueJustificationId: number): Promise<ValueJustificationMessage[]> {
+    return await db.select().from(schema.valueJustificationMessages)
+      .where(eq(schema.valueJustificationMessages.valueJustificationId, valueJustificationId))
+      .orderBy(schema.valueJustificationMessages.createdAt);
+  }
+  
+  async createValueJustificationMessage(message: InsertValueJustificationMessage): Promise<ValueJustificationMessage> {
+    const results = await db.insert(schema.valueJustificationMessages).values(message).returning();
+    return results[0];
+  }
+  
+  async deleteValueJustificationMessages(valueJustificationId: number): Promise<void> {
+    await db.delete(schema.valueJustificationMessages)
+      .where(eq(schema.valueJustificationMessages.valueJustificationId, valueJustificationId));
   }
 }
 

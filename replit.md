@@ -51,6 +51,14 @@ The system is built on a robust architecture incorporating AI and a structured w
 - **Success Story Library**: A global, filterable repository of verified Korn Ferry success stories with an approval workflow to provide credible proof points.
 - **Shareable Alignment Collaboration**: Secure, token-based shareable links allow customers to view and edit KPI baselines/targets without authentication, with configurable permissions and attribution.
 - **Client Response Insights**: AI automatically extracts key metrics, themes, and strategic discussion points from client questionnaire responses, generating discussion prompts for consultants.
+- **Value Justification Studio (November 2024)**: AI-powered workspace integrated into Priority detail view that generates compelling value narratives from Discovery insights, KPIs, and benchmarks. Features include:
+  - Journey Flow visualization showing Discovery → KPIs → Value progression with insight/KPI counts
+  - AI draft generation using GPT-4o that synthesizes Discovery data (insights, notes, questionnaire responses) with KPI gaps and benchmarks
+  - Executive summary auto-generation with projected value and confidence levels
+  - Interactive chat interface for refining drafts (adjust tone, focus areas, add details)
+  - Source context panel displaying linked Discovery insights and KPI improvements used in generation
+  - Version tracking with copy/regenerate functionality
+  - Database tables: valueJustifications (stores drafts with Discovery/KPI linkage) and valueJustificationMessages (chat history)
 
 ### Feature Specifications
 - **Discovery Phase**: Company research, data collection, note-taking, AI research, notes enrichment, collaborative questionnaires, and 360-degree discovery consolidation.

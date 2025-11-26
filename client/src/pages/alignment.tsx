@@ -36,6 +36,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
 import KPIRecommendationDialog from "@/components/KPIRecommendationDialog";
+import ValueJustificationStudio from "@/components/ValueJustificationStudio";
 
 type KPI = {
   id: number;
@@ -726,6 +727,15 @@ function JobDetailView({ job, projectId, updateKPIMutation, onShowRecommendation
             Get AI Suggestions
           </Button>
         </div>
+      )}
+
+      {/* Value Justification Studio - AI-powered value narrative */}
+      {selectedKPIs.length > 0 && completedKPIs.length > 0 && (
+        <ValueJustificationStudio
+          projectId={projectId}
+          priorityId={job.id}
+          priorityName={job.jobName}
+        />
       )}
     </div>
   );

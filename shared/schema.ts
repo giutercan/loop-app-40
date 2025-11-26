@@ -945,3 +945,129 @@ export const layoutItemSchema = z.object({
   maxH: z.number().optional(),
 });
 export type LayoutItem = z.infer<typeof layoutItemSchema>;
+
+// ============================================================================
+// AI VALUE JUSTIFICATION SYSTEM
+// ============================================================================
+
+// Value Justifications - AI-generated value narratives tied to priorities
+export const valueJustifications = pgTable("value_justifications", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  jobThemeId: integer("job_theme_id").notNull().references(() => jobThemes.id, { onDelete: "cascade" }),
+  
+  // Draft content
+  title: text("title").notNull(), // e.g., "Reducing Leadership Turnover Value Case"
+  draftContent: text("draft_content"), // Rich text/markdown content of the justification
+  executiveSummary: text("executive_summary"), // One-paragraph summary for executives
+  
+  // AI session tracking
+  aiSessionId: text("ai_session_id"), // Unique session ID for AI conversation
+  aiModelVersion: text("ai_model_version"), // Track which AI model version generated this
+  
+  // Discovery linkage - tracks which insights were used to generate this
+  linkedDiscoveryInsightIds: integer("linked_discovery_insight_ids").array(), // companyDataPoints IDs
+  linkedQuestionResponseIds: integer("linked_question_response_ids").array(), // questionResponses IDs
+  linkedNoteIds: integer("linked_note_ids").array(), // discoveryNotes IDs
+  
+  // KPI linkage
+  linkedKPIIds: integer("linked_kpi_ids").array(), // jobThemeKPIs IDs used in justification
+  
+  // Financial projections (extracted/calculated)
+  projectedValue: integer("projected_value"), // Total projected value in dollars
+  projectedValueTimeframe: text("projected_value_timeframe"), // e.g., "3 years", "12 months"
+  confidenceLevel: text("confidence_level", { enum: ["high", "medium", "low"] }),
+  
+  // Versioning
+  version: integer("version").notNull().default(1),
+  isLocked: boolean("is_locked").notNull().default(false), // Locked after client approval
+  lockedAt: timestamp("locked_at"),
+  lockedBy: text("locked_by"),
+  
+  // Status tracking
+  status: text("status", { enum: ["generating", "draft", "refined", "approved", "sent"] }).notNull().default("draft"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertValueJustificationSchema = createInsertSchema(valueJustifications).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertValueJustification = z.infer<typeof insertValueJustificationSchema>;
+export type ValueJustification = typeof valueJustifications.$inferSelect;
+
+// Value Justification Chat Messages - Interactive AI refinement conversation
+export const valueJustificationMessages = pgTable("value_justification_messages", {
+  id: serial("id").primaryKey(),
+  valueJustificationId: integer("value_justification_id").notNull().references(() => valueJustifications.id, { onDelete: "cascade" }),
+  
+  role: text("role", { enum: ["user", "assistant", "system"] }).notNull(),
+  content: text("content").notNull(),
+  
+  // For assistant messages, track what changes were made
+  suggestedChanges: jsonb("suggested_changes"), // Array of {section: string, oldText: string, newText: string}
+  appliedToVersion: integer("applied_to_version"), // Which draft version this message relates to
+  
+  // Metadata
+  metadata: jsonb("metadata"), // Any additional context (e.g., tokens used, model, etc.)
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertValueJustificationMessageSchema = createInsertSchema(valueJustificationMessages).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertValueJustificationMessage = z.infer<typeof insertValueJustificationMessageSchema>;
+export type ValueJustificationMessage = typeof valueJustificationMessages.$inferSelect;
+
+// API Request/Response Schemas for Value Justification
+
+// Generate Value Justification Request
+export const generateValueJustificationRequestSchema = z.object({
+  tone: z.enum(["executive", "technical", "persuasive"]).optional().default("executive"),
+  focusAreas: z.array(z.string()).optional(), // Specific areas to emphasize
+  includeFinancials: z.boolean().optional().default(true),
+});
+export type GenerateValueJustificationRequest = z.infer<typeof generateValueJustificationRequestSchema>;
+
+// Chat Message Request
+export const valueJustificationChatRequestSchema = z.object({
+  message: z.string().min(1),
+  action: z.enum(["refine", "expand", "simplify", "add_metrics", "change_tone"]).optional(),
+});
+export type ValueJustificationChatRequest = z.infer<typeof valueJustificationChatRequestSchema>;
+
+// Value Justification with Messages (for frontend)
+export const valueJustificationWithMessagesSchema = z.object({
+  id: z.number(),
+  projectId: z.number(),
+  jobThemeId: z.number(),
+  title: z.string(),
+  draftContent: z.string().nullable().optional(),
+  executiveSummary: z.string().nullable().optional(),
+  aiSessionId: z.string().nullable().optional(),
+  linkedDiscoveryInsightIds: z.array(z.number()).nullable().optional(),
+  linkedQuestionResponseIds: z.array(z.number()).nullable().optional(),
+  linkedNoteIds: z.array(z.number()).nullable().optional(),
+  linkedKPIIds: z.array(z.number()).nullable().optional(),
+  projectedValue: z.number().nullable().optional(),
+  projectedValueTimeframe: z.string().nullable().optional(),
+  confidenceLevel: z.enum(["high", "medium", "low"]).nullable().optional(),
+  version: z.number(),
+  isLocked: z.boolean(),
+  status: z.enum(["generating", "draft", "refined", "approved", "sent"]),
+  createdAt: z.any(),
+  updatedAt: z.any(),
+  messages: z.array(z.object({
+    id: z.number(),
+    role: z.enum(["user", "assistant", "system"]),
+    content: z.string(),
+    suggestedChanges: z.any().nullable().optional(),
+    appliedToVersion: z.number().nullable().optional(),
+    createdAt: z.any(),
+  })),
+});
