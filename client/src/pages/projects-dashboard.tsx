@@ -27,8 +27,13 @@ import {
   CheckCircle2,
   Clock,
   Trash2,
-  Pencil
+  Pencil,
+  Sparkles,
+  BarChart3,
+  Users,
+  Zap
 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { LogoEditDialog } from "@/components/LogoEditDialog";
 import { CommandPaletteHint } from "@/components/CommandPalette";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -168,52 +173,126 @@ export default function ProjectsDashboard() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto max-w-7xl px-4 lg:px-8 py-12">
-        <div className="space-y-8">
-          {/* Page Header */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Briefcase className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-4xl font-bold tracking-tight">Projects</h1>
-                <p className="text-muted-foreground">Manage client engagements across the value lifecycle</p>
+      {/* Hero Section with Gradient */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary/95 to-primary/80">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMzLjMxNCAwIDYgMi42ODYgNiA2cy0yLjY4NiA2LTYgNi02LTIuNjg2LTYtNiAyLjY4Ni02IDYtNiIgc3Ryb2tlPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMSkiIHN0cm9rZS13aWR0aD0iMiIvPjwvZz48L3N2Zz4=')] opacity-30" />
+        <div className="container mx-auto max-w-7xl px-4 lg:px-8 py-12 lg:py-16 relative">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
+            {/* Left: Title & Description */}
+            <div className="space-y-4 max-w-2xl">
+              <div className="flex items-center gap-3">
+                <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/20">
+                  <Briefcase className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-white">
+                    Client Engagements
+                  </h1>
+                  <p className="text-white/70 text-sm lg:text-base">
+                    Manage value lifecycle across Discovery, Alignment & Realization
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Stats Row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardDescription className="text-sm font-medium">Total Projects</CardDescription>
-                <CardTitle className="text-3xl font-bold">{projects.length}</CardTitle>
-              </CardHeader>
-            </Card>
-            <Card>
-              <CardHeader className="pb-3">
-                <CardDescription className="text-sm font-medium">Active Engagements</CardDescription>
-                <CardTitle className="text-3xl font-bold">
+            {/* Right: Quick Stats */}
+            <div className="flex flex-wrap gap-4 lg:gap-6">
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl px-5 py-4 border border-white/20 min-w-[120px]">
+                <div className="flex items-center gap-2 text-white/70 text-xs font-medium mb-1">
+                  <BarChart3 className="w-3.5 h-3.5" />
+                  Total
+                </div>
+                <div className="text-2xl lg:text-3xl font-bold text-white">{projects.length}</div>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl px-5 py-4 border border-white/20 min-w-[120px]">
+                <div className="flex items-center gap-2 text-white/70 text-xs font-medium mb-1">
+                  <Zap className="w-3.5 h-3.5" />
+                  Active
+                </div>
+                <div className="text-2xl lg:text-3xl font-bold text-white">
                   {projects.filter(p => p.status === "active").length}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-            <Card>
-              <CardHeader className="pb-3">
-                <CardDescription className="text-sm font-medium">This Month</CardDescription>
-                <CardTitle className="text-3xl font-bold">
+                </div>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl px-5 py-4 border border-white/20 min-w-[120px]">
+                <div className="flex items-center gap-2 text-white/70 text-xs font-medium mb-1">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  New
+                </div>
+                <div className="text-2xl lg:text-3xl font-bold text-white">
                   {projects.filter(p => {
                     const created = new Date(p.createdAt);
                     const now = new Date();
                     return created.getMonth() === now.getMonth() && 
                            created.getFullYear() === now.getFullYear();
                   }).length}
-                </CardTitle>
-              </CardHeader>
-            </Card>
+                </div>
+              </div>
+            </div>
           </div>
+
+          {/* Phase Distribution Bar */}
+          {projects.length > 0 && (
+            <div className="mt-8 bg-white/10 backdrop-blur-sm rounded-xl p-5 border border-white/20">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-sm font-medium text-white/80">Phase Distribution</span>
+                <div className="flex items-center gap-4 text-xs">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-400" />
+                    <span className="text-white/70">Discovery</span>
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-purple-400" />
+                    <span className="text-white/70">Alignment</span>
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                    <span className="text-white/70">Realization</span>
+                  </span>
+                </div>
+              </div>
+              <div className="flex h-3 rounded-full overflow-hidden bg-white/10">
+                {(() => {
+                  const discovery = projects.filter(p => p.currentPhase === "discovery").length;
+                  const alignment = projects.filter(p => p.currentPhase === "alignment").length;
+                  const realisation = projects.filter(p => p.currentPhase === "realisation").length;
+                  const total = projects.length;
+                  return (
+                    <>
+                      {discovery > 0 && (
+                        <div 
+                          className="bg-blue-400 transition-all duration-500" 
+                          style={{ width: `${(discovery / total) * 100}%` }}
+                        />
+                      )}
+                      {alignment > 0 && (
+                        <div 
+                          className="bg-purple-400 transition-all duration-500" 
+                          style={{ width: `${(alignment / total) * 100}%` }}
+                        />
+                      )}
+                      {realisation > 0 && (
+                        <div 
+                          className="bg-emerald-400 transition-all duration-500" 
+                          style={{ width: `${(realisation / total) * 100}%` }}
+                        />
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+              <div className="flex justify-between mt-2 text-xs text-white/60">
+                <span>{projects.filter(p => p.currentPhase === "discovery").length} in Discovery</span>
+                <span>{projects.filter(p => p.currentPhase === "alignment").length} in Alignment</span>
+                <span>{projects.filter(p => p.currentPhase === "realisation").length} in Realization</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Main Content */}
+      <main className="container mx-auto max-w-7xl px-4 lg:px-8 py-8 lg:py-12">
+        <div className="space-y-8">
 
           {/* Projects Grid */}
           {projects.length === 0 ? (
@@ -338,37 +417,64 @@ export default function ProjectsDashboard() {
                       </AlertDialog>
                     </div>
 
-                    {/* Phase Progress */}
-                    <div className="space-y-2">
+                    {/* Phase Progress Stepper */}
+                    <div className="space-y-3">
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Clock className="w-3 h-3" />
                         <span>Started {new Date(project.createdAt).toLocaleDateString()}</span>
                       </div>
                       
-                      <div className="flex items-center gap-2">
-                        <Badge 
-                          variant={project.currentPhase === "discovery" ? "secondary" : "outline"} 
-                          className="flex items-center gap-1.5"
-                        >
-                          <Search className="w-3 h-3" />
-                          Discovery
-                        </Badge>
-                        <ArrowRight className="w-3 h-3 text-muted-foreground" />
-                        <Badge 
-                          variant={project.currentPhase === "alignment" ? "secondary" : "outline"} 
-                          className="flex items-center gap-1.5"
-                        >
-                          <Target className="w-3 h-3" />
-                          Alignment
-                        </Badge>
-                        <ArrowRight className="w-3 h-3 text-muted-foreground" />
-                        <Badge 
-                          variant={project.currentPhase === "realisation" ? "secondary" : "outline"} 
-                          className="flex items-center gap-1.5"
-                        >
-                          <Activity className="w-3 h-3" />
-                          Realization
-                        </Badge>
+                      {/* Visual Phase Stepper */}
+                      <div className="relative">
+                        {/* Progress Line */}
+                        <div className="absolute top-4 left-4 right-4 h-0.5 bg-muted" />
+                        <div 
+                          className="absolute top-4 left-4 h-0.5 bg-primary transition-all duration-500"
+                          style={{
+                            width: project.currentPhase === "discovery" ? "0%" :
+                                   project.currentPhase === "alignment" ? "50%" : "100%"
+                          }}
+                        />
+                        
+                        {/* Phase Steps */}
+                        <div className="relative flex justify-between">
+                          {[
+                            { id: "discovery", label: "Discovery", icon: Search, color: "bg-blue-500" },
+                            { id: "alignment", label: "Alignment", icon: Target, color: "bg-purple-500" },
+                            { id: "realisation", label: "Realization", icon: Activity, color: "bg-emerald-500" },
+                          ].map((phase, index) => {
+                            const phaseOrder = ["discovery", "alignment", "realisation"];
+                            const currentIndex = phaseOrder.indexOf(project.currentPhase);
+                            const isCompleted = index < currentIndex;
+                            const isCurrent = phase.id === project.currentPhase;
+                            const PhaseIcon = phase.icon;
+                            
+                            return (
+                              <div key={phase.id} className="flex flex-col items-center">
+                                <div 
+                                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+                                    isCurrent 
+                                      ? `${phase.color} text-white ring-4 ring-primary/20` 
+                                      : isCompleted 
+                                        ? "bg-primary text-primary-foreground"
+                                        : "bg-muted text-muted-foreground"
+                                  }`}
+                                >
+                                  {isCompleted ? (
+                                    <CheckCircle2 className="w-4 h-4" />
+                                  ) : (
+                                    <PhaseIcon className="w-4 h-4" />
+                                  )}
+                                </div>
+                                <span className={`text-[10px] mt-1.5 font-medium ${
+                                  isCurrent ? "text-foreground" : "text-muted-foreground"
+                                }`}>
+                                  {phase.label}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
                   </CardHeader>
