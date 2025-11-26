@@ -304,13 +304,13 @@ export default function AlignmentPage() {
           <Tabs defaultValue="jobs" className="flex-1 flex flex-col">
             <div className="px-4 pt-4 pb-3 space-y-3">
               <TabsList className="grid w-full grid-cols-2 h-9">
-                <TabsTrigger value="jobs" className="text-xs gap-1.5" data-testid="tab-jobs">
+                <TabsTrigger value="jobs" className="text-xs gap-1.5" data-testid="tab-priorities">
                   <Briefcase className="w-3.5 h-3.5" />
-                  Jobs ({filteredJobs.length})
+                  Priorities ({filteredJobs.length})
                 </TabsTrigger>
                 <TabsTrigger value="cases" className="text-xs gap-1.5" data-testid="tab-value-cases">
                   <FileText className="w-3.5 h-3.5" />
-                  Cases ({filteredValueCases.length})
+                  Value Cases ({filteredValueCases.length})
                 </TabsTrigger>
               </TabsList>
               <div className="relative">
@@ -325,10 +325,14 @@ export default function AlignmentPage() {
               </div>
             </div>
 
-            {/* Jobs Tab */}
+            {/* Priorities Tab */}
             <TabsContent value="jobs" className="flex-1 m-0 overflow-hidden">
               <ScrollArea className="h-full">
-                <div className="px-3 pb-4 space-y-1">
+                <div className="px-3 pb-4">
+                  <p className="text-xs text-muted-foreground mb-3 px-1">
+                    Key initiatives from Discovery. Set baseline and target KPIs.
+                  </p>
+                  <div className="space-y-1">
                   {isLoadingJobs ? (
                     <div className="p-12 text-center text-muted-foreground text-sm">
                       <Loader2 className="w-5 h-5 animate-spin mx-auto mb-3" />
@@ -381,6 +385,7 @@ export default function AlignmentPage() {
                       );
                     })
                   )}
+                  </div>
                 </div>
               </ScrollArea>
             </TabsContent>
@@ -388,7 +393,11 @@ export default function AlignmentPage() {
             {/* Value Cases Tab */}
             <TabsContent value="cases" className="flex-1 m-0 overflow-hidden">
               <ScrollArea className="h-full">
-                <div className="px-3 pb-4 space-y-1">
+                <div className="px-3 pb-4">
+                  <p className="text-xs text-muted-foreground mb-3 px-1">
+                    Business justifications with ROI projections for stakeholders.
+                  </p>
+                  <div className="space-y-1">
                   {filteredValueCases.length === 0 ? (
                     <button
                       onClick={handleCreate}
@@ -445,6 +454,7 @@ export default function AlignmentPage() {
                       );
                     })
                   )}
+                  </div>
                 </div>
               </ScrollArea>
             </TabsContent>
@@ -468,7 +478,7 @@ export default function AlignmentPage() {
                       <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-6">
                         <TargetIcon className="w-8 h-8 text-muted-foreground/50" />
                       </div>
-                      <p className="text-lg font-medium">Select a job or case</p>
+                      <p className="text-lg font-medium">Select a priority or case</p>
                       <p className="text-sm text-muted-foreground mt-1">
                         Choose from the sidebar to view details
                       </p>
