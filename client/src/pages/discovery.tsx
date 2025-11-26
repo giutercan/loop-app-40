@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,9 +25,8 @@ import OrganisationCard from "@/components/OrganisationCard";
 import ValueCaseBuilder from "@/components/ValueCaseBuilder";
 import ProjectSelector from "@/components/ProjectSelector";
 import StatusBadge from "@/components/StatusBadge";
-import ProjectPhaseNav from "@/components/project-phase-nav";
 import KPIRecommendationDialog from "@/components/KPIRecommendationDialog";
-import { ArrowLeft, ArrowRight, Save, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, TrendingUp, Activity, Award, Building, Calendar, AlertCircle, ChevronDown, Lightbulb, BarChart3, MessageSquare, Edit, Lock, Unlock, Flag, GripVertical, Layers, RefreshCw, Star } from "lucide-react";
+import { ArrowRight, Save, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, TrendingUp, Activity, Award, Building, Calendar, AlertCircle, ChevronDown, Lightbulb, BarChart3, MessageSquare, Edit, Lock, Unlock, Flag, GripVertical, Layers, RefreshCw, Star } from "lucide-react";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { AppTour } from "@/components/AppTour";
 import { Link, useLocation, useRoute } from "wouter";
@@ -1611,19 +1610,46 @@ export default function Discovery() {
     },
   });
 
+  const firstKPICelebrationShownRef = useRef(false);
+  
+  useEffect(() => {
+    firstKPICelebrationShownRef.current = false;
+  }, [projectId]);
+
   const updateKPIMutation = useMutation({
     mutationFn: async ({ kpiId, data }: { kpiId: number; data: { isSelected?: boolean; baselineValue?: string; baselineSource?: string; targetValue?: string; targetSource?: string } }) => {
+      const currentSelectedCount = jobThemes.flatMap(t => t.kpis).filter(k => k.isSelected).length;
       const res = await apiRequest("PATCH", `/api/job-theme-kpis/${kpiId}`, data);
       if (!res.ok) throw new Error("Failed to update KPI");
-      return await res.json();
+      return { 
+        result: await res.json(), 
+        wasSelecting: data.isSelected === true,
+        previousSelectedCount: currentSelectedCount 
+      };
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/job-themes`] });
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/alignment/finalized-jobs`] });
-      toast({
-        title: "KPI updated",
-        description: "KPI has been updated successfully.",
-      });
+      
+      const { wasSelecting, previousSelectedCount } = data;
+      
+      if (wasSelecting && previousSelectedCount === 0 && !firstKPICelebrationShownRef.current) {
+        firstKPICelebrationShownRef.current = true;
+        toast({
+          title: "First KPI Selected!",
+          description: "Great start! Keep selecting KPIs to build your value case and track meaningful business outcomes.",
+        });
+      } else if (wasSelecting) {
+        toast({
+          title: "KPI Added",
+          description: "KPI has been added to your tracking list.",
+        });
+      } else {
+        toast({
+          title: "KPI Removed",
+          description: "KPI has been removed from tracking.",
+        });
+      }
     },
   });
 
@@ -1924,7 +1950,7 @@ export default function Discovery() {
 
   if (!projectId) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+      <div className="h-full flex items-center justify-center p-6">
         <Card className="max-w-2xl w-full">
           <CardHeader>
             <CardTitle className="text-2xl">Welcome to Korn Ferry Value Lifecycle</CardTitle>
@@ -1944,30 +1970,17 @@ export default function Discovery() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto max-w-7xl px-4 lg:px-8">
-          <div className="flex h-16 items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-4">
-              <Link href="/">
-                <Button variant="ghost" size="icon" data-testid="button-back">
-                  <ArrowLeft className="w-5 h-5" />
-                </Button>
-              </Link>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-bold">Phase 1: Discovery</h1>
-                  <StatusBadge status="draft" />
-                </div>
-                <p className="text-sm text-muted-foreground">{project?.companyName}</p>
-              </div>
+    <div className="h-full flex flex-col">
+      {/* Action Bar */}
+      <div className="border-b bg-card">
+        <div className="p-4">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl font-semibold">Research & Insights</h1>
+              <StatusBadge status="draft" />
             </div>
             <div className="flex items-center gap-3">
-              <ProjectSelector
-                currentProjectId={projectId}
-                onProjectChange={(p) => setLocation(`/projects/${p.id}/discovery`)}
-              />
-              <AppTour context="discovery" autoStart />
+              <AppTour context="discovery" />
               <Button
                 variant="outline"
                 onClick={handleSaveDraft}
@@ -1980,17 +1993,9 @@ export default function Discovery() {
             </div>
           </div>
         </div>
-      </header>
+      </div>
 
-      {project && (
-        <ProjectPhaseNav 
-          projectId={projectId!}
-          projectName={project.companyName}
-          currentPhase="discovery"
-        />
-      )}
-
-      <main className="container mx-auto max-w-7xl px-4 lg:px-8 py-8">
+      <main className="flex-1 overflow-auto p-6">
         <Tabs defaultValue="organisation" className="space-y-6">
           <TabsList className="grid w-full grid-cols-5 max-w-5xl" data-testid="tabs-discovery">
             <TabsTrigger value="organisation" data-testid="tab-research">Organisation</TabsTrigger>

@@ -242,16 +242,43 @@ export default function KPITraction({ projectId }: KPITractionProps) {
 
   if (isLoading || actualsQuery.isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Loading KPI Traction...</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64 flex items-center justify-center">
-            <Activity className="w-8 h-8 animate-spin text-muted-foreground" />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-6" data-testid="skeleton-kpi-traction">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded bg-primary/20 animate-pulse" />
+                  <div className="h-7 w-48 bg-muted animate-pulse rounded" />
+                </div>
+                <div className="h-5 w-64 bg-muted animate-pulse rounded" />
+              </div>
+              <div className="h-6 w-24 bg-muted animate-pulse rounded-full" />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="border-l-4 border-l-muted">
+                <CardHeader>
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="h-6 w-8 bg-muted animate-pulse rounded" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-5 w-48 bg-muted animate-pulse rounded" />
+                        <div className="h-4 w-32 bg-muted animate-pulse rounded" />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="h-5 w-16 bg-muted animate-pulse rounded-full" />
+                      <div className="h-2 w-24 bg-muted animate-pulse rounded-full" />
+                    </div>
+                  </div>
+                </CardHeader>
+              </Card>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 

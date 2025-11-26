@@ -20,7 +20,6 @@ import ValueCaseCard from "@/components/ValueCaseCard";
 import { ValueCaseCreationDialog } from "@/components/value-case-creation-dialog";
 import { AlignmentInteractive } from "@/components/alignment-interactive";
 import { ReprioritizeDialog } from "@/components/ReprioritizeDialog";
-import ProjectPhaseNav from "@/components/project-phase-nav";
 import { ShareAlignmentDialog } from "@/components/ShareAlignmentDialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -146,22 +145,12 @@ export default function AlignmentPage() {
 
   return (
     <div className="h-full flex flex-col">
-      {project && (
-        <ProjectPhaseNav 
-          projectId={projectId}
-          projectName={project.companyName}
-          currentPhase="alignment"
-        />
-      )}
-      
-      {/* Header */}
+      {/* Action Bar */}
       <div className="border-b bg-card">
-        <div className="p-6">
-          <div className="flex items-center justify-between">
+        <div className="p-4">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
             <div>
-              <h1 className="text-2xl font-semibold mb-1">
-                Alignment Phase
-              </h1>
+              <h1 className="text-xl font-semibold">Value Cases & KPI Alignment</h1>
               <p className="text-sm text-muted-foreground">
                 Build and refine value cases with {project.companyName}
               </p>

@@ -8,17 +8,15 @@ import MomentumTimeline from "@/components/MomentumTimeline";
 import KPIProgressTracker from "@/components/KPIProgressTracker";
 import FinancialAppendix from "@/components/FinancialAppendix";
 import StatusBadge from "@/components/StatusBadge";
-import ProjectPhaseNav from "@/components/project-phase-nav";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Download, FileText, Clock, CheckCircle2, LayoutDashboard } from "lucide-react";
-import { Link, useLocation, useRoute } from "wouter";
+import { Download, FileText, Clock, LayoutDashboard, CheckCircle2 } from "lucide-react";
+import { Link, useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import type { Project, AnalyticsReview, Kpi } from "@shared/schema";
 
 export default function Realisation() {
   const [, params] = useRoute("/projects/:id/realisation");
   const projectId = parseInt(params?.id || "0");
-  const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("dashboard");
 
   const { data: project } = useQuery<Project>({
@@ -40,25 +38,14 @@ export default function Realisation() {
   const analyticsSignedOff = analyticsReview?.status === "approved";
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto max-w-7xl px-4 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/">
-                <Button variant="ghost" size="icon" data-testid="button-back">
-                  <ArrowLeft className="w-5 h-5" />
-                </Button>
-              </Link>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-bold">Phase 3: Value Realisation</h1>
-                  <StatusBadge status={analyticsSignedOff ? "locked" : "pending"} />
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {project?.companyName || "No project selected"} - {project?.currentPhase || "Discovery"}
-                </p>
-              </div>
+    <div className="h-full flex flex-col">
+      {/* Action Bar */}
+      <div className="border-b bg-card">
+        <div className="p-4">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl font-semibold">Value Realization</h1>
+              <StatusBadge status={analyticsSignedOff ? "locked" : "pending"} />
             </div>
             <div className="flex items-center gap-3">
               <Button variant="outline" data-testid="button-export-draft">
@@ -72,19 +59,11 @@ export default function Realisation() {
             </div>
           </div>
         </div>
-      </header>
-
-      {project && (
-        <ProjectPhaseNav 
-          projectId={projectId}
-          projectName={project.companyName}
-          currentPhase="realisation"
-        />
-      )}
+      </div>
 
       {!analyticsSignedOff && (
         <div className="bg-[#8DC63F]/10 border-b border-[#8DC63F]/20">
-          <div className="container mx-auto max-w-7xl px-4 lg:px-8 py-4">
+          <div className="px-6 py-3">
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div className="flex items-start gap-3">
                 <Clock className="w-5 h-5 text-[#00634F] mt-0.5" />
@@ -107,7 +86,7 @@ export default function Realisation() {
         </div>
       )}
 
-      <main className="container mx-auto max-w-7xl px-4 lg:px-8 py-8">
+      <main className="flex-1 overflow-auto p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-5 max-w-4xl" data-testid="tabs-realisation">
             <TabsTrigger value="dashboard">Executive Pulse</TabsTrigger>

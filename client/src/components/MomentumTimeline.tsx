@@ -265,13 +265,32 @@ export default function MomentumTimeline({ projectId, onNavigateToKPITracking }:
 
   if (actualsQuery.isLoading || timelineLoading) {
     return (
-      <Card>
+      <Card data-testid="skeleton-momentum-timeline">
         <CardHeader>
-          <CardTitle>Loading Timeline...</CardTitle>
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded bg-primary/20 animate-pulse" />
+                <div className="h-7 w-44 bg-muted animate-pulse rounded" />
+              </div>
+              <div className="h-5 w-72 bg-muted animate-pulse rounded" />
+            </div>
+            <div className="h-6 w-20 bg-muted animate-pulse rounded-full" />
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="h-64 flex items-center justify-center">
-            <Clock className="w-8 h-8 animate-spin text-muted-foreground" />
+          <div className="space-y-6">
+            <div className="h-6 w-32 bg-muted/50 animate-pulse rounded" />
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex gap-4 items-start">
+                <div className="w-10 h-10 rounded-full bg-muted animate-pulse shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-5 w-3/4 bg-muted animate-pulse rounded" />
+                  <div className="h-4 w-1/2 bg-muted animate-pulse rounded" />
+                </div>
+                <div className="h-4 w-20 bg-muted animate-pulse rounded" />
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>

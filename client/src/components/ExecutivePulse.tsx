@@ -35,17 +35,60 @@ export default function ExecutivePulse({ projectId }: ExecutivePulseProps) {
 
   if (isLoading || !metrics) {
     return (
-      <div className="space-y-6">
-        <Card>
+      <div className="space-y-6" data-testid="skeleton-executive-pulse">
+        <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10">
           <CardHeader>
-            <CardTitle>Loading Value Delivery Command Center...</CardTitle>
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded bg-primary/20 animate-pulse" />
+                  <div className="h-7 w-64 bg-muted animate-pulse rounded" />
+                </div>
+                <div className="h-5 w-80 bg-muted animate-pulse rounded" />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="h-64 flex items-center justify-center">
-              <Activity className="w-8 h-8 animate-spin text-muted-foreground" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="space-y-3 p-4 rounded-lg border bg-background/50">
+                  <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+                  <div className="h-8 w-32 bg-muted animate-pulse rounded" />
+                  <div className="h-2 w-full bg-muted animate-pulse rounded" />
+                  <div className="h-4 w-20 bg-muted animate-pulse rounded" />
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <div className="h-6 w-32 bg-muted animate-pulse rounded" />
+            </CardHeader>
+            <CardContent>
+              <div className="h-48 flex items-center justify-center">
+                <div className="w-32 h-32 rounded-full bg-muted animate-pulse" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <div className="h-6 w-40 bg-muted animate-pulse rounded" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-muted animate-pulse" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+                    <div className="h-3 w-16 bg-muted animate-pulse rounded" />
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
