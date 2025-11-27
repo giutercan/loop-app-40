@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -36,13 +36,22 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Building2, TrendingUp, Search, Check, ChevronsUpDown, ArrowLeft, Loader2, X, Pencil } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Building2, TrendingUp, Search, Check, ChevronsUpDown, ArrowLeft, Loader2, X, Pencil, FolderOpen } from "lucide-react";
+import type { Account } from "@shared/schema";
 import { Link } from "wouter";
 
 const createProjectSchema = z.object({
   companyName: z.string().min(1, "Company name is required"),
   sector: z.string().optional(),
   companyLogoUrl: z.string().url().optional().or(z.literal("")),
+  accountId: z.number().optional(),
 });
 
 type CreateProjectForm = z.infer<typeof createProjectSchema>;
@@ -61,12 +70,17 @@ export default function NewProject() {
   const [isSearching, setIsSearching] = useState(false);
   const [open, setOpen] = useState(false);
 
+  const { data: accounts = [] } = useQuery<Account[]>({
+    queryKey: ["/api/accounts"],
+  });
+
   const form = useForm<CreateProjectForm>({
     resolver: zodResolver(createProjectSchema),
     defaultValues: {
       companyName: "",
       sector: "",
       companyLogoUrl: "",
+      accountId: undefined,
     },
   });
 
@@ -79,6 +93,7 @@ export default function NewProject() {
         companyLogoUrl: data.companyLogoUrl || null,
         currentPhase: "discovery",
         status: "active",
+        accountId: data.accountId || null,
       });
       if (!res.ok) throw new Error("Failed to create project");
       return await res.json();
@@ -187,6 +202,48 @@ export default function NewProject() {
             <CardContent>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  {/* Account Selector */}
+                  <FormField
+                    control={form.control}
+                    name="accountId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <FolderOpen className="w-4 h-4" />
+                          Parent Account
+                        </FormLabel>
+                        <Select
+                          onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)}
+                          value={field.value?.toString() || ""}
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="select-account">
+                              <SelectValue placeholder="Select an account (optional)" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {accounts.map((account) => (
+                              <SelectItem 
+                                key={account.id} 
+                                value={account.id.toString()}
+                                data-testid={`option-account-${account.id}`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <Building2 className="w-4 h-4 text-muted-foreground" />
+                                  <span>{account.name}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          Link this project to a client account for organized tracking
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                   <FormField
                     control={form.control}
                     name="companyName"

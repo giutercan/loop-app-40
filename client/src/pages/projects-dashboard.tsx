@@ -31,8 +31,17 @@ import {
   Sparkles,
   BarChart3,
   Users,
-  Zap
+  Zap,
+  FolderOpen,
+  Filter
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { LogoEditDialog } from "@/components/LogoEditDialog";
 import { CommandPaletteHint } from "@/components/CommandPalette";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -49,15 +58,41 @@ interface Project {
   status: "active" | "completed" | "archived";
   createdAt: Date;
   updatedAt: Date;
+  accountId: number | null;
+}
+
+interface Account {
+  id: number;
+  name: string;
+  industry: string | null;
+  tier: "enterprise" | "strategic" | "growth" | "standard" | null;
 }
 
 export default function ProjectsDashboard() {
   const { toast } = useToast();
   const [_, setLocation] = useLocation();
   const [editingLogoProject, setEditingLogoProject] = useState<Project | null>(null);
+  const [selectedAccountId, setSelectedAccountId] = useState<number | "all" | "unassigned">("all");
+  
   const { data: projects = [], isLoading } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
   });
+
+  const { data: accounts = [] } = useQuery<Account[]>({
+    queryKey: ["/api/accounts"],
+  });
+
+  const filteredProjects = projects.filter((project) => {
+    if (selectedAccountId === "all") return true;
+    if (selectedAccountId === "unassigned") return !project.accountId;
+    return project.accountId === selectedAccountId;
+  });
+
+  const getAccountName = (accountId: number | null) => {
+    if (!accountId) return null;
+    const account = accounts.find(a => a.id === accountId);
+    return account?.name || null;
+  };
 
   const deleteMutation = useMutation({
     mutationFn: async (projectId: number) => {
@@ -293,8 +328,90 @@ export default function ProjectsDashboard() {
       <main className="container mx-auto max-w-7xl px-4 lg:px-8 py-8 lg:py-12">
         <div className="space-y-8">
 
+          {/* Account Filter Bar */}
+          {accounts.length > 0 && (
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Filter className="w-4 h-4" />
+                <span>Filter by Account:</span>
+              </div>
+              <Select
+                value={selectedAccountId === "all" ? "all" : selectedAccountId === "unassigned" ? "unassigned" : selectedAccountId.toString()}
+                onValueChange={(value) => {
+                  if (value === "all") setSelectedAccountId("all");
+                  else if (value === "unassigned") setSelectedAccountId("unassigned");
+                  else setSelectedAccountId(parseInt(value));
+                }}
+              >
+                <SelectTrigger className="w-[220px]" data-testid="select-account-filter">
+                  <SelectValue placeholder="All Accounts" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" data-testid="filter-all-accounts">
+                    <div className="flex items-center gap-2">
+                      <FolderOpen className="w-4 h-4 text-muted-foreground" />
+                      <span>All Accounts</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="unassigned" data-testid="filter-unassigned">
+                    <div className="flex items-center gap-2">
+                      <Briefcase className="w-4 h-4 text-muted-foreground" />
+                      <span>Unassigned Projects</span>
+                    </div>
+                  </SelectItem>
+                  {accounts.map((account) => (
+                    <SelectItem key={account.id} value={account.id.toString()} data-testid={`filter-account-${account.id}`}>
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-muted-foreground" />
+                        <span>{account.name}</span>
+                        {account.tier && (
+                          <Badge variant="outline" className="text-xs ml-1">
+                            {account.tier}
+                          </Badge>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedAccountId !== "all" && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedAccountId("all")}
+                  data-testid="button-clear-filter"
+                >
+                  Clear filter
+                </Button>
+              )}
+              <div className="ml-auto">
+                <Link href="/accounts">
+                  <Button variant="outline" data-testid="button-manage-accounts">
+                    <Building2 className="w-4 h-4 mr-2" />
+                    Manage Accounts
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          )}
+
           {/* Projects Grid */}
-          {projects.length === 0 ? (
+          {filteredProjects.length === 0 && projects.length > 0 ? (
+            <Card className="border-2">
+              <CardContent className="py-12 text-center">
+                <FolderOpen className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No projects match this filter</h3>
+                <p className="text-muted-foreground mb-4">
+                  {selectedAccountId === "unassigned" 
+                    ? "All projects are assigned to accounts"
+                    : "No projects found for the selected account"}
+                </p>
+                <Button variant="outline" onClick={() => setSelectedAccountId("all")}>
+                  Show all projects
+                </Button>
+              </CardContent>
+            </Card>
+          ) : projects.length === 0 ? (
             <Card className="border-2 overflow-hidden">
               <CardContent className="p-0">
                 <div className="grid md:grid-cols-2 gap-0">
@@ -334,7 +451,7 @@ export default function ProjectsDashboard() {
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {projects.map((project) => (
+              {filteredProjects.map((project) => (
                 <Card 
                   key={project.id} 
                   className="hover-elevate transition-all duration-300 group border-2 hover:border-primary/20"
@@ -376,6 +493,18 @@ export default function ProjectsDashboard() {
                             <CardDescription className="text-sm truncate">
                               {project.sector}
                             </CardDescription>
+                          )}
+                          {project.accountId && getAccountName(project.accountId) && (
+                            <Link href={`/accounts/${project.accountId}`}>
+                              <Badge 
+                                variant="outline" 
+                                className="mt-1.5 text-xs cursor-pointer hover:bg-accent"
+                                data-testid={`badge-account-${project.id}`}
+                              >
+                                <FolderOpen className="w-3 h-3 mr-1" />
+                                {getAccountName(project.accountId)}
+                              </Badge>
+                            </Link>
                           )}
                         </div>
                       </div>

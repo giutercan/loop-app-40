@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sparkles, Brain, Target, Users, FileText, Mic, CheckCircle2, ArrowRight, Zap, TrendingUp, MessageSquare, BarChart3, Calendar, Award, Activity, Search, Lightbulb, LineChart, Play } from "lucide-react";
+import { Sparkles, Brain, Target, Users, FileText, Mic, CheckCircle2, ArrowRight, Zap, TrendingUp, MessageSquare, BarChart3, Calendar, Award, Activity, Search, Lightbulb, LineChart, Play, Building2, Briefcase } from "lucide-react";
 import { Link } from "wouter";
 import { useState } from "react";
 import heroImage from "@assets/Picture6_1763994371580.jpg";
@@ -22,18 +22,18 @@ export default function Landing() {
               </div>
               <div>
                 <span className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">Korn Ferry</span>
-                <p className="text-xs text-muted-foreground hidden lg:block">Value Lifecycle</p>
+                <p className="text-xs text-muted-foreground hidden lg:block">Client Value Hub</p>
               </div>
             </div>
             <nav className="hidden md:flex items-center gap-8">
+              <Link href="/accounts" className="text-sm font-medium hover:text-primary transition-colors">Accounts</Link>
               <a href="#features" className="text-sm font-medium hover:text-primary transition-colors">Features</a>
               <a href="#how-it-works" className="text-sm font-medium hover:text-primary transition-colors">How It Works</a>
-              <a href="#capabilities" className="text-sm font-medium hover:text-primary transition-colors">Capabilities</a>
             </nav>
-            <Link href="/projects">
+            <Link href="/accounts">
               <Button size="lg" className="shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all" data-testid="button-get-started">
-                Get Started
-                <ArrowRight className="ml-2 w-4 h-4" />
+                <Building2 className="mr-2 w-4 h-4" />
+                View Accounts
               </Button>
             </Link>
           </div>
@@ -64,14 +64,25 @@ export default function Landing() {
               </div>
               
               <div className="flex flex-wrap gap-4 pt-2">
-                <Link href="/projects">
+                <Link href="/accounts">
                   <Button 
                     size="lg" 
                     className="px-10 py-7 text-lg font-semibold shadow-2xl shadow-primary/30 hover:shadow-primary/40 hover:scale-105 transition-all duration-300" 
                     data-testid="button-hero-start"
                   >
-                    Start Discovery
-                    <ArrowRight className="ml-2 w-5 h-5" />
+                    <Building2 className="mr-2 w-5 h-5" />
+                    Open Client Hub
+                  </Button>
+                </Link>
+                <Link href="/projects">
+                  <Button 
+                    size="lg" 
+                    variant="outline"
+                    className="px-8 py-7 text-lg font-semibold" 
+                    data-testid="button-hero-projects"
+                  >
+                    <Briefcase className="mr-2 w-5 h-5" />
+                    View Projects
                   </Button>
                 </Link>
               </div>

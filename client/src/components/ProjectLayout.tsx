@@ -31,12 +31,13 @@ import {
   HelpCircle,
   CheckCircle2,
   Pencil,
+  FolderOpen,
 } from "lucide-react";
 import { AppTour } from "@/components/AppTour";
 import { PhaseChecklist } from "@/components/PhaseChecklist";
 import { LogoEditDialog } from "@/components/LogoEditDialog";
 import { CommandPaletteHint } from "@/components/CommandPalette";
-import type { Project } from "@shared/schema";
+import type { Project, Account } from "@shared/schema";
 
 interface ProjectLayoutProps {
   projectId: number;
@@ -98,6 +99,11 @@ export default function ProjectLayout({
   const { data: project, isLoading: projectLoading } = useQuery<Project>({
     queryKey: [`/api/projects/${projectId}`],
     enabled: !!isValidProjectId,
+  });
+
+  const { data: parentAccount } = useQuery<Account>({
+    queryKey: [`/api/accounts/${project?.accountId}`],
+    enabled: !!project?.accountId,
   });
 
   if (!isValidProjectId) {
@@ -260,6 +266,24 @@ export default function ProjectLayout({
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
+                  {parentAccount && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild tooltip="Parent Account">
+                        <Link href={`/accounts/${parentAccount.id}`} data-testid="sidebar-parent-account">
+                          <FolderOpen className="w-4 h-4" />
+                          <span className="group-data-[collapsible=icon]:hidden truncate">{parentAccount.name}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="All Accounts">
+                      <Link href="/accounts" data-testid="sidebar-all-accounts">
+                        <Building2 className="w-4 h-4" />
+                        <span className="group-data-[collapsible=icon]:hidden">All Accounts</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild tooltip="All Projects">
                       <Link href="/projects" data-testid="sidebar-all-projects">
@@ -289,6 +313,26 @@ export default function ProjectLayout({
 
               <nav className="flex items-center gap-1.5 text-sm" aria-label="Breadcrumb">
                 <Link
+                  href="/accounts"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  data-testid="breadcrumb-accounts"
+                >
+                  Accounts
+                </Link>
+                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                {parentAccount && (
+                  <>
+                    <Link
+                      href={`/accounts/${parentAccount.id}`}
+                      className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                      data-testid="breadcrumb-account"
+                    >
+                      <span className="truncate max-w-[80px]">{parentAccount.name}</span>
+                    </Link>
+                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                  </>
+                )}
+                <Link
                   href="/projects"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                   data-testid="breadcrumb-projects"
@@ -299,7 +343,7 @@ export default function ProjectLayout({
                 {projectLoading ? (
                   <Skeleton className="h-4 w-24" />
                 ) : (
-                  <span className="font-medium truncate max-w-[200px]" data-testid="breadcrumb-project">
+                  <span className="font-medium truncate max-w-[120px]" data-testid="breadcrumb-project">
                     {project?.companyName || "Unknown"}
                   </span>
                 )}
