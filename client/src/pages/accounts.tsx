@@ -274,7 +274,7 @@ export default function AccountsDashboard() {
               {accounts.map((account) => {
                 const health = getHealthStatus(account.healthScore);
                 return (
-                  <Link key={account.id} href={`/accounts/${account.id}`}>
+                  <Link key={account.id} href={`/accounts/${account.id}/hub`}>
                     <Card 
                       className="hover-elevate cursor-pointer transition-all duration-200 group h-full"
                       data-testid={`card-account-${account.id}`}
