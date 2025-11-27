@@ -86,3 +86,31 @@ The system is built on a robust architecture incorporating AI and a structured w
 - **OpenAI GPT-4o**: For all AI-powered functionalities, including research, insight generation, recommendations, and narrative creation.
 - **Clearout API**: For real-time company name autocomplete with logos.
 - **Jobs & Priorities KPI Cards Modernization**: Completely redesigned KPI display in priority cards to match the beautiful KPI Recommendation Dialog design. AI-recommended KPIs now show gradient accent bars (purple→blue→cyan), Korn Ferry Recommended badges, visual score cards with progress bars for Achievability and Value Impact scores, strategic rationale sections, Korn Ferry Benchmark callouts with blue/cyan gradients, and measurement details (unit, frequency). Non-AI KPIs maintain clean modern styling with proper typography and spacing. Updated jobThemeWithKPIsSchema to include all AI recommendation fields (isAIRecommended, aiStrategicRationale, aiAchievabilityScore, aiValueImpactScore, aiKornFerryBenchmark, targetValue, targetSource) ensuring type safety across frontend and backend.
+
+## Client Value Hub (November 2024)
+
+### Overview
+Evolution of the Value Lifecycle Platform into an account-centric architecture enabling role-based views across the customer journey. Sales, Consultants, Delivery teams, CSMs, and Client Sponsors can view tailored slices of shared data tracking promised versus delivered outcomes with QBR support.
+
+### Architecture Changes
+- **Account as Primary Entity**: Accounts are now the top-level organizing entity, with projects functioning as "initiatives" under accounts
+- **Role-Based Access**: AccountUserRoles table with enum: sales, consultant, delivery, csm, client_sponsor
+- **Value Spine**: Aggregated view showing account health, all initiatives, KPIs, and value metrics across the entire engagement
+
+### New Database Entities
+- `accounts`: Primary organizing entity (name, industry, tier, contractStartDate, healthScore, etc.)
+- `accountUserRoles`: Maps users to roles per account (role enum: sales|consultant|delivery|csm|client_sponsor)
+- `accountIssues`: Opportunities, risks, and issues tracked at account level (title, description, severity, type, status, linkedInitiativeId)
+- `evidenceArtefacts`: QBR support artifacts (artefactType: screenshot|document|report|testimonial|data_export, sourceUrl, linkedInitiativeId, linkedKpiId)
+- Extended `projects` with `accountId` FK to link initiatives to accounts
+
+### API Endpoints
+- `GET/POST/PATCH/DELETE /api/accounts` - Account CRUD
+- `GET /api/accounts/:id/value-spine` - Aggregated value data for account view
+- `GET /api/accounts/:id/initiatives` - All initiatives under account
+- `GET/POST /api/accounts/:id/user-roles` - Role management
+- `DELETE /api/account-user-roles/:id` - Remove user role
+- `GET/POST /api/accounts/:id/issues` - Account issues
+- `GET/PATCH/DELETE /api/account-issues/:id` - Issue management
+- `GET/POST /api/accounts/:id/evidence-artefacts` - Evidence artifacts
+- `GET/PATCH/DELETE /api/evidence-artefacts/:id` - Artifact management

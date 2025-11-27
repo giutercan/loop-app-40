@@ -2,16 +2,186 @@ import { pgTable, text, serial, integer, decimal, timestamp, boolean, jsonb, dat
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Projects - Each client engagement
+// ============================================================================
+// CLIENT VALUE HUB - ACCOUNT-CENTRIC MODEL
+// ============================================================================
+
+// Accounts - Primary organizing entity for Client Value Hub
+// One account per client company, contains all initiatives, issues, and value data
+export const accounts = pgTable("accounts", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(), // Company/client name
+  industry: text("industry"), // e.g., "Financial Services", "Healthcare"
+  sector: text("sector"), // More specific sector within industry
+  tier: text("tier", { enum: ["enterprise", "strategic", "growth"] }), // Account tier
+  companyLogoUrl: text("company_logo_url"),
+  website: text("website"),
+  
+  // Strategy / OKRs (free text + structured)
+  strategyNotes: text("strategy_notes"), // Free-form strategic priorities description
+  okrSummary: text("okr_summary"), // High-level OKR summary
+  fiscalYearStart: text("fiscal_year_start"), // e.g., "January", "April"
+  
+  // Account metadata
+  accountOwner: text("account_owner"), // Primary Korn Ferry account owner
+  clientSponsor: text("client_sponsor"), // Client-side executive sponsor
+  relationshipStartDate: timestamp("relationship_start_date"),
+  
+  // Contract details
+  contractStartDate: timestamp("contract_start_date"),
+  contractEndDate: timestamp("contract_end_date"),
+  annualContractValue: text("annual_contract_value"), // e.g., "$2.5M"
+  primaryContactName: text("primary_contact_name"),
+  primaryContactEmail: text("primary_contact_email"),
+  
+  // Health metrics
+  healthScore: integer("health_score"), // 0-100 score
+  lastQbrDate: timestamp("last_qbr_date"),
+  nextQbrDate: timestamp("next_qbr_date"),
+  
+  // Value tracking at account level
+  totalValuePromised: integer("total_value_promised"), // Aggregate promised value across initiatives
+  totalValueRealized: integer("total_value_realized"), // Aggregate realized value across initiatives
+  
+  status: text("status", { enum: ["active", "inactive", "prospect"] }).notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertAccountSchema = createInsertSchema(accounts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertAccount = z.infer<typeof insertAccountSchema>;
+export type Account = typeof accounts.$inferSelect;
+
+// Account User Roles - Track which users have which roles for an account
+export const accountUserRoles = pgTable("account_user_roles", {
+  id: serial("id").primaryKey(),
+  accountId: integer("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+  userName: text("user_name").notNull(), // User identifier (for now, just a name)
+  userEmail: text("user_email"),
+  role: text("role", { 
+    enum: ["sales", "consultant", "delivery", "csm", "client_sponsor"] 
+  }).notNull(),
+  isPrimary: boolean("is_primary").notNull().default(false), // Primary contact for this role
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertAccountUserRoleSchema = createInsertSchema(accountUserRoles).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertAccountUserRole = z.infer<typeof insertAccountUserRoleSchema>;
+export type AccountUserRole = typeof accountUserRoles.$inferSelect;
+
+// Account Issues / Opportunities - Linked to Account
+export const accountIssues = pgTable("account_issues", {
+  id: serial("id").primaryKey(),
+  accountId: integer("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+  title: text("title").notNull(), // Short description of issue/opportunity
+  description: text("description"), // Detailed description
+  type: text("type", { enum: ["issue", "risk", "opportunity"] }).notNull().default("issue"),
+  severity: text("severity", { enum: ["critical", "high", "medium", "low"] }).notNull().default("medium"),
+  status: text("status", { enum: ["open", "in_progress", "resolved", "closed"] }).notNull().default("open"),
+  
+  // Korn Ferry solution mapping
+  solutionArea: text("solution_area", {
+    enum: ["ASSESS", "DEVELOP", "TRANSFORM", "REWARD", "COMMERCIAL", "ANALYTICS"]
+  }),
+  kornFerryPillar: text("korn_ferry_pillar", { 
+    enum: ["leadership-development", "talent-acquisition", "succession-planning", "culture-transformation", "organizational-design", "change-management"] 
+  }),
+  
+  // Value tracking
+  estimatedValue: integer("estimated_value"), // Estimated $ value if addressed
+  linkedInitiativeIds: integer("linked_initiative_ids").array(), // Projects/initiatives addressing this
+  
+  owner: text("owner"), // Who is responsible for this issue
+  dueDate: timestamp("due_date"),
+  resolvedAt: timestamp("resolved_at"),
+  
+  // Source tracking
+  sourceInsightIds: integer("source_insight_ids").array(), // Discovery insights that identified this
+  provenance: jsonb("provenance"), // AI/manual source info
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertAccountIssueSchema = createInsertSchema(accountIssues).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertAccountIssue = z.infer<typeof insertAccountIssueSchema>;
+export type AccountIssue = typeof accountIssues.$inferSelect;
+
+// Evidence Artefacts - For QBR support and client proof points
+export const evidenceArtefacts = pgTable("evidence_artefacts", {
+  id: serial("id").primaryKey(),
+  accountId: integer("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+  initiativeId: integer("initiative_id"), // Optional link to specific initiative
+  
+  title: text("title").notNull(),
+  artefactType: text("artefact_type", { 
+    enum: ["case_note", "client_quote", "report", "presentation", "data_export", "email", "other"] 
+  }).notNull().default("other"),
+  
+  description: text("description"),
+  content: text("content"), // For text-based artefacts (quotes, notes)
+  fileUrl: text("file_url"), // For uploaded files
+  externalUrl: text("external_url"), // For linked external resources
+  
+  // Context
+  linkedKPIIds: integer("linked_kpi_ids").array(), // KPIs this evidence supports
+  linkedInterventionIds: integer("linked_intervention_ids").array(), // Interventions this relates to
+  
+  // Metadata
+  capturedDate: timestamp("captured_date"),
+  capturedBy: text("captured_by"),
+  clientApproved: boolean("client_approved").notNull().default(false), // Can be shared with client
+  
+  // For QBR usage
+  usedInQBRIds: integer("used_in_qbr_ids").array(), // Which QBRs featured this
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertEvidenceArtefactSchema = createInsertSchema(evidenceArtefacts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertEvidenceArtefact = z.infer<typeof insertEvidenceArtefactSchema>;
+export type EvidenceArtefact = typeof evidenceArtefacts.$inferSelect;
+
+// ============================================================================
+// PROJECTS (now also "Initiatives" - child of Account)
+// ============================================================================
+
+// Projects - Each client engagement/initiative (now linked to Account)
 export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
+  accountId: integer("account_id").references(() => accounts.id, { onDelete: "set null" }), // Link to parent account (nullable for migration)
   name: text("name").notNull(),
-  companyName: text("company_name").notNull(),
+  companyName: text("company_name").notNull(), // Kept for backward compatibility
   businessUnit: text("business_unit"),
   sector: text("sector"),
   companyLogoUrl: text("company_logo_url"),
   currentPhase: text("current_phase", { enum: ["discovery", "alignment", "realisation"] }).notNull().default("discovery"),
   status: text("status", { enum: ["active", "completed", "archived"] }).notNull().default("active"),
+  
+  // Initiative-specific fields (for Value Hub)
+  initiativeOwner: text("initiative_owner"), // KF delivery lead
+  clientLead: text("client_lead"), // Client-side lead
+  startDate: timestamp("start_date"),
+  targetEndDate: timestamp("target_end_date"),
+  conditionsForSuccess: text("conditions_for_success"), // What defines success for this initiative
+  ragStatus: text("rag_status", { enum: ["green", "amber", "red"] }).default("green"), // RAG status for delivery view
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

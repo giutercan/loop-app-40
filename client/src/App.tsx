@@ -13,6 +13,8 @@ import Realization from "@/pages/realisation";
 import Dashboard from "@/pages/dashboard";
 import Questionnaire from "@/pages/questionnaire";
 import SharedAlignment from "@/pages/shared-alignment";
+import AccountsDashboard from "@/pages/accounts";
+import AccountValueSpine from "@/pages/account-value-spine";
 import ProjectLayout from "@/components/ProjectLayout";
 import { CommandPalette } from "@/components/CommandPalette";
 
@@ -66,6 +68,8 @@ function Router() {
       <Route path="/" component={Landing} />
       <Route path="/projects" component={ProjectsDashboard} />
       <Route path="/projects/new" component={NewProject} />
+      <Route path="/accounts" component={AccountsDashboard} />
+      <Route path="/accounts/:id" component={AccountValueSpine} />
       <Route path="/discovery">
         <Redirect to="/projects" />
       </Route>

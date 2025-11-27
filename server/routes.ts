@@ -36,7 +36,11 @@ import {
   insertSuccessStoryLibrarySchema,
   insertStrategicPillarSchema,
   insertPillarObjectiveSchema,
-  insertPillarShareLinkSchema
+  insertPillarShareLinkSchema,
+  insertAccountSchema,
+  insertAccountUserRoleSchema,
+  insertAccountIssueSchema,
+  insertEvidenceArtefactSchema
 } from "@shared/schema";
 
 // Helper function for robust HTML/script sanitization
@@ -5889,4 +5893,365 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
       res.status(500).json({ error: error.message || "Failed to lock value justification" });
     }
   });
+  
+  // ============================================================================
+  // CLIENT VALUE HUB - ACCOUNT-CENTRIC API ENDPOINTS
+  // ============================================================================
+  
+  // Accounts CRUD
+  app.get("/api/accounts", async (req, res) => {
+    try {
+      const accounts = await storage.getAccounts();
+      res.json(accounts);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.get("/api/accounts/:id", async (req, res) => {
+    try {
+      const account = await storage.getAccount(parseInt(req.params.id));
+      if (!account) {
+        return res.status(404).json({ error: "Account not found" });
+      }
+      res.json(account);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.post("/api/accounts", async (req, res) => {
+    try {
+      const validated = insertAccountSchema.parse(req.body);
+      const account = await storage.createAccount(validated);
+      res.json(account);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.patch("/api/accounts/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validated = insertAccountSchema.partial().parse(req.body);
+      const updated = await storage.updateAccount(id, validated);
+      if (!updated) {
+        return res.status(404).json({ error: "Account not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.delete("/api/accounts/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteAccount(id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Account Value Spine - Aggregated data for the main account view
+  app.get("/api/accounts/:id/value-spine", async (req, res) => {
+    try {
+      const accountId = parseInt(req.params.id);
+      const account = await storage.getAccount(accountId);
+      
+      if (!account) {
+        return res.status(404).json({ error: "Account not found" });
+      }
+      
+      // Fetch all related data in parallel
+      const [initiatives, issues, evidenceArtefacts, userRoles] = await Promise.all([
+        storage.getInitiativesForAccount(accountId),
+        storage.getAccountIssues(accountId),
+        storage.getEvidenceArtefacts(accountId),
+        storage.getAccountUserRoles(accountId)
+      ]);
+      
+      // Aggregate KPIs and value metrics across all initiatives
+      let totalValuePromised = 0;
+      let totalValueRealized = 0;
+      let allKPIs: any[] = [];
+      
+      for (const initiative of initiatives) {
+        const [jobThemes, allInitiativeKPIs, allActuals, valueMetrics] = await Promise.all([
+          storage.getJobThemes(initiative.id),
+          storage.getAllJobThemeKPIsForProject(initiative.id),
+          storage.getAllKPIActualsForProject(initiative.id),
+          storage.getProjectValueMetrics(initiative.id)
+        ]);
+        
+        // Add value metrics
+        if (valueMetrics) {
+          totalValuePromised += valueMetrics.totalValuePromised || 0;
+          totalValueRealized += valueMetrics.totalValueRealized || 0;
+        }
+        
+        // Build KPI summary with actuals
+        for (const kpi of allInitiativeKPIs.filter(k => k.isSelected)) {
+          const kpiActuals = allActuals.filter(a => a.jobThemeKPIId === kpi.id);
+          const latestActual = kpiActuals.sort((a, b) => 
+            new Date(b.actualDate).getTime() - new Date(a.actualDate).getTime()
+          )[0];
+          
+          const jobTheme = jobThemes.find(jt => jt.id === kpi.jobThemeId);
+          
+          allKPIs.push({
+            id: kpi.id,
+            name: kpi.kpiName,
+            unit: kpi.unit,
+            baseline: kpi.baselineValue,
+            target: kpi.targetValue,
+            current: latestActual?.actualValue || null,
+            initiativeId: initiative.id,
+            initiativeName: initiative.name,
+            jobName: jobTheme?.jobName || 'Unknown',
+            status: calculateKPIHealthStatus(
+              parseNumeric(kpi.baselineValue),
+              parseNumeric(kpi.targetValue),
+              latestActual ? parseNumeric(latestActual.actualValue) : null
+            )
+          });
+        }
+      }
+      
+      // Calculate headline value case summary
+      const valueCases = await Promise.all(
+        initiatives.map(i => storage.getValueCases(i.id))
+      ).then(results => results.flat());
+      
+      const headlineValueCase = valueCases.sort((a, b) => {
+        const npvA = parseNumeric(a.estimatedNPV?.replace(/[^0-9.-]/g, '')) || 0;
+        const npvB = parseNumeric(b.estimatedNPV?.replace(/[^0-9.-]/g, '')) || 0;
+        return npvB - npvA;
+      })[0];
+      
+      res.json({
+        account,
+        initiatives: initiatives.map(i => ({
+          id: i.id,
+          name: i.name,
+          phase: i.currentPhase,
+          status: i.status,
+          ragStatus: i.ragStatus,
+          owner: i.initiativeOwner,
+          startDate: i.startDate,
+          targetEndDate: i.targetEndDate
+        })),
+        issues,
+        evidenceArtefacts,
+        userRoles,
+        kpis: allKPIs,
+        valueMetrics: {
+          totalValuePromised,
+          totalValueRealized,
+          realizationPercent: totalValuePromised > 0 
+            ? Math.round((totalValueRealized / totalValuePromised) * 100) 
+            : 0
+        },
+        headlineValueCase: headlineValueCase ? {
+          id: headlineValueCase.id,
+          title: headlineValueCase.title,
+          estimatedNPV: headlineValueCase.estimatedNPV,
+          confidence: headlineValueCase.confidence,
+          status: headlineValueCase.status
+        } : null
+      });
+    } catch (error: any) {
+      console.error("Error fetching account value spine:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Account Initiatives (projects linked to account)
+  app.get("/api/accounts/:id/initiatives", async (req, res) => {
+    try {
+      const accountId = parseInt(req.params.id);
+      const initiatives = await storage.getInitiativesForAccount(accountId);
+      res.json(initiatives);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Account User Roles
+  app.get("/api/accounts/:id/user-roles", async (req, res) => {
+    try {
+      const accountId = parseInt(req.params.id);
+      const roles = await storage.getAccountUserRoles(accountId);
+      res.json(roles);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.post("/api/accounts/:id/user-roles", async (req, res) => {
+    try {
+      const accountId = parseInt(req.params.id);
+      const validated = insertAccountUserRoleSchema.parse({
+        ...req.body,
+        accountId
+      });
+      const role = await storage.createAccountUserRole(validated);
+      res.json(role);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.delete("/api/account-user-roles/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteAccountUserRole(id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Account Issues / Opportunities
+  app.get("/api/accounts/:id/issues", async (req, res) => {
+    try {
+      const accountId = parseInt(req.params.id);
+      const issues = await storage.getAccountIssues(accountId);
+      res.json(issues);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.get("/api/account-issues/:id", async (req, res) => {
+    try {
+      const issue = await storage.getAccountIssue(parseInt(req.params.id));
+      if (!issue) {
+        return res.status(404).json({ error: "Issue not found" });
+      }
+      res.json(issue);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.post("/api/accounts/:id/issues", async (req, res) => {
+    try {
+      const accountId = parseInt(req.params.id);
+      const validated = insertAccountIssueSchema.parse({
+        ...req.body,
+        accountId
+      });
+      const issue = await storage.createAccountIssue(validated);
+      res.json(issue);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.patch("/api/account-issues/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validated = insertAccountIssueSchema.partial().parse(req.body);
+      const updated = await storage.updateAccountIssue(id, validated);
+      if (!updated) {
+        return res.status(404).json({ error: "Issue not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.delete("/api/account-issues/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteAccountIssue(id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Evidence Artefacts (for QBR support)
+  app.get("/api/accounts/:id/evidence-artefacts", async (req, res) => {
+    try {
+      const accountId = parseInt(req.params.id);
+      const artefacts = await storage.getEvidenceArtefacts(accountId);
+      res.json(artefacts);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.get("/api/evidence-artefacts/:id", async (req, res) => {
+    try {
+      const artefact = await storage.getEvidenceArtefact(parseInt(req.params.id));
+      if (!artefact) {
+        return res.status(404).json({ error: "Evidence artefact not found" });
+      }
+      res.json(artefact);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.post("/api/accounts/:id/evidence-artefacts", async (req, res) => {
+    try {
+      const accountId = parseInt(req.params.id);
+      const validated = insertEvidenceArtefactSchema.parse({
+        ...req.body,
+        accountId
+      });
+      const artefact = await storage.createEvidenceArtefact(validated);
+      res.json(artefact);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.patch("/api/evidence-artefacts/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validated = insertEvidenceArtefactSchema.partial().parse(req.body);
+      const updated = await storage.updateEvidenceArtefact(id, validated);
+      if (!updated) {
+        return res.status(404).json({ error: "Evidence artefact not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.delete("/api/evidence-artefacts/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteEvidenceArtefact(id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Helper to calculate KPI health status
+  function calculateKPIHealthStatus(
+    baseline: number | null, 
+    target: number | null, 
+    current: number | null
+  ): 'on-track' | 'at-risk' | 'off-track' | 'no-data' {
+    if (baseline === null || target === null || current === null) {
+      return 'no-data';
+    }
+    
+    const totalGap = target - baseline;
+    if (totalGap === 0) return 'on-track';
+    
+    const progress = (current - baseline) / totalGap;
+    
+    if (progress >= 0.8) return 'on-track';
+    if (progress >= 0.5) return 'at-risk';
+    return 'off-track';
+  }
 }

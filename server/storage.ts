@@ -35,7 +35,11 @@ import type {
   PillarOkrTheme, InsertPillarOkrTheme,
   DashboardLayout, InsertDashboardLayout,
   ValueJustification, InsertValueJustification,
-  ValueJustificationMessage, InsertValueJustificationMessage
+  ValueJustificationMessage, InsertValueJustificationMessage,
+  Account, InsertAccount,
+  AccountUserRole, InsertAccountUserRole,
+  AccountIssue, InsertAccountIssue,
+  EvidenceArtefact, InsertEvidenceArtefact
 } from "@shared/schema";
 
 export interface IStorage {
@@ -269,6 +273,43 @@ export interface IStorage {
   getValueJustificationMessages(valueJustificationId: number): Promise<ValueJustificationMessage[]>;
   createValueJustificationMessage(message: InsertValueJustificationMessage): Promise<ValueJustificationMessage>;
   deleteValueJustificationMessages(valueJustificationId: number): Promise<void>;
+  
+  // ============================================================================
+  // CLIENT VALUE HUB - ACCOUNT-CENTRIC ENTITIES
+  // ============================================================================
+  
+  // Accounts (primary organizing entity)
+  getAccounts(): Promise<Account[]>;
+  getAccount(id: number): Promise<Account | undefined>;
+  getAccountByName(name: string): Promise<Account | undefined>;
+  createAccount(account: InsertAccount): Promise<Account>;
+  updateAccount(id: number, account: Partial<InsertAccount>): Promise<Account | undefined>;
+  deleteAccount(id: number): Promise<void>;
+  
+  // Account User Roles (role-based access)
+  getAccountUserRoles(accountId: number): Promise<AccountUserRole[]>;
+  getAccountUserRolesByRole(accountId: number, role: string): Promise<AccountUserRole[]>;
+  createAccountUserRole(role: InsertAccountUserRole): Promise<AccountUserRole>;
+  deleteAccountUserRole(id: number): Promise<void>;
+  
+  // Account Issues / Opportunities
+  getAccountIssues(accountId: number): Promise<AccountIssue[]>;
+  getAccountIssue(id: number): Promise<AccountIssue | undefined>;
+  createAccountIssue(issue: InsertAccountIssue): Promise<AccountIssue>;
+  updateAccountIssue(id: number, issue: Partial<InsertAccountIssue>): Promise<AccountIssue | undefined>;
+  deleteAccountIssue(id: number): Promise<void>;
+  
+  // Evidence Artefacts (for QBR support)
+  getEvidenceArtefacts(accountId: number): Promise<EvidenceArtefact[]>;
+  getEvidenceArtefact(id: number): Promise<EvidenceArtefact | undefined>;
+  getEvidenceArtefactsByInitiative(initiativeId: number): Promise<EvidenceArtefact[]>;
+  createEvidenceArtefact(artefact: InsertEvidenceArtefact): Promise<EvidenceArtefact>;
+  updateEvidenceArtefact(id: number, artefact: Partial<InsertEvidenceArtefact>): Promise<EvidenceArtefact | undefined>;
+  deleteEvidenceArtefact(id: number): Promise<void>;
+  
+  // Account-Initiative relationship helpers
+  getInitiativesForAccount(accountId: number): Promise<Project[]>;
+  getAccountForInitiative(projectId: number): Promise<Account | undefined>;
 }
 
 export class DbStorage implements IStorage {
@@ -1311,6 +1352,145 @@ export class DbStorage implements IStorage {
   async deleteValueJustificationMessages(valueJustificationId: number): Promise<void> {
     await db.delete(schema.valueJustificationMessages)
       .where(eq(schema.valueJustificationMessages.valueJustificationId, valueJustificationId));
+  }
+  
+  // ============================================================================
+  // CLIENT VALUE HUB - ACCOUNT-CENTRIC ENTITIES
+  // ============================================================================
+  
+  // Accounts (primary organizing entity)
+  async getAccounts(): Promise<Account[]> {
+    return await db.select().from(schema.accounts).orderBy(desc(schema.accounts.updatedAt));
+  }
+  
+  async getAccount(id: number): Promise<Account | undefined> {
+    const results = await db.select().from(schema.accounts).where(eq(schema.accounts.id, id));
+    return results[0];
+  }
+  
+  async getAccountByName(name: string): Promise<Account | undefined> {
+    const results = await db.select().from(schema.accounts).where(eq(schema.accounts.name, name));
+    return results[0];
+  }
+  
+  async createAccount(account: InsertAccount): Promise<Account> {
+    const results = await db.insert(schema.accounts).values(account).returning();
+    return results[0];
+  }
+  
+  async updateAccount(id: number, account: Partial<InsertAccount>): Promise<Account | undefined> {
+    const results = await db.update(schema.accounts)
+      .set({ ...account, updatedAt: new Date() })
+      .where(eq(schema.accounts.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deleteAccount(id: number): Promise<void> {
+    await db.delete(schema.accounts).where(eq(schema.accounts.id, id));
+  }
+  
+  // Account User Roles (role-based access)
+  async getAccountUserRoles(accountId: number): Promise<AccountUserRole[]> {
+    return await db.select().from(schema.accountUserRoles)
+      .where(eq(schema.accountUserRoles.accountId, accountId))
+      .orderBy(schema.accountUserRoles.role);
+  }
+  
+  async getAccountUserRolesByRole(accountId: number, role: string): Promise<AccountUserRole[]> {
+    return await db.select().from(schema.accountUserRoles)
+      .where(and(
+        eq(schema.accountUserRoles.accountId, accountId),
+        eq(schema.accountUserRoles.role, role as any)
+      ));
+  }
+  
+  async createAccountUserRole(role: InsertAccountUserRole): Promise<AccountUserRole> {
+    const results = await db.insert(schema.accountUserRoles).values(role).returning();
+    return results[0];
+  }
+  
+  async deleteAccountUserRole(id: number): Promise<void> {
+    await db.delete(schema.accountUserRoles).where(eq(schema.accountUserRoles.id, id));
+  }
+  
+  // Account Issues / Opportunities
+  async getAccountIssues(accountId: number): Promise<AccountIssue[]> {
+    return await db.select().from(schema.accountIssues)
+      .where(eq(schema.accountIssues.accountId, accountId))
+      .orderBy(desc(schema.accountIssues.severity), desc(schema.accountIssues.createdAt));
+  }
+  
+  async getAccountIssue(id: number): Promise<AccountIssue | undefined> {
+    const results = await db.select().from(schema.accountIssues)
+      .where(eq(schema.accountIssues.id, id));
+    return results[0];
+  }
+  
+  async createAccountIssue(issue: InsertAccountIssue): Promise<AccountIssue> {
+    const results = await db.insert(schema.accountIssues).values(issue).returning();
+    return results[0];
+  }
+  
+  async updateAccountIssue(id: number, issue: Partial<InsertAccountIssue>): Promise<AccountIssue | undefined> {
+    const results = await db.update(schema.accountIssues)
+      .set({ ...issue, updatedAt: new Date() })
+      .where(eq(schema.accountIssues.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deleteAccountIssue(id: number): Promise<void> {
+    await db.delete(schema.accountIssues).where(eq(schema.accountIssues.id, id));
+  }
+  
+  // Evidence Artefacts (for QBR support)
+  async getEvidenceArtefacts(accountId: number): Promise<EvidenceArtefact[]> {
+    return await db.select().from(schema.evidenceArtefacts)
+      .where(eq(schema.evidenceArtefacts.accountId, accountId))
+      .orderBy(desc(schema.evidenceArtefacts.createdAt));
+  }
+  
+  async getEvidenceArtefact(id: number): Promise<EvidenceArtefact | undefined> {
+    const results = await db.select().from(schema.evidenceArtefacts)
+      .where(eq(schema.evidenceArtefacts.id, id));
+    return results[0];
+  }
+  
+  async getEvidenceArtefactsByInitiative(initiativeId: number): Promise<EvidenceArtefact[]> {
+    return await db.select().from(schema.evidenceArtefacts)
+      .where(eq(schema.evidenceArtefacts.initiativeId, initiativeId))
+      .orderBy(desc(schema.evidenceArtefacts.createdAt));
+  }
+  
+  async createEvidenceArtefact(artefact: InsertEvidenceArtefact): Promise<EvidenceArtefact> {
+    const results = await db.insert(schema.evidenceArtefacts).values(artefact).returning();
+    return results[0];
+  }
+  
+  async updateEvidenceArtefact(id: number, artefact: Partial<InsertEvidenceArtefact>): Promise<EvidenceArtefact | undefined> {
+    const results = await db.update(schema.evidenceArtefacts)
+      .set({ ...artefact, updatedAt: new Date() })
+      .where(eq(schema.evidenceArtefacts.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deleteEvidenceArtefact(id: number): Promise<void> {
+    await db.delete(schema.evidenceArtefacts).where(eq(schema.evidenceArtefacts.id, id));
+  }
+  
+  // Account-Initiative relationship helpers
+  async getInitiativesForAccount(accountId: number): Promise<Project[]> {
+    return await db.select().from(schema.projects)
+      .where(eq(schema.projects.accountId, accountId))
+      .orderBy(desc(schema.projects.updatedAt));
+  }
+  
+  async getAccountForInitiative(projectId: number): Promise<Account | undefined> {
+    const project = await this.getProject(projectId);
+    if (!project?.accountId) return undefined;
+    return await this.getAccount(project.accountId);
   }
 }
 
