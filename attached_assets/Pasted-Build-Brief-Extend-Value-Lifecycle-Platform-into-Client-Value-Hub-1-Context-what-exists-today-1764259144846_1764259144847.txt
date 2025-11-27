@@ -1,0 +1,277 @@
+Build Brief – Extend Value Lifecycle Platform into “Client Value Hub”
+1. Context – what exists today
+
+We already have a Korn Ferry Value Lifecycle Platform prototype: an AI-powered SaaS tool that supports consultants through Discovery → Alignment → Realisation for client engagements, with AI research, KPI selection, value cases and KPI tracking.
+
+Current build includes:
+
+AI company research, insight classification and KPI recommendations.
+
+Value case builder with financial calculations and stakeholder-specific narratives.
+
+Early KPI tracking, health scoring, trend analysis and QBR support in progress.
+
+Full-stack web app in React + Node.js + TypeScript with GPT-4o integration.
+
+So: today it’s primarily a consultant / seller workspace per engagement.
+
+2. New vision – what we want you to build towards
+
+Evolve this into a Client Value Hub:
+
+One shared “value spine” per client account (strategy, issues, initiatives, KPIs, value cases, outcomes, evidence) with role-based views for:
+
+Sales / Account Executives
+
+Solution Architects / Consultants
+
+Delivery / Professional Services Leads
+
+CSMs / Client Directors
+
+(Light) Client Sponsor
+
+Everyone works off the same underlying data, but with different lenses and workflows.
+
+Job to be done (core):
+
+Help sellers and consultants understand the customer, generate KPIs with them, and track those KPIs on a loop across sales, delivery and CSM, rather than as a one-off.
+
+3. Objectives for this iteration
+
+For this Replit build, focus on extending the existing platform, not rebuilding from scratch:
+
+Introduce an account-level “value spine” as the primary organising object (not just per engagement).
+
+Add role-based views (Sales, Consultant, Delivery, CSM) that all sit on top of the same account data.
+
+Support a simple closed loop:
+
+Sales / Consultant: discover, shape value case.
+
+Delivery: track delivery, log interventions and KPI actuals.
+
+CSM: QBR / renewal view showing promised vs delivered value.
+
+We are not asking yet for full multi-tenant, SSO, or production-grade security – this is still a prototype.
+
+4. Assumptions (please respect)
+
+Keep current tech stack: React front end, Node/TypeScript backend, GPT-4o integration.
+
+Single internal user pool for now; you can fake “roles” with a dropdown or simple role field.
+
+Keep the existing Discovery / Alignment / Realisation flows and AI features; we’re layering new objects and views on top, not deleting them.
+
+5. Domain model – what you should implement / adapt
+
+Introduce or refine these core entities:
+
+Account / Client
+
+Name, industry, basic metadata.
+
+Strategy / priorities / OKRs (free text + tags).
+
+Issues / Opportunities
+
+Linked to Account.
+
+Short description, severity/priority, linked to KF solution lines.
+
+Initiatives / Engagements
+
+Child of Account.
+
+Represents a project / workstream.
+
+KPI
+
+Name, description, unit.
+
+Baseline, target, time horizon, owner.
+
+ValueCase
+
+Linked to Initiative (and thus Account).
+
+Contains KPI deltas, financial estimates, assumptions, confidence level.
+
+Intervention
+
+Actions from KF (workshops, programmes, design work, etc.).
+
+Linked to Initiative.
+
+KPIActual
+
+Date, KPI reference, value.
+
+EvidenceArtefact
+
+Link or upload metadata (case notes, quotes, reports) referenceable in QBRs.
+
+Where possible, reuse existing models for KPIs, value cases, AI outputs rather than inventing new ones – align with the current financial calculation engine and KPI library.
+
+6. UX – the key screens to build or refactor
+6.1 Account “Value Spine” page (new primary view)
+
+Single page per Account showing:
+
+High-level header: account info + strategy / OKRs.
+
+Issues / Opportunities list.
+
+Initiatives / Engagements table (name, phase, owner, status).
+
+KPIs panel:
+
+KPIs grouped by initiative.
+
+Baseline, target, latest actual, simple sparkline or status flag.
+
+A section highlighting the headline value case (summary of impact across initiatives).
+
+This should feel like the “home” of the client value story.
+
+6.2 Role-based lenses on top of the spine
+
+You can implement these as tabs or role filters on the Account page.
+
+Sales / Account Executive view
+
+Short list of top 3–5 opportunities and their indicative value.
+
+Link to create or edit a ValueCase using existing value case builder UI.
+
+“Client sign-off” summary (even simple text) referencing KPIs and targets.
+
+Solution Architect / Consultant view
+
+Access to today’s Discovery & Alignment flows (AI research, KPI suggestions, narratives).
+
+Ability to map discovered insights → Issues / Opportunities → Initiatives → KPIs → ValueCase.
+
+Show AI-generated stakeholder narratives linked to the value case.
+
+Delivery / Professional Services view
+
+List of Initiatives with:
+
+status (RAG),
+
+conditions for success,
+
+key milestones.
+
+For each linked KPI, show:
+
+baseline, target, latest actual,
+
+simple trend line / change over time.
+
+Ability to log Interventions and KPIActuals.
+
+CSM / Client Director view
+
+“Promised vs delivered” view:
+
+chosen headline KPIs,
+
+promised value vs current realised.
+
+QBR support:
+
+section that composes a QBR summary from account data (use existing QBR / business review management concepts).
+
+Client sponsor view (light)
+
+Read-only summary view that could eventually be exposed externally:
+
+headline KPIs,
+
+short narrative,
+
+timeline of key interventions.
+
+Internal-only for now; just a simplified read-only version.
+
+Don’t worry about perfect styling; focus on information architecture and wiring the data together.
+
+7. AI behaviour – how to leverage what’s already there
+
+Reuse existing AI capabilities, but plug them into the new model:
+
+Company Research / Insight Classification
+
+When generating insights for an Account, allow user to convert them into:
+
+Issues / Opportunities,
+
+strategic priorities / OKRs,
+
+proposed Initiatives.
+
+KPI & ValueCase generation
+
+When building a ValueCase, ensure it always attaches to:
+
+one Account,
+
+at least one Initiative,
+
+one or more KPIs (reuse KPI library and financial engine).
+
+Narrative generation
+
+When generating stakeholder-specific narratives, pull from the Account’s canonical value case and KPIs, so all roles are anchored to the same story.
+
+QBR summary generation (if implemented in current build or roadmap)
+
+Drive the QBR view from KPIActual, Interventions and ValueCase data rather than free text.
+
+8. Implementation plan – suggested epics
+
+You can sequence work roughly like this:
+
+Epic 1 – Data model + API
+
+Introduce Account, Initiative, Issue, Intervention, KPIActual, EvidenceArtefact.
+
+Migrate / adapt existing engagement-level objects to attach to Account/Initiative.
+
+Epic 2 – Account value spine page
+
+Build the main Account page with sections for strategy, issues, initiatives, KPIs and headline value.
+
+Epic 3 – Role-based views
+
+Add simple role concept and tabs/filters.
+
+Implement Sales and Consultant views first (reusing existing UIs), then Delivery and CSM.
+
+Epic 4 – Closed-loop wiring
+
+Ensure a KPI selected in Discovery flows through:
+
+ValueCase → KPI tracking → QBR / CSM view.
+
+Add “promised vs delivered” summary for CSM.
+
+Epic 5 – QBR / client sponsor view
+
+Use existing QBR generation ideas to populate a light sponsor-style summary.
+
+9. Definition of done for this iteration
+
+I can create an Account, run Discovery and generate KPIs and a ValueCase for that account.
+
+I can see, on a single Account page, the key issues, initiatives, KPIs and the main value story.
+
+As “Delivery”, I can update KPI actuals and see basic trends.
+
+As “CSM”, I can view a simple “promised vs delivered” summary suitable for a QBR.
+
+All of this runs in the existing React/Node/TypeScript app with GPT-4o wired as today.
+
+That’s the bridge: from a consultant engagement workspace (Document 7) to a multi-role Client Value Hub on Replit, using the same brain but a more powerful skeleton.
