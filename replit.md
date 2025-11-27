@@ -114,3 +114,10 @@ Evolution of the Value Lifecycle Platform into an account-centric architecture e
 - `GET/PATCH/DELETE /api/account-issues/:id` - Issue management
 - `GET/POST /api/accounts/:id/evidence-artefacts` - Evidence artifacts
 - `GET/PATCH/DELETE /api/evidence-artefacts/:id` - Artifact management
+
+### Navigation Architecture (November 2024)
+- **Accounts-First Hierarchy**: Landing page now leads with Accounts as the primary entry point with main CTAs pointing to /accounts
+- **Project-Account Linking**: New project creation flow includes optional account selector to link projects to parent accounts
+- **Breadcrumb Trail**: Always starts with Accounts → conditionally shows parent account → Projects → Project → Phase for consistent hierarchy navigation
+- **Sidebar Navigation**: Always exposes "All Accounts" and "All Projects" links, plus parent account shortcut when project is linked to an account
+- **Account Grouping**: Projects dashboard supports filtering by account and displays account badges on project cards
