@@ -1,6 +1,18 @@
 import { db } from "./db";
 import { eq, desc, and, inArray } from "drizzle-orm";
 import * as schema from "@shared/schema";
+
+// Safe numeric parsing helper - returns null for invalid inputs
+function parseNumeric(value: string | number | null | undefined): number | null {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+  if (typeof value === 'number') {
+    return isFinite(value) ? value : null;
+  }
+  const parsed = parseFloat(value);
+  return isNaN(parsed) ? null : parsed;
+}
 import type {
   Project, InsertProject,
   CompanyDataPoint, InsertCompanyDataPoint,
@@ -39,7 +51,8 @@ import type {
   Account, InsertAccount,
   AccountUserRole, InsertAccountUserRole,
   AccountIssue, InsertAccountIssue,
-  EvidenceArtefact, InsertEvidenceArtefact
+  EvidenceArtefact, InsertEvidenceArtefact,
+  AccountHub, LifecyclePhase
 } from "@shared/schema";
 
 export interface IStorage {
@@ -310,6 +323,15 @@ export interface IStorage {
   // Account-Initiative relationship helpers
   getInitiativesForAccount(accountId: number): Promise<Project[]>;
   getAccountForInitiative(projectId: number): Promise<Account | undefined>;
+  
+  // Account Hub - Aggregated data for Client Value Hub
+  getAccountHub(accountId: number, phase?: LifecyclePhase): Promise<AccountHub | null>;
+  
+  // KPI Actuals by account
+  getKPIActualsForAccount(accountId: number): Promise<KPIActual[]>;
+  
+  // Migration helper - auto-create accounts for existing projects
+  migrateProjectsToAccounts(): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -1491,6 +1513,417 @@ export class DbStorage implements IStorage {
     const project = await this.getProject(projectId);
     if (!project?.accountId) return undefined;
     return await this.getAccount(project.accountId);
+  }
+  
+  // Account Hub - Aggregated data for Client Value Hub (optimized with bulk fetching)
+  async getAccountHub(accountId: number, phase?: LifecyclePhase): Promise<AccountHub | null> {
+    const account = await this.getAccount(accountId);
+    if (!account) return null;
+    
+    // Get all initiatives for this account
+    let initiatives = await this.getInitiativesForAccount(accountId);
+    
+    // Filter by lifecycle phase if specified
+    if (phase) {
+      initiatives = initiatives.filter(p => p.lifecyclePhase === phase);
+    }
+    
+    // Early return if no initiatives
+    if (initiatives.length === 0) {
+      const issues = await this.getAccountIssues(accountId);
+      const teamRoles = await this.getAccountUserRoles(accountId);
+      
+      return {
+        account: {
+          id: account.id,
+          name: account.name,
+          industry: account.industry,
+          tier: account.tier as "enterprise" | "strategic" | "growth" | null,
+          companyLogoUrl: account.companyLogoUrl,
+          healthScore: account.healthScore,
+          strategyNotes: account.strategyNotes,
+          okrSummary: account.okrSummary,
+          accountOwner: account.accountOwner,
+          clientSponsor: account.clientSponsor,
+          contractStartDate: account.contractStartDate,
+          contractEndDate: account.contractEndDate,
+          annualContractValue: account.annualContractValue,
+          totalValuePromised: account.totalValuePromised ?? 0,
+          totalValueRealized: account.totalValueRealized ?? 0,
+          lastQbrDate: account.lastQbrDate,
+          nextQbrDate: account.nextQbrDate,
+        },
+        initiatives: [],
+        kpis: [],
+        issues: issues.map(i => ({
+          id: i.id,
+          title: i.title,
+          type: i.type as "issue" | "risk" | "opportunity",
+          severity: i.severity as "critical" | "high" | "medium" | "low",
+          status: i.status as "open" | "in_progress" | "resolved" | "closed",
+          solutionArea: i.solutionArea,
+          estimatedValue: i.estimatedValue,
+          owner: i.owner,
+          dueDate: i.dueDate,
+        })),
+        teamRoles: teamRoles.map(r => ({
+          id: r.id,
+          userName: r.userName,
+          userEmail: r.userEmail,
+          role: r.role as "sales" | "consultant" | "delivery" | "csm" | "client_sponsor",
+          isPrimary: r.isPrimary,
+        })),
+        headlineValue: {
+          totalPromised: 0,
+          totalRealized: 0,
+          realizationRate: 0,
+          initiativesCount: 0,
+          initiativesActive: 0,
+          kpisTotal: 0,
+          kpisOnTrack: 0,
+          kpisAtRisk: 0,
+        },
+      };
+    }
+    
+    // Get issues and team roles in parallel
+    const [issues, teamRoles] = await Promise.all([
+      this.getAccountIssues(accountId),
+      this.getAccountUserRoles(accountId),
+    ]);
+    
+    // BULK FETCH: Get all job themes for all initiatives in one query
+    const initiativeIds = initiatives.map(i => i.id);
+    const allJobThemes = await db.select().from(schema.jobThemes)
+      .where(inArray(schema.jobThemes.projectId, initiativeIds));
+    
+    // Early return if no job themes
+    if (allJobThemes.length === 0) {
+      const initiativeSummaries = initiatives.map(p => ({
+        id: p.id,
+        name: p.name,
+        companyName: p.companyName,
+        currentPhase: p.currentPhase as "discovery" | "alignment" | "realisation",
+        lifecyclePhase: p.lifecyclePhase as LifecyclePhase | null,
+        status: p.status as "active" | "completed" | "archived",
+        ragStatus: p.ragStatus as "green" | "amber" | "red" | null,
+        startDate: p.startDate,
+        targetEndDate: p.targetEndDate,
+        initiativeOwner: p.initiativeOwner,
+        clientLead: p.clientLead,
+        totalPromisedValue: null,
+        totalRealizedValue: null,
+        kpiCount: 0,
+        kpisOnTrack: 0,
+        kpisAtRisk: 0,
+      }));
+      
+      return {
+        account: {
+          id: account.id,
+          name: account.name,
+          industry: account.industry,
+          tier: account.tier as "enterprise" | "strategic" | "growth" | null,
+          companyLogoUrl: account.companyLogoUrl,
+          healthScore: account.healthScore,
+          strategyNotes: account.strategyNotes,
+          okrSummary: account.okrSummary,
+          accountOwner: account.accountOwner,
+          clientSponsor: account.clientSponsor,
+          contractStartDate: account.contractStartDate,
+          contractEndDate: account.contractEndDate,
+          annualContractValue: account.annualContractValue,
+          totalValuePromised: account.totalValuePromised ?? 0,
+          totalValueRealized: account.totalValueRealized ?? 0,
+          lastQbrDate: account.lastQbrDate,
+          nextQbrDate: account.nextQbrDate,
+        },
+        initiatives: initiativeSummaries,
+        kpis: [],
+        issues: issues.map(i => ({
+          id: i.id,
+          title: i.title,
+          type: i.type as "issue" | "risk" | "opportunity",
+          severity: i.severity as "critical" | "high" | "medium" | "low",
+          status: i.status as "open" | "in_progress" | "resolved" | "closed",
+          solutionArea: i.solutionArea,
+          estimatedValue: i.estimatedValue,
+          owner: i.owner,
+          dueDate: i.dueDate,
+        })),
+        teamRoles: teamRoles.map(r => ({
+          id: r.id,
+          userName: r.userName,
+          userEmail: r.userEmail,
+          role: r.role as "sales" | "consultant" | "delivery" | "csm" | "client_sponsor",
+          isPrimary: r.isPrimary,
+        })),
+        headlineValue: {
+          totalPromised: 0,
+          totalRealized: 0,
+          realizationRate: 0,
+          initiativesCount: initiatives.length,
+          initiativesActive: initiatives.filter(p => p.status === "active").length,
+          kpisTotal: 0,
+          kpisOnTrack: 0,
+          kpisAtRisk: 0,
+        },
+      };
+    }
+    
+    // Create mapping from jobTheme to initiative
+    const jobThemeToInitiative = new Map<number, Project>();
+    for (const theme of allJobThemes) {
+      const initiative = initiatives.find(i => i.id === theme.projectId);
+      if (initiative) {
+        jobThemeToInitiative.set(theme.id, initiative);
+      }
+    }
+    
+    // BULK FETCH: Get all KPIs for all job themes in one query
+    const jobThemeIds = allJobThemes.map(jt => jt.id);
+    const allKpis = await db.select().from(schema.jobThemeKPIs)
+      .where(inArray(schema.jobThemeKPIs.jobThemeId, jobThemeIds));
+    
+    // Filter to only selected KPIs
+    const selectedKpis = allKpis.filter(kpi => kpi.isSelected);
+    
+    // BULK FETCH: Get all actuals for all KPIs in one query
+    const kpiIds = selectedKpis.map(k => k.id);
+    const allActuals = kpiIds.length > 0 
+      ? await db.select().from(schema.kpiActuals)
+          .where(inArray(schema.kpiActuals.jobThemeKPIId, kpiIds))
+          .orderBy(desc(schema.kpiActuals.actualDate))
+      : [];
+    
+    // Create mapping from KPI ID to its latest actual
+    const latestActualsByKpi = new Map<number, typeof allActuals[0]>();
+    for (const actual of allActuals) {
+      if (!latestActualsByKpi.has(actual.jobThemeKPIId)) {
+        latestActualsByKpi.set(actual.jobThemeKPIId, actual);
+      }
+    }
+    
+    // Aggregate KPIs across all initiatives
+    const kpiSummaries: AccountHub["kpis"] = [];
+    let totalPromised = 0;
+    let totalRealized = 0;
+    let kpisTotal = 0;
+    let kpisOnTrack = 0;
+    let kpisAtRisk = 0;
+    let kpisNoData = 0;
+    
+    for (const kpi of selectedKpis) {
+      const initiative = jobThemeToInitiative.get(kpi.jobThemeId);
+      if (!initiative) continue;
+      
+      const latestActual = latestActualsByKpi.get(kpi.id);
+      
+      kpisTotal++;
+      if (latestActual?.varianceDirection === "above" || latestActual?.varianceDirection === "on_track") {
+        kpisOnTrack++;
+      } else if (latestActual?.varianceDirection === "below") {
+        kpisAtRisk++;
+      } else {
+        kpisNoData++;
+      }
+      
+      // Calculate value with safe numeric parsing using parseNumeric helper
+      let kpiPromisedValue: number | null = null;
+      if (kpi.estimatedValuePerUnit && kpi.baselineValue && kpi.targetValue) {
+        const baseline = parseNumeric(kpi.baselineValue);
+        const target = parseNumeric(kpi.targetValue);
+        if (baseline !== null && target !== null) {
+          const improvement = target - baseline;
+          kpiPromisedValue = kpi.estimatedValuePerUnit * Math.abs(improvement);
+          totalPromised += kpiPromisedValue;
+        }
+      }
+      
+      if (latestActual?.valueImpactAmount) {
+        totalRealized += latestActual.valueImpactAmount;
+      }
+      
+      kpiSummaries.push({
+        id: kpi.id,
+        initiativeId: initiative.id,
+        initiativeName: initiative.name,
+        kpiName: kpi.kpiName,
+        kpiType: kpi.kpiType as "primary" | "supporting",
+        unit: kpi.unit,
+        baselineValue: kpi.baselineValue,
+        targetValue: kpi.targetValue,
+        latestActualValue: latestActual?.actualValue || null,
+        latestActualDate: latestActual?.actualDate || null,
+        varianceDirection: latestActual?.varianceDirection as "above" | "on_track" | "below" | null || null,
+        estimatedValuePerUnit: kpi.estimatedValuePerUnit,
+        promisedValue: kpiPromisedValue,
+        realizedValue: latestActual?.valueImpactAmount || null,
+      });
+    }
+    
+    // Pre-compute per-initiative KPI stats in single pass (O(n) instead of O(n²))
+    const initiativeStats: Record<number, { 
+      kpiCount: number; 
+      kpisOnTrack: number; 
+      kpisAtRisk: number;
+      promisedValue: number;
+      realizedValue: number;
+    }> = {};
+    
+    for (const kpiSummary of kpiSummaries) {
+      if (!initiativeStats[kpiSummary.initiativeId]) {
+        initiativeStats[kpiSummary.initiativeId] = { 
+          kpiCount: 0, 
+          kpisOnTrack: 0, 
+          kpisAtRisk: 0,
+          promisedValue: 0,
+          realizedValue: 0,
+        };
+      }
+      const stats = initiativeStats[kpiSummary.initiativeId];
+      stats.kpiCount++;
+      
+      if (kpiSummary.varianceDirection === "above" || kpiSummary.varianceDirection === "on_track") {
+        stats.kpisOnTrack++;
+      } else if (kpiSummary.varianceDirection === "below") {
+        stats.kpisAtRisk++;
+      }
+      
+      if (kpiSummary.promisedValue !== null && kpiSummary.promisedValue !== undefined) {
+        stats.promisedValue += kpiSummary.promisedValue;
+      }
+      if (kpiSummary.realizedValue !== null && kpiSummary.realizedValue !== undefined) {
+        stats.realizedValue += kpiSummary.realizedValue;
+      }
+    }
+    
+    // Build initiative summaries using pre-computed stats
+    const initiativeSummaries: AccountHub["initiatives"] = initiatives.map(p => {
+      const stats = initiativeStats[p.id] || { kpiCount: 0, kpisOnTrack: 0, kpisAtRisk: 0, promisedValue: 0, realizedValue: 0 };
+      // Only null if no KPIs have value data; zero is a valid value
+      const hasValueData = stats.kpiCount > 0;
+      return {
+        id: p.id,
+        name: p.name,
+        companyName: p.companyName,
+        currentPhase: p.currentPhase as "discovery" | "alignment" | "realisation",
+        lifecyclePhase: p.lifecyclePhase as LifecyclePhase | null,
+        status: p.status as "active" | "completed" | "archived",
+        ragStatus: p.ragStatus as "green" | "amber" | "red" | null,
+        startDate: p.startDate,
+        targetEndDate: p.targetEndDate,
+        initiativeOwner: p.initiativeOwner,
+        clientLead: p.clientLead,
+        totalPromisedValue: hasValueData ? stats.promisedValue : null,
+        totalRealizedValue: hasValueData ? stats.realizedValue : null,
+        kpiCount: stats.kpiCount,
+        kpisOnTrack: stats.kpisOnTrack,
+        kpisAtRisk: stats.kpisAtRisk,
+      };
+    });
+    
+    return {
+      account: {
+        id: account.id,
+        name: account.name,
+        industry: account.industry,
+        tier: account.tier as "enterprise" | "strategic" | "growth" | null,
+        companyLogoUrl: account.companyLogoUrl,
+        healthScore: account.healthScore,
+        strategyNotes: account.strategyNotes,
+        okrSummary: account.okrSummary,
+        accountOwner: account.accountOwner,
+        clientSponsor: account.clientSponsor,
+        contractStartDate: account.contractStartDate,
+        contractEndDate: account.contractEndDate,
+        annualContractValue: account.annualContractValue,
+        totalValuePromised: account.totalValuePromised ?? totalPromised,
+        totalValueRealized: account.totalValueRealized ?? totalRealized,
+        lastQbrDate: account.lastQbrDate,
+        nextQbrDate: account.nextQbrDate,
+      },
+      initiatives: initiativeSummaries,
+      kpis: kpiSummaries,
+      issues: issues.map(i => ({
+        id: i.id,
+        title: i.title,
+        type: i.type as "issue" | "risk" | "opportunity",
+        severity: i.severity as "critical" | "high" | "medium" | "low",
+        status: i.status as "open" | "in_progress" | "resolved" | "closed",
+        solutionArea: i.solutionArea,
+        estimatedValue: i.estimatedValue,
+        owner: i.owner,
+        dueDate: i.dueDate,
+      })),
+      teamRoles: teamRoles.map(r => ({
+        id: r.id,
+        userName: r.userName,
+        userEmail: r.userEmail,
+        role: r.role as "sales" | "consultant" | "delivery" | "csm" | "client_sponsor",
+        isPrimary: r.isPrimary,
+      })),
+      headlineValue: {
+        totalPromised: totalPromised,
+        totalRealized: totalRealized,
+        realizationRate: totalPromised > 0 ? Math.round((totalRealized / totalPromised) * 100) : 0,
+        initiativesCount: initiatives.length,
+        initiativesActive: initiatives.filter(p => p.status === "active").length,
+        kpisTotal,
+        kpisOnTrack,
+        kpisAtRisk,
+      },
+    };
+  }
+  
+  // KPI Actuals by account
+  async getKPIActualsForAccount(accountId: number): Promise<KPIActual[]> {
+    return await db.select().from(schema.kpiActuals)
+      .where(eq(schema.kpiActuals.accountId, accountId))
+      .orderBy(desc(schema.kpiActuals.actualDate));
+  }
+  
+  // Migration helper - auto-create accounts for existing projects without accounts
+  async migrateProjectsToAccounts(): Promise<void> {
+    // Get all projects without an account
+    const projectsWithoutAccount = await db.select().from(schema.projects)
+      .where(eq(schema.projects.accountId, null as any));
+    
+    // Group projects by companyName
+    const projectsByCompany: Record<string, Project[]> = {};
+    for (const project of projectsWithoutAccount) {
+      if (!projectsByCompany[project.companyName]) {
+        projectsByCompany[project.companyName] = [];
+      }
+      projectsByCompany[project.companyName].push(project);
+    }
+    
+    // Create an account for each unique company and link projects
+    for (const companyName of Object.keys(projectsByCompany)) {
+      const projects = projectsByCompany[companyName];
+      
+      // Check if an account already exists for this company
+      let account = await this.getAccountByName(companyName);
+      
+      if (!account) {
+        // Create new account
+        account = await this.createAccount({
+          name: companyName,
+          industry: projects[0]?.sector || null,
+          companyLogoUrl: projects[0]?.companyLogoUrl || null,
+          status: "active",
+        });
+      }
+      
+      // Link all projects to this account
+      for (const project of projects) {
+        await this.updateProject(project.id, {
+          accountId: account.id,
+          // Also set lifecycle phase based on current phase
+          lifecyclePhase: schema.phaseMapping[project.currentPhase] || "discover_qualify",
+        });
+      }
+    }
   }
 }
 

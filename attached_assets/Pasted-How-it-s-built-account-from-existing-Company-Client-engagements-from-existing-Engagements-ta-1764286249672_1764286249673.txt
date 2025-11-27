@@ -1,0 +1,93 @@
+How it’s built:
+	•	account from existing Company/Client.
+	•	engagements from existing Engagements table.
+	•	kpis from existing KPI entities.
+	•	headlineValue from existing ValueCase / financial engine, summarised.
+
+This is where devs reuse the Document 7 work: don’t re-implement any calculations, just call the existing value case functions and wrap.
+
+Step 3.2 – Lifecycle-aware queries
+
+Add small helpers:
+	•	GET /accounts/:id/hub?phase=DELIVER
+→ filter engagements and KPIs to those in that lifecycle phase.
+	•	GET /engagements/:id/summary
+→ returns a compact version used by the role views.
+
+This allows the front end to show “different slices” of the same data by phase.
+
+Step 3.3 – Minimal write APIs for MVP
+
+You don’t have to support every edit path, but you do want:
+	•	POST /accounts/:id/issues – create an Issue.
+	•	POST /kpis/:id/actuals – log a KPIActual.
+	•	PATCH /engagements/:id – update lifecyclePhase.
+
+This lets you actually move things along the loop and see the hub update, rather than being stuck in seed data.
+
+⸻
+
+4. Frontend: turn the slide into a real screen, plugged into the hub API
+
+Step 4.1 – New route: Account Hub page
+
+Add route:
+
+/accounts/:id/hub
+
+On load:
+	1.	Fetch GET /accounts/:id/hub.
+	2.	Keep in state:
+	•	currentPhase (defaults to “DELIVER” or “SHAPE”),
+	•	currentRole (from user role, with option to override for demo).
+
+Layout:
+	•	Top: lifecycle stepper (5 phases) bound to currentPhase.
+	•	Left: role selector + basic account summary.
+	•	Centre: Hub component fed by AccountHub.
+	•	Right: RolePanel fed by AccountHub + currentPhase + currentRole.
+
+This is the same shape as the PPT, but now drawing real data.
+
+Step 4.2 – Central Hub component: shared value spine
+
+Bind the real data:
+	•	Strategy & OKRs → from account.strategySummary, account.okrs.
+	•	Issues → from issues.
+	•	Initiatives / Workstreams → from engagements.
+	•	KPIs → aggregate all KPIs across engagements; you can:
+	•	Show a table grouped by engagement.
+	•	Highlight KPIs with latest values (using KPIActuals).
+	•	Headline value → from headlineValue (promised vs realised).
+
+Add basic phase awareness:
+	•	When currentPhase is:
+	•	DISCOVER → emphasise issues and early KPIs.
+	•	SHAPE → emphasise value summary and engagement list.
+	•	DELIVER / REVIEW → emphasise KPIs with latest values.
+	•	LEARN → emphasise patterns / lessons (textual to start).
+
+All of that is just conditional rendering from the same AccountHub object.
+
+Step 4.3 – Role panel: wire to existing flows, not dummy text
+
+Here’s where we stop being “just a little demo”:
+	•	Sales view
+	•	Reuse existing “value case summary” component from the sales/proposal screen.
+	•	Show top 3 engagements by promised value.
+	•	Link “Open engagement” → existing engagement screen (where value case is created).
+	•	Consultant view
+	•	Reuse the Discovery / Alignment components:
+	•	Show latest insights mapped to issues.
+	•	Link to “Open discovery workspace” for a chosen engagement.
+	•	Delivery view
+	•	Reuse whatever you currently use for tracking implementation / milestones.
+	•	For each active engagement, show:
+	•	lifecyclePhase = DELIVER or REVIEW,
+	•	key KPIs with baseline / target / latest (using KPIActuals),
+	•	a simple RAG status.
+	•	CSM view
+	•	Reuse the QBR / business review bits if they exist; otherwise:
+	•	Render a “promised vs delivered” table using:
+	•	promised from value case,
+	•	delivered from KPIActuals vs target.

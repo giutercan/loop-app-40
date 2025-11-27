@@ -40,7 +40,9 @@ import {
   insertAccountSchema,
   insertAccountUserRoleSchema,
   insertAccountIssueSchema,
-  insertEvidenceArtefactSchema
+  insertEvidenceArtefactSchema,
+  lifecyclePhases,
+  type LifecyclePhase
 } from "@shared/schema";
 
 // Helper function for robust HTML/script sanitization
@@ -6230,6 +6232,102 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
       const id = parseInt(req.params.id);
       await storage.deleteEvidenceArtefact(id);
       res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // ============================================================================
+  // ACCOUNT HUB - Client Value Hub aggregated endpoint
+  // ============================================================================
+  
+  // GET /api/accounts/:id/hub - Aggregated hub data for Account Hub page
+  app.get("/api/accounts/:id/hub", async (req, res) => {
+    try {
+      const accountId = parseInt(req.params.id);
+      const phase = req.query.phase as LifecyclePhase | undefined;
+      
+      const hubData = await storage.getAccountHub(accountId, phase);
+      
+      if (!hubData) {
+        return res.status(404).json({ error: "Account not found" });
+      }
+      
+      res.json(hubData);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // POST /api/kpis/:id/actuals - Log a KPI actual value
+  app.post("/api/kpis/:id/actuals", async (req, res) => {
+    try {
+      const jobThemeKPIId = parseInt(req.params.id);
+      
+      // Verify KPI exists
+      const kpi = await storage.getJobThemeKPI(jobThemeKPIId);
+      if (!kpi) {
+        return res.status(404).json({ error: "KPI not found" });
+      }
+      
+      // Get the project to find the account
+      const jobTheme = await storage.getJobTheme(kpi.jobThemeId);
+      if (!jobTheme) {
+        return res.status(404).json({ error: "Job theme not found" });
+      }
+      
+      const project = await storage.getProject(jobTheme.projectId);
+      
+      const validated = insertKPIActualSchema.parse({
+        ...req.body,
+        jobThemeKPIId,
+        accountId: project?.accountId || null,
+        actualDate: new Date(req.body.actualDate),
+      });
+      
+      const actual = await storage.createKPIActual(validated);
+      res.json(actual);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // GET /api/accounts/:id/kpi-actuals - Get all KPI actuals for an account
+  app.get("/api/accounts/:id/kpi-actuals", async (req, res) => {
+    try {
+      const accountId = parseInt(req.params.id);
+      const actuals = await storage.getKPIActualsForAccount(accountId);
+      res.json(actuals);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // PATCH /api/projects/:id/lifecycle-phase - Update project lifecycle phase
+  app.patch("/api/projects/:id/lifecycle-phase", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { lifecyclePhase } = req.body;
+      
+      if (!lifecyclePhases.includes(lifecyclePhase)) {
+        return res.status(400).json({ error: "Invalid lifecycle phase" });
+      }
+      
+      const updated = await storage.updateProject(id, { lifecyclePhase });
+      if (!updated) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // POST /api/migrate/projects-to-accounts - Migration endpoint to auto-create accounts
+  app.post("/api/migrate/projects-to-accounts", async (req, res) => {
+    try {
+      await storage.migrateProjectsToAccounts();
+      res.json({ success: true, message: "Migration completed - projects linked to accounts" });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

@@ -159,6 +159,26 @@ export type InsertEvidenceArtefact = z.infer<typeof insertEvidenceArtefactSchema
 export type EvidenceArtefact = typeof evidenceArtefacts.$inferSelect;
 
 // ============================================================================
+// LIFECYCLE PHASES (Client Value Hub Journey)
+// ============================================================================
+// The 5 phases of the Client Value Hub lifecycle:
+// 1. discover_qualify - Discovery & qualification of client needs
+// 2. shape_sell - Shaping solutions and selling value
+// 3. deliver_realise - Delivery and value realization
+// 4. review_renew - Quarterly reviews and contract renewal
+// 5. learn_scale - Learning from engagement and scaling success
+
+export const lifecyclePhases = ["discover_qualify", "shape_sell", "deliver_realise", "review_renew", "learn_scale"] as const;
+export type LifecyclePhase = typeof lifecyclePhases[number];
+
+// Mapping between old 3-phase model and new 5-phase model
+export const phaseMapping: Record<string, LifecyclePhase> = {
+  "discovery": "discover_qualify",
+  "alignment": "shape_sell",
+  "realisation": "deliver_realise",
+};
+
+// ============================================================================
 // PROJECTS (now also "Initiatives" - child of Account)
 // ============================================================================
 
@@ -172,6 +192,10 @@ export const projects = pgTable("projects", {
   sector: text("sector"),
   companyLogoUrl: text("company_logo_url"),
   currentPhase: text("current_phase", { enum: ["discovery", "alignment", "realisation"] }).notNull().default("discovery"),
+  // New 5-phase lifecycle (Client Value Hub)
+  lifecyclePhase: text("lifecycle_phase", { 
+    enum: ["discover_qualify", "shape_sell", "deliver_realise", "review_renew", "learn_scale"] 
+  }).default("discover_qualify"),
   status: text("status", { enum: ["active", "completed", "archived"] }).notNull().default("active"),
   
   // Initiative-specific fields (for Value Hub)
@@ -810,20 +834,29 @@ export type InsertMilestone = z.infer<typeof insertMilestoneSchema>;
 export type Milestone = typeof milestones.$inferSelect;
 
 // KPI Actuals - Track actual KPI values over time (for progress tracking)
+// Enhanced for Client Value Hub with account-level aggregation
 export const kpiActuals = pgTable("kpi_actuals", {
   id: serial("id").primaryKey(),
   jobThemeKPIId: integer("job_theme_kpi_id").notNull().references(() => jobThemeKPIs.id, { onDelete: "cascade" }),
+  accountId: integer("account_id").references(() => accounts.id, { onDelete: "set null" }), // For account-level hub aggregation
   actualValue: text("actual_value").notNull(), // Actual measured value (stored as text for flexibility)
   actualDate: timestamp("actual_date").notNull(), // When this value was measured
+  measurementPeriod: text("measurement_period"), // e.g., "Q1 2024", "H1 2024", "Monthly - March 2024"
   actualSource: text("actual_source"), // Where this data came from (e.g., "Client HRIS", "Survey results")
   notes: text("notes"), // Additional context about this measurement
   validatedBy: text("validated_by"), // Who validated this data (consultant or client name)
+  recordedByRole: text("recorded_by_role", { 
+    enum: ["consultant", "delivery", "csm", "client"] 
+  }), // Role of person who recorded
   // Value realization enhancements
   confidenceScore: integer("confidence_score"), // 1-10 confidence in this measurement
   valueImpact: text("value_impact"), // Financial value delivered description (e.g., "$250,000 cost savings")
   valueImpactAmount: integer("value_impact_amount"), // Numeric value in dollars (for aggregation)
+  variance: text("variance"), // Calculated variance from target (can be % or absolute)
+  varianceDirection: text("variance_direction", { enum: ["above", "on_track", "below"] }), // Quick indicator
   linkedInterventionId: integer("linked_intervention_id").references(() => interventions.id, { onDelete: "set null" }),
   linkedMilestoneId: integer("linked_milestone_id").references(() => milestones.id, { onDelete: "set null" }),
+  linkedArtefactIds: integer("linked_artefact_ids").array(), // Evidence artefacts supporting this actual
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -1241,3 +1274,113 @@ export const valueJustificationWithMessagesSchema = z.object({
     createdAt: z.any(),
   })),
 });
+
+// ============================================================================
+// ACCOUNT HUB - Aggregated view for Client Value Hub
+// ============================================================================
+
+// Initiative Summary - Compact view of a project/engagement for hub display
+export const initiativeSummarySchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  companyName: z.string(),
+  currentPhase: z.enum(["discovery", "alignment", "realisation"]),
+  lifecyclePhase: z.enum(["discover_qualify", "shape_sell", "deliver_realise", "review_renew", "learn_scale"]).nullable(),
+  status: z.enum(["active", "completed", "archived"]),
+  ragStatus: z.enum(["green", "amber", "red"]).nullable(),
+  startDate: z.any().nullable(),
+  targetEndDate: z.any().nullable(),
+  initiativeOwner: z.string().nullable(),
+  clientLead: z.string().nullable(),
+  // Value metrics for this initiative
+  totalPromisedValue: z.number().nullable(),
+  totalRealizedValue: z.number().nullable(),
+  kpiCount: z.number(),
+  kpisOnTrack: z.number(),
+  kpisAtRisk: z.number(),
+});
+export type InitiativeSummary = z.infer<typeof initiativeSummarySchema>;
+
+// KPI Summary - Aggregated KPI data for hub display  
+export const kpiSummarySchema = z.object({
+  id: z.number(),
+  initiativeId: z.number(),
+  initiativeName: z.string(),
+  kpiName: z.string(),
+  kpiType: z.enum(["primary", "supporting"]),
+  unit: z.string(),
+  baselineValue: z.string().nullable(),
+  targetValue: z.string().nullable(),
+  latestActualValue: z.string().nullable(),
+  latestActualDate: z.any().nullable(),
+  varianceDirection: z.enum(["above", "on_track", "below"]).nullable(),
+  estimatedValuePerUnit: z.number().nullable(),
+  promisedValue: z.number().nullable(),
+  realizedValue: z.number().nullable(),
+});
+export type KPISummary = z.infer<typeof kpiSummarySchema>;
+
+// Account Hub - Complete aggregated view for the Account Hub page
+export const accountHubSchema = z.object({
+  // Account info
+  account: z.object({
+    id: z.number(),
+    name: z.string(),
+    industry: z.string().nullable(),
+    tier: z.enum(["enterprise", "strategic", "growth"]).nullable(),
+    companyLogoUrl: z.string().nullable(),
+    healthScore: z.number().nullable(),
+    strategyNotes: z.string().nullable(),
+    okrSummary: z.string().nullable(),
+    accountOwner: z.string().nullable(),
+    clientSponsor: z.string().nullable(),
+    contractStartDate: z.any().nullable(),
+    contractEndDate: z.any().nullable(),
+    annualContractValue: z.string().nullable(),
+    totalValuePromised: z.number().nullable(),
+    totalValueRealized: z.number().nullable(),
+    lastQbrDate: z.any().nullable(),
+    nextQbrDate: z.any().nullable(),
+  }),
+  
+  // All initiatives/engagements under this account
+  initiatives: z.array(initiativeSummarySchema),
+  
+  // Aggregated KPIs across all initiatives
+  kpis: z.array(kpiSummarySchema),
+  
+  // Account-level issues and opportunities
+  issues: z.array(z.object({
+    id: z.number(),
+    title: z.string(),
+    type: z.enum(["issue", "risk", "opportunity"]),
+    severity: z.enum(["critical", "high", "medium", "low"]),
+    status: z.enum(["open", "in_progress", "resolved", "closed"]),
+    solutionArea: z.string().nullable(),
+    estimatedValue: z.number().nullable(),
+    owner: z.string().nullable(),
+    dueDate: z.any().nullable(),
+  })),
+  
+  // Team roles
+  teamRoles: z.array(z.object({
+    id: z.number(),
+    userName: z.string(),
+    userEmail: z.string().nullable(),
+    role: z.enum(["sales", "consultant", "delivery", "csm", "client_sponsor"]),
+    isPrimary: z.boolean(),
+  })),
+  
+  // Headline value metrics
+  headlineValue: z.object({
+    totalPromised: z.number(),
+    totalRealized: z.number(),
+    realizationRate: z.number(), // percentage
+    initiativesCount: z.number(),
+    initiativesActive: z.number(),
+    kpisTotal: z.number(),
+    kpisOnTrack: z.number(),
+    kpisAtRisk: z.number(),
+  }),
+});
+export type AccountHub = z.infer<typeof accountHubSchema>;
