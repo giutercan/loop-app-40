@@ -877,7 +877,7 @@ export default function ProjectRoleView() {
         fieldToSuggest,
         phase
       });
-      return response;
+      return response.json();
     },
     onSuccess: (data: any) => {
       if (data.suggestions) {
