@@ -73,7 +73,10 @@ function Router() {
         <Redirect to="/accounts" />
       </Route>
       <Route path="/welcome" component={Landing} />
-      <Route path="/projects" component={ProjectsDashboard} />
+      {/* Projects route now redirects to accounts - account-centric architecture */}
+      <Route path="/projects">
+        <Redirect to="/accounts" />
+      </Route>
       <Route path="/projects/new" component={NewProject} />
       <Route path="/accounts" component={AccountsDashboard} />
       <Route path="/accounts/:id/hub" component={AccountHub} />

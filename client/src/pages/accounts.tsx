@@ -89,14 +89,6 @@ const rolePortals = [
   }
 ];
 
-interface Project {
-  id: number;
-  name: string;
-  companyName: string;
-  currentPhase: "discovery" | "alignment" | "realisation";
-  accountId: number | null;
-}
-
 const phaseLabels: Record<string, { label: string; color: string }> = {
   discovery: { label: "Discovery", color: "text-blue-600" },
   alignment: { label: "Alignment", color: "text-purple-600" },
@@ -114,8 +106,18 @@ interface Account {
   annualContractValue: string | null;
   primaryContactName: string | null;
   primaryContactEmail: string | null;
+  companyLogoUrl: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+interface Project {
+  id: number;
+  name: string;
+  companyName: string;
+  companyLogoUrl: string | null;
+  currentPhase: "discovery" | "alignment" | "realisation";
+  accountId: number | null;
 }
 
 const tierColors: Record<string, string> = {
@@ -158,6 +160,13 @@ export default function AccountsDashboard() {
 
   const getProjectsForAccount = (accountId: number) => {
     return allProjects.filter(p => p.accountId === accountId);
+  };
+
+  const getAccountLogo = (account: Account) => {
+    if (account.companyLogoUrl) return account.companyLogoUrl;
+    const projects = getProjectsForAccount(account.id);
+    const projectWithLogo = projects.find(p => p.companyLogoUrl);
+    return projectWithLogo?.companyLogoUrl || null;
   };
 
   const toggleAccountExpanded = (accountId: number) => {
@@ -258,12 +267,6 @@ export default function AccountsDashboard() {
             </Link>
             
             <div className="flex items-center gap-4">
-              <Link href="/projects">
-                <Button variant="outline" size="sm" data-testid="link-projects">
-                  <Briefcase className="w-4 h-4 mr-2" />
-                  Projects View
-                </Button>
-              </Link>
               <Dialog open={isNewAccountOpen} onOpenChange={setIsNewAccountOpen}>
                 <DialogTrigger asChild>
                   <Button size="lg" className="shadow-lg shadow-primary/20" data-testid="button-new-account">
@@ -390,162 +393,194 @@ export default function AccountsDashboard() {
             </Card>
           ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {accounts.map((account) => {
-                const health = getHealthStatus(account.healthScore);
-                return (
-                  <Card 
-                    key={account.id}
-                    className="transition-all duration-200 h-full"
-                    data-testid={`card-account-${account.id}`}
-                  >
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                            <Building2 className="w-6 h-6 text-primary" />
-                          </div>
-                          <div>
-                            <CardTitle className="text-lg">
-                              {account.name}
-                            </CardTitle>
-                            {account.industry && (
-                              <CardDescription>{account.industry}</CardDescription>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex items-center justify-between gap-4 flex-wrap">
-                        {account.tier && (
-                          <Badge className={tierColors[account.tier] || "bg-muted"}>
-                            {account.tier.charAt(0).toUpperCase() + account.tier.slice(1)}
-                          </Badge>
-                        )}
-                        <div className="flex items-center gap-2">
-                          <span className={`text-sm font-medium ${health.color}`}>
-                            {health.label}
-                          </span>
-                          {account.healthScore !== null && (
-                            <span className="text-xs text-muted-foreground">
-                              ({account.healthScore}%)
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {account.healthScore !== null && (
-                        <Progress 
-                          value={account.healthScore} 
-                          className="h-2"
-                        />
-                      )}
-
-                      {/* Projects Dropdown */}
-                      {(() => {
-                        const accountProjects = getProjectsForAccount(account.id);
-                        const isExpanded = expandedAccounts[account.id];
-                        return accountProjects.length > 0 ? (
-                          <Collapsible open={isExpanded} onOpenChange={() => toggleAccountExpanded(account.id)}>
-                            <CollapsibleTrigger asChild>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="w-full justify-between px-2 h-auto py-2"
-                                data-testid={`button-toggle-projects-${account.id}`}
-                              >
-                                <div className="flex items-center gap-2">
-                                  <FolderOpen className="w-4 h-4 text-muted-foreground" />
-                                  <span className="text-sm font-medium">{accountProjects.length} Project{accountProjects.length > 1 ? 's' : ''}</span>
-                                </div>
-                                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                              </Button>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent className="mt-2 space-y-1">
-                              {accountProjects.map((project) => {
-                                const phase = phaseLabels[project.currentPhase] || { label: project.currentPhase, color: "text-muted-foreground" };
-                                return (
-                                  <div 
-                                    key={project.id} 
-                                    className="rounded-lg border bg-muted/30 p-2 space-y-2"
-                                    data-testid={`project-row-${project.id}`}
-                                  >
-                                    <div className="flex items-center justify-between gap-2">
-                                      <div className="flex items-center gap-2 min-w-0">
-                                        <Layers className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                                        <span className="text-sm font-medium truncate">{project.name}</span>
-                                      </div>
-                                      <Badge variant="secondary" className={`text-xs shrink-0 ${phase.color}`}>
-                                        {phase.label}
-                                      </Badge>
-                                    </div>
-                                    <div className="flex gap-1.5">
-                                      <Link href={`/projects/${project.id}/sales`} className="flex-1">
-                                        <Button 
-                                          variant="outline" 
-                                          size="sm" 
-                                          className="w-full h-7 text-xs gap-1"
-                                          data-testid={`button-project-sales-${project.id}`}
-                                        >
-                                          <TrendingUp className="w-3 h-3 text-blue-600" />
-                                          Sales
-                                        </Button>
-                                      </Link>
-                                      <Link href={`/projects/${project.id}/delivery`} className="flex-1">
-                                        <Button 
-                                          variant="outline" 
-                                          size="sm" 
-                                          className="w-full h-7 text-xs gap-1"
-                                          data-testid={`button-project-delivery-${project.id}`}
-                                        >
-                                          <Users className="w-3 h-3 text-emerald-600" />
-                                          Delivery
-                                        </Button>
-                                      </Link>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </CollapsibleContent>
-                          </Collapsible>
-                        ) : (
-                          <div className="text-center py-2 text-xs text-muted-foreground">
-                            No projects yet
-                          </div>
-                        );
-                      })()}
-
-                      {/* Role Access Buttons */}
-                      <div className="pt-2 border-t space-y-2">
-                        <p className="text-xs text-muted-foreground font-medium">Open account as:</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          {rolePortals.map((portal) => {
-                            const Icon = portal.icon;
-                            return (
-                              <Link key={portal.id} href={`/accounts/${account.id}/${portal.id}`}>
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
-                                  className="w-full justify-start gap-2 group"
-                                  data-testid={`button-${portal.id}-${account.id}`}
-                                >
-                                  <Icon className={`w-4 h-4 ${portal.color}`} />
-                                  <span className="truncate">{portal.label.replace(' Portal', '')}</span>
-                                  <ArrowRight className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-                                </Button>
-                              </Link>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+              {accounts.map((account) => (
+                <AccountCard 
+                  key={account.id} 
+                  account={account} 
+                  logo={getAccountLogo(account)}
+                  projects={getProjectsForAccount(account.id)}
+                  expandedAccounts={expandedAccounts}
+                  toggleAccountExpanded={toggleAccountExpanded}
+                />
+              ))}
             </div>
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+function AccountCard({ 
+  account, 
+  logo, 
+  projects, 
+  expandedAccounts, 
+  toggleAccountExpanded 
+}: { 
+  account: Account; 
+  logo: string | null;
+  projects: Project[];
+  expandedAccounts: Record<number, boolean>;
+  toggleAccountExpanded: (id: number) => void;
+}) {
+  const [imageError, setImageError] = useState(false);
+  const health = getHealthStatus(account.healthScore);
+  const isExpanded = expandedAccounts[account.id];
+
+  return (
+    <Card 
+      className="transition-all duration-200 h-full"
+      data-testid={`card-account-${account.id}`}
+    >
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-3">
+            {logo && !imageError ? (
+              <div className="w-12 h-12 rounded-xl bg-white border overflow-hidden flex items-center justify-center">
+                <img 
+                  src={logo} 
+                  alt={`${account.name} logo`}
+                  className="w-10 h-10 object-contain"
+                  onError={() => setImageError(true)}
+                />
+              </div>
+            ) : (
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                <Building2 className="w-6 h-6 text-primary" />
+              </div>
+            )}
+            <div>
+              <CardTitle className="text-lg">
+                {account.name}
+              </CardTitle>
+              {account.industry && (
+                <CardDescription>{account.industry}</CardDescription>
+              )}
+            </div>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          {account.tier && (
+            <Badge className={tierColors[account.tier] || "bg-muted"}>
+              {account.tier.charAt(0).toUpperCase() + account.tier.slice(1)}
+            </Badge>
+          )}
+          <div className="flex items-center gap-2">
+            <span className={`text-sm font-medium ${health.color}`}>
+              {health.label}
+            </span>
+            {account.healthScore !== null && (
+              <span className="text-xs text-muted-foreground">
+                ({account.healthScore}%)
+              </span>
+            )}
+          </div>
+        </div>
+        
+        {account.healthScore !== null && (
+          <Progress 
+            value={account.healthScore} 
+            className="h-2"
+          />
+        )}
+
+        {/* Projects Dropdown */}
+        {projects.length > 0 ? (
+          <Collapsible open={isExpanded} onOpenChange={() => toggleAccountExpanded(account.id)}>
+            <CollapsibleTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full justify-between px-2 h-auto py-2"
+                data-testid={`button-toggle-projects-${account.id}`}
+              >
+                <div className="flex items-center gap-2">
+                  <FolderOpen className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">{projects.length} Project{projects.length > 1 ? 's' : ''}</span>
+                </div>
+                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2 space-y-1">
+              {projects.map((project) => {
+                const phase = phaseLabels[project.currentPhase] || { label: project.currentPhase, color: "text-muted-foreground" };
+                return (
+                  <div 
+                    key={project.id} 
+                    className="rounded-lg border bg-muted/30 p-2 space-y-2"
+                    data-testid={`project-row-${project.id}`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Layers className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        <span className="text-sm font-medium truncate">{project.name}</span>
+                      </div>
+                      <Badge variant="secondary" className={`text-xs shrink-0 ${phase.color}`}>
+                        {phase.label}
+                      </Badge>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <Link href={`/projects/${project.id}/role-view?role=sales`} className="flex-1">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full h-7 text-xs gap-1"
+                          data-testid={`button-project-sales-${project.id}`}
+                        >
+                          <TrendingUp className="w-3 h-3 text-blue-600" />
+                          Sales
+                        </Button>
+                      </Link>
+                      <Link href={`/projects/${project.id}/role-view?role=delivery`} className="flex-1">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full h-7 text-xs gap-1"
+                          data-testid={`button-project-delivery-${project.id}`}
+                        >
+                          <Users className="w-3 h-3 text-emerald-600" />
+                          Delivery
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
+            </CollapsibleContent>
+          </Collapsible>
+        ) : (
+          <div className="text-center py-2 text-xs text-muted-foreground">
+            No projects yet
+          </div>
+        )}
+
+        {/* Role Access Buttons */}
+        <div className="pt-2 border-t space-y-2">
+          <p className="text-xs text-muted-foreground font-medium">Open account as:</p>
+          <div className="grid grid-cols-2 gap-2">
+            {rolePortals.map((portal) => {
+              const Icon = portal.icon;
+              return (
+                <Link key={portal.id} href={`/accounts/${account.id}/${portal.id}`}>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full justify-start gap-2 group"
+                    data-testid={`button-${portal.id}-${account.id}`}
+                  >
+                    <Icon className={`w-4 h-4 ${portal.color}`} />
+                    <span className="truncate">{portal.label.replace(' Portal', '')}</span>
+                    <ArrowRight className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </Button>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

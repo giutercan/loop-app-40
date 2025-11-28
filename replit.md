@@ -6,7 +6,8 @@ A full-stack web application for Korn Ferry consultants to manage client engagem
 ## User Preferences
 - Consultants prefer strategic, actionable insights over basic company facts.
 - Research should be relevant for management consulting engagements.
-- UI should support quick access to multiple projects.
+- UI should support quick access to multiple accounts and initiatives.
+- Account-centric navigation: Users land on accounts first, then access role-based workspaces within each account.
 
 ## System Architecture
 
