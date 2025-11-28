@@ -523,7 +523,7 @@ function AccountCard({
                       </Badge>
                     </div>
                     <div className="flex gap-1.5">
-                      <Link href={`/projects/${project.id}/role-view?role=sales`} className="flex-1">
+                      <Link href={`/projects/${project.id}/sales`} className="flex-1">
                         <Button 
                           variant="outline" 
                           size="sm" 
@@ -534,7 +534,7 @@ function AccountCard({
                           Sales
                         </Button>
                       </Link>
-                      <Link href={`/projects/${project.id}/role-view?role=delivery`} className="flex-1">
+                      <Link href={`/projects/${project.id}/delivery`} className="flex-1">
                         <Button 
                           variant="outline" 
                           size="sm" 
