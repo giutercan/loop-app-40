@@ -741,6 +741,82 @@ export default function ProjectRoleView() {
   const [activeMethodologyFilter, setActiveMethodologyFilter] = useState<string | null>(null);
   const [showCoachingTip, setShowCoachingTip] = useState(true);
   
+  // Enhanced Green Sheet state - Meeting Contact Context
+  type BuyingRole = "economic_buyer" | "user_buyer" | "technical_buyer" | "coach" | "champion";
+  type InfluenceLevel = "high" | "medium" | "low";
+  
+  const [meetingContact, setMeetingContact] = useState<{
+    name: string;
+    title: string;
+    role: BuyingRole | null;
+    influence: InfluenceLevel | null;
+    knownConcerns: string;
+    personalRapport: string;
+    decisionCriteria: string;
+  }>({
+    name: "",
+    title: "",
+    role: null,
+    influence: null,
+    knownConcerns: "",
+    personalRapport: "",
+    decisionCriteria: ""
+  });
+  const [greenSheetEdits, setGreenSheetEdits] = useState({
+    objective: "",
+    desiredOutcome: "",
+    openingStatement: "",
+    bestActionCommitment: ""
+  });
+  const [isGreenSheetExpanded, setIsGreenSheetExpanded] = useState(true);
+  
+  // Role-based coaching guidance
+  const roleCoaching: Record<BuyingRole, string> = {
+    economic_buyer: "Focus on ROI, business impact, and strategic alignment. This person controls the budget—speak to outcomes and value, not features.",
+    user_buyer: "Emphasize ease of implementation, day-to-day impact, and how this makes their life easier. They care about practical outcomes.",
+    technical_buyer: "Be prepared for detailed questions. Have data, methodology, and proof points ready. They'll screen for fit and feasibility.",
+    coach: "Ask for inside information on the buying process. Who else needs to be involved? What concerns should you address proactively?",
+    champion: "Equip them to sell internally. Give them the soundbites, data, and stories they can share with others."
+  };
+  
+  // Interactive Story Builder state
+  const [storyBuilderOpen, setStoryBuilderOpen] = useState(false);
+  const [activeStoryPhase, setActiveStoryPhase] = useState<"before" | "during" | "after">("before");
+  const [storyDraft, setStoryDraft] = useState({
+    // BEFORE - Crafting
+    singleMessage: "",
+    emotionalReaction: "",
+    startingHook: "",
+    structure: "situation-struggle-insight-outcome",
+    heroCharacter: "",
+    evidence: "",
+    movingQuestion: "",
+    // DURING - Telling
+    openingLine: "",
+    turningPoint: "",
+    keyDataPoint: "",
+    // AFTER - Landing
+    meaningMoment: "",
+    takeaway: "",
+    callToAction: ""
+  });
+  const [storyTestResults, setStoryTestResults] = useState<{
+    strangerCare: boolean | null;
+    simpleEnough: boolean | null;
+    revealsMeaning: boolean | null;
+  }>({
+    strangerCare: null,
+    simpleEnough: null,
+    revealsMeaning: null
+  });
+  
+  // Reset story test when phase changes
+  useEffect(() => {
+    if (activeStoryPhase !== "after") {
+      setStoryTestResults({ strangerCare: null, simpleEnough: null, revealsMeaning: null });
+    }
+  }, [activeStoryPhase]);
+  
   // Legacy discovery mode (for backward compatibility)
   const [isDiscoveryModeDialogOpen, setIsDiscoveryModeDialogOpen] = useState(false);
   const [discoveryMode, setDiscoveryMode] = useState<"focused" | "full">("full");
@@ -2575,251 +2651,805 @@ export default function ProjectRoleView() {
               </CardHeader>
             </Card>
 
-            {/* Green Sheet / Call Planner */}
-            <div className="grid gap-6 lg:grid-cols-2">
-              <Card className="border-emerald-500/20">
-                <CardHeader className="bg-emerald-500/5">
-                  <CardTitle className="flex items-center gap-2 text-emerald-700">
-                    <ClipboardList className="w-5 h-5" />
-                    Call Planner (Green Sheet)
-                  </CardTitle>
-                  <CardDescription>Your strategic framework for this conversation</CardDescription>
-                </CardHeader>
-                <CardContent className="pt-4 space-y-4">
-                  <div>
-                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-1">
-                      <Target className="w-4 h-4 text-emerald-600" />
-                      Call Objective
-                    </h4>
-                    <p className="text-sm p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
-                      {callPlanner.objective}
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-1">
-                      <CheckCircle className="w-4 h-4 text-emerald-600" />
-                      Desired Outcome
-                    </h4>
-                    <p className="text-sm p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
-                      {callPlanner.desiredOutcome}
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-1">
-                      <MessageCircle className="w-4 h-4 text-emerald-600" />
-                      Suggested Opening
-                    </h4>
-                    <p className="text-sm italic p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
-                      {callPlanner.openingStatement}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Rapport & Credibility */}
-              <Card className="border-blue-500/20">
-                <CardHeader className="bg-blue-500/5">
-                  <CardTitle className="flex items-center gap-2 text-blue-700">
-                    <Users className="w-5 h-5" />
-                    Build Rapport & Credibility
-                  </CardTitle>
-                  <CardDescription>Establish trust and demonstrate expertise</CardDescription>
-                </CardHeader>
-                <CardContent className="pt-4 space-y-4">
-                  <div>
-                    <h4 className="text-sm font-semibold mb-2">Rapport Builders</h4>
-                    <div className="space-y-2">
-                      {callPlanner.rapportBuilders.map((tip, idx) => (
-                        <div key={idx} className="flex items-start gap-2 text-sm p-2 rounded-lg bg-blue-500/5">
-                          <Heart className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                          {tip}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold mb-2">Credibility Statements</h4>
-                    <div className="space-y-2">
-                      {callPlanner.credibilityStatements.map((statement, idx) => (
-                        <div key={idx} className="flex items-start gap-2 text-sm italic p-2 rounded-lg bg-blue-500/5">
-                          <Award className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                          {statement}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Success Stories with Storytelling Coach */}
-            <Card className="border-amber-500/20">
-              <CardHeader className="bg-amber-500/5">
-                <CardTitle className="flex items-center gap-2 text-amber-700">
-                  <Trophy className="w-5 h-5" />
-                  Success Stories & Storytelling Coach
-                </CardTitle>
-                <CardDescription>Build credibility with compelling stories for {project?.companyName}</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-4 space-y-6">
-                {/* Storytelling Framework - Collapsible */}
-                <Collapsible>
+            {/* Enhanced Interactive Green Sheet */}
+            <Card className="border-2 border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 to-teal-500/5">
+              <Collapsible open={isGreenSheetExpanded} onOpenChange={setIsGreenSheetExpanded}>
+                <CardHeader className="bg-emerald-500/10">
                   <CollapsibleTrigger asChild>
-                    <div className="p-4 rounded-xl border-2 border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-orange-500/10 cursor-pointer hover-elevate">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
-                            <Sparkles className="w-5 h-5 text-amber-700" />
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-sm text-amber-800">Story Crafting Guide</h4>
-                            <p className="text-xs text-amber-700">Before, During & After - Make your stories memorable</p>
-                          </div>
+                    <div className="flex items-center justify-between cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+                          <ClipboardList className="w-6 h-6 text-white" />
                         </div>
-                        <ChevronDown className="w-5 h-5 text-amber-700" />
+                        <div>
+                          <CardTitle className="flex items-center gap-2 text-emerald-700">
+                            Interactive Green Sheet
+                            <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 text-xs">Miller Heiman</Badge>
+                          </CardTitle>
+                          <CardDescription>Personalize your strategic call framework</CardDescription>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {meetingContact.name && (
+                          <Badge variant="secondary" className="text-xs">
+                            <UserCircle className="w-3 h-3 mr-1" />
+                            {meetingContact.name}
+                          </Badge>
+                        )}
+                        <ChevronDown className={`w-5 h-5 text-emerald-700 transition-transform ${isGreenSheetExpanded ? 'rotate-180' : ''}`} />
                       </div>
                     </div>
                   </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className="mt-4 space-y-4">
-                      {/* BEFORE */}
-                      <div className="p-4 rounded-lg border bg-background">
-                        <h5 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                          <Badge className="bg-blue-500/10 text-blue-700 border-blue-500/30">1</Badge>
-                          BEFORE: Craft Your Story
-                        </h5>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex items-start gap-2 p-2 rounded bg-blue-500/5">
-                            <Target className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                            <span><strong>Single Message:</strong> What's the one idea they MUST remember? Say it in one sentence.</span>
-                          </div>
-                          <div className="flex items-start gap-2 p-2 rounded bg-blue-500/5">
-                            <Heart className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                            <span><strong>Emotion:</strong> What should they feel? Urgency? Hope? Resolve? What's at stake?</span>
-                          </div>
-                          <div className="flex items-start gap-2 p-2 rounded bg-blue-500/5">
-                            <Zap className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                            <span><strong>Hook:</strong> High tension moment? Provocative question? "Picture this..." Surprising fact?</span>
-                          </div>
-                          <div className="flex items-start gap-2 p-2 rounded bg-blue-500/5">
-                            <ArrowRight className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                            <span><strong>Structure:</strong> Situation → Struggle → Insight → Outcome</span>
-                          </div>
-                          <div className="flex items-start gap-2 p-2 rounded bg-blue-500/5">
-                            <Users className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                            <span><strong>Hero:</strong> Who's the character? Their motivations? How did they change?</span>
-                          </div>
+                </CardHeader>
+                <CollapsibleContent>
+                  <CardContent className="pt-6 space-y-6">
+                    {/* Meeting Contact Context - Key Green Sheet Element */}
+                    <div className="p-4 rounded-xl border-2 border-emerald-500/20 bg-white/50">
+                      <h4 className="font-semibold text-sm mb-4 flex items-center gap-2 text-emerald-800">
+                        <UserCircle className="w-5 h-5" />
+                        Who Are You Meeting? 
+                        <span className="text-xs font-normal text-muted-foreground">(Influences your approach)</span>
+                      </h4>
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        <div className="space-y-2">
+                          <Label className="text-xs text-muted-foreground">Contact Name</Label>
+                          <Input 
+                            placeholder="e.g., Sarah Chen"
+                            value={meetingContact.name}
+                            onChange={(e) => setMeetingContact(prev => ({ ...prev, name: e.target.value }))}
+                            className="h-9"
+                            data-testid="input-contact-name"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs text-muted-foreground">Title</Label>
+                          <Input 
+                            placeholder="e.g., VP of People"
+                            value={meetingContact.title}
+                            onChange={(e) => setMeetingContact(prev => ({ ...prev, title: e.target.value }))}
+                            className="h-9"
+                            data-testid="input-contact-title"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs text-muted-foreground">Buying Role</Label>
+                          <Select 
+                            value={meetingContact.role || undefined} 
+                            onValueChange={(v) => setMeetingContact(prev => ({ ...prev, role: v as BuyingRole }))}
+                          >
+                            <SelectTrigger className="h-9" data-testid="select-buying-role">
+                              <SelectValue placeholder="Select role..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="economic_buyer" data-testid="select-item-economic-buyer">Economic Buyer (Budget)</SelectItem>
+                              <SelectItem value="user_buyer" data-testid="select-item-user-buyer">User Buyer (Day-to-day)</SelectItem>
+                              <SelectItem value="technical_buyer" data-testid="select-item-technical-buyer">Technical Buyer (Specs)</SelectItem>
+                              <SelectItem value="coach" data-testid="select-item-coach">Coach (Helps navigate)</SelectItem>
+                              <SelectItem value="champion" data-testid="select-item-champion">Champion (Advocates)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs text-muted-foreground">Influence Level</Label>
+                          <Select 
+                            value={meetingContact.influence || undefined} 
+                            onValueChange={(v) => setMeetingContact(prev => ({ ...prev, influence: v as InfluenceLevel }))}
+                          >
+                            <SelectTrigger className="h-9" data-testid="select-influence">
+                              <SelectValue placeholder="Influence..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="high" data-testid="select-item-high">High - Key Decision Maker</SelectItem>
+                              <SelectItem value="medium" data-testid="select-item-medium">Medium - Strong Influencer</SelectItem>
+                              <SelectItem value="low" data-testid="select-item-low">Low - Stakeholder</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
                       
-                      {/* DURING */}
-                      <div className="p-4 rounded-lg border bg-background">
-                        <h5 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                          <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30">2</Badge>
-                          DURING: Tell Your Story
-                        </h5>
-                        <div className="grid gap-2 md:grid-cols-2 text-sm">
-                          <div className="p-2 rounded bg-emerald-500/5 flex items-center gap-2">
-                            <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                            <span>Start fast — no preamble</span>
-                          </div>
-                          <div className="p-2 rounded bg-emerald-500/5 flex items-center gap-2">
-                            <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                            <span>Short sentences in tension</span>
-                          </div>
-                          <div className="p-2 rounded bg-emerald-500/5 flex items-center gap-2">
-                            <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                            <span>Show the turning point</span>
-                          </div>
-                          <div className="p-2 rounded bg-emerald-500/5 flex items-center gap-2">
-                            <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                            <span>Don't over-explain data</span>
-                          </div>
-                          <div className="p-2 rounded bg-emerald-500/5 flex items-center gap-2">
-                            <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                            <span>Keep it conversational</span>
-                          </div>
-                          <div className="p-2 rounded bg-emerald-500/5 flex items-center gap-2">
-                            <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                            <span>Pause strategically</span>
+                      {/* Context-aware coaching based on role */}
+                      {meetingContact.role && (
+                        <div className="mt-4 p-3 rounded-lg bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20">
+                          <div className="flex items-start gap-2">
+                            <Lightbulb className="w-4 h-4 text-emerald-700 mt-0.5 flex-shrink-0" />
+                            <div className="text-sm">
+                              <span className="font-semibold text-emerald-800">Role-Based Approach: </span>
+                              <span className="text-emerald-700">{roleCoaching[meetingContact.role]}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      )}
                       
-                      {/* AFTER */}
-                      <div className="p-4 rounded-lg border bg-background">
-                        <h5 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                          <Badge className="bg-purple-500/10 text-purple-700 border-purple-500/30">3</Badge>
-                          AFTER: Land Your Story
-                        </h5>
-                        <div className="space-y-2 text-sm">
-                          <div className="p-2 rounded bg-purple-500/5 flex items-start gap-2">
-                            <Lightbulb className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                            <span>Finish with a "moment of meaning" — crisp insight or forward-looking question</span>
-                          </div>
-                          <div className="p-2 rounded bg-purple-500/5 flex items-start gap-2">
-                            <ArrowRight className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                            <span>Make the takeaway explicit but not obvious — connect story to action</span>
-                          </div>
+                      <div className="grid gap-4 md:grid-cols-2 mt-4">
+                        <div className="space-y-2">
+                          <Label className="text-xs text-muted-foreground">Known Concerns / Priorities</Label>
+                          <Textarea 
+                            placeholder="What do you know about their current challenges, priorities, or concerns?"
+                            value={meetingContact.knownConcerns}
+                            onChange={(e) => setMeetingContact(prev => ({ ...prev, knownConcerns: e.target.value }))}
+                            className="min-h-[60px] text-sm"
+                            data-testid="input-known-concerns"
+                          />
                         </div>
-                      </div>
-                      
-                      {/* TEST */}
-                      <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
-                        <h5 className="font-semibold text-sm mb-2 text-amber-800 flex items-center gap-2">
-                          <HelpCircle className="w-4 h-4" />
-                          Test Your Story
-                        </h5>
-                        <div className="space-y-1 text-sm text-amber-900">
-                          <p>• Would a stranger care? If not, sharpen the tension.</p>
-                          <p>• Can someone retell it? Keep it simple.</p>
-                          <p>• Does it reveal leadership, judgment, or values? That's a leader's story.</p>
+                        <div className="space-y-2">
+                          <Label className="text-xs text-muted-foreground">Personal Rapport Notes</Label>
+                          <Textarea 
+                            placeholder="Any personal details, shared connections, or rapport builders?"
+                            value={meetingContact.personalRapport}
+                            onChange={(e) => setMeetingContact(prev => ({ ...prev, personalRapport: e.target.value }))}
+                            className="min-h-[60px] text-sm"
+                            data-testid="input-rapport-notes"
+                          />
                         </div>
                       </div>
                     </div>
-                  </CollapsibleContent>
-                </Collapsible>
+                    
+                    {/* Editable Call Framework */}
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-semibold flex items-center gap-1">
+                            <Target className="w-3 h-3 text-emerald-600" />
+                            Call Objective
+                          </Label>
+                          <Textarea 
+                            placeholder={callPlanner.objective}
+                            value={greenSheetEdits.objective || callPlanner.objective}
+                            onChange={(e) => setGreenSheetEdits(prev => ({ ...prev, objective: e.target.value }))}
+                            className="min-h-[80px] text-sm bg-emerald-500/5 border-emerald-500/20 focus:border-emerald-500"
+                            data-testid="input-call-objective"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-semibold flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3 text-emerald-600" />
+                            Desired Outcome / Commitment
+                          </Label>
+                          <Textarea 
+                            placeholder={callPlanner.desiredOutcome}
+                            value={greenSheetEdits.desiredOutcome || callPlanner.desiredOutcome}
+                            onChange={(e) => setGreenSheetEdits(prev => ({ ...prev, desiredOutcome: e.target.value }))}
+                            className="min-h-[80px] text-sm bg-emerald-500/5 border-emerald-500/20 focus:border-emerald-500"
+                            data-testid="input-desired-outcome"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-semibold flex items-center gap-1">
+                            <MessageCircle className="w-3 h-3 text-emerald-600" />
+                            Your Opening Statement
+                          </Label>
+                          <Textarea 
+                            placeholder={callPlanner.openingStatement}
+                            value={greenSheetEdits.openingStatement || callPlanner.openingStatement}
+                            onChange={(e) => setGreenSheetEdits(prev => ({ ...prev, openingStatement: e.target.value }))}
+                            className="min-h-[80px] text-sm bg-emerald-500/5 border-emerald-500/20 focus:border-emerald-500"
+                            data-testid="input-opening-statement"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-semibold flex items-center gap-1">
+                            <ArrowRight className="w-3 h-3 text-emerald-600" />
+                            Best Action Commitment (What you'll ask for)
+                          </Label>
+                          <Textarea 
+                            placeholder="What specific next step or commitment will you ask for at the end of this call?"
+                            value={greenSheetEdits.bestActionCommitment}
+                            onChange={(e) => setGreenSheetEdits(prev => ({ ...prev, bestActionCommitment: e.target.value }))}
+                            className="min-h-[80px] text-sm bg-emerald-500/5 border-emerald-500/20 focus:border-emerald-500"
+                            data-testid="input-best-action"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Rapport & Credibility - Compact */}
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="p-4 rounded-lg border bg-blue-500/5 border-blue-500/20">
+                        <h4 className="text-sm font-semibold mb-3 flex items-center gap-2 text-blue-700">
+                          <Heart className="w-4 h-4" />
+                          Rapport Builders
+                        </h4>
+                        <div className="space-y-2">
+                          {callPlanner.rapportBuilders.slice(0, 3).map((tip, idx) => (
+                            <div key={idx} className="flex items-start gap-2 text-xs p-2 rounded bg-white/50">
+                              <Check className="w-3 h-3 text-blue-600 mt-0.5 flex-shrink-0" />
+                              <span>{tip}</span>
+                            </div>
+                          ))}
+                          {meetingContact.personalRapport && (
+                            <div className="flex items-start gap-2 text-xs p-2 rounded bg-blue-500/10 border border-blue-500/20">
+                              <Star className="w-3 h-3 text-blue-600 mt-0.5 flex-shrink-0" />
+                              <span className="font-medium">{meetingContact.personalRapport}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="p-4 rounded-lg border bg-purple-500/5 border-purple-500/20">
+                        <h4 className="text-sm font-semibold mb-3 flex items-center gap-2 text-purple-700">
+                          <Award className="w-4 h-4" />
+                          Credibility Statements
+                        </h4>
+                        <div className="space-y-2">
+                          {callPlanner.credibilityStatements.slice(0, 3).map((statement, idx) => (
+                            <div key={idx} className="flex items-start gap-2 text-xs italic p-2 rounded bg-white/50">
+                              <Check className="w-3 h-3 text-purple-600 mt-0.5 flex-shrink-0" />
+                              <span>{statement}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </CollapsibleContent>
+              </Collapsible>
+            </Card>
 
-                {/* Success Stories List - Simplified */}
-                <div className="space-y-4">
-                  {successStories.map((story, idx) => (
-                    <div key={idx} className="p-4 rounded-xl border border-amber-500/20 bg-gradient-to-r from-amber-500/5 to-orange-500/5">
-                      <div className="flex items-start justify-between gap-3 mb-3">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-bold text-sm">{story.client}</h4>
-                            <Badge variant="outline" className="text-xs">{story.industry}</Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground">{story.challenge}</p>
-                        </div>
-                        <Link href={story.storyLink}>
-                          <Button size="sm" variant="outline" className="text-xs" data-testid={`link-story-${idx}`}>
-                            <FileText className="w-3 h-3 mr-1" />
-                            Full Story
-                          </Button>
-                        </Link>
-                      </div>
-                      
-                      {/* Why Relevant */}
-                      <div className="p-2 rounded bg-primary/5 border border-primary/20 mb-3">
-                        <p className="text-xs"><strong>For {project?.companyName}:</strong> {story.whyRelevantTo(project?.companyName || "this client")}</p>
-                      </div>
-                      
-                      {/* Metrics inline */}
-                      <div className="flex flex-wrap gap-1 mb-2">
-                        {story.metrics.map((metric, mIdx) => (
-                          <Badge key={mIdx} className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30 text-xs">
-                            {metric}
-                          </Badge>
-                        ))}
-                      </div>
-                      
-                      {/* How to tell */}
-                      <p className="text-xs italic text-amber-700">Tip: "{story.howToTell}"</p>
+            {/* Interactive Story Builder */}
+            <Card className="border-2 border-amber-500/30 bg-gradient-to-br from-amber-500/5 via-orange-500/5 to-rose-500/5">
+              <CardHeader className="bg-amber-500/10">
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+                      <Trophy className="w-6 h-6 text-white" />
                     </div>
-                  ))}
+                    <div>
+                      <CardTitle className="flex items-center gap-2 text-amber-800">
+                        Interactive Story Builder
+                        <Badge className="bg-amber-100 text-amber-700 border-amber-300 text-xs">Craft Compelling Narratives</Badge>
+                      </CardTitle>
+                      <CardDescription>Build memorable stories for {project?.companyName} using proven methodology</CardDescription>
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={() => setStoryBuilderOpen(!storyBuilderOpen)}
+                    variant={storyBuilderOpen ? "default" : "outline"}
+                    className={storyBuilderOpen ? "bg-amber-600 hover:bg-amber-700" : ""}
+                    data-testid="button-toggle-story-builder"
+                  >
+                    {storyBuilderOpen ? (
+                      <>
+                        <X className="w-4 h-4 mr-2" />
+                        Close Builder
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Open Story Builder
+                      </>
+                    )}
+                  </Button>
                 </div>
-              </CardContent>
+              </CardHeader>
+              
+              {storyBuilderOpen && (
+                <CardContent className="pt-6 space-y-6">
+                  {/* Phase Navigation */}
+                  <div className="flex items-center gap-2 p-2 rounded-xl bg-background border">
+                    {([
+                      { id: "before" as const, label: "BEFORE", sublabel: "Craft", icon: Target, color: "blue" as const },
+                      { id: "during" as const, label: "DURING", sublabel: "Tell", icon: Play, color: "emerald" as const },
+                      { id: "after" as const, label: "AFTER", sublabel: "Land", icon: Flag, color: "purple" as const }
+                    ] as const).map((phase, idx) => {
+                      const PhaseIcon = phase.icon;
+                      const isActive = activeStoryPhase === phase.id;
+                      const colorClasses: Record<"blue" | "emerald" | "purple", string> = {
+                        blue: isActive ? "bg-blue-500 text-white" : "bg-blue-500/10 text-blue-700 hover:bg-blue-500/20",
+                        emerald: isActive ? "bg-emerald-500 text-white" : "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20",
+                        purple: isActive ? "bg-purple-500 text-white" : "bg-purple-500/10 text-purple-700 hover:bg-purple-500/20"
+                      };
+                      return (
+                        <div key={phase.id} className="flex items-center flex-1">
+                          <button
+                            onClick={() => setActiveStoryPhase(phase.id)}
+                            className={`flex-1 p-3 rounded-lg transition-all ${colorClasses[phase.color]}`}
+                            data-testid={`button-story-phase-${phase.id}`}
+                          >
+                            <div className="flex items-center justify-center gap-2">
+                              <PhaseIcon className="w-4 h-4" />
+                              <div className="text-left">
+                                <div className="font-bold text-sm">{phase.label}</div>
+                                <div className={`text-xs ${isActive ? 'opacity-80' : ''}`}>{phase.sublabel}</div>
+                              </div>
+                            </div>
+                          </button>
+                          {idx < 2 && <ChevronRight className="w-5 h-5 text-muted-foreground mx-1" />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  {/* BEFORE Phase - Crafting */}
+                  {activeStoryPhase === "before" && (
+                    <div className="space-y-4">
+                      <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20">
+                        <h4 className="font-bold text-blue-800 mb-4 flex items-center gap-2">
+                          <Target className="w-5 h-5" />
+                          Craft Your Story
+                        </h4>
+                        <div className="grid gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">1</span>
+                              What's the single (provocative) message?
+                              <span className="text-xs font-normal text-muted-foreground">The one idea they MUST remember</span>
+                            </Label>
+                            <Textarea 
+                              placeholder="e.g., 'Leaders who invest in succession planning before a crisis outperform those who don't by 40%.'"
+                              value={storyDraft.singleMessage}
+                              onChange={(e) => setStoryDraft(prev => ({ ...prev, singleMessage: e.target.value }))}
+                              className="min-h-[60px] text-sm"
+                              data-testid="input-story-message"
+                            />
+                          </div>
+                          
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <div className="space-y-2">
+                              <Label className="text-sm font-semibold flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">2</span>
+                                Emotional Reaction
+                              </Label>
+                              <Select 
+                                value={storyDraft.emotionalReaction} 
+                                onValueChange={(v) => setStoryDraft(prev => ({ ...prev, emotionalReaction: v }))}
+                              >
+                                <SelectTrigger data-testid="select-emotion">
+                                  <SelectValue placeholder="What should they feel?" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="urgency">Urgency - "We need to act now"</SelectItem>
+                                  <SelectItem value="hope">Hope - "This is possible for us"</SelectItem>
+                                  <SelectItem value="resolve">Resolve - "We can overcome this"</SelectItem>
+                                  <SelectItem value="momentum">Momentum - "We're on the right track"</SelectItem>
+                                  <SelectItem value="concern">Concern - "We might be missing something"</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-sm font-semibold flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">3</span>
+                                Story Structure
+                              </Label>
+                              <Select 
+                                value={storyDraft.structure} 
+                                onValueChange={(v) => setStoryDraft(prev => ({ ...prev, structure: v }))}
+                              >
+                                <SelectTrigger data-testid="select-structure">
+                                  <SelectValue placeholder="Choose structure..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="situation-struggle-insight-outcome">Situation → Struggle → Insight → Outcome</SelectItem>
+                                  <SelectItem value="problem-agitate-solve">Problem → Agitate → Solve</SelectItem>
+                                  <SelectItem value="before-after-bridge">Before → After → Bridge</SelectItem>
+                                  <SelectItem value="hook-story-offer">Hook → Story → Offer</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">4</span>
+                              Starting Hook
+                              <span className="text-xs font-normal text-muted-foreground">High tension, provocative question, or surprising fact</span>
+                            </Label>
+                            <Textarea 
+                              placeholder="e.g., 'Picture this: It's Monday morning and your top 3 executives just resigned...'"
+                              value={storyDraft.startingHook}
+                              onChange={(e) => setStoryDraft(prev => ({ ...prev, startingHook: e.target.value }))}
+                              className="min-h-[60px] text-sm"
+                              data-testid="input-story-hook"
+                            />
+                          </div>
+                          
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <div className="space-y-2">
+                              <Label className="text-sm font-semibold flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">5</span>
+                                Who's the Hero?
+                              </Label>
+                              <Textarea 
+                                placeholder="The CHRO who championed the change... Their motivations, concerns, and transformation"
+                                value={storyDraft.heroCharacter}
+                                onChange={(e) => setStoryDraft(prev => ({ ...prev, heroCharacter: e.target.value }))}
+                                className="min-h-[60px] text-sm"
+                                data-testid="input-story-hero"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-sm font-semibold flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">6</span>
+                                Evidence to Reference
+                              </Label>
+                              <Textarea 
+                                placeholder="40% improvement in retention, 85% of high-potentials promoted within 18 months..."
+                                value={storyDraft.evidence}
+                                onChange={(e) => setStoryDraft(prev => ({ ...prev, evidence: e.target.value }))}
+                                className="min-h-[60px] text-sm"
+                                data-testid="input-story-evidence"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex justify-end">
+                        <Button onClick={() => setActiveStoryPhase("during")} data-testid="button-next-during">
+                          Continue to Telling
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* DURING Phase - Telling */}
+                  {activeStoryPhase === "during" && (
+                    <div className="space-y-4">
+                      <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
+                        <h4 className="font-bold text-emerald-800 mb-4 flex items-center gap-2">
+                          <Play className="w-5 h-5" />
+                          Tell Your Story
+                        </h4>
+                        
+                        {/* Coaching Tips */}
+                        <div className="grid gap-3 md:grid-cols-3 mb-6">
+                          {[
+                            { tip: "Start fast — no preamble", detail: "Enter at the moment of action" },
+                            { tip: "Pace like a movie", detail: "Short sentences in tension, longer in reflection" },
+                            { tip: "Keep it conversational", detail: "Speak like a human, not a script" }
+                          ].map((item, idx) => (
+                            <div key={idx} className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                              <div className="flex items-center gap-2 text-sm font-semibold text-emerald-800">
+                                <CheckCircle className="w-4 h-4" />
+                                {item.tip}
+                              </div>
+                              <p className="text-xs text-emerald-700 mt-1">{item.detail}</p>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        <div className="grid gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold flex items-center gap-2">
+                              <Zap className="w-4 h-4 text-emerald-600" />
+                              Your Opening Line
+                              <span className="text-xs font-normal text-muted-foreground">Enter at the moment of action</span>
+                            </Label>
+                            <Textarea 
+                              placeholder={storyDraft.startingHook || "Start with your hook from the previous step..."}
+                              value={storyDraft.openingLine}
+                              onChange={(e) => setStoryDraft(prev => ({ ...prev, openingLine: e.target.value }))}
+                              className="min-h-[60px] text-sm"
+                              data-testid="input-story-opening"
+                            />
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold flex items-center gap-2">
+                              <ArrowUpRight className="w-4 h-4 text-emerald-600" />
+                              The Turning Point
+                              <span className="text-xs font-normal text-muted-foreground">What realization changed the course?</span>
+                            </Label>
+                            <Textarea 
+                              placeholder="The moment when the CEO realized that their succession crisis was actually an opportunity to accelerate their entire leadership pipeline..."
+                              value={storyDraft.turningPoint}
+                              onChange={(e) => setStoryDraft(prev => ({ ...prev, turningPoint: e.target.value }))}
+                              className="min-h-[80px] text-sm"
+                              data-testid="input-story-turning"
+                            />
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold flex items-center gap-2">
+                              <BarChart3 className="w-4 h-4 text-emerald-600" />
+                              Key Data Point
+                              <span className="text-xs font-normal text-muted-foreground">Use data as evidence, not the story itself</span>
+                            </Label>
+                            <Input 
+                              placeholder={storyDraft.evidence || "e.g., 40% improvement in 12 months"}
+                              value={storyDraft.keyDataPoint}
+                              onChange={(e) => setStoryDraft(prev => ({ ...prev, keyDataPoint: e.target.value }))}
+                              className="text-sm"
+                              data-testid="input-story-data"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex justify-between">
+                        <Button variant="outline" onClick={() => setActiveStoryPhase("before")} data-testid="button-back-before">
+                          <ArrowLeft className="w-4 h-4 mr-2" />
+                          Back to Crafting
+                        </Button>
+                        <Button onClick={() => setActiveStoryPhase("after")} data-testid="button-next-after">
+                          Continue to Landing
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* AFTER Phase - Landing */}
+                  {activeStoryPhase === "after" && (
+                    <div className="space-y-4">
+                      <div className="p-4 rounded-xl bg-purple-500/5 border border-purple-500/20">
+                        <h4 className="font-bold text-purple-800 mb-4 flex items-center gap-2">
+                          <Flag className="w-5 h-5" />
+                          Land Your Story
+                        </h4>
+                        
+                        <div className="grid gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold flex items-center gap-2">
+                              <Lightbulb className="w-4 h-4 text-purple-600" />
+                              Moment of Meaning
+                              <span className="text-xs font-normal text-muted-foreground">Crisp insight or forward-looking question</span>
+                            </Label>
+                            <Textarea 
+                              placeholder="The CHRO later told me: 'That crisis became the best thing that happened to our leadership culture.'"
+                              value={storyDraft.meaningMoment}
+                              onChange={(e) => setStoryDraft(prev => ({ ...prev, meaningMoment: e.target.value }))}
+                              className="min-h-[60px] text-sm"
+                              data-testid="input-story-meaning"
+                            />
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold flex items-center gap-2">
+                              <Target className="w-4 h-4 text-purple-600" />
+                              Explicit Takeaway
+                              <span className="text-xs font-normal text-muted-foreground">Connect story to action for your listener</span>
+                            </Label>
+                            <Textarea 
+                              placeholder="Organizations that invest in leadership pipelines before a crisis have 40% better outcomes than those who react..."
+                              value={storyDraft.takeaway}
+                              onChange={(e) => setStoryDraft(prev => ({ ...prev, takeaway: e.target.value }))}
+                              className="min-h-[60px] text-sm"
+                              data-testid="input-story-takeaway"
+                            />
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold flex items-center gap-2">
+                              <ArrowRight className="w-4 h-4 text-purple-600" />
+                              Call to Action
+                              <span className="text-xs font-normal text-muted-foreground">What do you want them to do next?</span>
+                            </Label>
+                            <Input 
+                              placeholder="I'd love to explore what a proactive approach could look like for your organization..."
+                              value={storyDraft.callToAction}
+                              onChange={(e) => setStoryDraft(prev => ({ ...prev, callToAction: e.target.value }))}
+                              className="text-sm"
+                              data-testid="input-story-cta"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Story Test */}
+                      <div className="p-4 rounded-xl bg-amber-500/10 border-2 border-amber-500/30">
+                        <h4 className="font-bold text-amber-800 mb-4 flex items-center gap-2">
+                          <HelpCircle className="w-5 h-5" />
+                          Test Your Story
+                        </h4>
+                        <div className="grid gap-3 md:grid-cols-3">
+                          <div className="p-3 rounded-lg bg-white/50 border">
+                            <p className="text-sm font-medium mb-2">Would a stranger care?</p>
+                            <p className="text-xs text-muted-foreground mb-3">If not, sharpen the tension or emotional core.</p>
+                            <div className="flex gap-2">
+                              <Button 
+                                size="sm" 
+                                variant={storyTestResults.strangerCare === true ? "default" : "outline"}
+                                onClick={() => setStoryTestResults(prev => ({ ...prev, strangerCare: true }))}
+                                className={storyTestResults.strangerCare === true ? "bg-emerald-500" : ""}
+                                data-testid="button-test-stranger-yes"
+                              >
+                                <Check className="w-3 h-3 mr-1" />
+                                Yes
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant={storyTestResults.strangerCare === false ? "default" : "outline"}
+                                onClick={() => setStoryTestResults(prev => ({ ...prev, strangerCare: false }))}
+                                className={storyTestResults.strangerCare === false ? "bg-red-500" : ""}
+                                data-testid="button-test-stranger-no"
+                              >
+                                <X className="w-3 h-3 mr-1" />
+                                No
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="p-3 rounded-lg bg-white/50 border">
+                            <p className="text-sm font-medium mb-2">Simple enough to repeat?</p>
+                            <p className="text-xs text-muted-foreground mb-3">Others should retell it without losing impact.</p>
+                            <div className="flex gap-2">
+                              <Button 
+                                size="sm" 
+                                variant={storyTestResults.simpleEnough === true ? "default" : "outline"}
+                                onClick={() => setStoryTestResults(prev => ({ ...prev, simpleEnough: true }))}
+                                className={storyTestResults.simpleEnough === true ? "bg-emerald-500" : ""}
+                                data-testid="button-test-simple-yes"
+                              >
+                                <Check className="w-3 h-3 mr-1" />
+                                Yes
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant={storyTestResults.simpleEnough === false ? "default" : "outline"}
+                                onClick={() => setStoryTestResults(prev => ({ ...prev, simpleEnough: false }))}
+                                className={storyTestResults.simpleEnough === false ? "bg-red-500" : ""}
+                                data-testid="button-test-simple-no"
+                              >
+                                <X className="w-3 h-3 mr-1" />
+                                No
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="p-3 rounded-lg bg-white/50 border">
+                            <p className="text-sm font-medium mb-2">Reveals leadership/values?</p>
+                            <p className="text-xs text-muted-foreground mb-3">If yes — it's a leader's story.</p>
+                            <div className="flex gap-2">
+                              <Button 
+                                size="sm" 
+                                variant={storyTestResults.revealsMeaning === true ? "default" : "outline"}
+                                onClick={() => setStoryTestResults(prev => ({ ...prev, revealsMeaning: true }))}
+                                className={storyTestResults.revealsMeaning === true ? "bg-emerald-500" : ""}
+                                data-testid="button-test-meaning-yes"
+                              >
+                                <Check className="w-3 h-3 mr-1" />
+                                Yes
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant={storyTestResults.revealsMeaning === false ? "default" : "outline"}
+                                onClick={() => setStoryTestResults(prev => ({ ...prev, revealsMeaning: false }))}
+                                className={storyTestResults.revealsMeaning === false ? "bg-red-500" : ""}
+                                data-testid="button-test-meaning-no"
+                              >
+                                <X className="w-3 h-3 mr-1" />
+                                No
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Story Score */}
+                        {(storyTestResults.strangerCare !== null || storyTestResults.simpleEnough !== null || storyTestResults.revealsMeaning !== null) && (
+                          <div className="mt-4 p-3 rounded-lg bg-gradient-to-r from-amber-500/20 to-orange-500/20">
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-amber-800">Story Readiness:</span>
+                              <div className="flex items-center gap-2">
+                                {[storyTestResults.strangerCare, storyTestResults.simpleEnough, storyTestResults.revealsMeaning].filter(r => r === true).length === 3 ? (
+                                  <Badge className="bg-emerald-500 text-white">Ready to Tell!</Badge>
+                                ) : [storyTestResults.strangerCare, storyTestResults.simpleEnough, storyTestResults.revealsMeaning].filter(r => r === true).length >= 2 ? (
+                                  <Badge className="bg-amber-500 text-white">Almost There</Badge>
+                                ) : (
+                                  <Badge className="bg-red-500 text-white">Needs Work</Badge>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex justify-between">
+                        <Button variant="outline" onClick={() => setActiveStoryPhase("during")} data-testid="button-back-during">
+                          <ArrowLeft className="w-4 h-4 mr-2" />
+                          Back to Telling
+                        </Button>
+                        <Button 
+                          onClick={() => {
+                            toast({ 
+                              title: "Story Saved!", 
+                              description: "Your story has been added to your call preparation." 
+                            });
+                            setStoryBuilderOpen(false);
+                          }}
+                          className="bg-amber-600 hover:bg-amber-700"
+                          data-testid="button-save-story"
+                        >
+                          <Check className="w-4 h-4 mr-2" />
+                          Save Story to Prep
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  {/* Success Stories Section - Inside the same CardContent when builder is open */}
+                  <div className="border-t border-amber-500/20 pt-6 mt-6">
+                    <h4 className="font-semibold text-sm text-amber-800 flex items-center gap-2 mb-4">
+                      <Star className="w-4 h-4" />
+                      Reference Stories for {project?.companyName}
+                    </h4>
+                    
+                    {/* Success Stories List */}
+                    {successStories.map((story, idx) => (
+                      <div key={idx} className="p-4 rounded-xl border border-amber-500/20 bg-gradient-to-r from-amber-500/5 to-orange-500/5 mb-4">
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-bold text-sm">{story.client}</h4>
+                              <Badge variant="outline" className="text-xs">{story.industry}</Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground">{story.challenge}</p>
+                          </div>
+                          <Link href={story.storyLink}>
+                            <Button size="sm" variant="outline" className="text-xs" data-testid={`link-story-${idx}`}>
+                              <FileText className="w-3 h-3 mr-1" />
+                              Full Story
+                            </Button>
+                          </Link>
+                        </div>
+                        
+                        {/* Why Relevant */}
+                        <div className="p-2 rounded bg-primary/5 border border-primary/20 mb-3">
+                          <p className="text-xs"><strong>For {project?.companyName}:</strong> {story.whyRelevantTo(project?.companyName || "this client")}</p>
+                        </div>
+                        
+                        {/* Metrics inline */}
+                        <div className="flex flex-wrap gap-1 mb-2">
+                          {story.metrics.map((metric, mIdx) => (
+                            <Badge key={mIdx} className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30 text-xs">
+                              {metric}
+                            </Badge>
+                          ))}
+                        </div>
+                        
+                        {/* How to tell */}
+                        <p className="text-xs italic text-amber-700">Tip: "{story.howToTell}"</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              )}
+              
+              {/* Success Stories - When builder is closed */}
+              {!storyBuilderOpen && (
+                <CardContent className="pt-4">
+                  <div className="space-y-4">
+                    <h4 className="font-semibold text-sm text-amber-800 flex items-center gap-2">
+                      <Star className="w-4 h-4" />
+                      Reference Stories for {project?.companyName}
+                    </h4>
+
+                    {/* Success Stories List */}
+                    {successStories.map((story, idx) => (
+                      <div key={idx} className="p-4 rounded-xl border border-amber-500/20 bg-gradient-to-r from-amber-500/5 to-orange-500/5">
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-bold text-sm">{story.client}</h4>
+                              <Badge variant="outline" className="text-xs">{story.industry}</Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground">{story.challenge}</p>
+                          </div>
+                          <Link href={story.storyLink}>
+                            <Button size="sm" variant="outline" className="text-xs" data-testid={`link-story-closed-${idx}`}>
+                              <FileText className="w-3 h-3 mr-1" />
+                              Full Story
+                            </Button>
+                          </Link>
+                        </div>
+                        
+                        {/* Why Relevant */}
+                        <div className="p-2 rounded bg-primary/5 border border-primary/20 mb-3">
+                          <p className="text-xs"><strong>For {project?.companyName}:</strong> {story.whyRelevantTo(project?.companyName || "this client")}</p>
+                        </div>
+                        
+                        {/* Metrics inline */}
+                        <div className="flex flex-wrap gap-1 mb-2">
+                          {story.metrics.map((metric, mIdx) => (
+                            <Badge key={mIdx} className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30 text-xs">
+                              {metric}
+                            </Badge>
+                          ))}
+                        </div>
+                        
+                        {/* How to tell */}
+                        <p className="text-xs italic text-amber-700">Tip: "{story.howToTell}"</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              )}
             </Card>
 
             {/* Strategic Questions - Simplified Single Card */}
