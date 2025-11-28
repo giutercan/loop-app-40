@@ -261,6 +261,128 @@ function generateSimulatedSalesforceData(companyName: string): { opportunities: 
   return { opportunities, contacts };
 }
 
+interface MarketIntelligence {
+  recentNews: {
+    date: string;
+    headline: string;
+    source: string;
+    summary: string;
+    relevance: "high" | "medium" | "low";
+  }[];
+  annualReportHighlights: {
+    fiscalYear: string;
+    revenue: string;
+    headcount: string;
+    strategicPriorities: string[];
+    hrInitiatives: string[];
+  };
+  earningsCallInsights: {
+    quarter: string;
+    ceoQuotes: string[];
+    talentMentions: string[];
+    challengesDiscussed: string[];
+  };
+  industryTrends: {
+    trend: string;
+    impact: string;
+    opportunity: string;
+  }[];
+}
+
+function generateMarketIntelligence(companyName: string): MarketIntelligence {
+  return {
+    recentNews: [
+      {
+        date: "Nov 15, 2024",
+        headline: `${companyName} Announces Major Digital Transformation Initiative`,
+        source: "Business Wire",
+        summary: "Company commits $500M to modernize operations and upskill workforce over next 3 years. CHRO Jennifer Williams quoted on 'people-first approach to transformation.'",
+        relevance: "high"
+      },
+      {
+        date: "Nov 8, 2024",
+        headline: `${companyName} Reports Q3 Results, Beats Expectations Despite Headwinds`,
+        source: "Reuters",
+        summary: "Revenue up 8% YoY. CEO emphasized need for 'talent agility' to navigate market uncertainty. Plans to invest in leadership development.",
+        relevance: "high"
+      },
+      {
+        date: "Oct 28, 2024",
+        headline: `${companyName} Named to Fortune 100 Best Companies to Work For`,
+        source: "Fortune",
+        summary: "Recognized for learning & development programs and inclusive culture. Employee engagement scores up 12 points from prior year.",
+        relevance: "medium"
+      },
+      {
+        date: "Oct 15, 2024",
+        headline: `Industry Report: Skills Gap Threatens Growth for Companies Like ${companyName}`,
+        source: "McKinsey Quarterly",
+        summary: "Study finds 67% of companies in this sector face critical leadership pipeline gaps. ${companyName} specifically mentioned as seeking external solutions.",
+        relevance: "high"
+      }
+    ],
+    annualReportHighlights: {
+      fiscalYear: "FY2024",
+      revenue: "$12.4B (up 11% YoY)",
+      headcount: "45,000 employees globally",
+      strategicPriorities: [
+        "Accelerate digital transformation across all business units",
+        "Build next-generation leadership bench",
+        "Drive operational excellence through talent optimization",
+        "Expand into emerging markets with local leadership"
+      ],
+      hrInitiatives: [
+        "Launch enterprise-wide leadership competency framework",
+        "Implement AI-powered talent marketplace",
+        "Reduce voluntary turnover by 15% in critical roles",
+        "Increase internal mobility to 40% of open roles"
+      ]
+    },
+    earningsCallInsights: {
+      quarter: "Q3 FY2024",
+      ceoQuotes: [
+        "Our people are our greatest competitive advantage. We're doubling down on leadership development.",
+        "The board has approved significant investment in our talent infrastructure for 2025.",
+        "We're looking for strategic partners who understand enterprise transformation."
+      ],
+      talentMentions: [
+        "Succession planning for 120 senior roles over next 18 months",
+        "Hiring 2,000 new roles in technology and analytics",
+        "Launching executive assessment program in Q1 2025",
+        "CHRO leading new 'Future of Work' task force"
+      ],
+      challengesDiscussed: [
+        "Competition for AI/ML talent intensifying",
+        "Mid-level manager capability gaps affecting execution",
+        "Need to accelerate time-to-productivity for new hires",
+        "Succession risk in several critical business units"
+      ]
+    },
+    industryTrends: [
+      {
+        trend: "Skills-based hiring gaining momentum",
+        impact: "Traditional job architectures becoming obsolete",
+        opportunity: "Position Korn Ferry's skills taxonomy and assessment capabilities"
+      },
+      {
+        trend: "AI disruption creating leadership uncertainty",
+        impact: "Executives unsure how to lead through transformation",
+        opportunity: "Leverage Korn Ferry's AI leadership research and development programs"
+      },
+      {
+        trend: "Pay transparency regulations expanding",
+        impact: "Companies scrambling to address equity and competitiveness",
+        opportunity: "Highlight Korn Ferry's compensation benchmarking and pay equity solutions"
+      },
+      {
+        trend: "Hybrid work models becoming permanent",
+        impact: "Manager effectiveness declining in distributed teams",
+        opportunity: "Propose leadership development focused on virtual team effectiveness"
+      }
+    ]
+  };
+}
+
 function generateBlueSheetData(companyName: string): BlueSheetData {
   return {
     singleSalesObjective: `Secure a $1.2M multi-year engagement with ${companyName} for comprehensive leadership development and talent assessment programs, with initial implementation in Q2.`,
@@ -1009,14 +1131,185 @@ export default function ProjectRoleView() {
           </CardHeader>
         </Card>
 
-        {/* CRM Data from Salesforce (Simulated) */}
+        {/* Market Intelligence & CRM Data */}
         {project && (() => {
           const sfData = generateSimulatedSalesforceData(project.companyName);
           const blueSheet = generateBlueSheetData(project.companyName);
+          const marketIntel = generateMarketIntelligence(project.companyName);
           
           return (
             <>
-              {/* Pipeline & Opportunities */}
+              {/* Recent News & Press */}
+              <Card className="border-amber-500/20">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <Newspaper className="w-5 h-5 text-amber-600" />
+                      Recent News & Press
+                    </CardTitle>
+                    <Badge variant="outline" className="text-amber-600 border-amber-500/30 bg-amber-500/5">
+                      AI Monitored
+                    </Badge>
+                  </div>
+                  <CardDescription>Latest company news and industry coverage</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {marketIntel.recentNews.map((news, idx) => (
+                      <div key={idx} className={`p-3 rounded-lg border hover-elevate ${news.relevance === "high" ? "border-amber-500/30 bg-amber-500/5" : ""}`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs text-muted-foreground">{news.date}</span>
+                              <span className="text-xs text-muted-foreground">•</span>
+                              <span className="text-xs font-medium">{news.source}</span>
+                              {news.relevance === "high" && (
+                                <Badge className="text-xs bg-amber-500/10 text-amber-700 border-amber-500/20">
+                                  High Relevance
+                                </Badge>
+                              )}
+                            </div>
+                            <h4 className="font-semibold text-sm mb-1">{news.headline}</h4>
+                            <p className="text-xs text-muted-foreground">{news.summary}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Annual Report & Earnings Insights */}
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* Annual Report Highlights */}
+                <Card className="border-blue-500/20">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <FileText className="w-5 h-5 text-blue-600" />
+                        Annual Report
+                      </CardTitle>
+                      <Badge variant="outline" className="text-xs">{marketIntel.annualReportHighlights.fiscalYear}</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/20">
+                        <p className="text-xs text-muted-foreground">Revenue</p>
+                        <p className="font-bold">{marketIntel.annualReportHighlights.revenue}</p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/20">
+                        <p className="text-xs text-muted-foreground">Headcount</p>
+                        <p className="font-bold">{marketIntel.annualReportHighlights.headcount}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <h5 className="text-xs font-semibold text-muted-foreground mb-2">STRATEGIC PRIORITIES</h5>
+                      <ul className="space-y-1">
+                        {marketIntel.annualReportHighlights.strategicPriorities.map((priority, idx) => (
+                          <li key={idx} className="text-sm flex items-start gap-2">
+                            <Target className="w-3 h-3 text-blue-600 mt-1 flex-shrink-0" />
+                            {priority}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <h5 className="text-xs font-semibold text-muted-foreground mb-2">HR INITIATIVES</h5>
+                      <ul className="space-y-1">
+                        {marketIntel.annualReportHighlights.hrInitiatives.map((initiative, idx) => (
+                          <li key={idx} className="text-sm flex items-start gap-2">
+                            <Users className="w-3 h-3 text-purple-600 mt-1 flex-shrink-0" />
+                            {initiative}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Earnings Call Insights */}
+                <Card className="border-emerald-500/20">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <BarChart3 className="w-5 h-5 text-emerald-600" />
+                        Earnings Call
+                      </CardTitle>
+                      <Badge variant="outline" className="text-xs">{marketIntel.earningsCallInsights.quarter}</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <h5 className="text-xs font-semibold text-muted-foreground mb-2">CEO QUOTES</h5>
+                      <div className="space-y-2">
+                        {marketIntel.earningsCallInsights.ceoQuotes.map((quote, idx) => (
+                          <div key={idx} className="p-2 rounded bg-emerald-500/5 border-l-2 border-emerald-500 text-sm italic">
+                            "{quote}"
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <h5 className="text-xs font-semibold text-muted-foreground mb-2">TALENT MENTIONS</h5>
+                      <ul className="space-y-1">
+                        {marketIntel.earningsCallInsights.talentMentions.map((mention, idx) => (
+                          <li key={idx} className="text-sm flex items-start gap-2">
+                            <CheckCircle className="w-3 h-3 text-emerald-600 mt-1 flex-shrink-0" />
+                            {mention}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <h5 className="text-xs font-semibold text-muted-foreground mb-2">CHALLENGES DISCUSSED</h5>
+                      <ul className="space-y-1">
+                        {marketIntel.earningsCallInsights.challengesDiscussed.map((challenge, idx) => (
+                          <li key={idx} className="text-sm flex items-start gap-2">
+                            <AlertTriangle className="w-3 h-3 text-amber-600 mt-1 flex-shrink-0" />
+                            {challenge}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Industry Trends & Opportunities */}
+              <Card className="border-purple-500/20">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-purple-600" />
+                    Industry Trends & Korn Ferry Opportunities
+                  </CardTitle>
+                  <CardDescription>Market dynamics and how to position our solutions</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {marketIntel.industryTrends.map((trend, idx) => (
+                      <div key={idx} className="p-4 rounded-lg border hover-elevate">
+                        <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                          <Lightbulb className="w-4 h-4 text-purple-600" />
+                          {trend.trend}
+                        </h4>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex items-start gap-2">
+                            <span className="text-xs font-medium text-muted-foreground w-16">Impact:</span>
+                            <span className="flex-1">{trend.impact}</span>
+                          </div>
+                          <div className="flex items-start gap-2 p-2 rounded bg-purple-500/5 border border-purple-500/20">
+                            <Sparkles className="w-3 h-3 text-purple-600 mt-1" />
+                            <span className="flex-1 text-purple-700 font-medium">{trend.opportunity}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* CRM Pipeline & Opportunities */}
               <Card>
                 <CardHeader>
                   <div className="flex items-center justify-between">
