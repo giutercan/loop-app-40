@@ -1427,30 +1427,45 @@ export default function ProjectRoleView() {
                 </Badge>
               </div>
             </div>
-            {/* Progress Steps */}
+            {/* Progress Steps - Clickable Navigation */}
             <div className="flex items-center gap-2 mt-4">
               {[
-                { step: "theme-select", label: "Theme", num: 1 },
-                { step: "intelligence", label: "Intelligence", num: 2 },
-                { step: "questions", label: "Questions", num: 3 },
-                { step: "review", label: "Review", num: 4 },
-                { step: "insights", label: "Insights", num: 5 }
+                { step: "theme-select" as const, label: "Theme", num: 1 },
+                { step: "intelligence" as const, label: "Intelligence", num: 2 },
+                { step: "questions" as const, label: "Questions", num: 3 },
+                { step: "review" as const, label: "Review", num: 4 },
+                { step: "insights" as const, label: "Insights", num: 5 }
               ].map((s, idx) => {
                 const stepOrder = ["theme-select", "intelligence", "questions", "review", "insights"];
                 const currentIdx = stepOrder.indexOf(discoveryStep);
                 const thisIdx = stepOrder.indexOf(s.step);
                 const isComplete = thisIdx < currentIdx;
                 const isCurrent = s.step === discoveryStep;
+                const canNavigate = isComplete || isCurrent || (thisIdx === currentIdx + 1 && selectedDiscoveryTheme);
+                
                 return (
                   <div key={s.step} className="flex items-center gap-2">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                      isComplete ? "bg-emerald-500 text-white" : 
-                      isCurrent ? "bg-primary text-primary-foreground" : 
-                      "bg-muted text-muted-foreground"
-                    }`}>
-                      {isComplete ? <Check className="w-4 h-4" /> : s.num}
-                    </div>
-                    <span className={`text-sm ${isCurrent ? "font-medium" : "text-muted-foreground"}`}>{s.label}</span>
+                    <button
+                      onClick={() => {
+                        if (canNavigate || isComplete) {
+                          setDiscoveryStep(s.step);
+                        }
+                      }}
+                      disabled={!canNavigate && !isComplete}
+                      className={`flex items-center gap-2 transition-all ${
+                        canNavigate || isComplete ? "cursor-pointer hover:opacity-80" : "cursor-not-allowed opacity-60"
+                      }`}
+                      data-testid={`button-step-${s.step}`}
+                    >
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
+                        isComplete ? "bg-emerald-500 text-white" : 
+                        isCurrent ? "bg-primary text-primary-foreground" : 
+                        "bg-muted text-muted-foreground"
+                      } ${canNavigate && !isCurrent ? "hover:ring-2 hover:ring-primary/50" : ""}`}>
+                        {isComplete ? <Check className="w-4 h-4" /> : s.num}
+                      </div>
+                      <span className={`text-sm ${isCurrent ? "font-medium" : "text-muted-foreground"} ${canNavigate && !isCurrent ? "hover:text-foreground" : ""}`}>{s.label}</span>
+                    </button>
                     {idx < 4 && <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                   </div>
                 );
