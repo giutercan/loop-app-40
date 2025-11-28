@@ -289,38 +289,96 @@ interface MarketIntelligence {
   }[];
 }
 
-function generateMarketIntelligence(companyName: string): MarketIntelligence {
+function generateMarketIntelligence(companyName: string, themeId?: string): MarketIntelligence {
+  const allNews = [
+    {
+      date: "Nov 15, 2024",
+      headline: `${companyName} Announces Major Digital Transformation Initiative`,
+      source: "Business Wire",
+      summary: "Company commits $500M to modernize operations and upskill workforce over next 3 years. CHRO Jennifer Williams quoted on 'people-first approach to transformation.'",
+      relevance: "high" as const,
+      themes: ["transformation", "leadership"]
+    },
+    {
+      date: "Nov 8, 2024",
+      headline: `${companyName} Reports Q3 Results, Beats Expectations Despite Headwinds`,
+      source: "Reuters",
+      summary: "Revenue up 8% YoY. CEO emphasized need for 'talent agility' to navigate market uncertainty. Plans to invest in leadership development.",
+      relevance: "high" as const,
+      themes: ["leadership", "sales-effectiveness"]
+    },
+    {
+      date: "Oct 28, 2024",
+      headline: `${companyName} Named to Fortune 100 Best Companies to Work For`,
+      source: "Fortune",
+      summary: "Recognized for learning & development programs and inclusive culture. Employee engagement scores up 12 points from prior year.",
+      relevance: "medium" as const,
+      themes: ["leadership", "talent-acquisition"]
+    },
+    {
+      date: "Oct 15, 2024",
+      headline: `Industry Report: Skills Gap Threatens Growth for Companies Like ${companyName}`,
+      source: "McKinsey Quarterly",
+      summary: `Study finds 67% of companies in this sector face critical leadership pipeline gaps. ${companyName} specifically mentioned as seeking external solutions.`,
+      relevance: "high" as const,
+      themes: ["leadership", "talent-acquisition"]
+    },
+    {
+      date: "Nov 12, 2024",
+      headline: `${companyName} CHRO Discusses Succession Planning at Industry Conference`,
+      source: "HR Executive",
+      summary: "Jennifer Williams outlined 3-year plan to develop 120 senior leaders internally. 'We need to build our bench strength for the next decade of growth.'",
+      relevance: "high" as const,
+      themes: ["leadership"]
+    },
+    {
+      date: "Nov 5, 2024",
+      headline: `${companyName} Launches AI-Powered Hiring Platform`,
+      source: "TechCrunch",
+      summary: "New platform aims to reduce time-to-hire by 40% and improve quality of hire metrics. Piloting in technology and sales divisions first.",
+      relevance: "high" as const,
+      themes: ["talent-acquisition"]
+    },
+    {
+      date: "Oct 20, 2024",
+      headline: `${companyName} Restructures Commercial Operations for Growth`,
+      source: "Wall Street Journal",
+      summary: "Major reorganization of sales and go-to-market teams. CEO: 'We're building a commercial engine that can scale globally.'",
+      relevance: "high" as const,
+      themes: ["transformation", "sales-effectiveness"]
+    },
+    {
+      date: "Nov 1, 2024",
+      headline: `${companyName} Faces Pay Equity Lawsuit, Pledges Compensation Review`,
+      source: "Bloomberg",
+      summary: "Company commits to third-party compensation audit following class action. CHRO states commitment to 'fair and competitive pay for all employees.'",
+      relevance: "high" as const,
+      themes: ["rewards"]
+    },
+    {
+      date: "Oct 25, 2024",
+      headline: `${companyName} Announces New Benefits Package, Stock Options for All`,
+      source: "CNBC",
+      summary: "Expanded equity participation and mental health benefits aim to improve retention. CFO notes 'investment in our people pays dividends.'",
+      relevance: "high" as const,
+      themes: ["rewards"]
+    },
+    {
+      date: "Nov 10, 2024",
+      headline: `${companyName} Sales Force Expansion: 500 New Hires Planned`,
+      source: "Sales Force Magazine",
+      summary: "Aggressive hiring in enterprise sales as company targets 30% revenue growth. VP Sales: 'We need elite talent to capture market opportunity.'",
+      relevance: "high" as const,
+      themes: ["sales-effectiveness", "talent-acquisition"]
+    }
+  ];
+
+  const filteredNews = themeId 
+    ? allNews.filter(n => n.themes.includes(themeId)).slice(0, 5)
+    : allNews.slice(0, 4);
+
   return {
-    recentNews: [
-      {
-        date: "Nov 15, 2024",
-        headline: `${companyName} Announces Major Digital Transformation Initiative`,
-        source: "Business Wire",
-        summary: "Company commits $500M to modernize operations and upskill workforce over next 3 years. CHRO Jennifer Williams quoted on 'people-first approach to transformation.'",
-        relevance: "high"
-      },
-      {
-        date: "Nov 8, 2024",
-        headline: `${companyName} Reports Q3 Results, Beats Expectations Despite Headwinds`,
-        source: "Reuters",
-        summary: "Revenue up 8% YoY. CEO emphasized need for 'talent agility' to navigate market uncertainty. Plans to invest in leadership development.",
-        relevance: "high"
-      },
-      {
-        date: "Oct 28, 2024",
-        headline: `${companyName} Named to Fortune 100 Best Companies to Work For`,
-        source: "Fortune",
-        summary: "Recognized for learning & development programs and inclusive culture. Employee engagement scores up 12 points from prior year.",
-        relevance: "medium"
-      },
-      {
-        date: "Oct 15, 2024",
-        headline: `Industry Report: Skills Gap Threatens Growth for Companies Like ${companyName}`,
-        source: "McKinsey Quarterly",
-        summary: "Study finds 67% of companies in this sector face critical leadership pipeline gaps. ${companyName} specifically mentioned as seeking external solutions.",
-        relevance: "high"
-      }
-    ],
+    recentNews: filteredNews.map(({ themes, ...rest }) => rest),
     annualReportHighlights: {
       fiscalYear: "FY2024",
       revenue: "$12.4B (up 11% YoY)",
@@ -518,18 +576,74 @@ export default function ProjectRoleView() {
   const [newNoteContent, setNewNoteContent] = useState("");
   const [newNoteCategory, setNewNoteCategory] = useState("general");
   
-  // Discovery mode selection
+  // Discovery workflow state
+  const [discoveryStep, setDiscoveryStep] = useState<"theme-select" | "intelligence" | "questions" | "review" | "insights">("theme-select");
+  const [selectedDiscoveryTheme, setSelectedDiscoveryTheme] = useState<string | null>(null);
+  const [selectedQuestions, setSelectedQuestions] = useState<Set<number>>(new Set());
+  const [questionAnswers, setQuestionAnswers] = useState<Record<number, string>>({});
+  const [discoveryCompleted, setDiscoveryCompleted] = useState(false);
+  
+  // Legacy discovery mode (for backward compatibility)
   const [isDiscoveryModeDialogOpen, setIsDiscoveryModeDialogOpen] = useState(false);
   const [discoveryMode, setDiscoveryMode] = useState<"focused" | "full">("full");
   const [selectedSolutionArea, setSelectedSolutionArea] = useState<string>("");
   
   // Korn Ferry Solution Areas
   const solutionAreas = [
-    { id: "ASSESS", name: "Assess", description: "Success Profiles & Assessments - hiring, promotion, development data" },
-    { id: "DEVELOP", name: "Develop", description: "Leadership & Development - build leaders, AI-ready leadership" },
-    { id: "TRANSFORM", name: "Transform", description: "Organisation Strategy - operating models, structural savings" },
-    { id: "REWARD", name: "Reward", description: "Total Rewards - optimize reward mix, retention, pay equity" },
-    { id: "COMMERCIAL", name: "Commercial", description: "Sales Effectiveness - go-to-market, sales enablement" }
+    { id: "ASSESS", name: "Assess", description: "Success Profiles & Assessments" },
+    { id: "DEVELOP", name: "Develop", description: "Leadership & Development" },
+    { id: "TRANSFORM", name: "Transform", description: "Organisation Strategy" },
+    { id: "REWARD", name: "Reward", description: "Total Rewards" },
+    { id: "COMMERCIAL", name: "Commercial", description: "Sales Effectiveness" }
+  ];
+  
+  // Discovery Themes aligned with Korn Ferry offerings
+  const discoveryThemes = [
+    { 
+      id: "leadership", 
+      name: "Leadership Development", 
+      icon: Users,
+      color: "blue",
+      description: "Build next-generation leaders and executive bench strength",
+      kornferryOffering: "Korn Ferry Leadership & Development",
+      newsKeywords: ["leadership", "executive", "CEO", "development", "succession"]
+    },
+    { 
+      id: "talent-acquisition", 
+      name: "Talent Acquisition & Assessment", 
+      icon: UserCheck,
+      color: "purple",
+      description: "Improve hiring quality and reduce mis-hires",
+      kornferryOffering: "Korn Ferry Assess",
+      newsKeywords: ["hiring", "recruitment", "talent", "assessment", "skills"]
+    },
+    { 
+      id: "transformation", 
+      name: "Organizational Transformation", 
+      icon: RefreshCcw,
+      color: "emerald",
+      description: "Restructure for agility, efficiency, and growth",
+      kornferryOffering: "Korn Ferry Transform",
+      newsKeywords: ["transformation", "restructuring", "operating model", "efficiency", "digital"]
+    },
+    { 
+      id: "rewards", 
+      name: "Total Rewards & Compensation", 
+      icon: DollarSign,
+      color: "amber",
+      description: "Optimize pay, benefits, and retention strategies",
+      kornferryOffering: "Korn Ferry Reward",
+      newsKeywords: ["compensation", "pay", "benefits", "retention", "equity"]
+    },
+    { 
+      id: "sales-effectiveness", 
+      name: "Sales Effectiveness", 
+      icon: TrendingUp,
+      color: "rose",
+      description: "Drive revenue through commercial excellence",
+      kornferryOffering: "Korn Ferry Commercial",
+      newsKeywords: ["sales", "revenue", "commercial", "go-to-market", "growth"]
+    }
   ];
 
   const { data: project, isLoading: projectLoading } = useQuery<Project>({
@@ -1102,9 +1216,9 @@ export default function ProjectRoleView() {
         </Card>
       </TabsContent>
 
-      {/* Guided Discovery - AI-assisted research with Korn Ferry methodologies (Miller Heiman, SPIN, PSS) */}
+      {/* Guided Discovery - Theme-Driven Workflow */}
       <TabsContent value="guided-discovery" className="space-y-6">
-        {/* Discovery Intelligence Header */}
+        {/* Discovery Workflow Progress */}
         <Card className="bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-amber-500/5 border-blue-500/20">
           <CardHeader>
             <div className="flex items-center justify-between flex-wrap gap-4">
@@ -1113,8 +1227,8 @@ export default function ProjectRoleView() {
                   <FileSearch className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
-                  <CardTitle>Discovery Intelligence</CardTitle>
-                  <CardDescription>Customer knowledge from CRM, research, and strategic analysis</CardDescription>
+                  <CardTitle>Guided Discovery</CardTitle>
+                  <CardDescription>Theme-focused research and question generation</CardDescription>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -1128,14 +1242,113 @@ export default function ProjectRoleView() {
                 </Badge>
               </div>
             </div>
+            {/* Progress Steps */}
+            <div className="flex items-center gap-2 mt-4">
+              {[
+                { step: "theme-select", label: "Theme", num: 1 },
+                { step: "intelligence", label: "Intelligence", num: 2 },
+                { step: "questions", label: "Questions", num: 3 },
+                { step: "review", label: "Review", num: 4 },
+                { step: "insights", label: "Insights", num: 5 }
+              ].map((s, idx) => {
+                const stepOrder = ["theme-select", "intelligence", "questions", "review", "insights"];
+                const currentIdx = stepOrder.indexOf(discoveryStep);
+                const thisIdx = stepOrder.indexOf(s.step);
+                const isComplete = thisIdx < currentIdx;
+                const isCurrent = s.step === discoveryStep;
+                return (
+                  <div key={s.step} className="flex items-center gap-2">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                      isComplete ? "bg-emerald-500 text-white" : 
+                      isCurrent ? "bg-primary text-primary-foreground" : 
+                      "bg-muted text-muted-foreground"
+                    }`}>
+                      {isComplete ? <Check className="w-4 h-4" /> : s.num}
+                    </div>
+                    <span className={`text-sm ${isCurrent ? "font-medium" : "text-muted-foreground"}`}>{s.label}</span>
+                    {idx < 4 && <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                  </div>
+                );
+              })}
+            </div>
           </CardHeader>
         </Card>
 
-        {/* Market Intelligence & CRM Data */}
-        {project && (() => {
+        {/* Step 1: Theme Selection */}
+        {discoveryStep === "theme-select" && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="w-5 h-5 text-primary" />
+                Select Discovery Theme
+              </CardTitle>
+              <CardDescription>Choose a focus area to guide your discovery conversation</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {discoveryThemes.map((theme) => {
+                  const ThemeIcon = theme.icon;
+                  const isSelected = selectedDiscoveryTheme === theme.id;
+                  const colorClasses: Record<string, string> = {
+                    blue: "border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/10",
+                    purple: "border-purple-500/30 bg-purple-500/5 hover:bg-purple-500/10",
+                    emerald: "border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10",
+                    amber: "border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10",
+                    rose: "border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/10"
+                  };
+                  const iconColors: Record<string, string> = {
+                    blue: "text-blue-600",
+                    purple: "text-purple-600",
+                    emerald: "text-emerald-600",
+                    amber: "text-amber-600",
+                    rose: "text-rose-600"
+                  };
+                  return (
+                    <div 
+                      key={theme.id}
+                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                        isSelected ? `${colorClasses[theme.color]} ring-2 ring-primary` : "hover-elevate"
+                      }`}
+                      onClick={() => setSelectedDiscoveryTheme(theme.id)}
+                      data-testid={`theme-${theme.id}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`w-10 h-10 rounded-lg bg-${theme.color}-500/10 flex items-center justify-center`}>
+                          <ThemeIcon className={`w-5 h-5 ${iconColors[theme.color]}`} />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-sm mb-1">{theme.name}</h4>
+                          <p className="text-xs text-muted-foreground">{theme.description}</p>
+                          <Badge variant="outline" className="text-xs mt-2">{theme.kornferryOffering}</Badge>
+                        </div>
+                        {isSelected && (
+                          <CheckCircle className="w-5 h-5 text-primary" />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex justify-end mt-6">
+                <Button 
+                  onClick={() => setDiscoveryStep("intelligence")} 
+                  disabled={!selectedDiscoveryTheme}
+                  data-testid="button-next-to-intelligence"
+                >
+                  Continue to Intelligence
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Step 2: Intelligence (Theme-Filtered News + Salesforce) */}
+        {discoveryStep === "intelligence" && project && (() => {
+          const selectedTheme = discoveryThemes.find(t => t.id === selectedDiscoveryTheme);
           const sfData = generateSimulatedSalesforceData(project.companyName);
+          const marketIntel = generateMarketIntelligence(project.companyName, selectedDiscoveryTheme || undefined);
           const blueSheet = generateBlueSheetData(project.companyName);
-          const marketIntel = generateMarketIntelligence(project.companyName);
           
           return (
             <>
@@ -1535,11 +1748,26 @@ export default function ProjectRoleView() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Navigation for Intelligence Step */}
+              <div className="flex justify-between">
+                <Button variant="outline" onClick={() => setDiscoveryStep("theme-select")} data-testid="button-back-to-theme">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to Theme
+                </Button>
+                <Button onClick={() => setDiscoveryStep("questions")} data-testid="button-next-to-questions">
+                  Continue to Questions
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </div>
             </>
           );
         })()}
 
-        {/* AI Research & Questions Section */}
+        {/* Step 3: Questions - Generate Theme-Based Questions */}
+        {discoveryStep === "questions" && (
+          <>
+            {/* AI Research & Questions Section */}
         <Card className="bg-gradient-to-r from-purple-500/5 to-blue-500/5 border-purple-500/20">
           <CardHeader>
             <div className="flex items-center justify-between flex-wrap gap-4">
@@ -1740,70 +1968,331 @@ export default function ProjectRoleView() {
           </div>
         )}
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-purple-600" />
-                AI-Generated Insights
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {insights.slice(0, 5).map(insight => (
-                  <div key={insight.id} className="p-3 rounded-lg border hover-elevate">
-                    <p className="text-sm mb-2">{insight.content}</p>
-                    <div className="flex flex-wrap gap-1">
-                      {insight.priority && (
-                        <Badge variant={insight.priority === "high" ? "destructive" : "outline"} className="text-xs">
-                          {insight.priority}
-                        </Badge>
-                      )}
-                      {insight.kornferryPillar && (
-                        <Badge className="bg-primary/10 text-primary text-xs">{insight.kornferryPillar}</Badge>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                {insights.length === 0 && (
-                  <div className="text-center py-6">
-                    <Sparkles className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                    <p className="text-sm text-muted-foreground">Run AI research to generate insights</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2">
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="w-5 h-5" />
-                Discovery Notes
-              </CardTitle>
-              <Button size="sm" onClick={() => setIsAddNoteOpen(true)} data-testid="button-add-note">
-                <Plus className="w-4 h-4 mr-1" />
-                Add
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {notes.slice(0, 5).map(note => (
-                  <div key={note.id} className="p-3 rounded-lg bg-muted/50">
-                    <p className="text-sm">{note.content}</p>
-                    <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                      <Badge variant="outline" className="text-xs">{note.category || "general"}</Badge>
-                      <span>{new Date(note.createdAt).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                ))}
-                {notes.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">No notes yet</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+        {/* Navigation for Questions Step */}
+        <div className="flex justify-between">
+          <Button variant="outline" onClick={() => setDiscoveryStep("intelligence")} data-testid="button-back-to-intelligence">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Intelligence
+          </Button>
+          <Button onClick={() => setDiscoveryStep("review")} data-testid="button-next-to-review">
+            Review & Select Questions
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
         </div>
+          </>
+        )} {/* End of Step 3: Questions */}
+
+        {/* Step 4: Review & Select Questions */}
+        {discoveryStep === "review" && (
+          <>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ClipboardList className="w-5 h-5 text-primary" />
+                  Review & Select Questions
+                </CardTitle>
+                <CardDescription>Choose which questions to use in your discovery conversation, then complete in-system or export</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {discoveryQuestions.length === 0 ? (
+                    <div className="text-center py-8">
+                      <HelpCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">No questions generated yet. Go back to generate questions first.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-4">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setSelectedQuestions(new Set(discoveryQuestions.map(q => q.id)))}
+                          >
+                            Select All
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setSelectedQuestions(new Set())}
+                          >
+                            Clear All
+                          </Button>
+                          <span className="text-sm text-muted-foreground">
+                            {selectedQuestions.size} of {discoveryQuestions.length} selected
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm" data-testid="button-export-questions">
+                            <Download className="w-4 h-4 mr-2" />
+                            Export
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="space-y-3 max-h-[500px] overflow-y-auto">
+                        {discoveryQuestions.map((q) => {
+                          const meta = methodologyMeta[q.methodology || "SPIN"];
+                          const isSelected = selectedQuestions.has(q.id);
+                          return (
+                            <div 
+                              key={q.id} 
+                              className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                                isSelected ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover-elevate"
+                              }`}
+                              onClick={() => {
+                                const newSet = new Set(selectedQuestions);
+                                if (isSelected) {
+                                  newSet.delete(q.id);
+                                } else {
+                                  newSet.add(q.id);
+                                }
+                                setSelectedQuestions(newSet);
+                              }}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                                  isSelected ? "bg-primary border-primary" : "border-muted-foreground"
+                                }`}>
+                                  {isSelected && <Check className="w-4 h-4 text-primary-foreground" />}
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium mb-2">{q.question}</p>
+                                  <div className="flex flex-wrap gap-2">
+                                    <Badge className={`${meta?.color || ""} border text-xs`}>{meta?.label || q.methodology}</Badge>
+                                    <Badge variant="outline" className="text-xs">{q.capabilityName}</Badge>
+                                    {q.relatedKPI && (
+                                      <Badge variant="secondary" className="text-xs">KPI: {q.relatedKPI}</Badge>
+                                    )}
+                                  </div>
+                                  {q.followUpHint && (
+                                    <p className="text-xs text-muted-foreground mt-2">
+                                      <span className="font-medium">Follow-up:</span> {q.followUpHint}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Answer Questions In-System */}
+            {selectedQuestions.size > 0 && (
+              <Card className="border-emerald-500/20">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-emerald-600" />
+                    Complete Discovery In-System
+                  </CardTitle>
+                  <CardDescription>Record answers to selected questions for enhanced insights</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {discoveryQuestions.filter(q => selectedQuestions.has(q.id)).slice(0, 5).map((q) => (
+                      <div key={q.id} className="p-4 rounded-lg border">
+                        <p className="text-sm font-medium mb-2">{q.question}</p>
+                        <Textarea 
+                          placeholder="Record the customer's response..."
+                          className="min-h-[80px]"
+                          value={questionAnswers[q.id] || ""}
+                          onChange={(e) => setQuestionAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                          data-testid={`answer-${q.id}`}
+                        />
+                      </div>
+                    ))}
+                    {selectedQuestions.size > 5 && (
+                      <p className="text-sm text-muted-foreground text-center">
+                        Showing 5 of {selectedQuestions.size} selected questions
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Navigation for Review Step */}
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={() => setDiscoveryStep("questions")} data-testid="button-back-to-questions">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Questions
+              </Button>
+              <Button 
+                onClick={() => {
+                  setDiscoveryCompleted(true);
+                  setDiscoveryStep("insights");
+                }}
+                disabled={selectedQuestions.size === 0}
+                data-testid="button-complete-discovery"
+              >
+                Complete Discovery & Generate Insights
+                <Sparkles className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          </>
+        )}
+
+        {/* Step 5: Enhanced Insights */}
+        {discoveryStep === "insights" && discoveryCompleted && (
+          <>
+            <Card className="bg-gradient-to-r from-emerald-500/5 to-blue-500/5 border-emerald-500/20">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                    <Sparkles className="w-6 h-6 text-emerald-600" />
+                  </div>
+                  <div>
+                    <CardTitle>Discovery Complete</CardTitle>
+                    <CardDescription>Enhanced insights from your {selectedDiscoveryTheme ? discoveryThemes.find(t => t.id === selectedDiscoveryTheme)?.name : ""} discovery</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+
+            {/* Trends Analysis */}
+            <Card className="border-blue-500/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-blue-600" />
+                  Key Trends Identified
+                </CardTitle>
+                <CardDescription>Patterns and themes from discovery responses</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/20">
+                    <h4 className="font-semibold text-sm mb-2">Leadership Development Priority</h4>
+                    <p className="text-sm text-muted-foreground">Multiple stakeholders emphasized need for accelerated leadership pipeline development. CEO and CHRO aligned on 18-month timeline.</p>
+                    <Badge className="mt-2 bg-blue-500/10 text-blue-700 border-blue-500/20">High Confidence</Badge>
+                  </div>
+                  <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/20">
+                    <h4 className="font-semibold text-sm mb-2">Budget Approval Path Clear</h4>
+                    <p className="text-sm text-muted-foreground">CFO requires ROI framework but has pre-approved budget for Q2 initiative. Economic buyer is supportive with right business case.</p>
+                    <Badge className="mt-2 bg-emerald-500/10 text-emerald-700 border-emerald-500/20">Positive Signal</Badge>
+                  </div>
+                  <div className="p-4 rounded-lg bg-amber-500/5 border border-amber-500/20">
+                    <h4 className="font-semibold text-sm mb-2">Competitive Pressure from McKinsey</h4>
+                    <p className="text-sm text-muted-foreground">Incumbent consultant relationship may create resistance. Need to differentiate on talent-specific expertise.</p>
+                    <Badge className="mt-2 bg-amber-500/10 text-amber-700 border-amber-500/20">Monitor</Badge>
+                  </div>
+                  <div className="p-4 rounded-lg bg-purple-500/5 border border-purple-500/20">
+                    <h4 className="font-semibold text-sm mb-2">AI/Digital Transformation Linkage</h4>
+                    <p className="text-sm text-muted-foreground">Customer connects leadership development to broader digital transformation. Opportunity for AI-ready leadership positioning.</p>
+                    <Badge className="mt-2 bg-purple-500/10 text-purple-700 border-purple-500/20">Opportunity</Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Gaps Identified */}
+            <Card className="border-amber-500/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-amber-600" />
+                  Gaps & Missing Information
+                </CardTitle>
+                <CardDescription>Areas requiring follow-up to complete the picture</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3 p-3 rounded-lg border border-amber-500/20 bg-amber-500/5">
+                    <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-sm">Success Metrics Not Defined</p>
+                      <p className="text-xs text-muted-foreground">Need to establish specific KPIs and targets with CHRO for measuring leadership development impact.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-lg border border-amber-500/20 bg-amber-500/5">
+                    <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-sm">IT Integration Requirements Unknown</p>
+                      <p className="text-xs text-muted-foreground">Technical buyer not yet engaged. Schedule discovery with IT to understand HRIS integration needs.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-lg border border-amber-500/20 bg-amber-500/5">
+                    <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-sm">New CEO Priorities Not Confirmed</p>
+                      <p className="text-xs text-muted-foreground">CEO transition in Q3 may shift priorities. Consider accelerating timeline or building relationship with incoming executive.</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Recommended Next Steps */}
+            <Card className="border-emerald-500/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ArrowRight className="w-5 h-5 text-emerald-600" />
+                  Recommended Next Steps for Seller
+                </CardTitle>
+                <CardDescription>Actionable items to move the opportunity forward</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3 p-3 rounded-lg border hover-elevate">
+                    <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 font-bold text-sm flex-shrink-0">1</div>
+                    <div>
+                      <p className="font-medium text-sm">Schedule CFO Value Discussion</p>
+                      <p className="text-xs text-muted-foreground">Prepare ROI model using similar industry case studies. Focus on leadership development ROI metrics.</p>
+                      <Badge className="mt-2" variant="outline">This Week</Badge>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-lg border hover-elevate">
+                    <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 font-bold text-sm flex-shrink-0">2</div>
+                    <div>
+                      <p className="font-medium text-sm">Engage Champion for Internal Advocacy</p>
+                      <p className="text-xs text-muted-foreground">Work with Maria Santos to build internal support. Provide talking points and success stories.</p>
+                      <Badge className="mt-2" variant="outline">Next Week</Badge>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-lg border hover-elevate">
+                    <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 font-bold text-sm flex-shrink-0">3</div>
+                    <div>
+                      <p className="font-medium text-sm">Conduct Technical Discovery with IT</p>
+                      <p className="text-xs text-muted-foreground">Address integration concerns early. Complete security questionnaire and technical requirements review.</p>
+                      <Badge className="mt-2" variant="outline">Week 2</Badge>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-lg border hover-elevate">
+                    <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 font-bold text-sm flex-shrink-0">4</div>
+                    <div>
+                      <p className="font-medium text-sm">Differentiate from McKinsey</p>
+                      <p className="text-xs text-muted-foreground">Prepare competitive positioning focused on Korn Ferry's unique IP in leadership assessment and development.</p>
+                      <Badge className="mt-2" variant="outline">Ongoing</Badge>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Navigation for Insights Step */}
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={() => setDiscoveryStep("review")} data-testid="button-back-to-review">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Review
+              </Button>
+              <Button 
+                onClick={() => {
+                  setDiscoveryStep("theme-select");
+                  setSelectedDiscoveryTheme(null);
+                  setSelectedQuestions(new Set());
+                  setQuestionAnswers({});
+                  setDiscoveryCompleted(false);
+                }}
+                data-testid="button-start-new-discovery"
+              >
+                Start New Discovery
+                <RefreshCcw className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          </>
+        )}
       </TabsContent>
 
       <TabsContent value="value-cases" className="space-y-6">
