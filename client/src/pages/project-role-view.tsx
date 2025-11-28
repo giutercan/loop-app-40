@@ -62,7 +62,18 @@ import {
   Sparkles,
   Loader2,
   HelpCircle,
-  Check
+  Check,
+  Database,
+  UserCircle,
+  Phone,
+  Mail,
+  Flag,
+  Shield,
+  Zap,
+  FileSearch,
+  Newspaper,
+  TrendingDown,
+  Globe
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -123,6 +134,176 @@ interface DiscoveryQuestion {
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
+}
+
+interface SalesforceOpportunity {
+  id: string;
+  name: string;
+  stage: string;
+  amount: number;
+  probability: number;
+  closeDate: string;
+  owner: string;
+  nextStep: string;
+}
+
+interface SalesforceContact {
+  id: string;
+  name: string;
+  title: string;
+  role: "economic_buyer" | "user_buyer" | "technical_buyer" | "coach" | "champion";
+  email: string;
+  phone: string;
+  lastActivity: string;
+  influence: "high" | "medium" | "low";
+}
+
+interface BlueSheetData {
+  singleSalesObjective: string;
+  idealCustomerCriteria: string[];
+  buyingInfluences: {
+    type: string;
+    name: string;
+    rating: "G" | "Y" | "R";
+    action: string;
+  }[];
+  redFlags: string[];
+  strengthsLeverage: string[];
+  competition: {
+    competitor: string;
+    position: string;
+    strategy: string;
+  }[];
+  bestActionPlan: string[];
+}
+
+function generateSimulatedSalesforceData(companyName: string): { opportunities: SalesforceOpportunity[]; contacts: SalesforceContact[] } {
+  const stages = ["Qualification", "Needs Analysis", "Proposal", "Negotiation", "Closed Won"];
+  const titles = ["CHRO", "VP HR", "Head of Talent", "CFO", "CEO", "VP L&D", "Director Comp & Benefits"];
+  const roles: SalesforceContact["role"][] = ["economic_buyer", "user_buyer", "technical_buyer", "coach", "champion"];
+  
+  const opportunities: SalesforceOpportunity[] = [
+    {
+      id: "OPP-001",
+      name: `${companyName} - Leadership Development Initiative`,
+      stage: "Proposal",
+      amount: 850000,
+      probability: 65,
+      closeDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      owner: "Sarah Mitchell",
+      nextStep: "Executive presentation scheduled for next week"
+    },
+    {
+      id: "OPP-002",
+      name: `${companyName} - Talent Assessment Program`,
+      stage: "Needs Analysis",
+      amount: 320000,
+      probability: 40,
+      closeDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      owner: "Michael Chen",
+      nextStep: "Discovery workshop with HR leadership"
+    },
+    {
+      id: "OPP-003",
+      name: `${companyName} - Pay Equity Analysis`,
+      stage: "Qualification",
+      amount: 180000,
+      probability: 25,
+      closeDate: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      owner: "Sarah Mitchell",
+      nextStep: "Initial scoping call with Comp team"
+    }
+  ];
+  
+  const contacts: SalesforceContact[] = [
+    {
+      id: "CON-001",
+      name: "Jennifer Williams",
+      title: "CHRO",
+      role: "economic_buyer",
+      email: `j.williams@${companyName.toLowerCase().replace(/\s/g, '')}.com`,
+      phone: "+1 (555) 123-4567",
+      lastActivity: "Met at industry conference - discussed succession challenges",
+      influence: "high"
+    },
+    {
+      id: "CON-002",
+      name: "David Thompson",
+      title: "VP Talent Acquisition",
+      role: "user_buyer",
+      email: `d.thompson@${companyName.toLowerCase().replace(/\s/g, '')}.com`,
+      phone: "+1 (555) 234-5678",
+      lastActivity: "Demo of assessment platform - very engaged",
+      influence: "medium"
+    },
+    {
+      id: "CON-003",
+      name: "Maria Santos",
+      title: "Head of L&D",
+      role: "champion",
+      email: `m.santos@${companyName.toLowerCase().replace(/\s/g, '')}.com`,
+      phone: "+1 (555) 345-6789",
+      lastActivity: "Strong advocate - wants to pilot new programs",
+      influence: "high"
+    },
+    {
+      id: "CON-004",
+      name: "Robert Kim",
+      title: "CFO",
+      role: "economic_buyer",
+      email: `r.kim@${companyName.toLowerCase().replace(/\s/g, '')}.com`,
+      phone: "+1 (555) 456-7890",
+      lastActivity: "Budget approval meeting - needs ROI data",
+      influence: "high"
+    }
+  ];
+  
+  return { opportunities, contacts };
+}
+
+function generateBlueSheetData(companyName: string): BlueSheetData {
+  return {
+    singleSalesObjective: `Secure a $1.2M multi-year engagement with ${companyName} for comprehensive leadership development and talent assessment programs, with initial implementation in Q2.`,
+    idealCustomerCriteria: [
+      "Large enterprise (10,000+ employees) undergoing transformation",
+      "Commitment to data-driven talent decisions",
+      "Active investment in leadership pipeline",
+      "Executive sponsorship for people initiatives",
+      "Budget allocation for external consulting"
+    ],
+    buyingInfluences: [
+      { type: "Economic Buyer", name: "Jennifer Williams (CHRO)", rating: "G", action: "Schedule 1:1 to discuss strategic alignment" },
+      { type: "Economic Buyer", name: "Robert Kim (CFO)", rating: "Y", action: "Prepare ROI analysis and case studies" },
+      { type: "User Buyer", name: "David Thompson (VP TA)", rating: "G", action: "Provide demo access and references" },
+      { type: "User Buyer", name: "Maria Santos (Head L&D)", rating: "G", action: "Engage as champion for internal advocacy" },
+      { type: "Technical Buyer", name: "IT Security Team", rating: "Y", action: "Complete security questionnaire" },
+      { type: "Coach", name: "Maria Santos", rating: "G", action: "Weekly check-ins on internal politics" }
+    ],
+    redFlags: [
+      "CFO focus on cost reduction may impact budget approval",
+      "Competing initiative from McKinsey on org design",
+      "New CEO starting in Q3 could reset priorities",
+      "IT integration concerns with existing HRIS"
+    ],
+    strengthsLeverage: [
+      "Strong existing relationship with CHRO from previous company",
+      "Successful case study from competitor in same industry",
+      "Unique IP in AI-powered leadership assessment",
+      "Champion actively promoting internally"
+    ],
+    competition: [
+      { competitor: "McKinsey", position: "Incumbent on org design", strategy: "Differentiate on talent-specific expertise and IP" },
+      { competitor: "DDI", position: "Proposed for assessment", strategy: "Emphasize integrated approach and proven methodology" },
+      { competitor: "Internal HR", position: "DIY option", strategy: "Show ROI vs. internal resource constraints" }
+    ],
+    bestActionPlan: [
+      "Week 1: Schedule CFO meeting with ROI presentation and industry benchmarks",
+      "Week 2: Facilitate peer reference call with similar client CHRO",
+      "Week 3: Present pilot proposal with success metrics and milestones",
+      "Week 4: Address IT security concerns through technical deep-dive",
+      "Week 5: Coordinate champion to gain internal momentum before CEO transition"
+    ]
+  };
 }
 
 const methodologyMeta: Record<string, { label: string; color: string; description: string }> = {
@@ -801,6 +982,271 @@ export default function ProjectRoleView() {
 
       {/* Guided Discovery - AI-assisted research with Korn Ferry methodologies (Miller Heiman, SPIN, PSS) */}
       <TabsContent value="guided-discovery" className="space-y-6">
+        {/* Discovery Intelligence Header */}
+        <Card className="bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-amber-500/5 border-blue-500/20">
+          <CardHeader>
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                  <FileSearch className="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <CardTitle>Discovery Intelligence</CardTitle>
+                  <CardDescription>Customer knowledge from CRM, research, and strategic analysis</CardDescription>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-blue-600 border-blue-500/30 bg-blue-500/5">
+                  <Database className="w-3 h-3 mr-1" />
+                  Salesforce Connected
+                </Badge>
+                <Badge variant="outline" className="text-purple-600 border-purple-500/30 bg-purple-500/5">
+                  <Globe className="w-3 h-3 mr-1" />
+                  AI Research
+                </Badge>
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
+
+        {/* CRM Data from Salesforce (Simulated) */}
+        {project && (() => {
+          const sfData = generateSimulatedSalesforceData(project.companyName);
+          const blueSheet = generateBlueSheetData(project.companyName);
+          
+          return (
+            <>
+              {/* Pipeline & Opportunities */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <Database className="w-5 h-5 text-blue-600" />
+                      Salesforce Pipeline
+                    </CardTitle>
+                    <Badge variant="secondary" className="text-xs">Demo Data</Badge>
+                  </div>
+                  <CardDescription>Active opportunities and engagement history</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {sfData.opportunities.map((opp) => (
+                      <div key={opp.id} className="p-4 rounded-lg border hover-elevate">
+                        <div className="flex items-start justify-between gap-4 mb-3">
+                          <div>
+                            <h4 className="font-semibold text-sm">{opp.name}</h4>
+                            <p className="text-xs text-muted-foreground">{opp.owner} • Close: {opp.closeDate}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-lg">${(opp.amount / 1000).toFixed(0)}K</p>
+                            <Badge 
+                              variant="outline" 
+                              className={opp.probability >= 60 ? "text-emerald-600 border-emerald-500/30" : opp.probability >= 40 ? "text-amber-600 border-amber-500/30" : "text-muted-foreground"}
+                            >
+                              {opp.probability}% probability
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge className="text-xs">{opp.stage}</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          <span className="font-medium">Next:</span> {opp.nextStep}
+                        </p>
+                      </div>
+                    ))}
+                    <div className="pt-2 border-t flex items-center justify-between">
+                      <span className="text-sm font-medium">Total Pipeline Value</span>
+                      <span className="text-lg font-bold text-primary">
+                        ${(sfData.opportunities.reduce((sum, o) => sum + o.amount, 0) / 1000000).toFixed(2)}M
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Key Contacts */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-purple-600" />
+                    Key Stakeholders
+                  </CardTitle>
+                  <CardDescription>Buying influences and relationship status</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {sfData.contacts.map((contact) => {
+                      const roleColors: Record<string, string> = {
+                        economic_buyer: "bg-amber-500/10 text-amber-700 border-amber-500/20",
+                        user_buyer: "bg-blue-500/10 text-blue-700 border-blue-500/20",
+                        technical_buyer: "bg-purple-500/10 text-purple-700 border-purple-500/20",
+                        coach: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20",
+                        champion: "bg-primary/10 text-primary border-primary/20"
+                      };
+                      const roleLabelsMap: Record<string, string> = {
+                        economic_buyer: "Economic Buyer",
+                        user_buyer: "User Buyer",
+                        technical_buyer: "Technical Buyer",
+                        coach: "Coach",
+                        champion: "Champion"
+                      };
+                      
+                      return (
+                        <div key={contact.id} className="p-4 rounded-lg border hover-elevate">
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                              <UserCircle className="w-6 h-6 text-muted-foreground" />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <h4 className="font-semibold text-sm">{contact.name}</h4>
+                                <Badge 
+                                  variant={contact.influence === "high" ? "default" : "outline"} 
+                                  className="text-xs"
+                                >
+                                  {contact.influence} influence
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground">{contact.title}</p>
+                              <Badge className={`${roleColors[contact.role]} text-xs mt-2`}>
+                                {roleLabelsMap[contact.role]}
+                              </Badge>
+                              <p className="text-xs text-muted-foreground mt-2">
+                                <span className="font-medium">Last Activity:</span> {contact.lastActivity}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Miller Heiman Blue Sheet Summary */}
+              <Card className="border-purple-500/20">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-purple-600" />
+                      Miller Heiman Blue Sheet
+                    </CardTitle>
+                    <Badge className="bg-purple-500/10 text-purple-700 border-purple-500/20">Strategic Selling</Badge>
+                  </div>
+                  <CardDescription>Strategic analysis and action plan</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Single Sales Objective */}
+                  <div className="p-4 rounded-lg bg-purple-500/5 border border-purple-500/20">
+                    <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                      <Target className="w-4 h-4 text-purple-600" />
+                      Single Sales Objective
+                    </h4>
+                    <p className="text-sm">{blueSheet.singleSalesObjective}</p>
+                  </div>
+
+                  {/* Buying Influences with Rating */}
+                  <div>
+                    <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      Buying Influences
+                    </h4>
+                    <div className="space-y-2">
+                      {blueSheet.buyingInfluences.map((bi, idx) => (
+                        <div key={idx} className="flex items-center gap-3 p-3 rounded-lg border">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                            bi.rating === "G" ? "bg-emerald-500" : bi.rating === "Y" ? "bg-amber-500" : "bg-red-500"
+                          }`}>
+                            {bi.rating}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm">{bi.name}</span>
+                              <Badge variant="outline" className="text-xs">{bi.type}</Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground">{bi.action}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {/* Red Flags */}
+                    <div>
+                      <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                        <Flag className="w-4 h-4 text-red-600" />
+                        Red Flags
+                      </h4>
+                      <div className="space-y-2">
+                        {blueSheet.redFlags.map((flag, idx) => (
+                          <div key={idx} className="p-2 rounded bg-red-500/5 border border-red-500/20 text-sm">
+                            {flag}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Strengths to Leverage */}
+                    <div>
+                      <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-emerald-600" />
+                        Strengths to Leverage
+                      </h4>
+                      <div className="space-y-2">
+                        {blueSheet.strengthsLeverage.map((strength, idx) => (
+                          <div key={idx} className="p-2 rounded bg-emerald-500/5 border border-emerald-500/20 text-sm">
+                            {strength}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Competition */}
+                  <div>
+                    <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-amber-600" />
+                      Competitive Landscape
+                    </h4>
+                    <div className="space-y-2">
+                      {blueSheet.competition.map((comp, idx) => (
+                        <div key={idx} className="p-3 rounded-lg border">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-medium text-sm">{comp.competitor}</span>
+                            <Badge variant="outline" className="text-xs">{comp.position}</Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground">{comp.strategy}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Best Action Plan */}
+                  <div>
+                    <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                      <ArrowRight className="w-4 h-4 text-primary" />
+                      Best Action Plan
+                    </h4>
+                    <div className="space-y-2">
+                      {blueSheet.bestActionPlan.map((action, idx) => (
+                        <div key={idx} className="flex items-start gap-3 p-2 rounded hover-elevate">
+                          <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">
+                            {idx + 1}
+                          </div>
+                          <p className="text-sm flex-1">{action}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          );
+        })()}
+
+        {/* AI Research & Questions Section */}
         <Card className="bg-gradient-to-r from-purple-500/5 to-blue-500/5 border-purple-500/20">
           <CardHeader>
             <div className="flex items-center justify-between flex-wrap gap-4">
@@ -809,8 +1255,8 @@ export default function ProjectRoleView() {
                   <Sparkles className="w-6 h-6 text-purple-600" />
                 </div>
                 <div>
-                  <CardTitle>Guided Discovery</CardTitle>
-                  <CardDescription>AI-powered questions using Korn Ferry methodologies (Miller Heiman, SPIN, PSS)</CardDescription>
+                  <CardTitle>AI-Powered Discovery Questions</CardTitle>
+                  <CardDescription>Generate strategic questions using SPIN, Miller Heiman, and PSS methodologies</CardDescription>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -827,7 +1273,7 @@ export default function ProjectRoleView() {
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4 mr-2" />
-                      AI Discovery
+                      Generate Questions
                     </>
                   )}
                 </Button>
