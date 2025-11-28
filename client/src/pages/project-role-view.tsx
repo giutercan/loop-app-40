@@ -419,6 +419,7 @@ interface MarketIntelligence {
     trend: string;
     impact: string;
     opportunity: string;
+    themes: string[];
   }[];
 }
 
@@ -563,22 +564,26 @@ function generateMarketIntelligence(companyName: string, themeId?: string): Mark
       {
         trend: "Skills-based hiring gaining momentum",
         impact: "Traditional job architectures becoming obsolete",
-        opportunity: "Position Korn Ferry's skills taxonomy and assessment capabilities"
+        opportunity: "Position Korn Ferry's skills taxonomy and assessment capabilities",
+        themes: ["talent-acquisition", "transformation"]
       },
       {
         trend: "AI disruption creating leadership uncertainty",
         impact: "Executives unsure how to lead through transformation",
-        opportunity: "Leverage Korn Ferry's AI leadership research and development programs"
+        opportunity: "Leverage Korn Ferry's AI leadership research and development programs",
+        themes: ["leadership", "transformation"]
       },
       {
         trend: "Pay transparency regulations expanding",
         impact: "Companies scrambling to address equity and competitiveness",
-        opportunity: "Highlight Korn Ferry's compensation benchmarking and pay equity solutions"
+        opportunity: "Highlight Korn Ferry's compensation benchmarking and pay equity solutions",
+        themes: ["rewards"]
       },
       {
         trend: "Hybrid work models becoming permanent",
         impact: "Manager effectiveness declining in distributed teams",
-        opportunity: "Propose leadership development focused on virtual team effectiveness"
+        opportunity: "Propose leadership development focused on virtual team effectiveness",
+        themes: ["leadership", "sales-effectiveness"]
       }
     ]
   };
@@ -2006,28 +2011,54 @@ export default function ProjectRoleView() {
                     <TrendingUp className="w-5 h-5 text-purple-600" />
                     Industry Trends & Korn Ferry Opportunities
                   </CardTitle>
-                  <CardDescription>Market dynamics and how to position our solutions</CardDescription>
+                  <CardDescription>Market dynamics and how to position our solutions • Highlights match your selected theme</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-4 md:grid-cols-2">
-                    {marketIntel.industryTrends.map((trend, idx) => (
-                      <div key={idx} className="p-4 rounded-lg border hover-elevate">
-                        <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                          <Lightbulb className="w-4 h-4 text-purple-600" />
-                          {trend.trend}
-                        </h4>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex items-start gap-2">
-                            <span className="text-xs font-medium text-muted-foreground w-16">Impact:</span>
-                            <span className="flex-1">{trend.impact}</span>
+                    {marketIntel.industryTrends.map((trend, idx) => {
+                      const isFullSearch = selectedDiscoveryTheme === "kf-full-search";
+                      const matchesTheme = isFullSearch || (selectedDiscoveryTheme && trend.themes.includes(selectedDiscoveryTheme));
+                      const currentTheme = discoveryThemes.find(t => t.id === selectedDiscoveryTheme);
+                      
+                      return (
+                        <div 
+                          key={idx} 
+                          className={`p-4 rounded-lg border hover-elevate transition-all ${
+                            matchesTheme 
+                              ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20" 
+                              : ""
+                          }`}
+                          data-testid={`card-trend-${idx}`}
+                        >
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <h4 className="font-semibold text-sm flex items-center gap-2">
+                              <Lightbulb className={`w-4 h-4 ${matchesTheme ? "text-primary" : "text-purple-600"}`} />
+                              {trend.trend}
+                            </h4>
+                            {matchesTheme && (
+                              <Badge className="bg-primary/10 text-primary border-primary/20 text-xs flex-shrink-0">
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                {isFullSearch ? "Relevant" : currentTheme?.name}
+                              </Badge>
+                            )}
                           </div>
-                          <div className="flex items-start gap-2 p-2 rounded bg-purple-500/5 border border-purple-500/20">
-                            <Sparkles className="w-3 h-3 text-purple-600 mt-1" />
-                            <span className="flex-1 text-purple-700 font-medium">{trend.opportunity}</span>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex items-start gap-2">
+                              <span className="text-xs font-medium text-muted-foreground w-16">Impact:</span>
+                              <span className="flex-1">{trend.impact}</span>
+                            </div>
+                            <div className={`flex items-start gap-2 p-2 rounded ${
+                              matchesTheme 
+                                ? "bg-primary/10 border border-primary/30" 
+                                : "bg-purple-500/5 border border-purple-500/20"
+                            }`}>
+                              <Sparkles className={`w-3 h-3 mt-1 ${matchesTheme ? "text-primary" : "text-purple-600"}`} />
+                              <span className={`flex-1 font-medium ${matchesTheme ? "text-primary" : "text-purple-700"}`}>{trend.opportunity}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>
