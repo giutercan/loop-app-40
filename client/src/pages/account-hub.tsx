@@ -46,6 +46,7 @@ import {
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { AppTour } from "@/components/AppTour";
 
 interface InitiativeSummary {
   id: number;
@@ -328,6 +329,7 @@ export default function AccountHub() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <AppTour context="accountHub" />
             <Link href={`/accounts/${accountId}`}>
               <Button variant="outline" size="sm" data-testid="button-value-spine">
                 <BarChart3 className="w-4 h-4 mr-2" />

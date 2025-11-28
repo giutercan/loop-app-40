@@ -5,6 +5,7 @@ import { HelpCircle } from "lucide-react";
 
 const TOUR_STORAGE_KEY = "kf-app-tour-completed";
 const DISCOVERY_TOUR_KEY = "kf-discovery-tour-completed";
+const ACCOUNT_HUB_TOUR_KEY = "kf-account-hub-tour-completed";
 
 const projectsDashboardSteps: Step[] = [
   {
@@ -42,12 +43,14 @@ const projectsDashboardSteps: Step[] = [
     target: "body",
     content: (
       <div className="space-y-2">
-        <h3 className="font-semibold">Three Phases</h3>
-        <p>Each project moves through three phases:</p>
+        <h3 className="font-semibold">Client Value Lifecycle</h3>
+        <p>Each engagement moves through five connected phases:</p>
         <ul className="list-disc list-inside text-sm space-y-1 mt-2">
-          <li><strong>Discovery</strong> - Research & understand the client</li>
-          <li><strong>Alignment</strong> - Build value cases with KPIs</li>
-          <li><strong>Realization</strong> - Track actual value delivered</li>
+          <li><strong>Discover & Qualify</strong> - Research & understand the client</li>
+          <li><strong>Shape & Sell</strong> - Build value propositions</li>
+          <li><strong>Deliver & Realise</strong> - Execute and track outcomes</li>
+          <li><strong>Review & Renew</strong> - QBR and expand opportunities</li>
+          <li><strong>Learn & Scale</strong> - Capture learnings and replicate</li>
         </ul>
       </div>
     ),
@@ -134,7 +137,77 @@ const discoverySteps: Step[] = [
   },
 ];
 
-export type TourContext = "dashboard" | "discovery";
+const accountHubSteps: Step[] = [
+  {
+    target: "body",
+    content: (
+      <div className="space-y-2">
+        <h3 className="font-semibold text-lg">Welcome to the Account Hub</h3>
+        <p>This is your central command center for managing client accounts across the value lifecycle.</p>
+      </div>
+    ),
+    placement: "center",
+    disableBeacon: true,
+  },
+  {
+    target: '[data-testid="button-value-spine"]',
+    content: (
+      <div className="space-y-2">
+        <h3 className="font-semibold">Value Spine</h3>
+        <p>Jump to the Value Spine for a comprehensive view of promised vs realized value across all initiatives.</p>
+      </div>
+    ),
+    placement: "bottom",
+  },
+  {
+    target: '[data-testid="select-phase-filter"]',
+    content: (
+      <div className="space-y-2">
+        <h3 className="font-semibold">Filter by Phase</h3>
+        <p>Focus on initiatives in specific lifecycle phases - from Discovery to Value Realization.</p>
+      </div>
+    ),
+    placement: "bottom",
+  },
+  {
+    target: "body",
+    content: (
+      <div className="space-y-2">
+        <h3 className="font-semibold">Initiative Cards</h3>
+        <p>Each initiative card shows:</p>
+        <ul className="list-disc list-inside text-sm space-y-1 mt-2">
+          <li><strong>Lifecycle Phase</strong> - Current stage in the journey</li>
+          <li><strong>KPI Status</strong> - Track progress across metrics</li>
+          <li><strong>Value</strong> - Promised vs realized value</li>
+          <li><strong>Quick Links</strong> - Jump directly to any phase</li>
+        </ul>
+      </div>
+    ),
+    placement: "center",
+  },
+  {
+    target: "body",
+    content: (
+      <div className="space-y-2">
+        <h3 className="font-semibold">Role-Based Views</h3>
+        <p>Access tailored dashboards for different roles: Sales, Consultant, Delivery, CSM, and Client Sponsor. Each view shows relevant metrics and actions.</p>
+      </div>
+    ),
+    placement: "center",
+  },
+  {
+    target: "body",
+    content: (
+      <div className="space-y-2">
+        <h3 className="font-semibold text-lg">You're Ready!</h3>
+        <p>Navigate seamlessly between the Account Hub, Value Spine, and individual initiatives. Start by exploring your initiatives or filtering by lifecycle phase.</p>
+      </div>
+    ),
+    placement: "center",
+  },
+];
+
+export type TourContext = "dashboard" | "discovery" | "accountHub";
 
 interface AppTourProps {
   autoStart?: boolean;
@@ -145,8 +218,24 @@ export function AppTour({ autoStart = false, context = "dashboard" }: AppTourPro
   const [run, setRun] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   
-  const storageKey = context === "discovery" ? DISCOVERY_TOUR_KEY : TOUR_STORAGE_KEY;
-  const steps = context === "discovery" ? discoverySteps : projectsDashboardSteps;
+  const getStorageKey = () => {
+    switch (context) {
+      case "discovery": return DISCOVERY_TOUR_KEY;
+      case "accountHub": return ACCOUNT_HUB_TOUR_KEY;
+      default: return TOUR_STORAGE_KEY;
+    }
+  };
+  
+  const getSteps = () => {
+    switch (context) {
+      case "discovery": return discoverySteps;
+      case "accountHub": return accountHubSteps;
+      default: return projectsDashboardSteps;
+    }
+  };
+  
+  const storageKey = getStorageKey();
+  const steps = getSteps();
 
   useEffect(() => {
     if (autoStart) {
@@ -252,8 +341,11 @@ export function resetTour(context?: TourContext) {
     localStorage.removeItem(DISCOVERY_TOUR_KEY);
   } else if (context === "dashboard") {
     localStorage.removeItem(TOUR_STORAGE_KEY);
+  } else if (context === "accountHub") {
+    localStorage.removeItem(ACCOUNT_HUB_TOUR_KEY);
   } else {
     localStorage.removeItem(TOUR_STORAGE_KEY);
     localStorage.removeItem(DISCOVERY_TOUR_KEY);
+    localStorage.removeItem(ACCOUNT_HUB_TOUR_KEY);
   }
 }
