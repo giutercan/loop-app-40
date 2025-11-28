@@ -728,12 +728,39 @@ export default function ProjectRoleView() {
   const [newNoteContent, setNewNoteContent] = useState("");
   const [newNoteCategory, setNewNoteCategory] = useState("general");
   
-  // Discovery workflow state
-  const [discoveryStep, setDiscoveryStep] = useState<"theme-select" | "intelligence" | "questions" | "review" | "insights">("theme-select");
-  const [selectedDiscoveryTheme, setSelectedDiscoveryTheme] = useState<string | null>(null);
+  // Discovery workflow state - initialized from project data
+  const [discoveryStep, setDiscoveryStepLocal] = useState<"theme-select" | "intelligence" | "questions" | "review" | "insights">("theme-select");
+  const [selectedDiscoveryTheme, setSelectedDiscoveryThemeLocal] = useState<string | null>(null);
   const [selectedQuestions, setSelectedQuestions] = useState<Set<number>>(new Set());
   const [questionAnswers, setQuestionAnswers] = useState<Record<number, string>>({});
-  const [discoveryCompleted, setDiscoveryCompleted] = useState(false);
+  const [discoveryCompleted, setDiscoveryCompletedLocal] = useState(false);
+  const [discoveryProgressInitialized, setDiscoveryProgressInitialized] = useState(false);
+  
+  // Mutation to save discovery progress
+  const saveDiscoveryProgressMutation = useMutation({
+    mutationFn: async (data: { discoveryTheme?: string | null; discoveryStep?: string; discoveryCompleted?: boolean }) => {
+      return await apiRequest("PATCH", `/api/projects/${projectId}/discovery-progress`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/projects', projectId] });
+    }
+  });
+  
+  // Wrapper functions that save progress
+  const setDiscoveryStep = (step: typeof discoveryStep) => {
+    setDiscoveryStepLocal(step);
+    saveDiscoveryProgressMutation.mutate({ discoveryStep: step });
+  };
+  
+  const setSelectedDiscoveryTheme = (theme: string | null) => {
+    setSelectedDiscoveryThemeLocal(theme);
+    saveDiscoveryProgressMutation.mutate({ discoveryTheme: theme });
+  };
+  
+  const setDiscoveryCompleted = (completed: boolean) => {
+    setDiscoveryCompletedLocal(completed);
+    saveDiscoveryProgressMutation.mutate({ discoveryCompleted: completed });
+  };
   
   // Interactive Call Builder state
   const [callPhase, setCallPhase] = useState<"opening" | "discovery" | "support" | "closing">("opening");
@@ -1079,6 +1106,23 @@ export default function ProjectRoleView() {
     },
     enabled: projectId > 0
   });
+  
+  // Initialize discovery progress from project data
+  useEffect(() => {
+    if (project && !discoveryProgressInitialized) {
+      // Restore saved state
+      if (project.discoveryStep) {
+        setDiscoveryStepLocal(project.discoveryStep as typeof discoveryStep);
+      }
+      if (project.discoveryTheme) {
+        setSelectedDiscoveryThemeLocal(project.discoveryTheme);
+      }
+      if (project.discoveryCompleted) {
+        setDiscoveryCompletedLocal(project.discoveryCompleted);
+      }
+      setDiscoveryProgressInitialized(true);
+    }
+  }, [project, discoveryProgressInitialized]);
 
   const [expandedMethodologies, setExpandedMethodologies] = useState<Record<string, boolean>>({
     SPIN: true,

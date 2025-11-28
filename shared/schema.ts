@@ -206,6 +206,13 @@ export const projects = pgTable("projects", {
   conditionsForSuccess: text("conditions_for_success"), // What defines success for this initiative
   ragStatus: text("rag_status", { enum: ["green", "amber", "red"] }).default("green"), // RAG status for delivery view
   
+  // Discovery progress tracking (Guided Discovery wizard state)
+  discoveryTheme: text("discovery_theme"), // Selected theme ID (e.g., "leadership", "kf-full-search")
+  discoveryStep: text("discovery_step", { 
+    enum: ["theme-select", "intelligence", "questions", "review", "insights"] 
+  }).default("theme-select"),
+  discoveryCompleted: boolean("discovery_completed").default(false).notNull(),
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
