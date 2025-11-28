@@ -262,8 +262,11 @@ interface DiscoveryQuestionInput {
 interface GeneratedQuestion {
   question: string;
   questionType: "quantitative" | "qualitative" | "both";
+  methodology?: "MILLER_HEIMAN" | "SPIN" | "PSS" | null;
+  methodologyStage?: string | null;
   purpose: string;
   relatedKPI: string | null;
+  followUpHint?: string | null;
 }
 
 interface NotesEnrichmentInput {
@@ -418,9 +421,35 @@ Job Theme Insights:
 ${cq.insights.map(i => `- ${i.label}: ${i.value}${i.relatedKPIs && i.relatedKPIs.length > 0 ? ` (KPIs: ${i.relatedKPIs.join(', ')})` : ''}`).join('\n')}
 `).join('\n');
 
-  const prompt = `You are a Korn Ferry consultant preparing for a discovery session with ${companyName}. Based on the highlighted priorities (job themes) you have identified from the organization's knowledge and research, generate the TOP 10 MOST IMPACTFUL discovery questions that will help move the needle for the client.
+  const prompt = `You are a Korn Ferry consultant preparing for a discovery session with ${companyName}. You are trained in three proven sales and consulting methodologies that Korn Ferry uses to guide impactful client conversations:
 
-IMPORTANT: Only generate questions for the job themes listed below. These represent the strategic priorities the consultant has chosen to focus on based on the organization's specific needs and opportunities.
+=== KORN FERRY METHODOLOGIES ===
+
+1. MILLER HEIMAN STRATEGIC SELLING
+   - Focuses on identifying and influencing all stakeholders in complex sales
+   - Key question types:
+     * Conceptual Questions: Understand client's vision, goals, strategic direction
+     * Attitude Questions: Uncover beliefs, concerns, and receptivity to change
+     * Commitment Questions: Gauge readiness to act and investment appetite
+   
+2. SPIN SELLING (Situation, Problem, Implication, Need-Payoff)
+   - Structured questioning to uncover pain and build urgency
+   - Question progression:
+     * Situation: Current state facts, context, and baseline metrics
+     * Problem: Challenges, pain points, inefficiencies, gaps
+     * Implication: Business impact, cost of inaction, ripple effects
+     * Need-Payoff: Value of solving, benefits of improvement, ROI potential
+   
+3. PSS (PROFESSIONAL SELLING SKILLS)
+   - Customer-centered discovery to understand needs before presenting solutions
+   - Question types:
+     * Open Probes: Broad questions to explore priorities and concerns
+     * Control Probes: Specific questions to quantify and validate
+     * Confirm Probes: Verify understanding and alignment
+
+=== INSTRUCTIONS ===
+
+Based on the highlighted priorities (job themes) below, generate the TOP 12 MOST IMPACTFUL discovery questions. Tag each question with the methodology and stage that best describes it.
 
 JOB THEME INSIGHTS BY CAPABILITY:
 ${capabilityContext}
@@ -428,51 +457,74 @@ ${capabilityContext}
 KORN FERRY KNOWLEDGE BASE:
 ${knowledgeBase}
 
-Generate EXACTLY 10 high-impact discovery questions across all capabilities that:
-1. Focus on the most critical insights that will drive business value
-2. Are client-centered and conversational (not internal consulting jargon)
-3. Prioritize questions that capture quantitative metrics for value calculations
-4. Map to specific KPIs from the knowledge base when applicable
-5. Help bridge insights to measurable business outcomes
+Generate EXACTLY 12 high-impact discovery questions that:
+1. Use a MIX of all three methodologies (at least 3 questions per methodology)
+2. Progress logically from situation/context to impact/value
+3. Are client-centered and conversational (not internal consulting jargon)
+4. Prioritize questions that capture quantitative metrics for value calculations
+5. Map to specific KPIs from the knowledge base when applicable
+6. Help bridge insights to measurable business outcomes
 
-PRIORITIZATION CRITERIA:
-- Questions that unlock the highest financial impact
-- Questions that validate the most critical assumptions
-- Questions with clear, measurable KPI connections
-- Questions that bridge to executive-level business outcomes
-
-Question types:
-- "quantitative": Asks for numbers, metrics, counts, percentages (PRIORITIZE THESE)
-- "qualitative": Asks for context, challenges, goals, strategies
-- "both": Asks for both quantitative data and qualitative context
-
-Return JSON with this structure (limit to 10 questions total across all capabilities):
+Return JSON with this structure:
 {
   "capabilityName1": [
     {
       "question": "Client-friendly question text",
       "questionType": "quantitative" | "qualitative" | "both",
+      "methodology": "MILLER_HEIMAN" | "SPIN" | "PSS",
+      "methodologyStage": "For SPIN: situation|problem|implication|need_payoff. For Miller Heiman: conceptual|attitude|commitment. For PSS: open_probe|control_probe|confirm_probe",
       "purpose": "Why we're asking this - what it helps us understand",
-      "relatedKPI": "Specific KPI name from knowledge base or null"
+      "relatedKPI": "Specific KPI name from knowledge base or null",
+      "followUpHint": "Suggested follow-up if they answer positively or negatively"
     }
   ],
   "capabilityName2": [...]
 }
 
-EXAMPLES:
-For "Leadership & Development Journeys" with insight about leadership transitions:
+=== EXAMPLES ===
+
+SPIN - Situation (establish baseline):
 {
   "question": "How many leadership transitions do you anticipate in the next 12-18 months?",
   "questionType": "quantitative",
-  "purpose": "Quantify succession planning scope and calculate leadership development investment needs",
-  "relatedKPI": "Leadership Bench Strength"
+  "methodology": "SPIN",
+  "methodologyStage": "situation",
+  "purpose": "Establish the scope of succession planning needs",
+  "relatedKPI": "Leadership Bench Strength",
+  "followUpHint": "If high number: Ask about current succession coverage"
 }
 
+SPIN - Implication (cost of inaction):
+{
+  "question": "When a critical role sits unfilled for 6+ months, what's the estimated impact on business performance?",
+  "questionType": "both",
+  "methodology": "SPIN",
+  "methodologyStage": "implication",
+  "purpose": "Quantify the cost of leadership gaps to build urgency",
+  "relatedKPI": "Cost of Vacancy",
+  "followUpHint": "Probe into specific examples or revenue impact"
+}
+
+MILLER HEIMAN - Commitment:
+{
+  "question": "If we could reduce time-to-productivity for new leaders by 40%, what would that unlock for your team?",
+  "questionType": "qualitative",
+  "methodology": "MILLER_HEIMAN",
+  "methodologyStage": "commitment",
+  "purpose": "Gauge appetite for investment by painting success vision",
+  "relatedKPI": "Time to Full Productivity",
+  "followUpHint": "If interested: Explore budget and timeline constraints"
+}
+
+PSS - Control Probe:
 {
   "question": "What percentage of critical roles have identified successors ready within 12 months?",
   "questionType": "quantitative",
-  "purpose": "Establish baseline for succession readiness and calculate risk of leadership gaps",
-  "relatedKPI": "Succession Coverage Ratio"
+  "methodology": "PSS",
+  "methodologyStage": "control_probe",
+  "purpose": "Quantify succession readiness gap for value calculations",
+  "relatedKPI": "Succession Coverage Ratio",
+  "followUpHint": "Compare to industry benchmark of 70-80%"
 }`;
 
   try {

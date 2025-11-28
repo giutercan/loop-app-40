@@ -528,9 +528,14 @@ export const discoveryQuestions = pgTable("discovery_questions", {
   capabilityName: text("capability_name").notNull(), // Which Korn Ferry capability this relates to
   question: text("question").notNull(), // The customized question
   questionType: text("question_type", { enum: ["quantitative", "qualitative", "both"] }).notNull(),
+  methodology: text("methodology", { enum: ["MILLER_HEIMAN", "SPIN", "PSS"] }), // Korn Ferry methodology framework
+  methodologyStage: text("methodology_stage"), // Stage within the methodology (e.g., situation, problem, implication, need_payoff for SPIN)
   purpose: text("purpose").notNull(), // Why we're asking this question
   relatedKPI: text("related_kpi"), // KPI this question helps measure
+  followUpHint: text("follow_up_hint"), // Suggested follow-up based on answer
   answer: text("answer"), // Client's answer
+  isAsked: boolean("is_asked").notNull().default(false), // Track if question has been asked
+  notes: text("notes"), // Consultant notes on this question
   isTemplate: boolean("is_template").notNull().default(false), // true if from template, false if AI-generated
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),

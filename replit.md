@@ -22,7 +22,11 @@ The system is built on a robust architecture leveraging AI and a structured work
 - **Realization Phase**: Value tracking, Business Review management, KPI Progress Tracking, and Success Story linking.
 - **Data Model**: Simple schema with essential fields, JSON provenance for AI data, confidence, priority, Korn Ferry pillar, solution area, related KPIs, and a success_story_library.
 - **Account-centric Architecture**: Primary entity is now `accounts`, with `projects` as initiatives. Includes `accountUserRoles` (sales, consultant, delivery, csm, client_sponsor), `accountIssues`, and `evidenceArtefacts`.
-- **Role-Based Workspaces**: Sales Workspace (Value Canvas, AI Discovery, Success Stories, Value Cases, Handoff) and Delivery Workspace (Health Dashboard, KPI Tracking, QBR, Value Governance, Success Capture).
+- **Role-Based Workspaces**: 
+  - **Sales Workspace**: Guided Discovery (first, with AI-powered questions using Korn Ferry methodologies - Miller Heiman, SPIN, PSS), Execution Canvas (renamed from Value Canvas, with KPI health status and actionable next steps), Success Stories, Value Cases, and Handoff tabs.
+  - **Delivery Workspace**: Health Dashboard, KPI Tracking, QBR, Value Governance, Success Capture.
+- **Guided Discovery**: AI generates methodology-tagged questions (SPIN Selling, Miller Heiman Strategic Selling, PSS Professional Selling Skills) with methodology stages, follow-up hints, and related KPIs. Questions are collapsible by methodology with mark-as-asked functionality.
+- **Execution Canvas**: Enhanced with KPI health status overview (On Track, At Risk, Off Track, Needs Data), status-based color coding, current value tracking from actuals, and intelligent actionable next steps based on current progress.
 
 ### System Design Choices
 - **AI Strategy**: Focuses on strategic and actionable insights.

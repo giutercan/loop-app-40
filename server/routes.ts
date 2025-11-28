@@ -1482,9 +1482,14 @@ export function registerRoutes(app: Express) {
               capabilityName,
               question: q.question,
               questionType: q.questionType,
+              methodology: q.methodology || null,
+              methodologyStage: q.methodologyStage || null,
               purpose: q.purpose,
               relatedKPI: q.relatedKPI,
+              followUpHint: q.followUpHint || null,
               answer: null,
+              isAsked: false,
+              notes: null,
               isTemplate: false,
               sortOrder: sortOrder++
             });
