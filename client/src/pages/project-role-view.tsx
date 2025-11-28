@@ -182,12 +182,39 @@ interface BlueSheetData {
   bestActionPlan: string[];
 }
 
-function generateSimulatedSalesforceData(companyName: string): { opportunities: SalesforceOpportunity[]; contacts: SalesforceContact[] } {
+interface EnhancedOpportunity extends SalesforceOpportunity {
+  redFlags: string[];
+  greenFlags: string[];
+  blueSheet: {
+    singleSalesObjective: string;
+    idealCustomerProfile: string;
+    competitiveAdvantage: string;
+    minAcceptableOutcome: string;
+  };
+  buyingInfluences: {
+    contactId: string;
+    name: string;
+    title: string;
+    role: SalesforceContact["role"];
+    influence: "high" | "medium" | "low";
+    rating: "growth" | "trouble" | "even_keel" | "overconfident";
+    degreeOfInfluence: number;
+    concerns: string;
+  }[];
+  actionPlan: {
+    priority: "high" | "medium" | "low";
+    action: string;
+    owner: string;
+    dueDate: string;
+  }[];
+}
+
+function generateSimulatedSalesforceData(companyName: string): { opportunities: EnhancedOpportunity[]; contacts: SalesforceContact[]; crossOpportunityInfluences: { name: string; title: string; role: string; opportunities: string[]; }[] } {
   const stages = ["Qualification", "Needs Analysis", "Proposal", "Negotiation", "Closed Won"];
   const titles = ["CHRO", "VP HR", "Head of Talent", "CFO", "CEO", "VP L&D", "Director Comp & Benefits"];
   const roles: SalesforceContact["role"][] = ["economic_buyer", "user_buyer", "technical_buyer", "coach", "champion"];
   
-  const opportunities: SalesforceOpportunity[] = [
+  const opportunities: EnhancedOpportunity[] = [
     {
       id: "OPP-001",
       name: `${companyName} - Leadership Development Initiative`,
@@ -196,7 +223,34 @@ function generateSimulatedSalesforceData(companyName: string): { opportunities: 
       probability: 65,
       closeDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       owner: "Sarah Mitchell",
-      nextStep: "Executive presentation scheduled for next week"
+      nextStep: "Executive presentation scheduled for next week",
+      redFlags: [
+        "CFO has not been engaged - risk of budget objection",
+        "Competitor (DDI) has existing relationship with VP L&D",
+        "Timeline pressure - fiscal year budget expires in 60 days"
+      ],
+      greenFlags: [
+        "CHRO is strong executive sponsor",
+        "Clear pain point documented from earnings call",
+        "Budget already allocated in HR strategic plan",
+        "Champion (Maria Santos) actively selling internally"
+      ],
+      blueSheet: {
+        singleSalesObjective: "Close $850K leadership development program including assessment, coaching, and L&D curriculum by Q1 end",
+        idealCustomerProfile: "Global enterprise with 10,000+ employees, recent transformation initiative, leadership pipeline concerns",
+        competitiveAdvantage: "Integrated assessment-to-development approach, Korn Ferry benchmarks, proven ROI methodology",
+        minAcceptableOutcome: "$500K initial phase with expansion pathway"
+      },
+      buyingInfluences: [
+        { contactId: "CON-001", name: "Jennifer Williams", title: "CHRO", role: "economic_buyer", influence: "high", rating: "growth", degreeOfInfluence: 5, concerns: "Wants measurable leadership bench strength improvement" },
+        { contactId: "CON-003", name: "Maria Santos", title: "Head of L&D", role: "champion", influence: "high", rating: "growth", degreeOfInfluence: 4, concerns: "Needs scalable program that integrates with existing LMS" },
+        { contactId: "CON-004", name: "Robert Kim", title: "CFO", role: "economic_buyer", influence: "high", rating: "even_keel", degreeOfInfluence: 5, concerns: "Requires clear ROI and payback period documentation" }
+      ],
+      actionPlan: [
+        { priority: "high", action: "Schedule CFO ROI presentation with value case", owner: "Sarah Mitchell", dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+        { priority: "high", action: "Prepare competitive differentiation vs DDI", owner: "Solutions Team", dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+        { priority: "medium", action: "Get Maria to introduce us to VP L&D", owner: "Sarah Mitchell", dueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] }
+      ]
     },
     {
       id: "OPP-002",
@@ -206,7 +260,32 @@ function generateSimulatedSalesforceData(companyName: string): { opportunities: 
       probability: 40,
       closeDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       owner: "Michael Chen",
-      nextStep: "Discovery workshop with HR leadership"
+      nextStep: "Discovery workshop with HR leadership",
+      redFlags: [
+        "No executive sponsor identified yet",
+        "Competing priorities with digital transformation",
+        "Procurement process unclear"
+      ],
+      greenFlags: [
+        "Strong user buyer engagement from VP TA",
+        "Existing relationship from previous project",
+        "Clear hiring quality issues documented"
+      ],
+      blueSheet: {
+        singleSalesObjective: "Win $320K assessment platform deal for high-volume hiring roles by Q2",
+        idealCustomerProfile: "Company with 500+ annual hires, quality of hire concerns, willing to invest in predictive hiring",
+        competitiveAdvantage: "AI-powered assessments, validated success profiles, integration capabilities",
+        minAcceptableOutcome: "$150K pilot program with 3 role families"
+      },
+      buyingInfluences: [
+        { contactId: "CON-002", name: "David Thompson", title: "VP Talent Acquisition", role: "user_buyer", influence: "medium", rating: "growth", degreeOfInfluence: 3, concerns: "Wants to reduce time-to-hire and improve quality metrics" },
+        { contactId: "CON-001", name: "Jennifer Williams", title: "CHRO", role: "economic_buyer", influence: "high", rating: "even_keel", degreeOfInfluence: 4, concerns: "Needs alignment with broader HR technology strategy" }
+      ],
+      actionPlan: [
+        { priority: "high", action: "Identify and engage executive sponsor", owner: "Michael Chen", dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+        { priority: "medium", action: "Map procurement process and timeline", owner: "Michael Chen", dueDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+        { priority: "medium", action: "Prepare ROI case study from similar industry", owner: "Solutions Team", dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] }
+      ]
     },
     {
       id: "OPP-003",
@@ -216,7 +295,32 @@ function generateSimulatedSalesforceData(companyName: string): { opportunities: 
       probability: 25,
       closeDate: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       owner: "Sarah Mitchell",
-      nextStep: "Initial scoping call with Comp team"
+      nextStep: "Initial scoping call with Comp team",
+      redFlags: [
+        "Legal team driving - may prefer legal firm",
+        "Low urgency despite lawsuit news",
+        "Budget not yet approved"
+      ],
+      greenFlags: [
+        "Recent lawsuit creates external pressure",
+        "CHRO publicly committed to fair pay",
+        "Korn Ferry has strong pay equity reputation"
+      ],
+      blueSheet: {
+        singleSalesObjective: "Win $180K pay equity analysis and remediation planning engagement",
+        idealCustomerProfile: "Company facing pay equity scrutiny, public commitment to DEI, budget for remediation",
+        competitiveAdvantage: "Korn Ferry pay data, statistical analysis expertise, remediation planning experience",
+        minAcceptableOutcome: "$80K diagnostic analysis with remediation roadmap"
+      },
+      buyingInfluences: [
+        { contactId: "CON-001", name: "Jennifer Williams", title: "CHRO", role: "economic_buyer", influence: "high", rating: "trouble", degreeOfInfluence: 5, concerns: "Under board pressure to address pay equity quickly" },
+        { contactId: "CON-005", name: "Lisa Park", title: "Director Compensation", role: "user_buyer", influence: "medium", rating: "even_keel", degreeOfInfluence: 3, concerns: "Needs methodology that stands up to legal scrutiny" }
+      ],
+      actionPlan: [
+        { priority: "high", action: "Connect with General Counsel to understand legal requirements", owner: "Sarah Mitchell", dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+        { priority: "high", action: "Prepare pay equity case study with legal defensibility angle", owner: "Solutions Team", dueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+        { priority: "medium", action: "Get budget confirmation from CHRO", owner: "Sarah Mitchell", dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] }
+      ]
     }
   ];
   
@@ -260,10 +364,33 @@ function generateSimulatedSalesforceData(companyName: string): { opportunities: 
       phone: "+1 (555) 456-7890",
       lastActivity: "Budget approval meeting - needs ROI data",
       influence: "high"
+    },
+    {
+      id: "CON-005",
+      name: "Lisa Park",
+      title: "Director Compensation",
+      role: "user_buyer",
+      email: `l.park@${companyName.toLowerCase().replace(/\s/g, '')}.com`,
+      phone: "+1 (555) 567-8901",
+      lastActivity: "Initial call - interested in pay equity methodology",
+      influence: "medium"
     }
   ];
   
-  return { opportunities, contacts };
+  // Find buying influences that appear in multiple opportunities
+  const influenceCount: Record<string, { name: string; title: string; role: string; opportunities: string[] }> = {};
+  opportunities.forEach(opp => {
+    opp.buyingInfluences.forEach(bi => {
+      if (!influenceCount[bi.contactId]) {
+        influenceCount[bi.contactId] = { name: bi.name, title: bi.title, role: bi.role, opportunities: [] };
+      }
+      influenceCount[bi.contactId].opportunities.push(opp.name);
+    });
+  });
+  
+  const crossOpportunityInfluences = Object.values(influenceCount).filter(ic => ic.opportunities.length > 1);
+  
+  return { opportunities, contacts, crossOpportunityInfluences };
 }
 
 interface MarketIntelligence {
@@ -1707,13 +1834,10 @@ export default function ProjectRoleView() {
                   <CardContent>
                     <div className="space-y-3">
                       {marketIntel.recentNews.map((news, idx) => (
-                        <a 
+                        <div 
                           key={idx} 
-                          href={news.sourceUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className={`block p-3 rounded-lg border hover-elevate cursor-pointer transition-colors ${news.relevance === "high" ? "border-amber-500/30 bg-amber-500/5" : ""}`}
-                          data-testid={`link-news-${idx}`}
+                          className={`p-3 rounded-lg border hover-elevate ${news.relevance === "high" ? "border-amber-500/30 bg-amber-500/5" : ""}`}
+                          data-testid={`card-news-${idx}`}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex-1">
@@ -1725,7 +1849,7 @@ export default function ProjectRoleView() {
                                   target="_blank" 
                                   rel="noopener noreferrer"
                                   className="text-xs font-medium text-primary hover:underline flex items-center gap-1"
-                                  onClick={(e) => e.stopPropagation()}
+                                  data-testid={`link-news-source-${idx}`}
                                 >
                                   {news.source}
                                   <ExternalLink className="w-3 h-3" />
@@ -1736,12 +1860,27 @@ export default function ProjectRoleView() {
                                   </Badge>
                                 )}
                               </div>
-                              <h4 className="font-semibold text-sm mb-1 group-hover:text-primary">{news.headline}</h4>
+                              <a 
+                                href={news.sourceUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block"
+                                data-testid={`link-news-${idx}`}
+                              >
+                                <h4 className="font-semibold text-sm mb-1 hover:text-primary cursor-pointer">{news.headline}</h4>
+                              </a>
                               <p className="text-xs text-muted-foreground">{news.summary}</p>
                             </div>
-                            <ExternalLink className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                            <a 
+                              href={news.sourceUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="hover:text-primary"
+                            >
+                              <ExternalLink className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                            </a>
                           </div>
-                        </a>
+                        </div>
                       ))}
                     </div>
                   </CardContent>
@@ -1878,7 +2017,7 @@ export default function ProjectRoleView() {
                 </CardContent>
               </Card>
 
-              {/* CRM Pipeline & Opportunities */}
+              {/* CRM Pipeline & Opportunities - Condensed Collapsible View */}
               <Card>
                 <CardHeader>
                   <div className="flex items-center justify-between">
@@ -1886,59 +2025,18 @@ export default function ProjectRoleView() {
                       <Database className="w-5 h-5 text-blue-600" />
                       Salesforce Pipeline
                     </CardTitle>
-                    <Badge variant="secondary" className="text-xs">Demo Data</Badge>
-                  </div>
-                  <CardDescription>Active opportunities and engagement history</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {sfData.opportunities.map((opp) => (
-                      <div key={opp.id} className="p-4 rounded-lg border hover-elevate">
-                        <div className="flex items-start justify-between gap-4 mb-3">
-                          <div>
-                            <h4 className="font-semibold text-sm">{opp.name}</h4>
-                            <p className="text-xs text-muted-foreground">{opp.owner} • Close: {opp.closeDate}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-bold text-lg">${(opp.amount / 1000).toFixed(0)}K</p>
-                            <Badge 
-                              variant="outline" 
-                              className={opp.probability >= 60 ? "text-emerald-600 border-emerald-500/30" : opp.probability >= 40 ? "text-amber-600 border-amber-500/30" : "text-muted-foreground"}
-                            >
-                              {opp.probability}% probability
-                            </Badge>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge className="text-xs">{opp.stage}</Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          <span className="font-medium">Next:</span> {opp.nextStep}
-                        </p>
-                      </div>
-                    ))}
-                    <div className="pt-2 border-t flex items-center justify-between">
-                      <span className="text-sm font-medium">Total Pipeline Value</span>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs">Demo Data</Badge>
                       <span className="text-lg font-bold text-primary">
                         ${(sfData.opportunities.reduce((sum, o) => sum + o.amount, 0) / 1000000).toFixed(2)}M
                       </span>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* Key Contacts */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="w-5 h-5 text-purple-600" />
-                    Key Stakeholders
-                  </CardTitle>
-                  <CardDescription>Buying influences and relationship status</CardDescription>
+                  <CardDescription>{sfData.opportunities.length} active opportunities • Click to expand details</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {sfData.contacts.map((contact) => {
+                  <div className="space-y-3">
+                    {sfData.opportunities.map((opp) => {
                       const roleColors: Record<string, string> = {
                         economic_buyer: "bg-amber-500/10 text-amber-700 border-amber-500/20",
                         user_buyer: "bg-blue-500/10 text-blue-700 border-blue-500/20",
@@ -1953,38 +2051,242 @@ export default function ProjectRoleView() {
                         coach: "Coach",
                         champion: "Champion"
                       };
+                      const ratingColors: Record<string, string> = {
+                        growth: "text-emerald-600",
+                        trouble: "text-rose-600",
+                        even_keel: "text-blue-600",
+                        overconfident: "text-amber-600"
+                      };
                       
                       return (
-                        <div key={contact.id} className="p-4 rounded-lg border hover-elevate">
-                          <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                              <UserCircle className="w-6 h-6 text-muted-foreground" />
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between gap-2">
-                                <h4 className="font-semibold text-sm">{contact.name}</h4>
-                                <Badge 
-                                  variant={contact.influence === "high" ? "default" : "outline"} 
-                                  className="text-xs"
-                                >
-                                  {contact.influence} influence
-                                </Badge>
+                        <Collapsible key={opp.id}>
+                          <div className="rounded-lg border overflow-hidden">
+                            <CollapsibleTrigger asChild>
+                              <div className="p-3 cursor-pointer hover-elevate flex items-center justify-between gap-4">
+                                <div className="flex items-center gap-3 flex-1">
+                                  <div className="flex flex-col">
+                                    <div className="flex items-center gap-2">
+                                      <h4 className="font-semibold text-sm">{opp.name.replace(`${project?.companyName} - `, '')}</h4>
+                                      <Badge className="text-xs" variant="outline">{opp.stage}</Badge>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">{opp.owner} • Close: {opp.closeDate}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-xs text-rose-600 font-medium">{opp.redFlags.length}</span>
+                                    <Flag className="w-3 h-3 text-rose-500" />
+                                    <span className="text-xs text-emerald-600 font-medium ml-2">{opp.greenFlags.length}</span>
+                                    <CheckCircle className="w-3 h-3 text-emerald-500" />
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="font-bold">${(opp.amount / 1000).toFixed(0)}K</p>
+                                    <span className={`text-xs ${opp.probability >= 60 ? "text-emerald-600" : opp.probability >= 40 ? "text-amber-600" : "text-muted-foreground"}`}>
+                                      {opp.probability}%
+                                    </span>
+                                  </div>
+                                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                                </div>
                               </div>
-                              <p className="text-xs text-muted-foreground">{contact.title}</p>
-                              <Badge className={`${roleColors[contact.role]} text-xs mt-2`}>
-                                {roleLabelsMap[contact.role]}
-                              </Badge>
-                              <p className="text-xs text-muted-foreground mt-2">
-                                <span className="font-medium">Last Activity:</span> {contact.lastActivity}
-                              </p>
-                            </div>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <div className="border-t p-4 bg-muted/30 space-y-4">
+                                {/* Red & Green Flags */}
+                                <div className="grid gap-3 md:grid-cols-2">
+                                  <div className="p-3 rounded-lg border border-rose-500/20 bg-rose-500/5">
+                                    <h5 className="text-xs font-semibold uppercase tracking-wider text-rose-600 mb-2 flex items-center gap-1">
+                                      <AlertTriangle className="w-3 h-3" />
+                                      Red Flags ({opp.redFlags.length})
+                                    </h5>
+                                    <ul className="space-y-1">
+                                      {opp.redFlags.map((flag, idx) => (
+                                        <li key={idx} className="text-xs flex items-start gap-1">
+                                          <span className="text-rose-500 mt-0.5">•</span>
+                                          {flag}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                  <div className="p-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5">
+                                    <h5 className="text-xs font-semibold uppercase tracking-wider text-emerald-600 mb-2 flex items-center gap-1">
+                                      <CheckCircle className="w-3 h-3" />
+                                      Green Flags ({opp.greenFlags.length})
+                                    </h5>
+                                    <ul className="space-y-1">
+                                      {opp.greenFlags.map((flag, idx) => (
+                                        <li key={idx} className="text-xs flex items-start gap-1">
+                                          <span className="text-emerald-500 mt-0.5">•</span>
+                                          {flag}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                </div>
+                                
+                                {/* Blue Sheet Summary */}
+                                <div className="p-3 rounded-lg border border-blue-500/20 bg-blue-500/5">
+                                  <h5 className="text-xs font-semibold uppercase tracking-wider text-blue-600 mb-2 flex items-center gap-1">
+                                    <FileText className="w-3 h-3" />
+                                    Blue Sheet
+                                  </h5>
+                                  <div className="grid gap-2 md:grid-cols-2 text-xs">
+                                    <div>
+                                      <span className="font-medium text-muted-foreground">SSO:</span>
+                                      <p>{opp.blueSheet.singleSalesObjective}</p>
+                                    </div>
+                                    <div>
+                                      <span className="font-medium text-muted-foreground">Competitive Advantage:</span>
+                                      <p>{opp.blueSheet.competitiveAdvantage}</p>
+                                    </div>
+                                    <div>
+                                      <span className="font-medium text-muted-foreground">ICP:</span>
+                                      <p>{opp.blueSheet.idealCustomerProfile}</p>
+                                    </div>
+                                    <div>
+                                      <span className="font-medium text-muted-foreground">Min Acceptable:</span>
+                                      <p>{opp.blueSheet.minAcceptableOutcome}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {/* Buying Influences */}
+                                <div className="p-3 rounded-lg border">
+                                  <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1">
+                                    <Users className="w-3 h-3" />
+                                    Buying Influences ({opp.buyingInfluences.length})
+                                  </h5>
+                                  <div className="space-y-2">
+                                    {opp.buyingInfluences.map((bi, idx) => (
+                                      <div key={idx} className="flex items-center justify-between gap-2 p-2 rounded bg-background">
+                                        <div className="flex items-center gap-2">
+                                          <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
+                                            <UserCircle className="w-4 h-4 text-muted-foreground" />
+                                          </div>
+                                          <div>
+                                            <span className="text-xs font-medium">{bi.name}</span>
+                                            <span className="text-xs text-muted-foreground ml-1">({bi.title})</span>
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <Badge className={`${roleColors[bi.role]} text-xs`}>
+                                            {roleLabelsMap[bi.role]}
+                                          </Badge>
+                                          <span className={`text-xs font-medium ${ratingColors[bi.rating]}`}>
+                                            {bi.rating.replace('_', ' ')}
+                                          </span>
+                                          <div className="flex">
+                                            {Array.from({ length: 5 }).map((_, i) => (
+                                              <div 
+                                                key={i} 
+                                                className={`w-2 h-2 rounded-full mx-0.5 ${i < bi.degreeOfInfluence ? 'bg-primary' : 'bg-muted'}`}
+                                              />
+                                            ))}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                                
+                                {/* Action Plan */}
+                                <div className="p-3 rounded-lg border border-amber-500/20 bg-amber-500/5">
+                                  <h5 className="text-xs font-semibold uppercase tracking-wider text-amber-600 mb-2 flex items-center gap-1">
+                                    <Zap className="w-3 h-3" />
+                                    Action Plan ({opp.actionPlan.length})
+                                  </h5>
+                                  <div className="space-y-2">
+                                    {opp.actionPlan.map((action, idx) => (
+                                      <div key={idx} className="flex items-center justify-between gap-2 p-2 rounded bg-background text-xs">
+                                        <div className="flex items-center gap-2 flex-1">
+                                          <Badge 
+                                            variant="outline" 
+                                            className={`text-xs ${action.priority === 'high' ? 'border-rose-500/30 text-rose-600' : action.priority === 'medium' ? 'border-amber-500/30 text-amber-600' : 'border-muted'}`}
+                                          >
+                                            {action.priority}
+                                          </Badge>
+                                          <span>{action.action}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-muted-foreground">
+                                          <span>{action.owner}</span>
+                                          <span>•</span>
+                                          <span>{action.dueDate}</span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            </CollapsibleContent>
                           </div>
-                        </div>
+                        </Collapsible>
                       );
                     })}
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Cross-Opportunity Buying Influences */}
+              {sfData.crossOpportunityInfluences.length > 0 && (
+                <Card className="border-purple-500/20">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="w-5 h-5 text-purple-600" />
+                      Key Buying Influences (Multi-Opportunity)
+                    </CardTitle>
+                    <CardDescription>Stakeholders involved in multiple opportunities - high strategic value</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {sfData.crossOpportunityInfluences.map((influence, idx) => {
+                        const roleColors: Record<string, string> = {
+                          economic_buyer: "bg-amber-500/10 text-amber-700 border-amber-500/20",
+                          user_buyer: "bg-blue-500/10 text-blue-700 border-blue-500/20",
+                          technical_buyer: "bg-purple-500/10 text-purple-700 border-purple-500/20",
+                          coach: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20",
+                          champion: "bg-primary/10 text-primary border-primary/20"
+                        };
+                        const roleLabelsMap: Record<string, string> = {
+                          economic_buyer: "Economic Buyer",
+                          user_buyer: "User Buyer",
+                          technical_buyer: "Technical Buyer",
+                          coach: "Coach",
+                          champion: "Champion"
+                        };
+                        return (
+                          <div key={idx} className="p-3 rounded-lg border bg-purple-500/5 border-purple-500/20">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center">
+                                  <UserCircle className="w-6 h-6 text-purple-600" />
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="font-semibold text-sm">{influence.name}</h4>
+                                    <Badge className={`${roleColors[influence.role]} text-xs`}>
+                                      {roleLabelsMap[influence.role]}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">{influence.title}</p>
+                                </div>
+                              </div>
+                              <Badge variant="secondary" className="text-xs">
+                                {influence.opportunities.length} Opportunities
+                              </Badge>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {influence.opportunities.map((oppName, oidx) => (
+                                <Badge key={oidx} variant="outline" className="text-xs">
+                                  {oppName.replace(`${project?.companyName} - `, '')}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Miller Heiman Blue Sheet Summary */}
               <Card className="border-purple-500/20">
