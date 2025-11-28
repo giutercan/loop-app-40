@@ -77,7 +77,8 @@ import {
   Trophy,
   Heart,
   Award,
-  MessageCircle
+  MessageCircle,
+  ExternalLink
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -270,6 +271,7 @@ interface MarketIntelligence {
     date: string;
     headline: string;
     source: string;
+    sourceUrl: string;
     summary: string;
     relevance: "high" | "medium" | "low";
   }[];
@@ -299,6 +301,7 @@ function generateMarketIntelligence(companyName: string, themeId?: string): Mark
       date: "Nov 15, 2024",
       headline: `${companyName} Announces Major Digital Transformation Initiative`,
       source: "Business Wire",
+      sourceUrl: "https://www.businesswire.com/news/",
       summary: "Company commits $500M to modernize operations and upskill workforce over next 3 years. CHRO Jennifer Williams quoted on 'people-first approach to transformation.'",
       relevance: "high" as const,
       themes: ["transformation", "leadership"]
@@ -307,6 +310,7 @@ function generateMarketIntelligence(companyName: string, themeId?: string): Mark
       date: "Nov 8, 2024",
       headline: `${companyName} Reports Q3 Results, Beats Expectations Despite Headwinds`,
       source: "Reuters",
+      sourceUrl: "https://www.reuters.com/business/",
       summary: "Revenue up 8% YoY. CEO emphasized need for 'talent agility' to navigate market uncertainty. Plans to invest in leadership development.",
       relevance: "high" as const,
       themes: ["leadership", "sales-effectiveness"]
@@ -315,6 +319,7 @@ function generateMarketIntelligence(companyName: string, themeId?: string): Mark
       date: "Oct 28, 2024",
       headline: `${companyName} Named to Fortune 100 Best Companies to Work For`,
       source: "Fortune",
+      sourceUrl: "https://fortune.com/ranking/best-companies/",
       summary: "Recognized for learning & development programs and inclusive culture. Employee engagement scores up 12 points from prior year.",
       relevance: "medium" as const,
       themes: ["leadership", "talent-acquisition"]
@@ -323,6 +328,7 @@ function generateMarketIntelligence(companyName: string, themeId?: string): Mark
       date: "Oct 15, 2024",
       headline: `Industry Report: Skills Gap Threatens Growth for Companies Like ${companyName}`,
       source: "McKinsey Quarterly",
+      sourceUrl: "https://www.mckinsey.com/quarterly/",
       summary: `Study finds 67% of companies in this sector face critical leadership pipeline gaps. ${companyName} specifically mentioned as seeking external solutions.`,
       relevance: "high" as const,
       themes: ["leadership", "talent-acquisition"]
@@ -331,6 +337,7 @@ function generateMarketIntelligence(companyName: string, themeId?: string): Mark
       date: "Nov 12, 2024",
       headline: `${companyName} CHRO Discusses Succession Planning at Industry Conference`,
       source: "HR Executive",
+      sourceUrl: "https://hrexecutive.com/",
       summary: "Jennifer Williams outlined 3-year plan to develop 120 senior leaders internally. 'We need to build our bench strength for the next decade of growth.'",
       relevance: "high" as const,
       themes: ["leadership"]
@@ -339,6 +346,7 @@ function generateMarketIntelligence(companyName: string, themeId?: string): Mark
       date: "Nov 5, 2024",
       headline: `${companyName} Launches AI-Powered Hiring Platform`,
       source: "TechCrunch",
+      sourceUrl: "https://techcrunch.com/",
       summary: "New platform aims to reduce time-to-hire by 40% and improve quality of hire metrics. Piloting in technology and sales divisions first.",
       relevance: "high" as const,
       themes: ["talent-acquisition"]
@@ -347,6 +355,7 @@ function generateMarketIntelligence(companyName: string, themeId?: string): Mark
       date: "Oct 20, 2024",
       headline: `${companyName} Restructures Commercial Operations for Growth`,
       source: "Wall Street Journal",
+      sourceUrl: "https://www.wsj.com/business/",
       summary: "Major reorganization of sales and go-to-market teams. CEO: 'We're building a commercial engine that can scale globally.'",
       relevance: "high" as const,
       themes: ["transformation", "sales-effectiveness"]
@@ -355,6 +364,7 @@ function generateMarketIntelligence(companyName: string, themeId?: string): Mark
       date: "Nov 1, 2024",
       headline: `${companyName} Faces Pay Equity Lawsuit, Pledges Compensation Review`,
       source: "Bloomberg",
+      sourceUrl: "https://www.bloomberg.com/",
       summary: "Company commits to third-party compensation audit following class action. CHRO states commitment to 'fair and competitive pay for all employees.'",
       relevance: "high" as const,
       themes: ["rewards"]
@@ -363,6 +373,7 @@ function generateMarketIntelligence(companyName: string, themeId?: string): Mark
       date: "Oct 25, 2024",
       headline: `${companyName} Announces New Benefits Package, Stock Options for All`,
       source: "CNBC",
+      sourceUrl: "https://www.cnbc.com/",
       summary: "Expanded equity participation and mental health benefits aim to improve retention. CFO notes 'investment in our people pays dividends.'",
       relevance: "high" as const,
       themes: ["rewards"]
@@ -371,6 +382,7 @@ function generateMarketIntelligence(companyName: string, themeId?: string): Mark
       date: "Nov 10, 2024",
       headline: `${companyName} Sales Force Expansion: 500 New Hires Planned`,
       source: "Sales Force Magazine",
+      sourceUrl: "https://www.salesforcemag.com/",
       summary: "Aggressive hiring in enterprise sales as company targets 30% revenue growth. VP Sales: 'We need elite talent to capture market opportunity.'",
       relevance: "high" as const,
       themes: ["sales-effectiveness", "talent-acquisition"]
@@ -1695,24 +1707,41 @@ export default function ProjectRoleView() {
                   <CardContent>
                     <div className="space-y-3">
                       {marketIntel.recentNews.map((news, idx) => (
-                        <div key={idx} className={`p-3 rounded-lg border hover-elevate ${news.relevance === "high" ? "border-amber-500/30 bg-amber-500/5" : ""}`}>
+                        <a 
+                          key={idx} 
+                          href={news.sourceUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className={`block p-3 rounded-lg border hover-elevate cursor-pointer transition-colors ${news.relevance === "high" ? "border-amber-500/30 bg-amber-500/5" : ""}`}
+                          data-testid={`link-news-${idx}`}
+                        >
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
                                 <span className="text-xs text-muted-foreground">{news.date}</span>
                                 <span className="text-xs text-muted-foreground">•</span>
-                                <span className="text-xs font-medium">{news.source}</span>
+                                <a 
+                                  href={news.sourceUrl} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-xs font-medium text-primary hover:underline flex items-center gap-1"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {news.source}
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
                                 {news.relevance === "high" && (
                                   <Badge className="text-xs bg-amber-500/10 text-amber-700 border-amber-500/20">
                                     High Relevance
                                   </Badge>
                                 )}
                               </div>
-                              <h4 className="font-semibold text-sm mb-1">{news.headline}</h4>
+                              <h4 className="font-semibold text-sm mb-1 group-hover:text-primary">{news.headline}</h4>
                               <p className="text-xs text-muted-foreground">{news.summary}</p>
                             </div>
+                            <ExternalLink className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                           </div>
-                        </div>
+                        </a>
                       ))}
                     </div>
                   </CardContent>

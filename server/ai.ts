@@ -421,7 +421,15 @@ Job Theme Insights:
 ${cq.insights.map(i => `- ${i.label}: ${i.value}${i.relatedKPIs && i.relatedKPIs.length > 0 ? ` (KPIs: ${i.relatedKPIs.join(', ')})` : ''}`).join('\n')}
 `).join('\n');
 
-  const prompt = `You are a Korn Ferry consultant preparing for a discovery session with ${companyName}. You are trained in three proven sales and consulting methodologies that Korn Ferry uses to guide impactful client conversations:
+  const prompt = `You are a Korn Ferry consultant preparing for a discovery session with ${companyName}. You are trained in three proven sales and consulting methodologies that Korn Ferry uses to guide impactful client conversations.
+
+=== CRITICAL CONTEXT ===
+Your questions MUST be highly relevant and specific to:
+1. THE CUSTOMER: ${companyName} - their specific industry, market position, and known challenges
+2. LINE OF BUSINESS: Understand which business units, divisions, or functions are affected
+3. SOLUTION FIT: Explore how Korn Ferry's specific capabilities can address their needs
+4. CONTEXT: Build on the research insights gathered about their situation
+5. FINDINGS: Validate and quantify the opportunities identified in preliminary research
 
 === KORN FERRY METHODOLOGIES ===
 
@@ -451,11 +459,19 @@ ${cq.insights.map(i => `- ${i.label}: ${i.value}${i.relatedKPIs && i.relatedKPIs
 
 Based on the highlighted priorities (job themes) below, generate the TOP 12 MOST IMPACTFUL discovery questions. Tag each question with the methodology and stage that best describes it.
 
-JOB THEME INSIGHTS BY CAPABILITY:
+JOB THEME INSIGHTS BY CAPABILITY (these are the key findings from our research on ${companyName}):
 ${capabilityContext}
 
 KORN FERRY KNOWLEDGE BASE:
 ${knowledgeBase}
+
+=== QUESTION RELEVANCE REQUIREMENTS ===
+EVERY question MUST:
+1. Reference ${companyName} by name or clearly relate to their specific situation
+2. Connect to a specific finding or insight from the research above
+3. Explore the line of business impact (which teams, functions, or divisions)
+4. Lead toward a Korn Ferry solution area
+5. Help quantify the opportunity or validate the challenge
 
 Generate EXACTLY 12 high-impact discovery questions that:
 1. Use a MIX of all three methodologies (at least 3 questions per methodology)
@@ -464,16 +480,20 @@ Generate EXACTLY 12 high-impact discovery questions that:
 4. Prioritize questions that capture quantitative metrics for value calculations
 5. Map to specific KPIs from the knowledge base when applicable
 6. Help bridge insights to measurable business outcomes
+7. ARE SPECIFIC TO ${companyName} - NOT generic questions that could apply to any company
 
 Return JSON with this structure:
 {
   "capabilityName1": [
     {
-      "question": "Client-friendly question text",
+      "question": "Client-friendly question text that references ${companyName} or their specific situation",
       "questionType": "quantitative" | "qualitative" | "both",
       "methodology": "MILLER_HEIMAN" | "SPIN" | "PSS",
       "methodologyStage": "For SPIN: situation|problem|implication|need_payoff. For Miller Heiman: conceptual|attitude|commitment. For PSS: open_probe|control_probe|confirm_probe",
-      "purpose": "Why we're asking this - what it helps us understand",
+      "purpose": "Why we're asking this - what it helps us understand about ${companyName}",
+      "contextFromFindings": "Which specific insight or finding from our research prompted this question",
+      "lineOfBusinessFocus": "Which business unit, function, or division this question explores",
+      "kornFerrySolutionLink": "Which Korn Ferry solution or capability this leads toward",
       "relatedKPI": "Specific KPI name from knowledge base or null",
       "followUpHint": "Suggested follow-up if they answer positively or negatively"
     }
@@ -481,50 +501,62 @@ Return JSON with this structure:
   "capabilityName2": [...]
 }
 
-=== EXAMPLES ===
+=== EXAMPLES (showing how to make questions SPECIFIC to the client) ===
 
-SPIN - Situation (establish baseline):
+SPIN - Situation (referencing research findings):
 {
-  "question": "How many leadership transitions do you anticipate in the next 12-18 months?",
+  "question": "Based on your recent digital transformation announcement, how many roles in your technology organization will need significant reskilling over the next 18 months?",
   "questionType": "quantitative",
   "methodology": "SPIN",
   "methodologyStage": "situation",
-  "purpose": "Establish the scope of succession planning needs",
+  "purpose": "Quantify the scale of transformation impact on talent",
+  "contextFromFindings": "Client announced $500M digital transformation initiative",
+  "lineOfBusinessFocus": "Technology and IT organizations",
+  "kornFerrySolutionLink": "Leadership & Development Journeys, Organisation Strategy & Transformation",
   "relatedKPI": "Leadership Bench Strength",
-  "followUpHint": "If high number: Ask about current succession coverage"
+  "followUpHint": "If high number: Ask about current development capacity and timeline"
 }
 
-SPIN - Implication (cost of inaction):
+SPIN - Implication (connecting to business impact):
 {
-  "question": "When a critical role sits unfilled for 6+ months, what's the estimated impact on business performance?",
+  "question": "Given your Q3 emphasis on 'talent agility', what's the estimated revenue impact when key positions in your sales organization remain unfilled for extended periods?",
   "questionType": "both",
   "methodology": "SPIN",
   "methodologyStage": "implication",
-  "purpose": "Quantify the cost of leadership gaps to build urgency",
+  "purpose": "Quantify the cost of talent gaps in commercial functions",
+  "contextFromFindings": "CEO emphasized 'talent agility' in recent earnings call",
+  "lineOfBusinessFocus": "Sales and commercial operations",
+  "kornFerrySolutionLink": "Sales & Service (KF Sell), Standardised Assessments",
   "relatedKPI": "Cost of Vacancy",
-  "followUpHint": "Probe into specific examples or revenue impact"
+  "followUpHint": "Probe into specific territory coverage gaps or deal pipeline impact"
 }
 
 MILLER HEIMAN - Commitment:
 {
-  "question": "If we could reduce time-to-productivity for new leaders by 40%, what would that unlock for your team?",
+  "question": "Your CHRO mentioned building 'bench strength for the next decade of growth' - if we could accelerate your leadership readiness by 40%, what strategic initiatives would that unlock?",
   "questionType": "qualitative",
   "methodology": "MILLER_HEIMAN",
   "methodologyStage": "commitment",
-  "purpose": "Gauge appetite for investment by painting success vision",
+  "purpose": "Connect leadership development to strategic business outcomes",
+  "contextFromFindings": "CHRO discussed 3-year plan to develop 120 senior leaders at industry conference",
+  "lineOfBusinessFocus": "Senior leadership across business units",
+  "kornFerrySolutionLink": "Leadership & Development Journeys, Success Profiles",
   "relatedKPI": "Time to Full Productivity",
-  "followUpHint": "If interested: Explore budget and timeline constraints"
+  "followUpHint": "If interested: Explore which initiatives are blocked by leadership readiness"
 }
 
 PSS - Control Probe:
 {
-  "question": "What percentage of critical roles have identified successors ready within 12 months?",
+  "question": "Of your 120 targeted senior leader development candidates, what percentage would you say are ready-now for their next role versus needing 12-24 months of development?",
   "questionType": "quantitative",
   "methodology": "PSS",
   "methodologyStage": "control_probe",
-  "purpose": "Quantify succession readiness gap for value calculations",
+  "purpose": "Quantify the gap between current state and target readiness",
+  "contextFromFindings": "CHRO's 3-year plan to develop 120 senior leaders",
+  "lineOfBusinessFocus": "Executive and senior leadership pipeline",
+  "kornFerrySolutionLink": "Standardised Assessments, Leadership & Development Journeys",
   "relatedKPI": "Succession Coverage Ratio",
-  "followUpHint": "Compare to industry benchmark of 70-80%"
+  "followUpHint": "Compare to best-in-class benchmark of 70-80% ready-now"
 }`;
 
   try {
