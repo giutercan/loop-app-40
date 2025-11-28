@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sparkles, Brain, Target, Users, FileText, Mic, CheckCircle2, ArrowRight, Zap, TrendingUp, MessageSquare, BarChart3, Calendar, Award, Activity, Search, Lightbulb, LineChart, Play, Building2, Briefcase, Rocket, RefreshCw, GraduationCap, Shield, UserCheck, Truck, Headphones } from "lucide-react";
+import { Sparkles, Brain, Target, Users, FileText, Mic, CheckCircle2, ArrowRight, Zap, TrendingUp, MessageSquare, BarChart3, Calendar, Award, Activity, Search, Lightbulb, LineChart, Play, Building2, Briefcase, Rocket, RefreshCw, GraduationCap, Shield, UserCheck, Headphones } from "lucide-react";
 import { Link } from "wouter";
 import { useState } from "react";
 import heroImage from "@assets/Picture6_1763994371580.jpg";
@@ -80,7 +80,7 @@ const roleViews = [
   {
     id: "delivery",
     label: "Delivery",
-    icon: Truck,
+    icon: Users,
     description: "Implementation tracking, KPI logging, and milestone management",
     color: "text-emerald-600",
     bgColor: "bg-emerald-100 dark:bg-emerald-900/30"

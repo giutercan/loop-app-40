@@ -38,15 +38,22 @@ import {
   Clock,
   FileText,
   ChevronRight,
+  ChevronDown,
   Star,
   Zap,
-  Truck,
   Search,
   Lightbulb,
   Rocket,
   RefreshCw,
-  GraduationCap
+  GraduationCap,
+  FolderOpen,
+  Layers
 } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
@@ -74,13 +81,27 @@ const rolePortals = [
     id: "delivery",
     label: "Delivery Portal", 
     description: "Implementation tracking, KPI logging, and value realization",
-    icon: Truck,
+    icon: Users,
     color: "text-emerald-600",
     bgColor: "bg-emerald-100 dark:bg-emerald-900/30",
     phases: ["deliver_realise", "review_renew", "learn_scale"],
     focus: "Deliver, Review & Scale"
   }
 ];
+
+interface Project {
+  id: number;
+  name: string;
+  companyName: string;
+  currentPhase: "discovery" | "alignment" | "realisation";
+  accountId: number | null;
+}
+
+const phaseLabels: Record<string, { label: string; color: string }> = {
+  discovery: { label: "Discovery", color: "text-blue-600" },
+  alignment: { label: "Alignment", color: "text-purple-600" },
+  realisation: { label: "Realization", color: "text-emerald-600" }
+};
 
 interface Account {
   id: number;
@@ -128,6 +149,23 @@ export default function AccountsDashboard() {
   const { data: accounts = [], isLoading, refetch: refetchAccounts } = useQuery<Account[]>({
     queryKey: ["/api/accounts"],
   });
+
+  const { data: allProjects = [] } = useQuery<Project[]>({
+    queryKey: ["/api/projects"],
+  });
+
+  const [expandedAccounts, setExpandedAccounts] = useState<Record<number, boolean>>({});
+
+  const getProjectsForAccount = (accountId: number) => {
+    return allProjects.filter(p => p.accountId === accountId);
+  };
+
+  const toggleAccountExpanded = (accountId: number) => {
+    setExpandedAccounts(prev => ({
+      ...prev,
+      [accountId]: !prev[accountId]
+    }));
+  };
 
   const migrateMutation = useMutation({
     mutationFn: async () => {
@@ -403,9 +441,83 @@ export default function AccountsDashboard() {
                         />
                       )}
 
+                      {/* Projects Dropdown */}
+                      {(() => {
+                        const accountProjects = getProjectsForAccount(account.id);
+                        const isExpanded = expandedAccounts[account.id];
+                        return accountProjects.length > 0 ? (
+                          <Collapsible open={isExpanded} onOpenChange={() => toggleAccountExpanded(account.id)}>
+                            <CollapsibleTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="w-full justify-between px-2 h-auto py-2"
+                                data-testid={`button-toggle-projects-${account.id}`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <FolderOpen className="w-4 h-4 text-muted-foreground" />
+                                  <span className="text-sm font-medium">{accountProjects.length} Project{accountProjects.length > 1 ? 's' : ''}</span>
+                                </div>
+                                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                              </Button>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="mt-2 space-y-1">
+                              {accountProjects.map((project) => {
+                                const phase = phaseLabels[project.currentPhase] || { label: project.currentPhase, color: "text-muted-foreground" };
+                                return (
+                                  <div 
+                                    key={project.id} 
+                                    className="rounded-lg border bg-muted/30 p-2 space-y-2"
+                                    data-testid={`project-row-${project.id}`}
+                                  >
+                                    <div className="flex items-center justify-between gap-2">
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <Layers className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                        <span className="text-sm font-medium truncate">{project.name}</span>
+                                      </div>
+                                      <Badge variant="secondary" className={`text-xs shrink-0 ${phase.color}`}>
+                                        {phase.label}
+                                      </Badge>
+                                    </div>
+                                    <div className="flex gap-1.5">
+                                      <Link href={`/projects/${project.id}/sales`} className="flex-1">
+                                        <Button 
+                                          variant="outline" 
+                                          size="sm" 
+                                          className="w-full h-7 text-xs gap-1"
+                                          data-testid={`button-project-sales-${project.id}`}
+                                        >
+                                          <TrendingUp className="w-3 h-3 text-blue-600" />
+                                          Sales
+                                        </Button>
+                                      </Link>
+                                      <Link href={`/projects/${project.id}/delivery`} className="flex-1">
+                                        <Button 
+                                          variant="outline" 
+                                          size="sm" 
+                                          className="w-full h-7 text-xs gap-1"
+                                          data-testid={`button-project-delivery-${project.id}`}
+                                        >
+                                          <Users className="w-3 h-3 text-emerald-600" />
+                                          Delivery
+                                        </Button>
+                                      </Link>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </CollapsibleContent>
+                          </Collapsible>
+                        ) : (
+                          <div className="text-center py-2 text-xs text-muted-foreground">
+                            No projects yet
+                          </div>
+                        );
+                      })()}
+
                       {/* Role Access Buttons */}
                       <div className="pt-2 border-t space-y-2">
-                        <p className="text-xs text-muted-foreground font-medium">Open as:</p>
+                        <p className="text-xs text-muted-foreground font-medium">Open account as:</p>
                         <div className="grid grid-cols-2 gap-2">
                           {rolePortals.map((portal) => {
                             const Icon = portal.icon;
