@@ -1276,15 +1276,25 @@ export default function ProjectRoleView() {
 
         {/* Step 1: Theme Selection */}
         {discoveryStep === "theme-select" && (
-          <Card>
-            <CardHeader>
+          <Card className="border-primary/20">
+            <CardHeader className="bg-gradient-to-r from-primary/5 to-blue-500/5">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Building2 className="w-8 h-8 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground font-medium uppercase tracking-wider">We are</p>
+                  <h2 className="text-2xl font-bold text-primary">Korn Ferry</h2>
+                  <p className="text-sm text-muted-foreground">Organizational Consulting</p>
+                </div>
+              </div>
               <CardTitle className="flex items-center gap-2">
                 <Target className="w-5 h-5 text-primary" />
                 Select Discovery Theme
               </CardTitle>
-              <CardDescription>Choose a focus area to guide your discovery conversation</CardDescription>
+              <CardDescription>Choose a focus area aligned with Korn Ferry capabilities to guide your discovery conversation</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {discoveryThemes.map((theme) => {
                   const ThemeIcon = theme.icon;
