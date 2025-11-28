@@ -2438,3 +2438,226 @@ Return your response in JSON format:
     throw error;
   }
 }
+
+// ============================================
+// AI-POWERED STORY SUGGESTIONS
+// ============================================
+
+export interface StorySuggestionInput {
+  companyName: string;
+  companyContext?: string;
+  discoveryTheme?: string;
+  meetingContact?: {
+    name?: string;
+    title?: string;
+    role?: string;
+    influence?: string;
+    knownConcerns?: string;
+    decisionCriteria?: string;
+  };
+  successStories?: Array<{
+    client: string;
+    industry: string;
+    challenge: string;
+    metrics: string[];
+  }>;
+  currentDraft?: {
+    singleMessage?: string;
+    emotionalReaction?: string;
+    startingHook?: string;
+    structure?: string;
+    heroCharacter?: string;
+    evidence?: string;
+  };
+  fieldToSuggest: "all" | "singleMessage" | "emotionalReaction" | "startingHook" | "heroCharacter" | "evidence" | "openingLine" | "turningPoint" | "keyDataPoint" | "meaningMoment" | "takeaway" | "callToAction";
+  phase: "before" | "during" | "after";
+}
+
+export interface StorySuggestionResult {
+  suggestions: {
+    singleMessage?: string;
+    emotionalReaction?: string;
+    startingHook?: string;
+    heroCharacter?: string;
+    evidence?: string;
+    openingLine?: string;
+    turningPoint?: string;
+    keyDataPoint?: string;
+    meaningMoment?: string;
+    takeaway?: string;
+    callToAction?: string;
+  };
+  reasoning: string;
+  alternativeSuggestions?: string[];
+}
+
+const storySuggestionSchema = z.object({
+  suggestions: z.object({
+    singleMessage: z.string().optional(),
+    emotionalReaction: z.string().optional(),
+    startingHook: z.string().optional(),
+    heroCharacter: z.string().optional(),
+    evidence: z.string().optional(),
+    openingLine: z.string().optional(),
+    turningPoint: z.string().optional(),
+    keyDataPoint: z.string().optional(),
+    meaningMoment: z.string().optional(),
+    takeaway: z.string().optional(),
+    callToAction: z.string().optional()
+  }),
+  reasoning: z.string(),
+  alternativeSuggestions: z.array(z.string()).optional()
+});
+
+export async function generateStorySuggestion(
+  input: StorySuggestionInput
+): Promise<StorySuggestionResult> {
+  const buyerRoleContext = input.meetingContact?.role ? {
+    economic_buyer: "This is an Economic Buyer who controls budget - focus on ROI, business impact, and strategic value. Lead with outcomes, not features.",
+    user_buyer: "This is a User Buyer who will use the solution daily - emphasize practical impact, ease of implementation, and how it makes their work better.",
+    technical_buyer: "This is a Technical Buyer who evaluates feasibility - have data and methodology ready. They screen for fit and will ask detailed questions.",
+    coach: "This is a Coach who can guide the sales process - they share inside information and help navigate the organization.",
+    champion: "This is a Champion who will advocate internally - give them soundbites, data, and stories they can share with decision-makers."
+  }[input.meetingContact.role] : "";
+
+  const influenceContext = input.meetingContact?.influence ? {
+    decision_maker: "As a Decision Maker, they have final authority. Your story should compel action and address their strategic priorities directly.",
+    strong_influencer: "As a Strong Influencer, they significantly shape the decision. Help them build the case internally with compelling evidence.",
+    influencer: "As an Influencer, they provide input to decision-makers. Give them clear talking points and memorable metrics.",
+    gatekeeper: "As a Gatekeeper, they control access and information flow. Build trust and demonstrate credibility first."
+  }[input.meetingContact.influence] : "";
+
+  const successStoriesContext = input.successStories?.length ? `
+RELEVANT SUCCESS STORIES TO REFERENCE:
+${input.successStories.map(s => `- ${s.client} (${s.industry}): ${s.challenge}. Results: ${s.metrics.join(", ")}`).join("\n")}
+` : "";
+
+  const currentDraftContext = input.currentDraft ? `
+CURRENT DRAFT ELEMENTS:
+- Single Message: ${input.currentDraft.singleMessage || "(not yet defined)"}
+- Emotional Reaction: ${input.currentDraft.emotionalReaction || "(not yet defined)"}
+- Starting Hook: ${input.currentDraft.startingHook || "(not yet defined)"}
+- Story Structure: ${input.currentDraft.structure || "situation-struggle-insight-outcome"}
+- Hero Character: ${input.currentDraft.heroCharacter || "(not yet defined)"}
+- Evidence: ${input.currentDraft.evidence || "(not yet defined)"}
+` : "";
+
+  const phaseInstructions = {
+    before: `You are crafting the BEFORE phase - preparing the story elements before telling it.
+Key principles:
+- The single message should be one provocative statement they MUST remember
+- The emotional reaction should be the feeling you want to evoke (urgency, curiosity, hope, etc.)
+- The starting hook must create instant tension or intrigue
+- The hero character should be relatable to the buyer
+- Evidence should be specific, quantifiable, and relevant to their industry`,
+
+    during: `You are crafting the DURING phase - the actual telling of the story.
+Key principles:
+- The opening line should grab attention immediately
+- The turning point is where insight meets action - the "aha" moment
+- Key data points should be memorable and impactful (use the "40% in 12 months" format)`,
+
+    after: `You are crafting the AFTER phase - landing the story and inspiring action.
+Key principles:
+- The meaning moment reveals why this story matters to THEM specifically
+- The takeaway should be crystal clear and actionable
+- The call to action should be a natural next step they can commit to`
+  };
+
+  const fieldGuidance: Record<string, string> = {
+    singleMessage: "Generate ONE provocative statement that encapsulates the core message. It should be counterintuitive or surprising, yet backed by evidence. Format: 'Leaders who [action] before [event] outperform those who don't by [metric]%.'",
+    emotionalReaction: "Identify the primary emotion to evoke: urgency, curiosity, hope, fear of missing out, validation, or inspiration. Consider what will motivate this specific buyer to act.",
+    startingHook: "Create a high-tension opening that immediately creates curiosity. Use formats like: 'Picture this: It's Monday morning and...' or 'What if I told you that...' or a surprising statistic.",
+    heroCharacter: "Define who the hero of the story should be - typically someone similar to the buyer or their team. The hero should face a relatable challenge and achieve transformation.",
+    evidence: "Provide specific, quantifiable evidence that proves the story's message. Include metrics, timeframes, and industry-relevant data points.",
+    openingLine: "Write the exact first sentence to say. It should be memorable, set the scene, and create immediate engagement.",
+    turningPoint: "Describe the pivotal moment where the hero gains insight and takes action. This is the 'aha' moment that changes everything.",
+    keyDataPoint: "Select the single most powerful metric or data point to emphasize. Use the '[X]% improvement in [timeframe]' format.",
+    meaningMoment: "Articulate why this story matters specifically to THIS buyer. Connect the story's lesson to their situation, concerns, and goals.",
+    takeaway: "State the clear, actionable lesson they should remember. Make it specific and applicable to their context.",
+    callToAction: "Propose a natural next step they can commit to. It should be low-risk but meaningful: a follow-up meeting, a pilot program, an assessment, etc."
+  };
+
+  const fieldsToGenerate = input.fieldToSuggest === "all" 
+    ? (input.phase === "before" 
+        ? ["singleMessage", "emotionalReaction", "startingHook", "heroCharacter", "evidence"]
+        : input.phase === "during"
+          ? ["openingLine", "turningPoint", "keyDataPoint"]
+          : ["meaningMoment", "takeaway", "callToAction"])
+    : [input.fieldToSuggest];
+
+  const fieldInstructions = fieldsToGenerate
+    .map(field => `- ${field}: ${fieldGuidance[field]}`)
+    .join("\n");
+
+  const prompt = `You are a master storyteller helping a Korn Ferry consultant craft a compelling narrative for a sales meeting.
+
+CONTEXT:
+- Company: ${input.companyName}
+- Discovery Theme: ${input.discoveryTheme || "General business consulting"}
+${input.companyContext ? `- Company Context: ${input.companyContext}` : ""}
+
+MEETING CONTACT:
+${input.meetingContact ? `- Name: ${input.meetingContact.name || "Unknown"}
+- Title: ${input.meetingContact.title || "Unknown"}
+- Known Concerns: ${input.meetingContact.knownConcerns || "Not specified"}
+- Decision Criteria: ${input.meetingContact.decisionCriteria || "Not specified"}` : "No meeting contact specified"}
+
+${buyerRoleContext ? `BUYER ROLE GUIDANCE: ${buyerRoleContext}` : ""}
+${influenceContext ? `INFLUENCE LEVEL: ${influenceContext}` : ""}
+
+${successStoriesContext}
+${currentDraftContext}
+
+${phaseInstructions[input.phase]}
+
+FIELDS TO GENERATE:
+${fieldInstructions}
+
+Generate story suggestions that are:
+1. Tailored to this specific buyer's role, concerns, and decision criteria
+2. Backed by relevant evidence and success stories when available
+3. Emotionally compelling yet professionally credible
+4. Specific and actionable, not generic
+5. Appropriate for a Korn Ferry consulting context
+
+Return your response in JSON format:
+{
+  "suggestions": {
+    ${fieldsToGenerate.map(f => `"${f}": "Your suggestion"`).join(",\n    ")}
+  },
+  "reasoning": "Brief explanation of why these suggestions work for this specific buyer",
+  "alternativeSuggestions": ["Alternative approach 1", "Alternative approach 2"]
+}`;
+
+  try {
+    console.log(`[AI Story Suggestion] Generating ${input.fieldToSuggest} for ${input.companyName} (${input.phase} phase)`);
+    
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 2000,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    
+    if (!content) {
+      throw new Error("AI returned empty response");
+    }
+    
+    const parsedContent = JSON.parse(content);
+    
+    const validationResult = storySuggestionSchema.safeParse(parsedContent);
+    if (!validationResult.success) {
+      console.error("[AI Story Suggestion] Validation failed:", validationResult.error);
+      throw new Error(`AI story suggestion validation failed: ${validationResult.error.message}`);
+    }
+    
+    console.log(`[AI Story Suggestion] Success! Generated suggestions for: ${Object.keys(validationResult.data.suggestions).join(", ")}`);
+    return validationResult.data;
+  } catch (error) {
+    console.error("[AI Story Suggestion] Error:", error);
+    throw error;
+  }
+}

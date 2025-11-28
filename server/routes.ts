@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "./storage";
-import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale, generateStrategicPillars } from "./ai";
+import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale, generateStrategicPillars, generateStorySuggestion } from "./ai";
 import { z } from "zod";
 import crypto from "crypto";
 
@@ -6348,6 +6348,47 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
     }
   });
   
+  // POST /api/projects/:projectId/ai/story-suggestion - Generate AI story suggestions
+  app.post("/api/projects/:projectId/ai/story-suggestion", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const project = await storage.getProject(projectId);
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const { 
+        meetingContact, 
+        discoveryTheme, 
+        successStories, 
+        currentDraft, 
+        fieldToSuggest, 
+        phase 
+      } = req.body;
+      
+      if (!fieldToSuggest || !phase) {
+        return res.status(400).json({ error: "fieldToSuggest and phase are required" });
+      }
+      
+      const suggestion = await generateStorySuggestion({
+        companyName: project.companyName,
+        companyContext: project.sector ? `${project.sector} sector` : undefined,
+        discoveryTheme,
+        meetingContact,
+        successStories,
+        currentDraft,
+        fieldToSuggest,
+        phase
+      });
+      
+      res.json(suggestion);
+    } catch (error: any) {
+      console.error("[Story Suggestion API] Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // POST /api/migrate/projects-to-accounts - Migration endpoint to auto-create accounts
   app.post("/api/migrate/projects-to-accounts", async (req, res) => {
     try {
