@@ -54,6 +54,7 @@ import {
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { RolePanel, Role, LifecyclePhase } from "@/components/RolePanel";
 
 interface Initiative {
   id: number;
@@ -417,95 +418,138 @@ export default function AccountValueSpine() {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
-            <div className="grid gap-6 lg:grid-cols-2">
-              {headlineValueCase && (
+            {roleFilter !== "all" ? (
+              <Card>
+                <RolePanel
+                  role={roleFilter as Role}
+                  phase={phaseFilter as LifecyclePhase}
+                  initiatives={filteredInitiatives.map(i => ({
+                    id: i.id,
+                    name: i.name,
+                    status: i.status,
+                    lifecyclePhase: i.lifecyclePhase,
+                    ragStatus: i.ragStatus,
+                    owner: i.owner,
+                    phase: i.phase
+                  }))}
+                  kpis={filteredKpis.map(k => ({
+                    id: k.id,
+                    name: k.name,
+                    status: k.status,
+                    baselineValue: k.baselineValue,
+                    targetValue: k.targetValue,
+                    currentValue: k.currentValue,
+                    initiativeId: k.initiativeId
+                  }))}
+                  issues={openIssues.map(i => ({
+                    id: i.id,
+                    title: i.title,
+                    severity: i.severity,
+                    status: i.status,
+                    type: i.type
+                  }))}
+                  valueMetrics={valueMetrics}
+                  onActionClick={(action, context) => {
+                    toast({
+                      title: "Action triggered",
+                      description: `${action} action initiated`,
+                    });
+                  }}
+                />
+              </Card>
+            ) : (
+              <>
+                <div className="grid gap-6 lg:grid-cols-2">
+                  {headlineValueCase && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Star className="w-5 h-5 text-amber-500" />
+                          Headline Value Case
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <h3 className="font-semibold mb-2">{headlineValueCase.title}</h3>
+                        <div className="flex items-center gap-4 text-sm">
+                          <span className="text-muted-foreground">NPV: <span className="font-medium text-foreground">{headlineValueCase.estimatedNPV}</span></span>
+                          <Badge variant="secondary">{headlineValueCase.confidence} confidence</Badge>
+                          <Badge>{headlineValueCase.status}</Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                  
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Briefcase className="w-5 h-5" />
+                        Active Initiatives
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {filteredInitiatives.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No initiatives linked to this account yet.</p>
+                      ) : (
+                        <div className="space-y-3">
+                          {filteredInitiatives.slice(0, 3).map(init => (
+                            <Link key={init.id} href={`/projects/${init.id}/discovery`}>
+                              <div className="flex items-center justify-between p-3 rounded-lg hover-elevate cursor-pointer border bg-card">
+                                <div>
+                                  <p className="font-medium">{init.name}</p>
+                                  <p className="text-xs text-muted-foreground capitalize">{init.lifecyclePhase || init.phase}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {init.ragStatus && (
+                                    <span className={`w-3 h-3 rounded-full ${ragColors[init.ragStatus] || "bg-gray-400"}`} />
+                                  )}
+                                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                                </div>
+                              </div>
+                            </Link>
+                          ))}
+                          {filteredInitiatives.length > 3 && (
+                            <p className="text-sm text-muted-foreground text-center">
+                              +{filteredInitiatives.length - 3} more initiatives
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Star className="w-5 h-5 text-amber-500" />
-                      Headline Value Case
+                      <AlertTriangle className="w-5 h-5 text-amber-500" />
+                      Recent Issues & Opportunities
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <h3 className="font-semibold mb-2">{headlineValueCase.title}</h3>
-                    <div className="flex items-center gap-4 text-sm">
-                      <span className="text-muted-foreground">NPV: <span className="font-medium text-foreground">{headlineValueCase.estimatedNPV}</span></span>
-                      <Badge variant="secondary">{headlineValueCase.confidence} confidence</Badge>
-                      <Badge>{headlineValueCase.status}</Badge>
-                    </div>
+                    {openIssues.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No open issues.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {openIssues.slice(0, 5).map(issue => (
+                          <div key={issue.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                            <div className="flex items-center gap-3">
+                              <Badge className={severityColors[issue.severity]}>
+                                {issue.severity}
+                              </Badge>
+                              <div>
+                                <p className="font-medium">{issue.title}</p>
+                                <p className="text-xs text-muted-foreground capitalize">{issue.type}</p>
+                              </div>
+                            </div>
+                            <Badge variant="outline">{issue.status.replace("_", " ")}</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
-              )}
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Briefcase className="w-5 h-5" />
-                    Active Initiatives
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {filteredInitiatives.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No initiatives linked to this account yet.</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {filteredInitiatives.slice(0, 3).map(init => (
-                        <Link key={init.id} href={`/projects/${init.id}/discovery`}>
-                          <div className="flex items-center justify-between p-3 rounded-lg hover-elevate cursor-pointer border bg-card">
-                            <div>
-                              <p className="font-medium">{init.name}</p>
-                              <p className="text-xs text-muted-foreground capitalize">{init.lifecyclePhase || init.phase}</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {init.ragStatus && (
-                                <span className={`w-3 h-3 rounded-full ${ragColors[init.ragStatus] || "bg-gray-400"}`} />
-                              )}
-                              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                            </div>
-                          </div>
-                        </Link>
-                      ))}
-                      {filteredInitiatives.length > 3 && (
-                        <p className="text-sm text-muted-foreground text-center">
-                          +{filteredInitiatives.length - 3} more initiatives
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-amber-500" />
-                  Recent Issues & Opportunities
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {openIssues.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No open issues.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {openIssues.slice(0, 5).map(issue => (
-                      <div key={issue.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                        <div className="flex items-center gap-3">
-                          <Badge className={severityColors[issue.severity]}>
-                            {issue.severity}
-                          </Badge>
-                          <div>
-                            <p className="font-medium">{issue.title}</p>
-                            <p className="text-xs text-muted-foreground capitalize">{issue.type}</p>
-                          </div>
-                        </div>
-                        <Badge variant="outline">{issue.status.replace("_", " ")}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+              </>
+            )}
           </TabsContent>
 
           <TabsContent value="initiatives" className="space-y-6">
