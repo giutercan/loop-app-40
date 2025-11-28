@@ -3213,8 +3213,129 @@ export default function ProjectRoleView() {
         })()} {/* End of Step 3: Questions/Discovery Toolkit */}
 
         {/* Step 4: Review & Select Questions */}
-        {discoveryStep === "review" && (
+        {discoveryStep === "review" && (() => {
+          const generateExportContent = () => {
+            const themeName = selectedDiscoveryTheme ? discoveryThemes.find(t => t.id === selectedDiscoveryTheme)?.name : "Discovery";
+            const lines: string[] = [];
+            lines.push(`# ${themeName} Discovery - Call Preparation`);
+            lines.push(`Generated: ${new Date().toLocaleDateString()}`);
+            lines.push("");
+            
+            const hasCallFlow = myCallFlow && myCallFlow.length > 0;
+            const selectedQs = discoveryQuestions && selectedQuestions 
+              ? discoveryQuestions.filter(q => selectedQuestions.has(q.id)) 
+              : [];
+            const hasSelectedQuestions = selectedQs.length > 0;
+            
+            if (!hasCallFlow && !hasSelectedQuestions) {
+              lines.push("No questions selected for this discovery session.");
+              return lines.join("\n");
+            }
+            
+            if (hasCallFlow) {
+              lines.push("## My Call Flow");
+              lines.push("");
+              const phases = ["opening", "discovery", "support", "closing"];
+              phases.forEach(phase => {
+                const phaseQuestions = myCallFlow.filter(q => q.phase === phase);
+                if (phaseQuestions.length > 0) {
+                  lines.push(`### ${phase.charAt(0).toUpperCase() + phase.slice(1)}`);
+                  phaseQuestions.forEach((q, i) => {
+                    lines.push(`${i + 1}. ${q.question}`);
+                    if (q.methodology) lines.push(`   [${q.methodology}]`);
+                  });
+                  lines.push("");
+                }
+              });
+            }
+            
+            if (hasSelectedQuestions) {
+              lines.push("## Selected Discovery Questions");
+              lines.push("");
+              selectedQs.forEach((q, i) => {
+                lines.push(`${i + 1}. ${q.question}`);
+                lines.push(`   Methodology: ${q.methodology || "General"}`);
+                if (q.followUpHint) lines.push(`   Follow-up: ${q.followUpHint}`);
+                if (q.relatedKPI) lines.push(`   KPI: ${q.relatedKPI}`);
+                lines.push("");
+              });
+            }
+            
+            return lines.join("\n");
+          };
+          
+          const handleCopyToClipboard = async () => {
+            try {
+              await navigator.clipboard.writeText(generateExportContent());
+              toast({ title: "Copied!", description: "Call preparation exported to clipboard" });
+            } catch {
+              toast({ title: "Copy failed", description: "Please try the download option instead", variant: "destructive" });
+            }
+          };
+          
+          const handleDownload = () => {
+            try {
+              const content = generateExportContent();
+              const blob = new Blob([content], { type: "text/markdown" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `discovery-call-prep-${new Date().toISOString().split("T")[0]}.md`;
+              a.click();
+              URL.revokeObjectURL(url);
+              toast({ title: "Downloaded!", description: "Call preparation saved as markdown file" });
+            } catch {
+              toast({ title: "Download failed", description: "Unable to generate file", variant: "destructive" });
+            }
+          };
+          
+          return (
           <>
+            {/* My Call Flow Summary */}
+            {myCallFlow.length > 0 && (
+              <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-blue-500/5">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Phone className="w-5 h-5 text-primary" />
+                    My Call Flow ({myCallFlow.length} questions)
+                  </CardTitle>
+                  <CardDescription>Your custom conversation structure from the Questions step</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-3 md:grid-cols-4">
+                    {(["opening", "discovery", "support", "closing"] as const).map(phase => {
+                      const phaseQuestions = myCallFlow.filter(q => q.phase === phase);
+                      const phaseColors: Record<string, string> = {
+                        opening: "border-emerald-500/30 bg-emerald-500/5",
+                        discovery: "border-blue-500/30 bg-blue-500/5",
+                        support: "border-purple-500/30 bg-purple-500/5",
+                        closing: "border-amber-500/30 bg-amber-500/5"
+                      };
+                      return (
+                        <div key={phase} className={`p-3 rounded-lg border ${phaseColors[phase]}`}>
+                          <h5 className="font-semibold text-xs uppercase tracking-wide mb-2 text-muted-foreground">
+                            {phase}
+                          </h5>
+                          {phaseQuestions.length === 0 ? (
+                            <p className="text-xs text-muted-foreground italic">No questions</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {phaseQuestions.map((q, i) => (
+                                <div key={q.id} className="flex items-start gap-2">
+                                  <span className="text-xs font-medium text-muted-foreground">{i + 1}.</span>
+                                  <p className="text-xs line-clamp-2">{q.question}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -3225,19 +3346,20 @@ export default function ProjectRoleView() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {discoveryQuestions.length === 0 ? (
+                  {discoveryQuestions.length === 0 && myCallFlow.length === 0 ? (
                     <div className="text-center py-8">
                       <HelpCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                       <p className="text-muted-foreground">No questions generated yet. Go back to generate questions first.</p>
                     </div>
                   ) : (
                     <>
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-3">
                           <Button 
                             variant="outline" 
                             size="sm"
                             onClick={() => setSelectedQuestions(new Set(discoveryQuestions.map(q => q.id)))}
+                            data-testid="button-select-all"
                           >
                             Select All
                           </Button>
@@ -3245,6 +3367,7 @@ export default function ProjectRoleView() {
                             variant="outline" 
                             size="sm"
                             onClick={() => setSelectedQuestions(new Set())}
+                            data-testid="button-clear-all"
                           >
                             Clear All
                           </Button>
@@ -3253,9 +3376,25 @@ export default function ProjectRoleView() {
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm" data-testid="button-export-questions">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={handleCopyToClipboard}
+                            disabled={selectedQuestions.size === 0 && myCallFlow.length === 0}
+                            data-testid="button-copy-clipboard"
+                          >
+                            <ClipboardList className="w-4 h-4 mr-2" />
+                            Copy
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={handleDownload}
+                            disabled={selectedQuestions.size === 0 && myCallFlow.length === 0}
+                            data-testid="button-download-export"
+                          >
                             <Download className="w-4 h-4 mr-2" />
-                            Export
+                            Download
                           </Button>
                         </div>
                       </div>
@@ -3278,6 +3417,7 @@ export default function ProjectRoleView() {
                                 }
                                 setSelectedQuestions(newSet);
                               }}
+                              data-testid={`question-item-${q.id}`}
                             >
                               <div className="flex items-start gap-3">
                                 <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
@@ -3364,90 +3504,217 @@ export default function ProjectRoleView() {
               </Button>
             </div>
           </>
-        )}
+          );
+        })()} {/* End of Step 4: Review */}
 
         {/* Step 5: Enhanced Insights */}
-        {discoveryStep === "insights" && discoveryCompleted && (
+        {discoveryStep === "insights" && discoveryCompleted && (() => {
+          const themeName = selectedDiscoveryTheme ? discoveryThemes.find(t => t.id === selectedDiscoveryTheme)?.name : "General";
+          const selectedQs = discoveryQuestions.filter(q => selectedQuestions.has(q.id));
+          const answeredCount = Object.values(questionAnswers).filter(a => a && a.trim().length > 0).length;
+          
+          const methodologyCounts = {
+            SPIN: selectedQs.filter(q => q.methodology === "SPIN").length,
+            MILLER_HEIMAN: selectedQs.filter(q => q.methodology === "MILLER_HEIMAN").length,
+            PSS: selectedQs.filter(q => q.methodology === "PSS").length
+          };
+          
+          const totalMethodologyCount = methodologyCounts.SPIN + methodologyCounts.MILLER_HEIMAN + methodologyCounts.PSS;
+          
+          const getMethodologyInsight = (methodology: string, count: number) => {
+            if (count === 0) return null;
+            const insights: Record<string, { title: string; insight: string }> = {
+              SPIN: { title: "Pain Points Explored", insight: "SPIN questions helped uncover customer situation, problems, and implications. Strong foundation for value-based positioning." },
+              MILLER_HEIMAN: { title: "Buying Process Mapped", insight: "Blue Sheet insights gathered on decision makers, buying influences, and win themes. Political landscape is clearer." },
+              PSS: { title: "Solution Fit Validated", insight: "Professional Selling Skills questions confirmed solution-customer alignment and established consultative credibility." }
+            };
+            return insights[methodology];
+          };
+
+          return (
           <>
-            <Card className="bg-gradient-to-r from-emerald-500/5 to-blue-500/5 border-emerald-500/20">
+            {/* Discovery Summary Header */}
+            <Card className="bg-gradient-to-r from-emerald-500/5 via-blue-500/5 to-purple-500/5 border-emerald-500/20">
               <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                    <Sparkles className="w-6 h-6 text-emerald-600" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                      <Sparkles className="w-6 h-6 text-emerald-600" />
+                    </div>
+                    <div>
+                      <CardTitle>Discovery Complete</CardTitle>
+                      <CardDescription>Enhanced insights from your {themeName} discovery</CardDescription>
+                    </div>
                   </div>
-                  <div>
-                    <CardTitle>Discovery Complete</CardTitle>
-                    <CardDescription>Enhanced insights from your {selectedDiscoveryTheme ? discoveryThemes.find(t => t.id === selectedDiscoveryTheme)?.name : ""} discovery</CardDescription>
-                  </div>
+                  <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30 text-sm px-3 py-1">
+                    <CheckCircle className="w-4 h-4 mr-1" />
+                    Completed
+                  </Badge>
                 </div>
               </CardHeader>
-            </Card>
-
-            {/* Trends Analysis */}
-            <Card className="border-blue-500/20">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-blue-600" />
-                  Key Trends Identified
-                </CardTitle>
-                <CardDescription>Patterns and themes from discovery responses</CardDescription>
-              </CardHeader>
               <CardContent>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/20">
-                    <h4 className="font-semibold text-sm mb-2">Leadership Development Priority</h4>
-                    <p className="text-sm text-muted-foreground">Multiple stakeholders emphasized need for accelerated leadership pipeline development. CEO and CHRO aligned on 18-month timeline.</p>
-                    <Badge className="mt-2 bg-blue-500/10 text-blue-700 border-blue-500/20">High Confidence</Badge>
+                <div className="grid gap-4 md:grid-cols-4">
+                  <div className="p-3 rounded-lg bg-background/50 border text-center">
+                    <div className="text-2xl font-bold text-primary">{selectedQs.length}</div>
+                    <div className="text-xs text-muted-foreground">Questions Selected</div>
                   </div>
-                  <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/20">
-                    <h4 className="font-semibold text-sm mb-2">Budget Approval Path Clear</h4>
-                    <p className="text-sm text-muted-foreground">CFO requires ROI framework but has pre-approved budget for Q2 initiative. Economic buyer is supportive with right business case.</p>
-                    <Badge className="mt-2 bg-emerald-500/10 text-emerald-700 border-emerald-500/20">Positive Signal</Badge>
+                  <div className="p-3 rounded-lg bg-background/50 border text-center">
+                    <div className="text-2xl font-bold text-blue-600">{myCallFlow.length}</div>
+                    <div className="text-xs text-muted-foreground">Call Flow Items</div>
                   </div>
-                  <div className="p-4 rounded-lg bg-amber-500/5 border border-amber-500/20">
-                    <h4 className="font-semibold text-sm mb-2">Competitive Pressure from McKinsey</h4>
-                    <p className="text-sm text-muted-foreground">Incumbent consultant relationship may create resistance. Need to differentiate on talent-specific expertise.</p>
-                    <Badge className="mt-2 bg-amber-500/10 text-amber-700 border-amber-500/20">Monitor</Badge>
+                  <div className="p-3 rounded-lg bg-background/50 border text-center">
+                    <div className="text-2xl font-bold text-purple-600">{answeredCount}</div>
+                    <div className="text-xs text-muted-foreground">Responses Recorded</div>
                   </div>
-                  <div className="p-4 rounded-lg bg-purple-500/5 border border-purple-500/20">
-                    <h4 className="font-semibold text-sm mb-2">AI/Digital Transformation Linkage</h4>
-                    <p className="text-sm text-muted-foreground">Customer connects leadership development to broader digital transformation. Opportunity for AI-ready leadership positioning.</p>
-                    <Badge className="mt-2 bg-purple-500/10 text-purple-700 border-purple-500/20">Opportunity</Badge>
+                  <div className="p-3 rounded-lg bg-background/50 border text-center">
+                    <div className="text-2xl font-bold text-amber-600">
+                      {Object.values(methodologyCounts).filter(c => c > 0).length}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Methodologies Used</div>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Gaps Identified */}
+            {/* Methodology Coverage Analysis */}
+            <Card className="border-purple-500/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Layers className="w-5 h-5 text-purple-600" />
+                  Methodology Coverage
+                </CardTitle>
+                <CardDescription>How your discovery leveraged Korn Ferry selling methodologies</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-3">
+                  {[
+                    { key: "SPIN", name: "SPIN Selling", color: "purple", count: methodologyCounts.SPIN },
+                    { key: "MILLER_HEIMAN", name: "Miller Heiman", color: "blue", count: methodologyCounts.MILLER_HEIMAN },
+                    { key: "PSS", name: "PSS", color: "emerald", count: methodologyCounts.PSS }
+                  ].map(m => {
+                    const insight = getMethodologyInsight(m.key, m.count);
+                    return (
+                      <div 
+                        key={m.key} 
+                        className={`p-4 rounded-lg border ${m.count > 0 ? `bg-${m.color}-500/5 border-${m.color}-500/20` : "bg-muted/30 border-muted"}`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-semibold text-sm">{m.name}</span>
+                          <Badge variant={m.count > 0 ? "default" : "outline"} className="text-xs">
+                            {m.count} questions
+                          </Badge>
+                        </div>
+                        {insight ? (
+                          <>
+                            <p className="font-medium text-xs text-primary mb-1">{insight.title}</p>
+                            <p className="text-xs text-muted-foreground">{insight.insight}</p>
+                          </>
+                        ) : (
+                          <p className="text-xs text-muted-foreground italic">Not used in this discovery. Consider for follow-up.</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Key Trends - Theme Specific */}
+            <Card className="border-blue-500/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-blue-600" />
+                  Key Trends for {themeName}
+                </CardTitle>
+                <CardDescription>Strategic patterns identified from your discovery</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {totalMethodologyCount > 0 ? (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Target className="w-4 h-4 text-blue-600" />
+                        <h4 className="font-semibold text-sm">Strategic Priority Alignment</h4>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Customer priorities align with Korn Ferry {themeName} capabilities. Clear path to demonstrating unique value proposition.</p>
+                      <Badge className="mt-2 bg-blue-500/10 text-blue-700 border-blue-500/20">High Confidence</Badge>
+                    </div>
+                    <div className="p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <DollarSign className="w-4 h-4 text-emerald-600" />
+                        <h4 className="font-semibold text-sm">Budget Signals Positive</h4>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Economic buyer engaged early. ROI framework will strengthen business case for {themeName} investment.</p>
+                      <Badge className="mt-2 bg-emerald-500/10 text-emerald-700 border-emerald-500/20">Positive Signal</Badge>
+                    </div>
+                    <div className="p-4 rounded-lg bg-amber-500/5 border border-amber-500/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Users className="w-4 h-4 text-amber-600" />
+                        <h4 className="font-semibold text-sm">Stakeholder Complexity</h4>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Multiple decision makers identified. Champion development and political navigation will be critical success factors.</p>
+                      <Badge className="mt-2 bg-amber-500/10 text-amber-700 border-amber-500/20">Monitor</Badge>
+                    </div>
+                    <div className="p-4 rounded-lg bg-purple-500/5 border border-purple-500/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Zap className="w-4 h-4 text-purple-600" />
+                        <h4 className="font-semibold text-sm">Cross-Sell Opportunity</h4>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Discovery revealed adjacent needs beyond {themeName}. Consider expanding scope or planning follow-on engagements.</p>
+                      <Badge className="mt-2 bg-purple-500/10 text-purple-700 border-purple-500/20">Opportunity</Badge>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-6 rounded-lg bg-muted/30 border text-center">
+                    <HelpCircle className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                    <p className="font-medium text-sm mb-1">Limited Methodology Coverage</p>
+                    <p className="text-sm text-muted-foreground">Your discovery used general questions. Consider incorporating SPIN, Miller Heiman, or PSS methodology questions in follow-up conversations for deeper insights.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Gaps & Follow-Up Required */}
             <Card className="border-amber-500/20">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <AlertTriangle className="w-5 h-5 text-amber-600" />
-                  Gaps & Missing Information
+                  Gaps & Follow-Up Required
                 </CardTitle>
-                <CardDescription>Areas requiring follow-up to complete the picture</CardDescription>
+                <CardDescription>Areas requiring additional discovery or validation</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
+                  {methodologyCounts.SPIN === 0 && (
+                    <div className="flex items-start gap-3 p-3 rounded-lg border border-amber-500/20 bg-amber-500/5">
+                      <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-sm">Pain Points Not Fully Explored</p>
+                        <p className="text-xs text-muted-foreground">Consider SPIN questions in follow-up to better understand situation, problems, and implications.</p>
+                      </div>
+                    </div>
+                  )}
+                  {methodologyCounts.MILLER_HEIMAN === 0 && (
+                    <div className="flex items-start gap-3 p-3 rounded-lg border border-amber-500/20 bg-amber-500/5">
+                      <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-sm">Buying Process Unclear</p>
+                        <p className="text-xs text-muted-foreground">Miller Heiman questions would help map decision makers, buying influences, and political landscape.</p>
+                      </div>
+                    </div>
+                  )}
                   <div className="flex items-start gap-3 p-3 rounded-lg border border-amber-500/20 bg-amber-500/5">
                     <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-medium text-sm">Success Metrics Not Defined</p>
-                      <p className="text-xs text-muted-foreground">Need to establish specific KPIs and targets with CHRO for measuring leadership development impact.</p>
+                      <p className="font-medium text-sm">Success Metrics Need Definition</p>
+                      <p className="text-xs text-muted-foreground">Work with stakeholders to establish specific KPIs and targets for measuring {themeName} impact.</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3 p-3 rounded-lg border border-amber-500/20 bg-amber-500/5">
                     <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-medium text-sm">IT Integration Requirements Unknown</p>
-                      <p className="text-xs text-muted-foreground">Technical buyer not yet engaged. Schedule discovery with IT to understand HRIS integration needs.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3 p-3 rounded-lg border border-amber-500/20 bg-amber-500/5">
-                    <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-medium text-sm">New CEO Priorities Not Confirmed</p>
-                      <p className="text-xs text-muted-foreground">CEO transition in Q3 may shift priorities. Consider accelerating timeline or building relationship with incoming executive.</p>
+                      <p className="font-medium text-sm">Competitive Landscape</p>
+                      <p className="text-xs text-muted-foreground">Validate positioning against potential competitors and prepare differentiation talking points.</p>
                     </div>
                   </div>
                 </div>
@@ -3459,42 +3726,42 @@ export default function ProjectRoleView() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <ArrowRight className="w-5 h-5 text-emerald-600" />
-                  Recommended Next Steps for Seller
+                  Recommended Next Steps
                 </CardTitle>
-                <CardDescription>Actionable items to move the opportunity forward</CardDescription>
+                <CardDescription>Actionable items to advance the opportunity</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
                   <div className="flex items-start gap-3 p-3 rounded-lg border hover-elevate">
                     <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 font-bold text-sm flex-shrink-0">1</div>
                     <div>
-                      <p className="font-medium text-sm">Schedule CFO Value Discussion</p>
-                      <p className="text-xs text-muted-foreground">Prepare ROI model using similar industry case studies. Focus on leadership development ROI metrics.</p>
+                      <p className="font-medium text-sm">Share Discovery Summary with Champion</p>
+                      <p className="text-xs text-muted-foreground">Export your call preparation and share key insights. Build internal advocacy for the {themeName} initiative.</p>
                       <Badge className="mt-2" variant="outline">This Week</Badge>
                     </div>
                   </div>
                   <div className="flex items-start gap-3 p-3 rounded-lg border hover-elevate">
                     <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 font-bold text-sm flex-shrink-0">2</div>
                     <div>
-                      <p className="font-medium text-sm">Engage Champion for Internal Advocacy</p>
-                      <p className="text-xs text-muted-foreground">Work with Maria Santos to build internal support. Provide talking points and success stories.</p>
+                      <p className="font-medium text-sm">Schedule Value Discussion with Economic Buyer</p>
+                      <p className="text-xs text-muted-foreground">Prepare ROI model using industry benchmarks and Korn Ferry success stories relevant to {themeName}.</p>
                       <Badge className="mt-2" variant="outline">Next Week</Badge>
                     </div>
                   </div>
                   <div className="flex items-start gap-3 p-3 rounded-lg border hover-elevate">
                     <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 font-bold text-sm flex-shrink-0">3</div>
                     <div>
-                      <p className="font-medium text-sm">Conduct Technical Discovery with IT</p>
-                      <p className="text-xs text-muted-foreground">Address integration concerns early. Complete security questionnaire and technical requirements review.</p>
+                      <p className="font-medium text-sm">Complete Blue Sheet Analysis</p>
+                      <p className="text-xs text-muted-foreground">Document buying center roles, competitive positioning, and win themes in opportunity record.</p>
                       <Badge className="mt-2" variant="outline">Week 2</Badge>
                     </div>
                   </div>
                   <div className="flex items-start gap-3 p-3 rounded-lg border hover-elevate">
                     <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 font-bold text-sm flex-shrink-0">4</div>
                     <div>
-                      <p className="font-medium text-sm">Differentiate from McKinsey</p>
-                      <p className="text-xs text-muted-foreground">Prepare competitive positioning focused on Korn Ferry's unique IP in leadership assessment and development.</p>
-                      <Badge className="mt-2" variant="outline">Ongoing</Badge>
+                      <p className="font-medium text-sm">Prepare Custom Proposal</p>
+                      <p className="text-xs text-muted-foreground">Use discovery insights to tailor {themeName} proposal addressing specific customer challenges and success criteria.</p>
+                      <Badge className="mt-2" variant="outline">Week 3</Badge>
                     </div>
                   </div>
                 </div>
@@ -3507,22 +3774,38 @@ export default function ProjectRoleView() {
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Review
               </Button>
-              <Button 
-                onClick={() => {
-                  setDiscoveryStep("theme-select");
-                  setSelectedDiscoveryTheme(null);
-                  setSelectedQuestions(new Set());
-                  setQuestionAnswers({});
-                  setDiscoveryCompleted(false);
-                }}
-                data-testid="button-start-new-discovery"
-              >
-                Start New Discovery
-                <RefreshCcw className="w-4 h-4 ml-2" />
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    const content = `# Discovery Insights - ${themeName}\n\n## Summary\n- Questions Selected: ${selectedQs.length}\n- Call Flow Items: ${myCallFlow.length}\n- Responses Recorded: ${answeredCount}\n\n## Methodology Coverage\n- SPIN: ${methodologyCounts.SPIN} questions\n- Miller Heiman: ${methodologyCounts.MILLER_HEIMAN} questions\n- PSS: ${methodologyCounts.PSS} questions`;
+                    navigator.clipboard.writeText(content);
+                    toast({ title: "Copied!", description: "Insights summary copied to clipboard" });
+                  }}
+                  data-testid="button-copy-insights"
+                >
+                  <ClipboardList className="w-4 h-4 mr-2" />
+                  Copy Summary
+                </Button>
+                <Button 
+                  onClick={() => {
+                    setDiscoveryStep("theme-select");
+                    setSelectedDiscoveryTheme(null);
+                    setSelectedQuestions(new Set());
+                    setQuestionAnswers({});
+                    setDiscoveryCompleted(false);
+                    setMyCallFlow([]);
+                  }}
+                  data-testid="button-start-new-discovery"
+                >
+                  Start New Discovery
+                  <RefreshCcw className="w-4 h-4 ml-2" />
+                </Button>
+              </div>
             </div>
           </>
-        )}
+          );
+        })()}
       </TabsContent>
 
       <TabsContent value="value-cases" className="space-y-6">
