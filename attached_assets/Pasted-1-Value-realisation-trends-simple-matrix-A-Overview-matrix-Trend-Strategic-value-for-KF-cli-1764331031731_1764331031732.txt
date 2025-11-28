@@ -1,0 +1,143 @@
+1. Value-realisation trends – simple matrix
+A. Overview matrix
+#	Trend	Strategic value (for KF & clients)	Ease to realise (short term, at KF)	How to realise at KF (headline)	Likely impact if done well
+1	Outcomes & shared KPIs (not deliverables)	Very high – foundation for all other trends; aligns work to client strategy and OKRs	Medium – mindset + some templates and training	Standardise a Value Canvas for each engagement with 3–5 shared KPIs; embed in your Value Lifecycle prototype	Stronger exec buy-in, fewer “nice project, so what?” reactions; better stories for renewals
+2	Value-linked & outcome-flavoured commercials	High – differentiates KF, speaks to CFO pressures	Hard – needs robust data & internal risk appetite	Start with light “value-influenced” elements (e.g. success fees on leading indicators) in a few offerings using existing ROI logic (e.g. SIOP model)	Higher win rates where risk-sharing matters; stronger commercial narrative, but needs careful guardrails
+3	Value Realisation Offices / value governance	High – moves you from “project shop” to “value partner”	Medium–Hard – more operating model than tech	Create a small central value capability (playbooks, KPI libraries, methods) and “value leads” in key solutions, using the platform as their system of record	More consistent value stories, better portfolio learning, stronger client stickiness on big programmes
+4	CS-style health scores & QBRs	High – makes value visible and ongoing	Medium – tech is straightforward; behaviour change needed	Bake health scores and structured QBR packs into Phase 3 of the Value Lifecycle Platform: promised vs baseline vs actual, plus commentary	More proactive course-correction, better renewal/expansion conversations; you look more like a modern SaaS partner than a traditional consultancy
+5	AI-assisted real-time value tracking	Very high – the “this is new” differentiator	Medium – you already have a running prototype	Extend your existing AI engine (Discovery → Alignment → Realisation) to support automated KPI updates, trend flags, and narrative generation	Faster insight cycles, less manual slide-building, “live value board” in exec reviews; underpins any serious move to outcome-based pricing
+6	Hard-nosed quantification of people/HR value	Very high – sits right at KF’s sweet spot	Medium – requires IP curation, not new philosophy	Turn your selection, development, rewards and org design ROI models into reusable libraries (impact ranges, financial bridges) inside the platform	Stronger linkage from leadership/org/reward work to growth, cost and risk; better cross-sell from Assess/Develop into Transform/Reward
+
+Assumptions (called out explicitly so no one accuses us of mystery maths):
+
+“Ease” is relative to current KF assets: the Value Lifecycle prototype, ROI Estimation models, and the closed-loop value capture concept you worked through with Jerry.
+
+I’m not inventing numeric business cases here – just directional calls on effort vs leverage.
+
+B. Quick colour on each trend for you
+
+I’ll keep it tight – think “talk track bullets”, not thesis.
+
+1. Outcomes & shared KPIs
+
+Realisation move: standardise a Value Canvas in the tool:
+
+Client North Star (12–24 months)
+
+3–5 value outcomes (Grow / Optimise / De-risk / Strengthen Capability)
+
+Baseline, target, timeframe, benefit owner per KPI
+
+Why this is feasible: the structure is already implied in your Discovery → Alignment flow, KPI libraries and financial engine.
+
+Impact: forces every engagement to answer Jerry’s “In a year, what does success look like and how will we measure it?” in a disciplined way.
+
+2. Value-linked commercials
+
+Realisation move: don’t jump to “we get 20% of your uplift”.
+
+Start with evidence-rich fixed fees + optional success fees on controllable leading indicators (e.g. adoption, completion, manager quality of coaching).
+
+Use existing ROI models (SIOP, selection, development) as underwriting logic.
+
+Impact: sharper commercial stories, better defence when procurement wants discounting, and a path to more adventurous models once the data bedrock is there.
+
+3. Value Realisation Offices / value governance
+
+Realisation move:
+
+A small, central “Value Office” curating: KPI libraries, benefit maps, financial bridges, templates.
+
+“Value leads” in each major solution line who adapt those templates (e.g. one for SIOP, one for Sales Effectiveness, one for Leadership).
+
+The Value Lifecycle Platform = their operating environment.
+
+Impact: you get away from “Giuliana has an amazing spreadsheet” and into “KF has a recognisable way of doing value realisation”.
+
+4. CS-style health scores & QBRs
+
+Realisation move:
+
+Use the health-score idea (on track / at risk / off track) against each value outcome.
+
+Encode QBR templates in the platform: pull KPI deltas + narrative + next-loop recommendations.
+
+Impact: you stop having opinion-only “how do you feel it’s going?” reviews, and you have a repeatable backbone for Review & Renew.
+
+5. AI-assisted real-time value
+
+Realisation move:
+
+You already have AI for research, KPI suggestions and value narratives. Extend it to:
+
+propose early-warning flags when KPIs stall,
+
+auto-draft updated value stories before exec reviews,
+
+suggest “if this KPI is lagging, similar clients did X”.
+
+Impact: consultants spend their time interpreting and influencing, not wrangling data. It also gives you a tech story that’s credible, not buzzwordy.
+
+6. Hard quantification of people/HR value
+
+Realisation move:
+
+Take the logic from your ROI Estimation slide (selection accuracy, development lift, turnover changes, etc.) and generalise it into reusable impact ranges and bridges to financials.
+
+Align those with the Grow / Optimise / De-risk / Strengthen Capability frame so sellers don’t need to be amateur quants.
+
+Impact: you occupy the space between “soft people stuff” and “hard outcomes” (which is exactly where no one has cracked closed-loop value capture yet, as Jerry said).
+
+2. Grouping the trends by “jobs we do” at Korn Ferry
+
+Let’s use the lifecycle you liked as the backbone:
+
+Discover & Qualify → Shape & Sell → Deliver & Realise → Review & Renew / Expand → Learn & Scale
+
+And then layer in:
+
+Main jobs to be done in each stage (our side + client side)
+
+Which trends matter most there
+
+How that links to Assess / Develop / Transform / Reward / Digital, using what’s already in your Value Lifecycle docs and conversations with Mirka.
+
+A. Matrix: Jobs we do × Trends × KF work
+Lifecycle job we do	Core KF “job to be done”	Most relevant trends	KF service lines & assets to lean on
+Discover & Qualify	Understand the client, their strategy and constraints; surface value hypotheses worth pursuing	1 – Outcomes & shared KPIs; 5 – AI-assisted insight; 6 – HR value quantification	Assess / Digital / Transform: AI Discovery phase in the Value Lifecycle Platform (company research, strategic pillar mapping, AI questions). Use Assess data and org design knowledge to anchor KPIs to real people/structure levers.
+Shape & Sell	Turn discovery into a sharp value story and proposal that clients can approve	1 – Outcomes & shared KPIs; 2 – Value-linked commercials; 6 – HR value quantification	Assess / Develop / Transform / Reward: ROI Estimation models (e.g. SIOP, selection, rewards) to build quantified cases; AI narratives for CEO/CFO; optional light value-linked elements in commercials.
+Deliver & Realise	Run the work in a way that actually moves the agreed needles	3 – Value governance; 4 – Health scores & QBRs; 5 – AI real-time tracking	Develop / Transform / Digital: embed the Value Canvas and KPI board into delivery governance; appoint benefit owners; use KPI dashboards and health scores in project cadences. Closed-loop input → service → output model from the Jerry conversation applies here.
+Review & Renew / Expand	Show what value was realised; decide whether to extend, expand, or pivot	4 – Health scores & QBRs; 2 – Value-linked commercials	All lines + Digital: use Realisation phase features (KPI deltas, success stories, value reports) as the backbone of QBRs; attach optional expansion scenarios and value-linked pricing for the next loop.
+Learn & Scale	Turn one client’s loop into scalable IP and a better platform	3 – Value governance; 5 – AI-assisted analytics; 6 – HR value quantification	Digital / Firm-wide: use the platform as a repository of value stories and KPI patterns; central Value capability curates libraries; Mirka’s question about “does this also cover backlog and active projects?” is answered by making the platform span both new and existing work.
+
+You can also see how this fits your closed-loop value capture framing with Jerry:
+
+Conditions for success → Discover & Qualify (Trend 1, 6)
+
+Input–Service–Output → Deliver & Realise (Trend 3, 4, 5)
+
+Multiple loops & replication → Review & Renew / Learn & Scale (Trend 3, 5, 6)
+
+3. How this helps you make choices (not just matrices)
+
+If you want to connect this directly into your FY26 “Value Lifecycle Platform” priorities:
+
+Quick wins / MVP-friendly
+
+Trend 1 – Outcomes & shared KPIs (Value Canvas in the tool)
+
+Trend 5 – AI-assisted insight and narrative (you already have this)
+
+Trend 6 – Codified people/HR value logic for 1–2 solution lines (e.g. SIOP + Leadership)
+
+Next wave once MVP is proving itself
+
+Trend 4 – Health scores & QBRs (Realisation phase)
+
+Trend 3 – Lightweight Value Office & value leads
+
+Longer-horizon bet
+
+Trend 2 – Value-linked commercials, once you have enough data and confidence
+
+That way your “closed loop value capture” ambition doesn’t just sit in a recording with Jerry; it gradually becomes how Assess, Develop, Transform, Reward and Digital all show up to clients, with the platform as the shared backbone.

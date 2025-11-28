@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useRoute } from "wouter";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -136,8 +136,19 @@ export default function ProjectRoleView() {
   const role = validRoles.includes(roleParam as Role) ? (roleParam as Role) : null;
   const { toast } = useToast();
   
-  const [activeTab, setActiveTab] = useState("overview");
+  const isSalesRoleParam = roleParam === "sales" || roleParam === "consultant";
+  const isDeliveryRoleParam = roleParam === "delivery" || roleParam === "csm";
+  const [activeTab, setActiveTab] = useState(isSalesRoleParam ? "value-canvas" : "health");
   const [isLogKPIOpen, setIsLogKPIOpen] = useState(false);
+  
+  // Reset tab when role changes
+  useEffect(() => {
+    if (isSalesRoleParam) {
+      setActiveTab("value-canvas");
+    } else if (isDeliveryRoleParam) {
+      setActiveTab("health");
+    }
+  }, [roleParam, isSalesRoleParam, isDeliveryRoleParam]);
   const [selectedKPI, setSelectedKPI] = useState<KPI | null>(null);
   const [kpiActualValue, setKpiActualValue] = useState("");
   const [kpiNote, setKpiNote] = useState("");
@@ -298,122 +309,268 @@ export default function ProjectRoleView() {
 
   const renderSalesWorkspace = () => (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-      <TabsList className="grid grid-cols-4 w-full max-w-2xl">
-        <TabsTrigger value="overview" data-testid="tab-overview">
-          <Eye className="w-4 h-4 mr-2" />
-          Overview
+      <TabsList className="grid grid-cols-5 w-full max-w-3xl">
+        <TabsTrigger value="value-canvas" data-testid="tab-value-canvas">
+          <Target className="w-4 h-4 mr-2" />
+          Value Canvas
         </TabsTrigger>
         <TabsTrigger value="discovery" data-testid="tab-discovery">
-          <Lightbulb className="w-4 h-4 mr-2" />
-          Discovery
+          <Sparkles className="w-4 h-4 mr-2" />
+          AI Discovery
+        </TabsTrigger>
+        <TabsTrigger value="success-stories" data-testid="tab-success-stories">
+          <Star className="w-4 h-4 mr-2" />
+          Success Stories
         </TabsTrigger>
         <TabsTrigger value="value-cases" data-testid="tab-value-cases">
           <DollarSign className="w-4 h-4 mr-2" />
           Value Cases
         </TabsTrigger>
-        <TabsTrigger value="stakeholders" data-testid="tab-stakeholders">
-          <Users className="w-4 h-4 mr-2" />
-          Stakeholders
+        <TabsTrigger value="handoff" data-testid="tab-handoff">
+          <ArrowUpRight className="w-4 h-4 mr-2" />
+          Handoff
         </TabsTrigger>
       </TabsList>
 
-      <TabsContent value="overview" className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card className="hover-elevate">
-            <CardContent className="pt-6">
+      {/* Value Canvas - Core 3-5 KPIs per engagement (Trend #1: Outcomes & shared KPIs) */}
+      <TabsContent value="value-canvas" className="space-y-6">
+        <Card className="bg-gradient-to-r from-primary/5 to-emerald-500/5 border-primary/20">
+          <CardHeader>
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-green-500/10 flex items-center justify-center">
-                  <Target className="w-6 h-6 text-green-600" />
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Target className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Value</p>
-                  <p className="text-2xl font-bold">${(totalValue / 1000000).toFixed(1)}M</p>
+                  <CardTitle>Value Canvas</CardTitle>
+                  <CardDescription>3-5 shared KPIs that define success for this engagement</CardDescription>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-          <Card className="hover-elevate">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                  <Lightbulb className="w-6 h-6 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Insights</p>
-                  <p className="text-2xl font-bold">{insights.length}</p>
-                </div>
+              <Badge variant="secondary" className="text-xs">
+                {kpis.filter(k => k.baselineValue && k.targetValue).length} / 5 Defined
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {/* Summary stats */}
+              <div className="p-4 rounded-lg bg-background border">
+                <p className="text-sm text-muted-foreground">Total Value Potential</p>
+                <p className="text-2xl font-bold text-primary">${(totalValue / 1000000).toFixed(1)}M</p>
               </div>
-            </CardContent>
-          </Card>
-          <Card className="hover-elevate">
-            <CardContent className="pt-6">
+              <div className="p-4 rounded-lg bg-background border">
+                <p className="text-sm text-muted-foreground">Strategic Priorities</p>
+                <p className="text-2xl font-bold">{jobThemes.length}</p>
+              </div>
+              <div className="p-4 rounded-lg bg-background border">
+                <p className="text-sm text-muted-foreground">Discovery Insights</p>
+                <p className="text-2xl font-bold">{insights.length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Shared KPIs Grid */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5" />
+              Shared Outcome KPIs
+            </CardTitle>
+            <CardDescription>
+              Define baseline, target, and benefit owner for each key outcome
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {kpis.slice(0, 5).map((kpi, index) => (
+                <div key={kpi.id} className="p-4 rounded-lg border hover-elevate">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
+                        {index + 1}
+                      </div>
+                      <div>
+                        <h4 className="font-semibold">{kpi.name}</h4>
+                        <p className="text-xs text-muted-foreground">{kpi.unit || "units"}</p>
+                      </div>
+                    </div>
+                    <Badge variant={
+                      kpi.baselineValue && kpi.targetValue ? "default" : "outline"
+                    }>
+                      {kpi.baselineValue && kpi.targetValue ? "Defined" : "Needs Values"}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div className="p-2 rounded bg-muted/50">
+                      <span className="text-muted-foreground block text-xs">Baseline</span>
+                      <span className="font-medium">{kpi.baselineValue ?? "—"}</span>
+                    </div>
+                    <div className="p-2 rounded bg-muted/50">
+                      <span className="text-muted-foreground block text-xs">Target</span>
+                      <span className="font-medium text-primary">{kpi.targetValue ?? "—"}</span>
+                    </div>
+                    <div className="p-2 rounded bg-muted/50">
+                      <span className="text-muted-foreground block text-xs">Gap</span>
+                      <span className="font-medium text-emerald-600">
+                        {kpi.baselineValue && kpi.targetValue 
+                          ? `+${((kpi.targetValue - kpi.baselineValue) / kpi.baselineValue * 100).toFixed(0)}%`
+                          : "—"
+                        }
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {kpis.length === 0 && (
+                <div className="text-center py-8">
+                  <Target className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground mb-4">No KPIs defined yet</p>
+                  <Link href={`/projects/${projectId}/discovery`}>
+                    <Button data-testid="button-define-kpis">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Define KPIs in Discovery
+                    </Button>
+                  </Link>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Value-linked commercial notes (Trend #2) */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="w-5 h-5" />
+              Value-Linked Commercial Elements
+            </CardTitle>
+            <CardDescription>
+              Success fees and leading indicators tied to outcomes
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="p-4 rounded-lg border border-dashed">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="w-4 h-4 text-emerald-600" />
+                  <span className="font-medium">Leading Indicators</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Adoption rate, completion %, manager coaching quality
+                </p>
+              </div>
+              <div className="p-4 rounded-lg border border-dashed">
+                <div className="flex items-center gap-2 mb-2">
+                  <Star className="w-4 h-4 text-amber-600" />
+                  <span className="font-medium">Success Fee Opportunities</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Optional success fees on controllable outcomes
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      {/* AI Discovery - AI-assisted research (Trend #5: AI-assisted real-time value tracking) */}
+      <TabsContent value="discovery" className="space-y-6">
+        <Card className="bg-gradient-to-r from-purple-500/5 to-blue-500/5 border-purple-500/20">
+          <CardHeader>
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                  <Briefcase className="w-6 h-6 text-purple-600" />
+                  <Sparkles className="w-6 h-6 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Value Cases</p>
-                  <p className="text-2xl font-bold">{valueCases.length}</p>
+                  <CardTitle>AI Discovery Console</CardTitle>
+                  <CardDescription>AI-powered company research and strategic insights</CardDescription>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-          <Card className="hover-elevate">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                  <ClipboardList className="w-6 h-6 text-orange-600" />
+              <Link href={`/projects/${projectId}/discovery`}>
+                <Button variant="outline" size="sm" data-testid="button-full-discovery">
+                  Open Full Discovery
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="p-4 rounded-lg bg-background border">
+                <div className="flex items-center gap-2 mb-2">
+                  <Lightbulb className="w-4 h-4 text-amber-600" />
+                  <span className="font-medium text-sm">High Priority</span>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Priorities</p>
-                  <p className="text-2xl font-bold">{jobThemes.length}</p>
-                </div>
+                <p className="text-2xl font-bold text-amber-600">
+                  {insights.filter(i => i.priority === "high").length}
+                </p>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+              <div className="p-4 rounded-lg bg-background border">
+                <div className="flex items-center gap-2 mb-2">
+                  <Target className="w-4 h-4 text-blue-600" />
+                  <span className="font-medium text-sm">KF Solutions</span>
+                </div>
+                <p className="text-2xl font-bold text-blue-600">
+                  {new Set(insights.map(i => i.solutionArea).filter(Boolean)).size}
+                </p>
+              </div>
+              <div className="p-4 rounded-lg bg-background border">
+                <div className="flex items-center gap-2 mb-2">
+                  <MessageSquare className="w-4 h-4 text-emerald-600" />
+                  <span className="font-medium text-sm">Notes</span>
+                </div>
+                <p className="text-2xl font-bold text-emerald-600">{notes.length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Lightbulb className="w-5 h-5" />
-                Recent Insights
+                <Sparkles className="w-5 h-5 text-purple-600" />
+                AI-Generated Insights
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {insights.slice(0, 5).map(insight => (
-                  <div key={insight.id} className="p-3 rounded-lg bg-muted/50 hover-elevate">
-                    <p className="text-sm">{insight.content}</p>
-                    <div className="flex gap-2 mt-2">
+                  <div key={insight.id} className="p-3 rounded-lg border hover-elevate">
+                    <p className="text-sm mb-2">{insight.content}</p>
+                    <div className="flex flex-wrap gap-1">
                       {insight.priority && (
-                        <Badge variant="outline" className="text-xs">{insight.priority}</Badge>
+                        <Badge variant={insight.priority === "high" ? "destructive" : "outline"} className="text-xs">
+                          {insight.priority}
+                        </Badge>
                       )}
                       {insight.kornferryPillar && (
-                        <Badge variant="secondary" className="text-xs">{insight.kornferryPillar}</Badge>
+                        <Badge className="bg-primary/10 text-primary text-xs">{insight.kornferryPillar}</Badge>
                       )}
                     </div>
                   </div>
                 ))}
                 {insights.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No insights captured yet
-                  </p>
+                  <div className="text-center py-6">
+                    <Sparkles className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">Run AI research to generate insights</p>
+                  </div>
                 )}
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
               <CardTitle className="flex items-center gap-2">
                 <MessageSquare className="w-5 h-5" />
-                Notes
+                Discovery Notes
               </CardTitle>
               <Button size="sm" onClick={() => setIsAddNoteOpen(true)} data-testid="button-add-note">
                 <Plus className="w-4 h-4 mr-1" />
-                Add Note
+                Add
               </Button>
             </CardHeader>
             <CardContent>
@@ -428,59 +585,12 @@ export default function ProjectRoleView() {
                   </div>
                 ))}
                 {notes.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No notes yet
-                  </p>
+                  <p className="text-sm text-muted-foreground text-center py-4">No notes yet</p>
                 )}
               </div>
             </CardContent>
           </Card>
         </div>
-      </TabsContent>
-
-      <TabsContent value="discovery" className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Discovery Insights</CardTitle>
-            <CardDescription>Research and insights gathered during discovery phase</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {insights.map(insight => (
-                <div key={insight.id} className="p-4 rounded-lg border hover-elevate">
-                  <p className="mb-3">{insight.content}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {insight.priority && (
-                      <Badge variant={insight.priority === "high" ? "destructive" : "outline"}>
-                        {insight.priority} priority
-                      </Badge>
-                    )}
-                    {insight.confidence && (
-                      <Badge variant="secondary">{insight.confidence} confidence</Badge>
-                    )}
-                    {insight.kornferryPillar && (
-                      <Badge className="bg-primary/10 text-primary">{insight.kornferryPillar}</Badge>
-                    )}
-                    {insight.solutionArea && (
-                      <Badge variant="outline">{insight.solutionArea}</Badge>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {insights.length === 0 && (
-                <div className="text-center py-8">
-                  <Lightbulb className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No insights captured yet</p>
-                  <Link href={`/projects/${projectId}`}>
-                    <Button className="mt-4" data-testid="button-go-to-discovery">
-                      Go to Discovery
-                    </Button>
-                  </Link>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
       </TabsContent>
 
       <TabsContent value="value-cases" className="space-y-6">
@@ -522,16 +632,206 @@ export default function ProjectRoleView() {
         </Card>
       </TabsContent>
 
-      <TabsContent value="stakeholders" className="space-y-6">
-        <Card>
+      {/* Success Stories - KF success stories for proof points (Trend #6: HR value quantification) */}
+      <TabsContent value="success-stories" className="space-y-6">
+        <Card className="bg-gradient-to-r from-amber-500/5 to-orange-500/5 border-amber-500/20">
           <CardHeader>
-            <CardTitle>Stakeholder Mapping</CardTitle>
-            <CardDescription>Key contacts and decision makers</CardDescription>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                <Star className="w-6 h-6 text-amber-600" />
+              </div>
+              <div>
+                <CardTitle>Korn Ferry Success Stories</CardTitle>
+                <CardDescription>Verified case studies and proof points for value conversations</CardDescription>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8">
-              <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">Stakeholder mapping coming soon</p>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="p-4 rounded-lg bg-background border">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="w-4 h-4 text-emerald-600" />
+                  <span className="font-medium text-sm">ROI Stories</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Proven impact ranges and financial bridges
+                </p>
+              </div>
+              <div className="p-4 rounded-lg bg-background border">
+                <div className="flex items-center gap-2 mb-2">
+                  <Users className="w-4 h-4 text-blue-600" />
+                  <span className="font-medium text-sm">Industry Benchmarks</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Selection accuracy, development lift, turnover changes
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Star className="w-5 h-5 text-amber-600" />
+              Relevant Success Stories
+            </CardTitle>
+            <CardDescription>
+              Stories matching this engagement's solution areas
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Sample success story cards - would be populated from API */}
+              <div className="p-4 rounded-lg border hover-elevate">
+                <div className="flex items-start justify-between mb-2">
+                  <h4 className="font-semibold">Leadership Development Program</h4>
+                  <Badge className="bg-emerald-500/10 text-emerald-600">Verified</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Fortune 500 technology company achieved 35% improvement in leadership pipeline quality
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className="text-xs">Develop</Badge>
+                  <Badge variant="outline" className="text-xs">Leadership</Badge>
+                  <Badge variant="secondary" className="text-xs">+35% Pipeline Quality</Badge>
+                </div>
+              </div>
+              <div className="p-4 rounded-lg border hover-elevate">
+                <div className="flex items-start justify-between mb-2">
+                  <h4 className="font-semibold">Sales Effectiveness Transformation</h4>
+                  <Badge className="bg-emerald-500/10 text-emerald-600">Verified</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Global manufacturing company increased sales productivity by 22% within 12 months
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className="text-xs">Transform</Badge>
+                  <Badge variant="outline" className="text-xs">Sales</Badge>
+                  <Badge variant="secondary" className="text-xs">+22% Productivity</Badge>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      {/* Handoff - Transition to Delivery (Sales to Delivery flow) */}
+      <TabsContent value="handoff" className="space-y-6">
+        <Card className="bg-gradient-to-r from-emerald-500/5 to-primary/5 border-emerald-500/20">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                  <ArrowUpRight className="w-6 h-6 text-emerald-600" />
+                </div>
+                <div>
+                  <CardTitle>Handoff to Delivery</CardTitle>
+                  <CardDescription>Transition this engagement to the delivery team</CardDescription>
+                </div>
+              </div>
+              <Badge variant={kpis.length >= 3 && valueCases.length >= 1 ? "default" : "secondary"}>
+                {kpis.length >= 3 && valueCases.length >= 1 ? "Ready for Handoff" : "Preparation Needed"}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Before handing off, ensure the Value Canvas is complete with shared KPIs, baselines, and targets.
+              </p>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className={`p-4 rounded-lg border ${kpis.length >= 3 ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5"}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    {kpis.length >= 3 ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-amber-600" />
+                    )}
+                    <span className="font-medium text-sm">Value Canvas KPIs</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {kpis.length} / 3 minimum defined
+                  </p>
+                </div>
+                <div className={`p-4 rounded-lg border ${valueCases.length >= 1 ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5"}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    {valueCases.length >= 1 ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-amber-600" />
+                    )}
+                    <span className="font-medium text-sm">Value Cases</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {valueCases.length} case(s) created
+                  </p>
+                </div>
+                <div className={`p-4 rounded-lg border ${insights.length >= 5 ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5"}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    {insights.length >= 5 ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-amber-600" />
+                    )}
+                    <span className="font-medium text-sm">Discovery Complete</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {insights.length} insights captured
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+          <CardFooter className="flex justify-between">
+            <p className="text-sm text-muted-foreground">
+              Handoff will notify the delivery team and lock value canvas items
+            </p>
+            <Link href={`/projects/${projectId}/delivery`}>
+              <Button 
+                disabled={kpis.length < 3 || valueCases.length < 1}
+                data-testid="button-handoff-to-delivery"
+              >
+                <ArrowUpRight className="w-4 h-4 mr-2" />
+                Complete Handoff
+              </Button>
+            </Link>
+          </CardFooter>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Handoff Checklist
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <CheckCircle2 className={`w-5 h-5 ${kpis.length >= 3 ? "text-emerald-600" : "text-muted-foreground"}`} />
+                <span className={kpis.length >= 3 ? "" : "text-muted-foreground"}>
+                  3-5 shared KPIs defined with baselines and targets
+                </span>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <CheckCircle2 className={`w-5 h-5 ${valueCases.length >= 1 ? "text-emerald-600" : "text-muted-foreground"}`} />
+                <span className={valueCases.length >= 1 ? "" : "text-muted-foreground"}>
+                  At least one value case created
+                </span>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <CheckCircle2 className={`w-5 h-5 ${insights.length >= 5 ? "text-emerald-600" : "text-muted-foreground"}`} />
+                <span className={insights.length >= 5 ? "" : "text-muted-foreground"}>
+                  Discovery insights documented (5+ recommended)
+                </span>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <CheckCircle2 className="w-5 h-5 text-muted-foreground" />
+                <span className="text-muted-foreground">
+                  Success fee / commercial terms noted (optional)
+                </span>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -541,91 +841,98 @@ export default function ProjectRoleView() {
 
   const renderDeliveryWorkspace = () => (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-      <TabsList className="grid grid-cols-4 w-full max-w-2xl">
-        <TabsTrigger value="overview" data-testid="tab-overview">
-          <Eye className="w-4 h-4 mr-2" />
-          Overview
+      <TabsList className="grid grid-cols-5 w-full max-w-3xl">
+        <TabsTrigger value="health" data-testid="tab-health">
+          <Activity className="w-4 h-4 mr-2" />
+          Health Dashboard
         </TabsTrigger>
         <TabsTrigger value="kpis" data-testid="tab-kpis">
           <BarChart3 className="w-4 h-4 mr-2" />
-          KPIs
+          KPI Tracking
         </TabsTrigger>
-        <TabsTrigger value="evidence" data-testid="tab-evidence">
-          <FileCheck className="w-4 h-4 mr-2" />
-          Evidence
+        <TabsTrigger value="qbr" data-testid="tab-qbr">
+          <Calendar className="w-4 h-4 mr-2" />
+          QBR
         </TabsTrigger>
-        <TabsTrigger value="actions" data-testid="tab-actions">
-          <Activity className="w-4 h-4 mr-2" />
-          Actions
+        <TabsTrigger value="governance" data-testid="tab-governance">
+          <Layers className="w-4 h-4 mr-2" />
+          Value Governance
+        </TabsTrigger>
+        <TabsTrigger value="success-capture" data-testid="tab-success-capture">
+          <Star className="w-4 h-4 mr-2" />
+          Success Capture
         </TabsTrigger>
       </TabsList>
 
-      <TabsContent value="overview" className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card className="hover-elevate">
-            <CardContent className="pt-6">
+      {/* Health Dashboard - CS-style health scores (Trend #4: CS playbooks in value governance) */}
+      <TabsContent value="health" className="space-y-6">
+        <Card className="bg-gradient-to-r from-emerald-500/5 to-blue-500/5 border-emerald-500/20">
+          <CardHeader>
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-green-500/10 flex items-center justify-center">
-                  <CheckCircle2 className="w-6 h-6 text-green-600" />
+                <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                  <Activity className="w-6 h-6 text-emerald-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">KPIs On Track</p>
-                  <p className="text-2xl font-bold">{kpisOnTrack}</p>
+                  <CardTitle>Engagement Health Dashboard</CardTitle>
+                  <CardDescription>Real-time health scores and value delivery status</CardDescription>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-          <Card className="hover-elevate">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                  <AlertCircle className="w-6 h-6 text-amber-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">At Risk</p>
-                  <p className="text-2xl font-bold">{kpisAtRisk}</p>
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">Overall Health</p>
+                <div className="flex items-center gap-2">
+                  <div className={`w-3 h-3 rounded-full ${kpisAtRisk === 0 ? "bg-emerald-500" : kpisAtRisk <= 2 ? "bg-amber-500" : "bg-red-500"}`} />
+                  <span className="text-xl font-bold">
+                    {kpisAtRisk === 0 ? "Healthy" : kpisAtRisk <= 2 ? "At Risk" : "Critical"}
+                  </span>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-          <Card className="hover-elevate">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                  <Target className="w-6 h-6 text-blue-600" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="p-4 rounded-lg bg-background border">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span className="font-medium text-sm">On Track</span>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total KPIs</p>
-                  <p className="text-2xl font-bold">{kpis.length}</p>
-                </div>
+                <p className="text-2xl font-bold text-emerald-600">{kpisOnTrack}</p>
               </div>
-            </CardContent>
-          </Card>
-          <Card className="hover-elevate">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                  <Sparkles className="w-6 h-6 text-purple-600" />
+              <div className="p-4 rounded-lg bg-background border">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="w-4 h-4 text-amber-600" />
+                  <span className="font-medium text-sm">At Risk</span>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Value Realized</p>
-                  <p className="text-2xl font-bold">${(totalValue * 0.3 / 1000000).toFixed(1)}M</p>
-                </div>
+                <p className="text-2xl font-bold text-amber-600">{kpisAtRisk}</p>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+              <div className="p-4 rounded-lg bg-background border">
+                <div className="flex items-center gap-2 mb-2">
+                  <Target className="w-4 h-4 text-blue-600" />
+                  <span className="font-medium text-sm">Total KPIs</span>
+                </div>
+                <p className="text-2xl font-bold text-blue-600">{kpis.length}</p>
+              </div>
+              <div className="p-4 rounded-lg bg-background border">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="w-4 h-4 text-purple-600" />
+                  <span className="font-medium text-sm">Value Realized</span>
+                </div>
+                <p className="text-2xl font-bold text-purple-600">${(totalValue * 0.3 / 1000000).toFixed(1)}M</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid gap-6 lg:grid-cols-2">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
               <CardTitle className="flex items-center gap-2">
                 <BarChart3 className="w-5 h-5" />
-                KPI Progress
+                KPI Health Summary
               </CardTitle>
               <Button size="sm" onClick={() => setIsLogKPIOpen(true)} data-testid="button-log-kpi">
                 <Plus className="w-4 h-4 mr-1" />
-                Log KPI
+                Log
               </Button>
             </CardHeader>
             <CardContent>
@@ -634,30 +941,32 @@ export default function ProjectRoleView() {
                   <div key={kpi.id} className="space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">{kpi.name}</span>
-                      <Badge variant={
-                        kpi.status === "on-track" ? "default" :
-                        kpi.status === "at-risk" ? "secondary" : "destructive"
-                      }>
-                        {kpi.status}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        {/* AI Trend Flag */}
+                        {kpi.currentValue && kpi.targetValue && (
+                          <Badge variant="outline" className="text-xs">
+                            <Sparkles className="w-3 h-3 mr-1" />
+                            {kpi.status === "on-track" ? "Trending Up" : "Needs Attention"}
+                          </Badge>
+                        )}
+                        <Badge variant={
+                          kpi.status === "on-track" ? "default" :
+                          kpi.status === "at-risk" ? "secondary" : "destructive"
+                        }>
+                          {kpi.status}
+                        </Badge>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Progress 
-                        value={kpi.currentValue && kpi.targetValue ? 
-                          Math.min(100, (kpi.currentValue / kpi.targetValue) * 100) : 0
-                        } 
-                        className="flex-1"
-                      />
-                      <span className="text-xs text-muted-foreground w-16 text-right">
-                        {kpi.currentValue ?? 0} / {kpi.targetValue ?? "—"}
-                      </span>
-                    </div>
+                    <Progress 
+                      value={kpi.currentValue && kpi.targetValue ? 
+                        Math.min(100, (kpi.currentValue / kpi.targetValue) * 100) : 0
+                      } 
+                      className="flex-1"
+                    />
                   </div>
                 ))}
                 {kpis.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No KPIs tracked yet
-                  </p>
+                  <p className="text-sm text-muted-foreground text-center py-4">No KPIs tracked yet</p>
                 )}
               </div>
             </CardContent>
@@ -667,7 +976,7 @@ export default function ProjectRoleView() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ClipboardList className="w-5 h-5" />
-                Priorities & Themes
+                Priority Themes
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -684,9 +993,7 @@ export default function ProjectRoleView() {
                   </div>
                 ))}
                 {jobThemes.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No priorities defined yet
-                  </p>
+                  <p className="text-sm text-muted-foreground text-center py-4">No priorities defined yet</p>
                 )}
               </div>
             </CardContent>
@@ -756,34 +1063,261 @@ export default function ProjectRoleView() {
         </Card>
       </TabsContent>
 
-      <TabsContent value="evidence" className="space-y-6">
-        <Card>
+      {/* QBR - Quarterly Business Reviews (Trend #4: CS playbooks in value governance) */}
+      <TabsContent value="qbr" className="space-y-6">
+        <Card className="bg-gradient-to-r from-blue-500/5 to-indigo-500/5 border-blue-500/20">
           <CardHeader>
-            <CardTitle>Evidence Collection</CardTitle>
-            <CardDescription>Screenshots, documents, and artifacts for QBR</CardDescription>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                  <Calendar className="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <CardTitle>Quarterly Business Review</CardTitle>
+                  <CardDescription>Generate QBR decks and capture evidence</CardDescription>
+                </div>
+              </div>
+              <Button data-testid="button-generate-qbr">
+                <Download className="w-4 h-4 mr-2" />
+                Generate QBR Deck
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8">
-              <FileCheck className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">Evidence collection coming soon</p>
-              <p className="text-xs text-muted-foreground mt-2">
-                Upload screenshots, documents, and testimonials here
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="p-4 rounded-lg bg-background border">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileCheck className="w-4 h-4 text-emerald-600" />
+                  <span className="font-medium text-sm">Evidence Collected</span>
+                </div>
+                <p className="text-2xl font-bold">0</p>
+                <p className="text-xs text-muted-foreground">Screenshots & documents</p>
+              </div>
+              <div className="p-4 rounded-lg bg-background border">
+                <div className="flex items-center gap-2 mb-2">
+                  <Star className="w-4 h-4 text-amber-600" />
+                  <span className="font-medium text-sm">Success Stories</span>
+                </div>
+                <p className="text-2xl font-bold">0</p>
+                <p className="text-xs text-muted-foreground">Ready for QBR</p>
+              </div>
+              <div className="p-4 rounded-lg bg-background border">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="w-4 h-4 text-blue-600" />
+                  <span className="font-medium text-sm">KPIs Tracked</span>
+                </div>
+                <p className="text-2xl font-bold">{kpis.length}</p>
+                <p className="text-xs text-muted-foreground">With baseline & target</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileCheck className="w-5 h-5" />
+              Evidence Collection
+            </CardTitle>
+            <CardDescription>Upload screenshots, documents, and testimonials for QBR</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="border-2 border-dashed rounded-lg p-8 text-center">
+              <FileCheck className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground mb-3">
+                Drag and drop files here, or click to upload
               </p>
+              <Button variant="outline" size="sm">
+                <Plus className="w-4 h-4 mr-2" />
+                Upload Evidence
+              </Button>
             </div>
           </CardContent>
         </Card>
       </TabsContent>
 
-      <TabsContent value="actions" className="space-y-6">
+      {/* Value Governance - VRO principles (Trend #3: Value Realisation Office) */}
+      <TabsContent value="governance" className="space-y-6">
+        <Card className="bg-gradient-to-r from-purple-500/5 to-pink-500/5 border-purple-500/20">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                <Layers className="w-6 h-6 text-purple-600" />
+              </div>
+              <div>
+                <CardTitle>Value Governance</CardTitle>
+                <CardDescription>Value Realisation Office principles and tracking</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="p-4 rounded-lg bg-background border">
+                <div className="flex items-center gap-2 mb-2">
+                  <Target className="w-4 h-4 text-emerald-600" />
+                  <span className="font-medium text-sm">Benefit Owner Assigned</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Each KPI has a designated client owner accountable for measurement
+                </p>
+              </div>
+              <div className="p-4 rounded-lg bg-background border">
+                <div className="flex items-center gap-2 mb-2">
+                  <Calendar className="w-4 h-4 text-blue-600" />
+                  <span className="font-medium text-sm">Regular Cadence</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Monthly check-ins with quarterly reviews scheduled
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
-            <CardTitle>Action Items</CardTitle>
-            <CardDescription>Tasks and follow-ups for delivery</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <UserCheck className="w-5 h-5" />
+              Governance Checklist
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <CheckCircle2 className={`w-5 h-5 ${kpis.length >= 3 ? "text-emerald-600" : "text-muted-foreground"}`} />
+                <span className={kpis.length >= 3 ? "" : "text-muted-foreground"}>
+                  3-5 shared KPIs defined with benefit owners
+                </span>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <CheckCircle2 className="w-5 h-5 text-muted-foreground" />
+                <span className="text-muted-foreground">
+                  Monthly KPI review cadence established
+                </span>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <CheckCircle2 className="w-5 h-5 text-muted-foreground" />
+                <span className="text-muted-foreground">
+                  Quarterly business review scheduled
+                </span>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <CheckCircle2 className="w-5 h-5 text-muted-foreground" />
+                <span className="text-muted-foreground">
+                  Value realisation report template prepared
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-600" />
+              Issues & Risks
+            </CardTitle>
+            <CardDescription>Track blockers and risks to value delivery</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-6">
+              <AlertTriangle className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground mb-3">No issues or risks logged yet</p>
+              <Button variant="outline" size="sm">
+                <Plus className="w-4 h-4 mr-2" />
+                Log Issue
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      {/* Success Capture - Capture success stories (Trend #6: HR value quantification) */}
+      <TabsContent value="success-capture" className="space-y-6">
+        <Card className="bg-gradient-to-r from-amber-500/5 to-orange-500/5 border-amber-500/20">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                <Star className="w-6 h-6 text-amber-600" />
+              </div>
+              <div>
+                <CardTitle>Success Story Capture</CardTitle>
+                <CardDescription>Document wins and outcomes for future proof points</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="p-4 rounded-lg bg-background border">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="w-4 h-4 text-emerald-600" />
+                  <span className="font-medium text-sm">Quantified Outcomes</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Document measurable improvements with before/after data
+                </p>
+              </div>
+              <div className="p-4 rounded-lg bg-background border">
+                <div className="flex items-center gap-2 mb-2">
+                  <MessageSquare className="w-4 h-4 text-blue-600" />
+                  <span className="font-medium text-sm">Client Testimonials</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Capture quotes and feedback from stakeholders
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Star className="w-5 h-5 text-amber-600" />
+                Captured Success Stories
+              </CardTitle>
+              <CardDescription>Stories ready for verification and library addition</CardDescription>
+            </div>
+            <Button data-testid="button-capture-story">
+              <Plus className="w-4 h-4 mr-2" />
+              Capture Story
+            </Button>
           </CardHeader>
           <CardContent>
             <div className="text-center py-8">
-              <Activity className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">Action tracking coming soon</p>
+              <Star className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground mb-2">No success stories captured yet</p>
+              <p className="text-sm text-muted-foreground">
+                Document wins as they happen to build your proof point library
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Story Template</CardTitle>
+            <CardDescription>Use this structure to capture compelling success stories</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="p-3 rounded-lg border">
+                <span className="text-sm font-medium">Challenge</span>
+                <p className="text-xs text-muted-foreground mt-1">What was the business problem?</p>
+              </div>
+              <div className="p-3 rounded-lg border">
+                <span className="text-sm font-medium">Solution</span>
+                <p className="text-xs text-muted-foreground mt-1">What Korn Ferry solution was implemented?</p>
+              </div>
+              <div className="p-3 rounded-lg border">
+                <span className="text-sm font-medium">Outcome</span>
+                <p className="text-xs text-muted-foreground mt-1">What measurable results were achieved?</p>
+              </div>
+              <div className="p-3 rounded-lg border">
+                <span className="text-sm font-medium">Quote</span>
+                <p className="text-xs text-muted-foreground mt-1">Client testimonial or endorsement</p>
+              </div>
             </div>
           </CardContent>
         </Card>
