@@ -597,16 +597,17 @@ export default function ProjectRoleView() {
     { id: "COMMERCIAL", name: "Commercial", description: "Sales Effectiveness" }
   ];
   
-  // Discovery Themes aligned with Korn Ferry offerings
+  // Discovery Themes aligned with Korn Ferry offerings - with opportunity focus
   const discoveryThemes = [
     { 
       id: "kf-full-search", 
       name: "We are Korn Ferry", 
       icon: Building2,
       color: "primary",
-      description: "Comprehensive search across ALL Korn Ferry capabilities - AI groups news by relevant theme recommendations",
+      description: "Comprehensive search across ALL Korn Ferry capabilities - AI identifies opportunities by solution area",
       kornferryOffering: "Full Korn Ferry Suite",
-      newsKeywords: ["leadership", "executive", "CEO", "development", "succession", "hiring", "recruitment", "talent", "assessment", "skills", "transformation", "restructuring", "operating model", "efficiency", "digital", "compensation", "pay", "benefits", "retention", "equity", "sales", "revenue", "commercial", "go-to-market", "growth"],
+      valueProposition: "End-to-end organizational consulting for talent strategy, leadership, and business performance",
+      opportunitySignals: ["executive transition", "growth plans", "M&A", "digital transformation", "talent crisis", "performance gaps"],
       isFullSearch: true
     },
     { 
@@ -616,7 +617,14 @@ export default function ProjectRoleView() {
       color: "blue",
       description: "Build next-generation leaders and executive bench strength",
       kornferryOffering: "Korn Ferry Leadership & Development",
-      newsKeywords: ["leadership", "executive", "CEO", "development", "succession"]
+      valueProposition: "Accelerate leader readiness, build succession pipelines, and develop high-potential talent",
+      opportunitySignals: ["CEO succession", "leadership gaps", "executive turnover", "growth requiring new leaders", "merger integration", "new strategy execution"],
+      howWeHelp: [
+        "Leadership assessment and development programs",
+        "Succession planning and bench strength building", 
+        "Executive coaching and onboarding",
+        "High-potential identification and acceleration"
+      ]
     },
     { 
       id: "talent-acquisition", 
@@ -625,7 +633,14 @@ export default function ProjectRoleView() {
       color: "purple",
       description: "Improve hiring quality and reduce mis-hires",
       kornferryOffering: "Korn Ferry Assess",
-      newsKeywords: ["hiring", "recruitment", "talent", "assessment", "skills"]
+      valueProposition: "Hire the right people, reduce turnover, and build predictive selection processes",
+      opportunitySignals: ["high turnover", "hiring challenges", "skills gaps", "expansion hiring", "quality of hire issues", "DEI initiatives"],
+      howWeHelp: [
+        "Success profiles and competency frameworks",
+        "Assessment and selection tools",
+        "Interview training and calibration",
+        "Candidate experience optimization"
+      ]
     },
     { 
       id: "transformation", 
@@ -634,7 +649,14 @@ export default function ProjectRoleView() {
       color: "emerald",
       description: "Restructure for agility, efficiency, and growth",
       kornferryOffering: "Korn Ferry Transform",
-      newsKeywords: ["transformation", "restructuring", "operating model", "efficiency", "digital"]
+      valueProposition: "Design operating models that drive performance, reduce costs, and enable strategy",
+      opportunitySignals: ["restructuring", "cost reduction", "efficiency programs", "M&A integration", "digital transformation", "new operating model"],
+      howWeHelp: [
+        "Organization design and restructuring",
+        "Operating model optimization",
+        "Culture transformation",
+        "Change management and adoption"
+      ]
     },
     { 
       id: "rewards", 
@@ -643,7 +665,14 @@ export default function ProjectRoleView() {
       color: "amber",
       description: "Optimize pay, benefits, and retention strategies",
       kornferryOffering: "Korn Ferry Reward",
-      newsKeywords: ["compensation", "pay", "benefits", "retention", "equity"]
+      valueProposition: "Attract, retain, and motivate talent through competitive and equitable rewards",
+      opportunitySignals: ["pay equity concerns", "retention issues", "compensation reviews", "executive pay scrutiny", "benefits redesign", "incentive misalignment"],
+      howWeHelp: [
+        "Compensation benchmarking and strategy",
+        "Pay equity analysis and remediation",
+        "Executive compensation design",
+        "Total rewards optimization"
+      ]
     },
     { 
       id: "sales-effectiveness", 
@@ -652,7 +681,14 @@ export default function ProjectRoleView() {
       color: "rose",
       description: "Drive revenue through commercial excellence",
       kornferryOffering: "Korn Ferry Commercial",
-      newsKeywords: ["sales", "revenue", "commercial", "go-to-market", "growth"]
+      valueProposition: "Improve win rates, accelerate deals, and build high-performing sales organizations",
+      opportunitySignals: ["revenue growth targets", "sales underperformance", "go-to-market changes", "sales force expansion", "channel optimization", "customer experience"],
+      howWeHelp: [
+        "Sales talent assessment and development",
+        "Sales process and methodology",
+        "Sales compensation and incentives",
+        "Sales leadership coaching"
+      ]
     }
   ];
 
@@ -1321,27 +1357,36 @@ export default function ProjectRoleView() {
                     onClick={() => setSelectedDiscoveryTheme(kfFullSearch.id)}
                     data-testid="theme-kf-full-search"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <div className="flex items-start gap-4">
+                      <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
                         <ThemeIcon className="w-7 h-7 text-primary" />
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <h4 className="font-bold text-lg text-primary">{kfFullSearch.name}</h4>
                           <Badge className="bg-primary/10 text-primary border-primary/20">Recommended</Badge>
+                          {isSelected && <CheckCircle className="w-6 h-6 text-primary ml-auto" />}
                         </div>
-                        <p className="text-sm text-muted-foreground">{kfFullSearch.description}</p>
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          <Badge variant="outline" className="text-xs">Leadership</Badge>
-                          <Badge variant="outline" className="text-xs">Talent</Badge>
-                          <Badge variant="outline" className="text-xs">Transform</Badge>
-                          <Badge variant="outline" className="text-xs">Reward</Badge>
-                          <Badge variant="outline" className="text-xs">Commercial</Badge>
+                        <p className="text-sm font-medium mb-2">{kfFullSearch.valueProposition}</p>
+                        <p className="text-xs text-muted-foreground mb-2">{kfFullSearch.description}</p>
+                        <div className="flex flex-wrap gap-1 mb-3">
+                          <Badge variant="outline" className="text-xs border-blue-500/30 text-blue-600">Leadership</Badge>
+                          <Badge variant="outline" className="text-xs border-purple-500/30 text-purple-600">Talent</Badge>
+                          <Badge variant="outline" className="text-xs border-emerald-500/30 text-emerald-600">Transform</Badge>
+                          <Badge variant="outline" className="text-xs border-amber-500/30 text-amber-600">Reward</Badge>
+                          <Badge variant="outline" className="text-xs border-rose-500/30 text-rose-600">Commercial</Badge>
+                        </div>
+                        <div className="p-2 rounded-lg bg-primary/5 border border-primary/10">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Opportunity Signals:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {(kfFullSearch.opportunitySignals || []).map((signal, idx) => (
+                              <Badge key={idx} className="text-xs bg-primary/10 text-primary border-primary/20">
+                                {signal}
+                              </Badge>
+                            ))}
+                          </div>
                         </div>
                       </div>
-                      {isSelected && (
-                        <CheckCircle className="w-6 h-6 text-primary" />
-                      )}
                     </div>
                   </div>
                 );
@@ -1367,6 +1412,13 @@ export default function ProjectRoleView() {
                     amber: "text-amber-600",
                     rose: "text-rose-600"
                   };
+                  const bgColors: Record<string, string> = {
+                    blue: "bg-blue-500/10",
+                    purple: "bg-purple-500/10",
+                    emerald: "bg-emerald-500/10",
+                    amber: "bg-amber-500/10",
+                    rose: "bg-rose-500/10"
+                  };
                   return (
                     <div 
                       key={theme.id}
@@ -1376,19 +1428,40 @@ export default function ProjectRoleView() {
                       onClick={() => setSelectedDiscoveryTheme(theme.id)}
                       data-testid={`theme-${theme.id}`}
                     >
-                      <div className="flex items-start gap-3">
-                        <div className={`w-10 h-10 rounded-lg bg-${theme.color}-500/10 flex items-center justify-center`}>
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className={`w-10 h-10 rounded-lg ${bgColors[theme.color]} flex items-center justify-center`}>
                           <ThemeIcon className={`w-5 h-5 ${iconColors[theme.color]}`} />
                         </div>
                         <div className="flex-1">
-                          <h4 className="font-semibold text-sm mb-1">{theme.name}</h4>
-                          <p className="text-xs text-muted-foreground">{theme.description}</p>
-                          <Badge variant="outline" className="text-xs mt-2">{theme.kornferryOffering}</Badge>
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-semibold text-sm">{theme.name}</h4>
+                            {isSelected && <CheckCircle className="w-5 h-5 text-primary" />}
+                          </div>
+                          <p className="text-xs text-muted-foreground">{theme.kornferryOffering}</p>
                         </div>
-                        {isSelected && (
-                          <CheckCircle className="w-5 h-5 text-primary" />
-                        )}
                       </div>
+                      {/* Value proposition */}
+                      <p className="text-xs font-medium mb-2">{theme.valueProposition}</p>
+                      {/* Opportunity signals */}
+                      <div className="mb-2">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Look for:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {(theme.opportunitySignals || []).slice(0, 3).map((signal, idx) => (
+                            <Badge key={idx} variant="outline" className="text-xs">
+                              {signal}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                      {/* How we help preview */}
+                      {theme.howWeHelp && (
+                        <div className={`p-2 rounded ${bgColors[theme.color]} mt-2`}>
+                          <p className="text-xs flex items-center gap-1">
+                            <Sparkles className={`w-3 h-3 ${iconColors[theme.color]}`} />
+                            <span className="font-medium">{theme.howWeHelp[0]}</span>
+                          </p>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -1415,28 +1488,78 @@ export default function ProjectRoleView() {
           const marketIntel = generateMarketIntelligence(project.companyName, selectedDiscoveryTheme || undefined);
           const blueSheet = generateBlueSheetData(project.companyName);
           
-          // For full search, generate news grouped by theme
-          const themeGroupedNews = isFullSearch ? {
-            leadership: [
-              { headline: `${project.companyName} CEO Announces New Leadership Development Initiative`, date: "Nov 25, 2024", source: "Business Wire", summary: "Company to invest in developing next-generation leaders with focus on succession planning", relevance: "high" as const },
-              { headline: `Executive Bench Strength a Priority for ${project.companyName}`, date: "Nov 20, 2024", source: "HR Executive", summary: "CHRO discusses plans to accelerate leadership pipeline development", relevance: "high" as const }
-            ],
-            talent: [
-              { headline: `${project.companyName} Revamps Hiring Process with AI Assessment`, date: "Nov 22, 2024", source: "TechCrunch", summary: "New AI-powered assessment tools to improve candidate quality and reduce mis-hires", relevance: "high" as const },
-              { headline: "Skills-Based Hiring Trend Accelerates in Tech Sector", date: "Nov 18, 2024", source: "Wall Street Journal", summary: "Companies shifting focus from degrees to demonstrated capabilities", relevance: "medium" as const }
-            ],
-            transformation: [
-              { headline: `${project.companyName} Announces Major Organizational Restructuring`, date: "Nov 23, 2024", source: "Reuters", summary: "Company to streamline operations and create more agile operating model", relevance: "high" as const },
-              { headline: "Digital Transformation Reshaping Enterprise Operations", date: "Nov 19, 2024", source: "Harvard Business Review", summary: "Organizations accelerating digital initiatives post-pandemic", relevance: "medium" as const }
-            ],
-            rewards: [
-              { headline: `${project.companyName} Reviews Total Rewards Strategy Amid Talent War`, date: "Nov 21, 2024", source: "Compensation Today", summary: "Company evaluating pay equity and retention bonuses to compete for talent", relevance: "high" as const },
-              { headline: "Executive Compensation Trends 2024", date: "Nov 17, 2024", source: "Forbes", summary: "Survey shows shift toward performance-based and equity compensation", relevance: "medium" as const }
-            ],
-            commercial: [
-              { headline: `${project.companyName} Sales Force Expansion Planned for 2025`, date: "Nov 24, 2024", source: "Industry Week", summary: "Company to grow commercial team by 30% to capture market opportunities", relevance: "high" as const },
-              { headline: "Go-to-Market Excellence Drives Revenue Growth", date: "Nov 16, 2024", source: "Sales Management", summary: "Research shows correlation between sales effectiveness and revenue performance", relevance: "medium" as const }
-            ]
+          // For full search, generate OPPORTUNITY-focused content grouped by theme
+          const opportunityData = isFullSearch ? {
+            leadership: {
+              opportunitySignal: "Leadership Pipeline Gap Identified",
+              articles: [
+                { headline: `${project.companyName} CEO Announces Succession Planning Initiative`, date: "Nov 25, 2024", source: "Business Wire", summary: "New CEO transition planned for 2026 - accelerating leadership pipeline development", opportunityType: "Succession Planning" },
+                { headline: `${project.companyName} Reports 40% Executive Turnover`, date: "Nov 20, 2024", source: "HR Executive", summary: "CHRO cites leadership bench weakness as critical priority", opportunityType: "Leadership Gap" }
+              ],
+              howWeHelp: [
+                "Leadership assessment to identify ready-now successors",
+                "Acceleration programs for high-potential leaders", 
+                "Executive coaching for new role transitions",
+                "Succession planning methodology and tools"
+              ],
+              potentialValue: "$2-5M"
+            },
+            talent: {
+              opportunitySignal: "Hiring Quality & Retention Challenges",
+              articles: [
+                { headline: `${project.companyName} Struggles with 35% First-Year Turnover`, date: "Nov 22, 2024", source: "TechCrunch", summary: "Quality of hire concerns driving search for better assessment approach", opportunityType: "Retention Crisis" },
+                { headline: `${project.companyName} Plans 500-Person Hiring Wave`, date: "Nov 18, 2024", source: "Wall Street Journal", summary: "Expansion requires scalable, predictive hiring process", opportunityType: "Scale Hiring" }
+              ],
+              howWeHelp: [
+                "Success Profiles defining what great looks like",
+                "Predictive assessments reducing mis-hires by 50%",
+                "Interview training for hiring managers",
+                "Candidate experience optimization"
+              ],
+              potentialValue: "$1-3M"
+            },
+            transformation: {
+              opportunitySignal: "Organizational Restructuring Underway",
+              articles: [
+                { headline: `${project.companyName} Announces $500M Cost Reduction Program`, date: "Nov 23, 2024", source: "Reuters", summary: "Major restructuring to create leaner, more agile operating model", opportunityType: "Restructuring" },
+                { headline: `${project.companyName} Acquires Competitor - Integration Begins`, date: "Nov 19, 2024", source: "Harvard Business Review", summary: "M&A integration requiring organization design and culture alignment", opportunityType: "M&A Integration" }
+              ],
+              howWeHelp: [
+                "Organization design for new operating model",
+                "Workforce planning and right-sizing",
+                "Culture integration and change management",
+                "Leadership alignment on new structure"
+              ],
+              potentialValue: "$3-8M"
+            },
+            rewards: {
+              opportunitySignal: "Compensation & Retention Under Pressure",
+              articles: [
+                { headline: `${project.companyName} Faces Pay Equity Lawsuit`, date: "Nov 21, 2024", source: "Compensation Today", summary: "Class action alleging gender pay disparities - urgent need for analysis", opportunityType: "Pay Equity" },
+                { headline: `${project.companyName} Losing Top Talent to Competitors`, date: "Nov 17, 2024", source: "Forbes", summary: "Executive compensation review needed to stay competitive", opportunityType: "Retention" }
+              ],
+              howWeHelp: [
+                "Pay equity analysis and remediation planning",
+                "Market competitive benchmarking",
+                "Executive compensation redesign",
+                "Total rewards strategy optimization"
+              ],
+              potentialValue: "$1-2M"
+            },
+            commercial: {
+              opportunitySignal: "Revenue Growth & Sales Performance",
+              articles: [
+                { headline: `${project.companyName} Misses Q3 Revenue Target by 15%`, date: "Nov 24, 2024", source: "Industry Week", summary: "Sales underperformance driving urgent commercial effectiveness review", opportunityType: "Sales Performance" },
+                { headline: `${project.companyName} Expands into 5 New Markets`, date: "Nov 16, 2024", source: "Sales Management", summary: "Go-to-market transformation needed for new territories", opportunityType: "GTM Expansion" }
+              ],
+              howWeHelp: [
+                "Sales force effectiveness assessment",
+                "Sales talent profiling and development",
+                "Incentive compensation redesign",
+                "Sales methodology implementation"
+              ],
+              potentialValue: "$2-4M"
+            }
           } : null;
 
           const themeLabels: Record<string, { name: string; color: string; icon: any }> = {
@@ -1459,8 +1582,8 @@ export default function ProjectRoleView() {
                           <Building2 className="w-5 h-5 text-primary" />
                         </div>
                         <div>
-                          <CardTitle>Korn Ferry Intelligence</CardTitle>
-                          <CardDescription>News grouped by Korn Ferry capability recommendations</CardDescription>
+                          <CardTitle>Korn Ferry Opportunity Intelligence</CardTitle>
+                          <CardDescription>AI-identified opportunities mapped to Korn Ferry solutions</CardDescription>
                         </div>
                       </div>
                       <Badge className="bg-primary/10 text-primary border-primary/20">Full Search Active</Badge>
@@ -1468,15 +1591,15 @@ export default function ProjectRoleView() {
                   </CardHeader>
                   <CardContent className="pt-6">
                     <div className="space-y-6">
-                      {Object.entries(themeGroupedNews!).map(([themeKey, news]) => {
+                      {Object.entries(opportunityData!).map(([themeKey, data]) => {
                         const themeMeta = themeLabels[themeKey];
                         const ThemeIcon = themeMeta.icon;
                         const colorClasses: Record<string, string> = {
-                          blue: "border-blue-500/20 bg-blue-500/5",
-                          purple: "border-purple-500/20 bg-purple-500/5",
-                          emerald: "border-emerald-500/20 bg-emerald-500/5",
-                          amber: "border-amber-500/20 bg-amber-500/5",
-                          rose: "border-rose-500/20 bg-rose-500/5"
+                          blue: "border-blue-500/30 bg-blue-500/5",
+                          purple: "border-purple-500/30 bg-purple-500/5",
+                          emerald: "border-emerald-500/30 bg-emerald-500/5",
+                          amber: "border-amber-500/30 bg-amber-500/5",
+                          rose: "border-rose-500/30 bg-rose-500/5"
                         };
                         const iconColors: Record<string, string> = {
                           blue: "text-blue-600",
@@ -1485,28 +1608,66 @@ export default function ProjectRoleView() {
                           amber: "text-amber-600",
                           rose: "text-rose-600"
                         };
+                        const bgColors: Record<string, string> = {
+                          blue: "bg-blue-600",
+                          purple: "bg-purple-600",
+                          emerald: "bg-emerald-600",
+                          amber: "bg-amber-600",
+                          rose: "bg-rose-600"
+                        };
                         return (
-                          <div key={themeKey} className={`p-4 rounded-lg border ${colorClasses[themeMeta.color]}`}>
-                            <div className="flex items-center gap-2 mb-3">
-                              <ThemeIcon className={`w-4 h-4 ${iconColors[themeMeta.color]}`} />
-                              <h4 className="font-semibold text-sm">{themeMeta.name}</h4>
-                              <Badge variant="outline" className="text-xs ml-auto">{news.length} articles</Badge>
-                            </div>
-                            <div className="space-y-2">
-                              {news.map((item, idx) => (
-                                <div key={idx} className="p-2 rounded bg-background/50 hover-elevate">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-xs text-muted-foreground">{item.date}</span>
-                                    <span className="text-xs text-muted-foreground">•</span>
-                                    <span className="text-xs font-medium">{item.source}</span>
-                                    {item.relevance === "high" && (
-                                      <Badge className="text-xs bg-emerald-500/10 text-emerald-700 border-emerald-500/20">Recommended</Badge>
-                                    )}
+                          <div key={themeKey} className={`rounded-xl border-2 overflow-hidden ${colorClasses[themeMeta.color]}`}>
+                            {/* Header with opportunity signal */}
+                            <div className={`px-4 py-3 ${bgColors[themeMeta.color]} text-white`}>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <ThemeIcon className="w-5 h-5" />
+                                  <div>
+                                    <h4 className="font-bold text-sm">{themeMeta.name}</h4>
+                                    <p className="text-xs opacity-90">{data.opportunitySignal}</p>
                                   </div>
-                                  <p className="text-sm font-medium">{item.headline}</p>
-                                  <p className="text-xs text-muted-foreground mt-1">{item.summary}</p>
                                 </div>
-                              ))}
+                                <Badge className="bg-white/20 text-white border-white/30 text-xs">
+                                  Est. {data.potentialValue}
+                                </Badge>
+                              </div>
+                            </div>
+                            
+                            <div className="p-4">
+                              {/* Evidence from news */}
+                              <div className="mb-4">
+                                <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                                  Opportunity Evidence
+                                </h5>
+                                <div className="space-y-2">
+                                  {data.articles.map((article, idx) => (
+                                    <div key={idx} className="p-3 rounded-lg bg-background border hover-elevate">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <Badge variant="outline" className="text-xs">{article.opportunityType}</Badge>
+                                        <span className="text-xs text-muted-foreground">{article.date} • {article.source}</span>
+                                      </div>
+                                      <p className="text-sm font-medium">{article.headline}</p>
+                                      <p className="text-xs text-muted-foreground mt-1">{article.summary}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                              
+                              {/* How Korn Ferry helps */}
+                              <div className={`p-3 rounded-lg ${colorClasses[themeMeta.color]}`}>
+                                <h5 className="text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1">
+                                  <Sparkles className={`w-3 h-3 ${iconColors[themeMeta.color]}`} />
+                                  How Korn Ferry Helps
+                                </h5>
+                                <ul className="space-y-1">
+                                  {data.howWeHelp.map((item, idx) => (
+                                    <li key={idx} className="text-sm flex items-start gap-2">
+                                      <CheckCircle className={`w-4 h-4 ${iconColors[themeMeta.color]} mt-0.5 flex-shrink-0`} />
+                                      {item}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
                             </div>
                           </div>
                         );
