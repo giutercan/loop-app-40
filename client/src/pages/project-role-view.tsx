@@ -73,7 +73,11 @@ import {
   FileSearch,
   Newspaper,
   TrendingDown,
-  Globe
+  Globe,
+  Trophy,
+  Heart,
+  Award,
+  MessageCircle
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -817,23 +821,19 @@ export default function ProjectRoleView() {
   });
   
   const handleStartDiscovery = () => {
-    setDiscoveryMode("full");
-    setSelectedSolutionArea("");
-    setIsDiscoveryModeDialogOpen(true);
-  };
-  
-  const handleRunDiscovery = () => {
-    if (discoveryMode === "focused" && !selectedSolutionArea) {
-      toast({
-        variant: "destructive",
-        title: "Select a Solution Area",
-        description: "Please select a Korn Ferry solution area to focus the discovery."
-      });
-      return;
-    }
+    // Directly generate questions based on the theme selected in step 1
+    const isFullSearch = selectedDiscoveryTheme === "kf-full-search";
+    const solutionAreaMap: Record<string, string> = {
+      "leadership": "DEVELOP",
+      "talent-acquisition": "ASSESS",
+      "transformation": "TRANSFORM",
+      "rewards": "REWARD",
+      "sales-effectiveness": "COMMERCIAL"
+    };
+    
     generateQuestionsMutation.mutate({
-      mode: discoveryMode,
-      solutionArea: discoveryMode === "focused" ? selectedSolutionArea : undefined
+      mode: isFullSearch ? "full" : "focused",
+      solutionArea: isFullSearch ? undefined : solutionAreaMap[selectedDiscoveryTheme || ""]
     });
   };
 
@@ -2091,223 +2091,487 @@ export default function ProjectRoleView() {
           );
         })()}
 
-        {/* Step 3: Questions - Generate Theme-Based Questions */}
-        {discoveryStep === "questions" && (
+        {/* Step 3: Discovery Toolkit - Comprehensive Call Preparation */}
+        {discoveryStep === "questions" && (() => {
+          const currentTheme = discoveryThemes.find(t => t.id === selectedDiscoveryTheme);
+          const isFullSearch = selectedDiscoveryTheme === "kf-full-search";
+          
+          // Generate Call Planner / Green Sheet data
+          const callPlanner = {
+            objective: `Discover ${project?.companyName}'s key business challenges and priorities related to ${currentTheme?.name || "organizational transformation"}`,
+            desiredOutcome: "Qualify opportunity, identify key stakeholders, understand decision timeline, and schedule follow-up meeting",
+            openingStatement: `"Based on our research, we understand ${project?.companyName} is navigating [specific challenge]. We've helped similar organizations achieve [outcome]. I'd love to understand your perspective on the current priorities."`,
+            rapportBuilders: [
+              `Reference recent news: "${project?.companyName}'s recent initiatives in [area]"`,
+              "Ask about their career journey and current role",
+              "Connect on shared experiences or industry challenges",
+              "Acknowledge their expertise before diving into questions"
+            ],
+            credibilityStatements: [
+              `"We've worked with [X] organizations in your industry facing similar challenges"`,
+              `"Our research shows that top-performing companies in your sector focus on [insight]"`,
+              `"We recently helped [similar company] achieve [measurable outcome]"`,
+              `"Korn Ferry benchmarks indicate that best-in-class organizations [specific data point]"`
+            ]
+          };
+          
+          // Success stories for credibility
+          const successStories = [
+            {
+              client: "Fortune 500 Technology Company",
+              challenge: "Leadership pipeline gap ahead of major digital transformation",
+              solution: "Korn Ferry Leadership Assessment & Development program",
+              outcome: "Accelerated 40 leaders to readiness in 12 months, 85% retention of high-potentials",
+              relevantTo: ["leadership", "transformation"]
+            },
+            {
+              client: "Global Healthcare Provider",
+              challenge: "High turnover in critical clinical roles driving quality concerns",
+              solution: "Korn Ferry Success Profiles and predictive hiring assessments",
+              outcome: "Reduced first-year turnover by 45%, improved patient satisfaction scores by 22%",
+              relevantTo: ["talent-acquisition"]
+            },
+            {
+              client: "Multinational Manufacturer",
+              challenge: "Post-merger integration with redundant structures and culture clash",
+              solution: "Korn Ferry Organization Design and Culture Integration",
+              outcome: "Achieved $200M synergies 6 months ahead of schedule, 90% retention of key talent",
+              relevantTo: ["transformation"]
+            },
+            {
+              client: "Regional Financial Services Firm",
+              challenge: "Pay equity concerns and difficulty attracting top talent",
+              solution: "Korn Ferry Total Rewards Strategy and benchmarking",
+              outcome: "Closed gender pay gap, improved offer acceptance rate from 65% to 88%",
+              relevantTo: ["rewards"]
+            },
+            {
+              client: "B2B Software Company",
+              challenge: "Missed revenue targets 3 consecutive quarters despite market growth",
+              solution: "Korn Ferry Sales Effectiveness program and talent assessment",
+              outcome: "Increased win rates by 35%, shortened sales cycle by 20%",
+              relevantTo: ["sales-effectiveness"]
+            }
+          ].filter(story => isFullSearch || story.relevantTo.includes(selectedDiscoveryTheme || ""));
+          
+          // SPIN Questions framework
+          const spinQuestions = {
+            situation: [
+              `What is your current approach to ${currentTheme?.name?.toLowerCase() || "talent management"}?`,
+              "How is your organization structured to handle these challenges?",
+              "What systems and processes are currently in place?",
+              "Who are the key stakeholders involved in decisions like this?"
+            ],
+            problem: [
+              "What's the biggest obstacle preventing you from achieving your goals?",
+              "Where do you see the most significant gaps in your current approach?",
+              "What keeps you up at night regarding this challenge?",
+              "How does this issue compare to other priorities you're managing?"
+            ],
+            implication: [
+              "If this problem continues, what impact will it have on your business results?",
+              "How does this affect your team's ability to execute on the strategy?",
+              "What's the cost of not addressing this over the next 12-24 months?",
+              "How does this challenge impact your competitive position?"
+            ],
+            needPayoff: [
+              "If you could solve this, what would that mean for your organization?",
+              "How would success in this area support your broader strategic goals?",
+              "What ROI would make this investment worthwhile?",
+              "How would your stakeholders react to achieving these outcomes?"
+            ]
+          };
+          
+          // Miller Heiman Strategic Selling framework
+          const millerHeimanQuestions = {
+            conceptual: [
+              "What's driving the urgency to address this now?",
+              "How does this initiative align with your overall business strategy?",
+              "What would success look like from your perspective?",
+              "What has prevented you from solving this before?"
+            ],
+            economicBuyer: [
+              "Who has the final authority on investments like this?",
+              "What criteria will be used to evaluate the business case?",
+              "What budget parameters are you working within?",
+              "What's the timeline for making this decision?"
+            ],
+            technicalBuyer: [
+              "What specific requirements must any solution meet?",
+              "How will success be measured and tracked?",
+              "What existing systems or processes must we integrate with?",
+              "What potential obstacles do you see in implementation?"
+            ],
+            userBuyer: [
+              "How will the end users' experience change?",
+              "What resistance might we expect and from whom?",
+              "What training or change management will be needed?",
+              "How will adoption be ensured?"
+            ]
+          };
+          
+          // PSS Professional Selling Skills framework
+          const pssQuestions = {
+            opening: [
+              "Thank you for making time today. Before we dive in, what's most important for you to cover in our conversation?",
+              "I've done some research on your organization. May I share a few observations and get your perspective?"
+            ],
+            probing: [
+              "Tell me more about how that affects your day-to-day operations?",
+              "What have you tried before and what were the results?",
+              "How do others in your organization view this challenge?",
+              "What would need to be true for you to move forward?"
+            ],
+            supporting: [
+              "Based on what you've shared, here's how we've helped similar organizations...",
+              "That aligns with research we've conducted across [X] companies...",
+              "I can see why that's a priority. Let me share a relevant example..."
+            ],
+            closing: [
+              "Given what we've discussed, what would be the most valuable next step?",
+              "Would it be helpful to schedule a deeper dive with [relevant expert]?",
+              "Can we agree on a timeline to move forward?"
+            ]
+          };
+          
+          return (
           <>
-            {/* AI Research & Questions Section */}
-        <Card className="bg-gradient-to-r from-purple-500/5 to-blue-500/5 border-purple-500/20">
-          <CardHeader>
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                  <Sparkles className="w-6 h-6 text-purple-600" />
+            {/* Call Preparation Header */}
+            <Card className="bg-gradient-to-r from-primary/5 to-purple-500/5 border-primary/20">
+              <CardHeader>
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <FileText className="w-6 h-6 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle>Discovery Toolkit</CardTitle>
+                      <CardDescription>Your complete call preparation for {project?.companyName} - {currentTheme?.name}</CardDescription>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      onClick={handleStartDiscovery}
+                      disabled={generateQuestionsMutation.isPending}
+                      data-testid="button-generate-questions"
+                    >
+                      {generateQuestionsMutation.isPending ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          Generate AI Questions
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle>AI-Powered Discovery Questions</CardTitle>
-                  <CardDescription>Generate strategic questions using SPIN, Miller Heiman, and PSS methodologies</CardDescription>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button 
-                  onClick={handleStartDiscovery}
-                  disabled={generateQuestionsMutation.isPending}
-                  data-testid="button-generate-questions"
-                >
-                  {generateQuestionsMutation.isPending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      Generate Questions
-                    </>
-                  )}
-                </Button>
-                <Link href={`/projects/${projectId}/discovery`}>
-                  <Button variant="outline" size="sm" data-testid="button-full-discovery">
-                    Full Discovery
-                    <ChevronRight className="w-4 h-4 ml-1" />
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-4">
-              <div className="p-4 rounded-lg bg-background border">
-                <div className="flex items-center gap-2 mb-2">
-                  <HelpCircle className="w-4 h-4 text-purple-600" />
-                  <span className="font-medium text-sm">Total Questions</span>
-                </div>
-                <p className="text-2xl font-bold text-purple-600">{discoveryQuestions.length}</p>
-              </div>
-              <div className="p-4 rounded-lg bg-background border">
-                <div className="flex items-center gap-2 mb-2">
-                  <Check className="w-4 h-4 text-emerald-600" />
-                  <span className="font-medium text-sm">Asked</span>
-                </div>
-                <p className="text-2xl font-bold text-emerald-600">
-                  {discoveryQuestions.filter(q => q.isAsked).length}
-                </p>
-              </div>
-              <div className="p-4 rounded-lg bg-background border">
-                <div className="flex items-center gap-2 mb-2">
-                  <Lightbulb className="w-4 h-4 text-amber-600" />
-                  <span className="font-medium text-sm">High Priority Insights</span>
-                </div>
-                <p className="text-2xl font-bold text-amber-600">
-                  {insights.filter(i => i.priority === "high").length}
-                </p>
-              </div>
-              <div className="p-4 rounded-lg bg-background border">
-                <div className="flex items-center gap-2 mb-2">
-                  <Target className="w-4 h-4 text-blue-600" />
-                  <span className="font-medium text-sm">Job Themes</span>
-                </div>
-                <p className="text-2xl font-bold text-blue-600">{jobThemes.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              </CardHeader>
+            </Card>
 
-        {questionsLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-          </div>
-        ) : discoveryQuestions.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <HelpCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Discovery Questions Yet</h3>
-              <p className="text-muted-foreground mb-4 max-w-md mx-auto">
-                Generate AI-powered questions based on your discovery insights. Ensure you have job themes set up first.
-              </p>
-              <Button 
-                onClick={handleStartDiscovery}
-                disabled={generateQuestionsMutation.isPending}
-                data-testid="button-generate-questions-empty"
-              >
-                {generateQuestionsMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Start AI Discovery
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            {["SPIN", "MILLER_HEIMAN", "PSS"].map(methodology => {
-              const questions = groupedQuestions[methodology] || [];
-              if (questions.length === 0) return null;
-              const meta = methodologyMeta[methodology];
-              const isExpanded = expandedMethodologies[methodology];
-              
-              return (
-                <Collapsible 
-                  key={methodology}
-                  open={isExpanded}
-                  onOpenChange={(open) => setExpandedMethodologies(prev => ({ ...prev, [methodology]: open }))}
-                >
-                  <Card>
-                    <CollapsibleTrigger asChild>
-                      <CardHeader className="cursor-pointer hover-elevate">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <Badge className={`${meta.color} border`}>{meta.label}</Badge>
-                            <div>
-                              <CardTitle className="text-base">{meta.description}</CardTitle>
-                              <CardDescription>{questions.length} questions • {questions.filter(q => q.isAsked).length} asked</CardDescription>
-                            </div>
-                          </div>
-                          <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+            {/* Green Sheet / Call Planner */}
+            <div className="grid gap-6 lg:grid-cols-2">
+              <Card className="border-emerald-500/20">
+                <CardHeader className="bg-emerald-500/5">
+                  <CardTitle className="flex items-center gap-2 text-emerald-700">
+                    <ClipboardList className="w-5 h-5" />
+                    Call Planner (Green Sheet)
+                  </CardTitle>
+                  <CardDescription>Your strategic framework for this conversation</CardDescription>
+                </CardHeader>
+                <CardContent className="pt-4 space-y-4">
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-1">
+                      <Target className="w-4 h-4 text-emerald-600" />
+                      Call Objective
+                    </h4>
+                    <p className="text-sm p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+                      {callPlanner.objective}
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-1">
+                      <CheckCircle className="w-4 h-4 text-emerald-600" />
+                      Desired Outcome
+                    </h4>
+                    <p className="text-sm p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+                      {callPlanner.desiredOutcome}
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-1">
+                      <MessageCircle className="w-4 h-4 text-emerald-600" />
+                      Suggested Opening
+                    </h4>
+                    <p className="text-sm italic p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+                      {callPlanner.openingStatement}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Rapport & Credibility */}
+              <Card className="border-blue-500/20">
+                <CardHeader className="bg-blue-500/5">
+                  <CardTitle className="flex items-center gap-2 text-blue-700">
+                    <Users className="w-5 h-5" />
+                    Build Rapport & Credibility
+                  </CardTitle>
+                  <CardDescription>Establish trust and demonstrate expertise</CardDescription>
+                </CardHeader>
+                <CardContent className="pt-4 space-y-4">
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2">Rapport Builders</h4>
+                    <div className="space-y-2">
+                      {callPlanner.rapportBuilders.map((tip, idx) => (
+                        <div key={idx} className="flex items-start gap-2 text-sm p-2 rounded-lg bg-blue-500/5">
+                          <Heart className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                          {tip}
                         </div>
-                      </CardHeader>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <CardContent className="pt-0">
-                        <div className="space-y-3">
-                          {questions.sort((a, b) => a.sortOrder - b.sortOrder).map(q => (
-                            <div 
-                              key={q.id} 
-                              className={`p-4 rounded-lg border ${q.isAsked ? "border-emerald-500/30 bg-emerald-500/5" : "hover-elevate"}`}
-                              data-testid={`question-card-${q.id}`}
-                            >
-                              <div className="flex items-start justify-between gap-4 mb-3">
-                                <div className="flex-1">
-                                  <p className="font-medium text-sm">{q.question}</p>
-                                  <p className="text-xs text-muted-foreground mt-1">{q.purpose}</p>
-                                </div>
-                                <Button
-                                  size="sm"
-                                  variant={q.isAsked ? "outline" : "default"}
-                                  onClick={() => markQuestionAskedMutation.mutate({ questionId: q.id, isAsked: !q.isAsked })}
-                                  disabled={markQuestionAskedMutation.isPending}
-                                  data-testid={`button-mark-asked-${q.id}`}
-                                >
-                                  {q.isAsked ? (
-                                    <>
-                                      <Check className="w-3 h-3 mr-1" />
-                                      Asked
-                                    </>
-                                  ) : (
-                                    "Mark Asked"
-                                  )}
-                                </Button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2">Credibility Statements</h4>
+                    <div className="space-y-2">
+                      {callPlanner.credibilityStatements.map((statement, idx) => (
+                        <div key={idx} className="flex items-start gap-2 text-sm italic p-2 rounded-lg bg-blue-500/5">
+                          <Award className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                          {statement}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Success Stories */}
+            <Card className="border-amber-500/20">
+              <CardHeader className="bg-amber-500/5">
+                <CardTitle className="flex items-center gap-2 text-amber-700">
+                  <Trophy className="w-5 h-5" />
+                  Success Stories to Share
+                </CardTitle>
+                <CardDescription>Relevant examples to build credibility and tell compelling stories</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  {successStories.map((story, idx) => (
+                    <div key={idx} className="p-4 rounded-lg border bg-background hover-elevate">
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="font-semibold text-sm">{story.client}</h4>
+                        <Badge variant="outline" className="text-xs">{story.relevantTo[0]}</Badge>
+                      </div>
+                      <div className="space-y-2 text-sm">
+                        <div>
+                          <span className="text-muted-foreground font-medium">Challenge: </span>
+                          {story.challenge}
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground font-medium">Solution: </span>
+                          {story.solution}
+                        </div>
+                        <div className="text-emerald-600 font-medium">
+                          <span className="text-muted-foreground">Outcome: </span>
+                          {story.outcome}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Strategic Questions by Methodology */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <HelpCircle className="w-5 h-5 text-primary" />
+                Strategic Questions by Methodology
+              </h3>
+              
+              {/* SPIN Selling */}
+              <Collapsible open={expandedMethodologies.SPIN} onOpenChange={(open) => setExpandedMethodologies(prev => ({ ...prev, SPIN: open }))}>
+                <Card className="border-purple-500/20">
+                  <CollapsibleTrigger asChild>
+                    <CardHeader className="cursor-pointer hover-elevate bg-purple-500/5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Badge className="bg-purple-100 text-purple-700 border-purple-300">SPIN Selling</Badge>
+                          <div>
+                            <CardTitle className="text-base">Situation → Problem → Implication → Need-Payoff</CardTitle>
+                            <CardDescription>Uncover pain points and build value through questioning</CardDescription>
+                          </div>
+                        </div>
+                        <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${expandedMethodologies.SPIN ? "rotate-180" : ""}`} />
+                      </div>
+                    </CardHeader>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <CardContent className="pt-0">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {Object.entries(spinQuestions).map(([stage, questions]) => (
+                          <div key={stage} className="space-y-2">
+                            <h4 className="font-semibold text-sm capitalize flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs">{stage.charAt(0).toUpperCase()}</Badge>
+                              {stage.charAt(0).toUpperCase() + stage.slice(1)} Questions
+                            </h4>
+                            {questions.map((q, idx) => (
+                              <div key={idx} className="p-3 rounded-lg bg-background border text-sm hover-elevate">
+                                "{q}"
                               </div>
-                              <div className="flex flex-wrap items-center gap-2">
-                                {q.methodologyStage && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {stageMeta[q.methodologyStage] || q.methodologyStage}
-                                  </Badge>
-                                )}
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+
+              {/* Miller Heiman */}
+              <Collapsible open={expandedMethodologies.MILLER_HEIMAN} onOpenChange={(open) => setExpandedMethodologies(prev => ({ ...prev, MILLER_HEIMAN: open }))}>
+                <Card className="border-blue-500/20">
+                  <CollapsibleTrigger asChild>
+                    <CardHeader className="cursor-pointer hover-elevate bg-blue-500/5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Badge className="bg-blue-100 text-blue-700 border-blue-300">Miller Heiman</Badge>
+                          <div>
+                            <CardTitle className="text-base">Strategic Selling - Identify Buying Influences</CardTitle>
+                            <CardDescription>Map stakeholders and understand the buying process</CardDescription>
+                          </div>
+                        </div>
+                        <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${expandedMethodologies.MILLER_HEIMAN ? "rotate-180" : ""}`} />
+                      </div>
+                    </CardHeader>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <CardContent className="pt-0">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {Object.entries(millerHeimanQuestions).map(([buyer, questions]) => (
+                          <div key={buyer} className="space-y-2">
+                            <h4 className="font-semibold text-sm capitalize flex items-center gap-2">
+                              <Users className="w-4 h-4 text-blue-600" />
+                              {buyer === "conceptual" ? "Concept" : buyer === "economicBuyer" ? "Economic Buyer" : buyer === "technicalBuyer" ? "Technical Buyer" : "User Buyer"}
+                            </h4>
+                            {questions.map((q, idx) => (
+                              <div key={idx} className="p-3 rounded-lg bg-background border text-sm hover-elevate">
+                                "{q}"
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+
+              {/* PSS */}
+              <Collapsible open={expandedMethodologies.PSS} onOpenChange={(open) => setExpandedMethodologies(prev => ({ ...prev, PSS: open }))}>
+                <Card className="border-emerald-500/20">
+                  <CollapsibleTrigger asChild>
+                    <CardHeader className="cursor-pointer hover-elevate bg-emerald-500/5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300">PSS</Badge>
+                          <div>
+                            <CardTitle className="text-base">Professional Selling Skills - Conversation Flow</CardTitle>
+                            <CardDescription>Structure your conversation from opening to close</CardDescription>
+                          </div>
+                        </div>
+                        <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${expandedMethodologies.PSS ? "rotate-180" : ""}`} />
+                      </div>
+                    </CardHeader>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <CardContent className="pt-0">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {Object.entries(pssQuestions).map(([phase, questions]) => (
+                          <div key={phase} className="space-y-2">
+                            <h4 className="font-semibold text-sm capitalize flex items-center gap-2">
+                              <ArrowRight className="w-4 h-4 text-emerald-600" />
+                              {phase.charAt(0).toUpperCase() + phase.slice(1)}
+                            </h4>
+                            {questions.map((q, idx) => (
+                              <div key={idx} className="p-3 rounded-lg bg-background border text-sm hover-elevate italic">
+                                {q}
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+            </div>
+
+            {/* AI-Generated Questions (if available) */}
+            {discoveryQuestions.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-purple-600" />
+                    AI-Generated Discovery Questions
+                  </CardTitle>
+                  <CardDescription>{discoveryQuestions.length} personalized questions based on your research</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {discoveryQuestions.slice(0, 10).map(q => (
+                      <div 
+                        key={q.id} 
+                        className={`p-4 rounded-lg border ${q.isAsked ? "border-emerald-500/30 bg-emerald-500/5" : "hover-elevate"}`}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <p className="font-medium text-sm">{q.question}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{q.purpose}</p>
+                            <div className="flex flex-wrap items-center gap-2 mt-2">
+                              <Badge className={methodologyMeta[q.methodology]?.color || "bg-muted"} variant="outline">
+                                {methodologyMeta[q.methodology]?.label || q.methodology}
+                              </Badge>
+                              {q.methodologyStage && (
                                 <Badge variant="secondary" className="text-xs">
-                                  {q.questionType}
+                                  {stageMeta[q.methodologyStage] || q.methodologyStage}
                                 </Badge>
-                                {q.relatedKPI && (
-                                  <Badge className="bg-primary/10 text-primary text-xs">
-                                    KPI: {q.relatedKPI}
-                                  </Badge>
-                                )}
-                              </div>
-                              {q.followUpHint && (
-                                <div className="mt-3 p-2 rounded bg-muted/50 text-xs text-muted-foreground">
-                                  <span className="font-medium">Follow-up hint:</span> {q.followUpHint}
-                                </div>
                               )}
                             </div>
-                          ))}
+                          </div>
+                          <Button
+                            size="sm"
+                            variant={q.isAsked ? "outline" : "default"}
+                            onClick={() => markQuestionAskedMutation.mutate({ questionId: q.id, isAsked: !q.isAsked })}
+                          >
+                            {q.isAsked ? <><Check className="w-3 h-3 mr-1" />Asked</> : "Use"}
+                          </Button>
                         </div>
-                      </CardContent>
-                    </CollapsibleContent>
-                  </Card>
-                </Collapsible>
-              );
-            })}
-          </div>
-        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
-        {/* Navigation for Questions Step */}
-        <div className="flex justify-between">
-          <Button variant="outline" onClick={() => setDiscoveryStep("intelligence")} data-testid="button-back-to-intelligence">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Intelligence
-          </Button>
-          <Button onClick={() => setDiscoveryStep("review")} data-testid="button-next-to-review">
-            Review & Select Questions
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        </div>
+            {/* Navigation */}
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={() => setDiscoveryStep("intelligence")} data-testid="button-back-to-intelligence">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Intelligence
+              </Button>
+              <Button onClick={() => setDiscoveryStep("review")} data-testid="button-next-to-review">
+                Continue to Review
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
           </>
-        )} {/* End of Step 3: Questions */}
+          );
+        })()} {/* End of Step 3: Questions/Discovery Toolkit */}
 
         {/* Step 4: Review & Select Questions */}
         {discoveryStep === "review" && (
@@ -3651,7 +3915,20 @@ export default function ProjectRoleView() {
               Cancel
             </Button>
             <Button 
-              onClick={handleRunDiscovery}
+              onClick={() => {
+                const isFullSearch = discoveryMode === "full";
+                const solutionAreaMap: Record<string, string> = {
+                  "DEVELOP": "leadership",
+                  "ASSESS": "talent-acquisition",
+                  "TRANSFORM": "transformation",
+                  "REWARD": "rewards",
+                  "COMMERCIAL": "sales-effectiveness"
+                };
+                generateQuestionsMutation.mutate({
+                  mode: isFullSearch ? "full" : "focused",
+                  solutionArea: isFullSearch ? undefined : selectedSolutionArea
+                });
+              }}
               disabled={generateQuestionsMutation.isPending || (discoveryMode === "focused" && !selectedSolutionArea)}
               data-testid="button-run-discovery"
             >
