@@ -600,6 +600,16 @@ export default function ProjectRoleView() {
   // Discovery Themes aligned with Korn Ferry offerings
   const discoveryThemes = [
     { 
+      id: "kf-full-search", 
+      name: "We are Korn Ferry", 
+      icon: Building2,
+      color: "primary",
+      description: "Comprehensive search across ALL Korn Ferry capabilities - AI groups news by relevant theme recommendations",
+      kornferryOffering: "Full Korn Ferry Suite",
+      newsKeywords: ["leadership", "executive", "CEO", "development", "succession", "hiring", "recruitment", "talent", "assessment", "skills", "transformation", "restructuring", "operating model", "efficiency", "digital", "compensation", "pay", "benefits", "retention", "equity", "sales", "revenue", "commercial", "go-to-market", "growth"],
+      isFullSearch: true
+    },
+    { 
       id: "leadership", 
       name: "Leadership Development", 
       icon: Users,
@@ -1295,8 +1305,52 @@ export default function ProjectRoleView() {
               <CardDescription>Choose a focus area aligned with Korn Ferry capabilities to guide your discovery conversation</CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
+              {/* We are Korn Ferry - Full Search Option */}
+              {(() => {
+                const kfFullSearch = discoveryThemes.find(t => t.id === "kf-full-search");
+                if (!kfFullSearch) return null;
+                const ThemeIcon = kfFullSearch.icon;
+                const isSelected = selectedDiscoveryTheme === kfFullSearch.id;
+                return (
+                  <div 
+                    className={`p-5 rounded-xl border-2 cursor-pointer transition-all mb-6 ${
+                      isSelected 
+                        ? "border-primary bg-gradient-to-r from-primary/10 to-blue-500/10 ring-2 ring-primary" 
+                        : "border-primary/30 bg-gradient-to-r from-primary/5 to-blue-500/5 hover:from-primary/10 hover:to-blue-500/10"
+                    }`}
+                    onClick={() => setSelectedDiscoveryTheme(kfFullSearch.id)}
+                    data-testid="theme-kf-full-search"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <ThemeIcon className="w-7 h-7 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-bold text-lg text-primary">{kfFullSearch.name}</h4>
+                          <Badge className="bg-primary/10 text-primary border-primary/20">Recommended</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{kfFullSearch.description}</p>
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          <Badge variant="outline" className="text-xs">Leadership</Badge>
+                          <Badge variant="outline" className="text-xs">Talent</Badge>
+                          <Badge variant="outline" className="text-xs">Transform</Badge>
+                          <Badge variant="outline" className="text-xs">Reward</Badge>
+                          <Badge variant="outline" className="text-xs">Commercial</Badge>
+                        </div>
+                      </div>
+                      {isSelected && (
+                        <CheckCircle className="w-6 h-6 text-primary" />
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <p className="text-sm text-muted-foreground mb-4 font-medium">Or focus on a specific capability:</p>
+
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {discoveryThemes.map((theme) => {
+                {discoveryThemes.filter(t => t.id !== "kf-full-search").map((theme) => {
                   const ThemeIcon = theme.icon;
                   const isSelected = selectedDiscoveryTheme === theme.id;
                   const colorClasses: Record<string, string> = {
@@ -1356,51 +1410,153 @@ export default function ProjectRoleView() {
         {/* Step 2: Intelligence (Theme-Filtered News + Salesforce) */}
         {discoveryStep === "intelligence" && project && (() => {
           const selectedTheme = discoveryThemes.find(t => t.id === selectedDiscoveryTheme);
+          const isFullSearch = selectedDiscoveryTheme === "kf-full-search";
           const sfData = generateSimulatedSalesforceData(project.companyName);
           const marketIntel = generateMarketIntelligence(project.companyName, selectedDiscoveryTheme || undefined);
           const blueSheet = generateBlueSheetData(project.companyName);
           
+          // For full search, generate news grouped by theme
+          const themeGroupedNews = isFullSearch ? {
+            leadership: [
+              { headline: `${project.companyName} CEO Announces New Leadership Development Initiative`, date: "Nov 25, 2024", source: "Business Wire", summary: "Company to invest in developing next-generation leaders with focus on succession planning", relevance: "high" as const },
+              { headline: `Executive Bench Strength a Priority for ${project.companyName}`, date: "Nov 20, 2024", source: "HR Executive", summary: "CHRO discusses plans to accelerate leadership pipeline development", relevance: "high" as const }
+            ],
+            talent: [
+              { headline: `${project.companyName} Revamps Hiring Process with AI Assessment`, date: "Nov 22, 2024", source: "TechCrunch", summary: "New AI-powered assessment tools to improve candidate quality and reduce mis-hires", relevance: "high" as const },
+              { headline: "Skills-Based Hiring Trend Accelerates in Tech Sector", date: "Nov 18, 2024", source: "Wall Street Journal", summary: "Companies shifting focus from degrees to demonstrated capabilities", relevance: "medium" as const }
+            ],
+            transformation: [
+              { headline: `${project.companyName} Announces Major Organizational Restructuring`, date: "Nov 23, 2024", source: "Reuters", summary: "Company to streamline operations and create more agile operating model", relevance: "high" as const },
+              { headline: "Digital Transformation Reshaping Enterprise Operations", date: "Nov 19, 2024", source: "Harvard Business Review", summary: "Organizations accelerating digital initiatives post-pandemic", relevance: "medium" as const }
+            ],
+            rewards: [
+              { headline: `${project.companyName} Reviews Total Rewards Strategy Amid Talent War`, date: "Nov 21, 2024", source: "Compensation Today", summary: "Company evaluating pay equity and retention bonuses to compete for talent", relevance: "high" as const },
+              { headline: "Executive Compensation Trends 2024", date: "Nov 17, 2024", source: "Forbes", summary: "Survey shows shift toward performance-based and equity compensation", relevance: "medium" as const }
+            ],
+            commercial: [
+              { headline: `${project.companyName} Sales Force Expansion Planned for 2025`, date: "Nov 24, 2024", source: "Industry Week", summary: "Company to grow commercial team by 30% to capture market opportunities", relevance: "high" as const },
+              { headline: "Go-to-Market Excellence Drives Revenue Growth", date: "Nov 16, 2024", source: "Sales Management", summary: "Research shows correlation between sales effectiveness and revenue performance", relevance: "medium" as const }
+            ]
+          } : null;
+
+          const themeLabels: Record<string, { name: string; color: string; icon: any }> = {
+            leadership: { name: "Leadership Development", color: "blue", icon: Users },
+            talent: { name: "Talent Acquisition", color: "purple", icon: UserCheck },
+            transformation: { name: "Organizational Transformation", color: "emerald", icon: RefreshCcw },
+            rewards: { name: "Total Rewards", color: "amber", icon: DollarSign },
+            commercial: { name: "Sales Effectiveness", color: "rose", icon: TrendingUp }
+          };
+          
           return (
             <>
-              {/* Recent News & Press */}
-              <Card className="border-amber-500/20">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                      <Newspaper className="w-5 h-5 text-amber-600" />
-                      Recent News & Press
-                    </CardTitle>
-                    <Badge variant="outline" className="text-amber-600 border-amber-500/30 bg-amber-500/5">
-                      AI Monitored
-                    </Badge>
-                  </div>
-                  <CardDescription>Latest company news and industry coverage</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {marketIntel.recentNews.map((news, idx) => (
-                      <div key={idx} className={`p-3 rounded-lg border hover-elevate ${news.relevance === "high" ? "border-amber-500/30 bg-amber-500/5" : ""}`}>
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-xs text-muted-foreground">{news.date}</span>
-                              <span className="text-xs text-muted-foreground">•</span>
-                              <span className="text-xs font-medium">{news.source}</span>
-                              {news.relevance === "high" && (
-                                <Badge className="text-xs bg-amber-500/10 text-amber-700 border-amber-500/20">
-                                  High Relevance
-                                </Badge>
-                              )}
-                            </div>
-                            <h4 className="font-semibold text-sm mb-1">{news.headline}</h4>
-                            <p className="text-xs text-muted-foreground">{news.summary}</p>
-                          </div>
+              {/* Recent News & Press - Different display for Full Search vs Focused */}
+              {isFullSearch ? (
+                <Card className="border-primary/20">
+                  <CardHeader className="bg-gradient-to-r from-primary/5 to-blue-500/5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <Building2 className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <CardTitle>Korn Ferry Intelligence</CardTitle>
+                          <CardDescription>News grouped by Korn Ferry capability recommendations</CardDescription>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                      <Badge className="bg-primary/10 text-primary border-primary/20">Full Search Active</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <div className="space-y-6">
+                      {Object.entries(themeGroupedNews!).map(([themeKey, news]) => {
+                        const themeMeta = themeLabels[themeKey];
+                        const ThemeIcon = themeMeta.icon;
+                        const colorClasses: Record<string, string> = {
+                          blue: "border-blue-500/20 bg-blue-500/5",
+                          purple: "border-purple-500/20 bg-purple-500/5",
+                          emerald: "border-emerald-500/20 bg-emerald-500/5",
+                          amber: "border-amber-500/20 bg-amber-500/5",
+                          rose: "border-rose-500/20 bg-rose-500/5"
+                        };
+                        const iconColors: Record<string, string> = {
+                          blue: "text-blue-600",
+                          purple: "text-purple-600",
+                          emerald: "text-emerald-600",
+                          amber: "text-amber-600",
+                          rose: "text-rose-600"
+                        };
+                        return (
+                          <div key={themeKey} className={`p-4 rounded-lg border ${colorClasses[themeMeta.color]}`}>
+                            <div className="flex items-center gap-2 mb-3">
+                              <ThemeIcon className={`w-4 h-4 ${iconColors[themeMeta.color]}`} />
+                              <h4 className="font-semibold text-sm">{themeMeta.name}</h4>
+                              <Badge variant="outline" className="text-xs ml-auto">{news.length} articles</Badge>
+                            </div>
+                            <div className="space-y-2">
+                              {news.map((item, idx) => (
+                                <div key={idx} className="p-2 rounded bg-background/50 hover-elevate">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-xs text-muted-foreground">{item.date}</span>
+                                    <span className="text-xs text-muted-foreground">•</span>
+                                    <span className="text-xs font-medium">{item.source}</span>
+                                    {item.relevance === "high" && (
+                                      <Badge className="text-xs bg-emerald-500/10 text-emerald-700 border-emerald-500/20">Recommended</Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-sm font-medium">{item.headline}</p>
+                                  <p className="text-xs text-muted-foreground mt-1">{item.summary}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="border-amber-500/20">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <Newspaper className="w-5 h-5 text-amber-600" />
+                        Recent News & Press
+                      </CardTitle>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">{selectedTheme?.name}</Badge>
+                        <Badge variant="outline" className="text-amber-600 border-amber-500/30 bg-amber-500/5">
+                          AI Monitored
+                        </Badge>
+                      </div>
+                    </div>
+                    <CardDescription>Latest company news filtered by {selectedTheme?.name || "selected theme"}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {marketIntel.recentNews.map((news, idx) => (
+                        <div key={idx} className={`p-3 rounded-lg border hover-elevate ${news.relevance === "high" ? "border-amber-500/30 bg-amber-500/5" : ""}`}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-xs text-muted-foreground">{news.date}</span>
+                                <span className="text-xs text-muted-foreground">•</span>
+                                <span className="text-xs font-medium">{news.source}</span>
+                                {news.relevance === "high" && (
+                                  <Badge className="text-xs bg-amber-500/10 text-amber-700 border-amber-500/20">
+                                    High Relevance
+                                  </Badge>
+                                )}
+                              </div>
+                              <h4 className="font-semibold text-sm mb-1">{news.headline}</h4>
+                              <p className="text-xs text-muted-foreground">{news.summary}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Annual Report & Earnings Insights */}
               <div className="grid gap-6 md:grid-cols-2">
