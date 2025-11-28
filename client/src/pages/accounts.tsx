@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -39,11 +39,48 @@ import {
   FileText,
   ChevronRight,
   Star,
-  Zap
+  Zap,
+  Truck,
+  Search,
+  Lightbulb,
+  Rocket,
+  RefreshCw,
+  GraduationCap
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
+
+const lifecyclePhases = [
+  { id: "discover_qualify", label: "Discover", icon: Search, color: "text-blue-600", bgColor: "bg-blue-100 dark:bg-blue-900/30" },
+  { id: "shape_sell", label: "Shape", icon: Lightbulb, color: "text-purple-600", bgColor: "bg-purple-100 dark:bg-purple-900/30" },
+  { id: "deliver_realise", label: "Deliver", icon: Rocket, color: "text-emerald-600", bgColor: "bg-emerald-100 dark:bg-emerald-900/30" },
+  { id: "review_renew", label: "Review", icon: RefreshCw, color: "text-amber-600", bgColor: "bg-amber-100 dark:bg-amber-900/30" },
+  { id: "learn_scale", label: "Scale", icon: GraduationCap, color: "text-rose-600", bgColor: "bg-rose-100 dark:bg-rose-900/30" },
+];
+
+const rolePortals = [
+  {
+    id: "sales",
+    label: "Sales Portal",
+    description: "Pipeline visibility, opportunity tracking, and presales activities",
+    icon: TrendingUp,
+    color: "text-blue-600",
+    bgColor: "bg-blue-100 dark:bg-blue-900/30",
+    phases: ["discover_qualify", "shape_sell"],
+    focus: "Discover & Shape"
+  },
+  {
+    id: "delivery",
+    label: "Delivery Portal", 
+    description: "Implementation tracking, KPI logging, and value realization",
+    icon: Truck,
+    color: "text-emerald-600",
+    bgColor: "bg-emerald-100 dark:bg-emerald-900/30",
+    phases: ["deliver_realise", "review_renew", "learn_scale"],
+    focus: "Deliver, Review & Scale"
+  }
+];
 
 interface Account {
   id: number;
@@ -86,10 +123,31 @@ export default function AccountsDashboard() {
   const [newAccountName, setNewAccountName] = useState("");
   const [newAccountIndustry, setNewAccountIndustry] = useState("");
   const [newAccountTier, setNewAccountTier] = useState<string>("");
+  const [hasMigrated, setHasMigrated] = useState(false);
 
-  const { data: accounts = [], isLoading } = useQuery<Account[]>({
+  const { data: accounts = [], isLoading, refetch: refetchAccounts } = useQuery<Account[]>({
     queryKey: ["/api/accounts"],
   });
+
+  const migrateMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/migrate/projects-to-accounts");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/accounts"] });
+      setHasMigrated(true);
+    },
+    onError: (error: any) => {
+      console.error("Migration error:", error);
+    }
+  });
+
+  useEffect(() => {
+    if (!hasMigrated && !migrateMutation.isPending) {
+      migrateMutation.mutate();
+    }
+  }, [hasMigrated]);
 
   const createAccountMutation = useMutation({
     mutationFn: async (data: { name: string; industry: string; tier: string }) => {
@@ -236,13 +294,81 @@ export default function AccountsDashboard() {
         </div>
       </header>
 
-      <div className="bg-gradient-to-b from-primary/5 to-background py-12 lg:py-16">
+      <div className="bg-gradient-to-b from-primary/5 to-background py-8 lg:py-12">
         <div className="container mx-auto max-w-7xl px-4 lg:px-8">
-          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-8">
+          {/* Role Portal Selection */}
+          <div className="mb-10">
+            <h2 className="text-lg font-semibold text-muted-foreground mb-4">Choose Your View</h2>
+            <div className="grid gap-4 md:grid-cols-2">
+              {rolePortals.map((portal) => {
+                const Icon = portal.icon;
+                return (
+                  <Card 
+                    key={portal.id}
+                    className="hover-elevate cursor-pointer group border-2 border-transparent hover:border-primary/30 transition-all"
+                    onClick={() => {
+                      if (accounts.length > 0) {
+                        setLocation(`/accounts/${accounts[0].id}/${portal.id}`);
+                      }
+                    }}
+                    data-testid={`card-portal-${portal.id}`}
+                  >
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-12 h-12 rounded-xl ${portal.bgColor} flex items-center justify-center`}>
+                          <Icon className={`w-6 h-6 ${portal.color}`} />
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg group-hover:text-primary transition-colors">
+                            {portal.label}
+                          </CardTitle>
+                          <CardDescription>{portal.description}</CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardFooter className="pt-0">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span>Focus:</span>
+                        <Badge variant="outline" className="font-normal">
+                          {portal.focus}
+                        </Badge>
+                        <ArrowRight className="w-4 h-4 ml-auto group-hover:translate-x-1 transition-transform" />
+                      </div>
+                    </CardFooter>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Lifecycle Flow Visual */}
+          <div className="mb-10 hidden lg:block">
+            <div className="flex items-center justify-between bg-card rounded-xl p-4 border">
+              {lifecyclePhases.map((phase, index) => {
+                const Icon = phase.icon;
+                return (
+                  <div key={phase.id} className="flex items-center">
+                    <div className="flex flex-col items-center gap-2">
+                      <div className={`w-10 h-10 rounded-lg ${phase.bgColor} flex items-center justify-center`}>
+                        <Icon className={`w-5 h-5 ${phase.color}`} />
+                      </div>
+                      <span className="text-xs font-medium text-muted-foreground">{phase.label}</span>
+                    </div>
+                    {index < lifecyclePhases.length - 1 && (
+                      <ArrowRight className="w-5 h-5 text-muted-foreground/40 mx-4" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Accounts Section */}
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-6">
             <div>
-              <h1 className="text-3xl lg:text-4xl font-bold tracking-tight mb-2">Client Value Hub</h1>
-              <p className="text-muted-foreground text-lg">
-                Track promised vs. delivered value across all client accounts
+              <h2 className="text-2xl font-bold tracking-tight mb-1">Your Accounts</h2>
+              <p className="text-muted-foreground">
+                Select an account to view its value spine and initiatives
               </p>
             </div>
             <div className="flex gap-2 flex-wrap">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useRoute, useLocation } from "wouter";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -129,6 +129,24 @@ const severityColors: Record<string, string> = {
 
 const validRoles: Role[] = ["sales", "consultant", "delivery", "csm", "client_sponsor"];
 
+const roleDefaultPhases: Record<Role, string[]> = {
+  all: ["all"],
+  sales: ["discover_qualify", "shape_sell"],
+  consultant: ["discover_qualify", "shape_sell"],
+  delivery: ["deliver_realise", "review_renew", "learn_scale"],
+  csm: ["review_renew", "learn_scale"],
+  client_sponsor: ["all"]
+};
+
+const rolePhaseLabels: Record<Role, string> = {
+  all: "All Phases",
+  sales: "Discover & Shape",
+  consultant: "Discover & Shape",
+  delivery: "Deliver, Review & Scale",
+  csm: "Review & Scale",
+  client_sponsor: "All Phases"
+};
+
 export default function AccountRoleView() {
   const [, params] = useRoute("/accounts/:id/:role");
   const accountId = parseInt(params?.id || "0");
@@ -138,6 +156,13 @@ export default function AccountRoleView() {
   const { toast } = useToast();
   const [phaseFilter, setPhaseFilter] = useState("all");
   const [isLogKPIOpen, setIsLogKPIOpen] = useState(false);
+
+  useEffect(() => {
+    if (role) {
+      const defaultPhase = roleDefaultPhases[role][0] === "all" ? "all" : roleDefaultPhases[role][0];
+      setPhaseFilter(defaultPhase);
+    }
+  }, [role]);
   const [selectedKPI, setSelectedKPI] = useState<KPI | null>(null);
   const [kpiActualValue, setKpiActualValue] = useState("");
   const [kpiNote, setKpiNote] = useState("");
@@ -287,13 +312,28 @@ export default function AccountRoleView() {
 
   const { account, initiatives, issues, kpis, valueMetrics } = valueSpine;
 
+  const rolePhases = role ? roleDefaultPhases[role] : ["all"];
+  const isRoleRelevantPhase = (phase: string | null) => {
+    if (rolePhases.includes("all")) return true;
+    if (!phase) return false;
+    return rolePhases.includes(phase);
+  };
+  
+  const rolePhaseFilters = rolePhases.includes("all") 
+    ? phaseFilters 
+    : [
+        { value: "all", label: `All ${rolePhaseLabels[role!]}` },
+        ...phaseFilters.filter(p => rolePhases.includes(p.value))
+      ];
+
+  const roleRelevantInitiatives = initiatives.filter(i => isRoleRelevantPhase(i.lifecyclePhase));
   const filteredInitiatives = phaseFilter === "all" 
-    ? initiatives 
-    : initiatives.filter(i => i.lifecyclePhase === phaseFilter);
+    ? roleRelevantInitiatives 
+    : roleRelevantInitiatives.filter(i => i.lifecyclePhase === phaseFilter);
   
   const filteredInitiativeIds = new Set(filteredInitiatives.map(i => i.id));
   const filteredKpis = phaseFilter === "all" 
-    ? kpis 
+    ? kpis.filter(k => new Set(roleRelevantInitiatives.map(i => i.id)).has(k.initiativeId))
     : kpis.filter(k => filteredInitiativeIds.has(k.initiativeId));
 
   const kpisOnTrack = filteredKpis.filter(k => k.status === "on-track").length;
@@ -1071,6 +1111,9 @@ export default function AccountRoleView() {
     }
   };
 
+  const otherPortal = role === "sales" ? "delivery" : role === "delivery" ? "sales" : null;
+  const otherPortalLabel = otherPortal === "sales" ? "Sales Portal" : otherPortal === "delivery" ? "Delivery Portal" : null;
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
@@ -1088,8 +1131,8 @@ export default function AccountRoleView() {
                   {getRoleIcon()}
                 </div>
                 <div>
-                  <span className="text-xl font-bold">{roleLabels[role]} View</span>
-                  <p className="text-xs text-muted-foreground">{account.name}</p>
+                  <span className="text-xl font-bold">{roleLabels[role]} Portal</span>
+                  <p className="text-xs text-muted-foreground">{account.name} • {rolePhaseLabels[role]}</p>
                 </div>
               </div>
             </div>
@@ -1100,7 +1143,7 @@ export default function AccountRoleView() {
                   <SelectValue placeholder="Filter by phase" />
                 </SelectTrigger>
                 <SelectContent>
-                  {phaseFilters.map(phase => (
+                  {rolePhaseFilters.map(phase => (
                     <SelectItem key={phase.value} value={phase.value} data-testid={`option-phase-${phase.value}`}>
                       {phase.label}
                     </SelectItem>
@@ -1108,9 +1151,23 @@ export default function AccountRoleView() {
                 </SelectContent>
               </Select>
               
+              {otherPortal && (
+                <Link href={`/accounts/${accountId}/${otherPortal}`}>
+                  <Button variant="ghost" size="sm" data-testid={`button-switch-to-${otherPortal}`}>
+                    Switch to {otherPortalLabel}
+                  </Button>
+                </Link>
+              )}
+              
               <Link href={`/accounts/${accountId}/hub`}>
                 <Button variant="outline" size="sm" data-testid="button-hub">
-                  Hub
+                  Account Hub
+                </Button>
+              </Link>
+              
+              <Link href="/accounts">
+                <Button variant="ghost" size="sm" data-testid="button-all-accounts">
+                  All Accounts
                 </Button>
               </Link>
             </div>
