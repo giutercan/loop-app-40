@@ -2,13 +2,101 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sparkles, Brain, Target, Users, FileText, Mic, CheckCircle2, ArrowRight, Zap, TrendingUp, MessageSquare, BarChart3, Calendar, Award, Activity, Search, Lightbulb, LineChart, Play, Building2, Briefcase } from "lucide-react";
+import { Sparkles, Brain, Target, Users, FileText, Mic, CheckCircle2, ArrowRight, Zap, TrendingUp, MessageSquare, BarChart3, Calendar, Award, Activity, Search, Lightbulb, LineChart, Play, Building2, Briefcase, Rocket, RefreshCw, GraduationCap, Shield, UserCheck, Truck, Headphones } from "lucide-react";
 import { Link } from "wouter";
 import { useState } from "react";
 import heroImage from "@assets/Picture6_1763994371580.jpg";
 
+const lifecyclePhases = [
+  { 
+    id: "discover_qualify", 
+    label: "Discover & Qualify", 
+    shortLabel: "Discover",
+    icon: Search, 
+    description: "Understanding client needs and qualifying opportunities",
+    color: "text-blue-600 dark:text-blue-400",
+    bgColor: "bg-blue-100 dark:bg-blue-900/30",
+    borderColor: "border-blue-300 dark:border-blue-700"
+  },
+  { 
+    id: "shape_sell", 
+    label: "Shape & Sell", 
+    shortLabel: "Shape",
+    icon: Lightbulb, 
+    description: "Designing solutions and building value cases",
+    color: "text-purple-600 dark:text-purple-400",
+    bgColor: "bg-purple-100 dark:bg-purple-900/30",
+    borderColor: "border-purple-300 dark:border-purple-700"
+  },
+  { 
+    id: "deliver_realise", 
+    label: "Deliver & Realise", 
+    shortLabel: "Deliver",
+    icon: Rocket, 
+    description: "Implementing and delivering promised value",
+    color: "text-emerald-600 dark:text-emerald-400",
+    bgColor: "bg-emerald-100 dark:bg-emerald-900/30",
+    borderColor: "border-emerald-300 dark:border-emerald-700"
+  },
+  { 
+    id: "review_renew", 
+    label: "Review & Renew", 
+    shortLabel: "Review",
+    icon: RefreshCw, 
+    description: "Evaluating outcomes and expanding opportunities",
+    color: "text-amber-600 dark:text-amber-400",
+    bgColor: "bg-amber-100 dark:bg-amber-900/30",
+    borderColor: "border-amber-300 dark:border-amber-700"
+  },
+  { 
+    id: "learn_scale", 
+    label: "Learn & Scale", 
+    shortLabel: "Scale",
+    icon: GraduationCap, 
+    description: "Capturing learnings and scaling success",
+    color: "text-rose-600 dark:text-rose-400",
+    bgColor: "bg-rose-100 dark:bg-rose-900/30",
+    borderColor: "border-rose-300 dark:border-rose-700"
+  },
+];
+
+const roleViews = [
+  {
+    id: "sales",
+    label: "Sales",
+    icon: TrendingUp,
+    description: "Pipeline visibility, opportunity tracking, and win/loss insights",
+    color: "text-blue-600",
+    bgColor: "bg-blue-100 dark:bg-blue-900/30"
+  },
+  {
+    id: "consultant",
+    label: "Consultant",
+    icon: Brain,
+    description: "Discovery research, value case building, and client insights",
+    color: "text-purple-600",
+    bgColor: "bg-purple-100 dark:bg-purple-900/30"
+  },
+  {
+    id: "delivery",
+    label: "Delivery",
+    icon: Truck,
+    description: "Implementation tracking, KPI logging, and milestone management",
+    color: "text-emerald-600",
+    bgColor: "bg-emerald-100 dark:bg-emerald-900/30"
+  },
+  {
+    id: "csm",
+    label: "CSM",
+    icon: Headphones,
+    description: "Account health, renewals, and customer success metrics",
+    color: "text-amber-600",
+    bgColor: "bg-amber-100 dark:bg-amber-900/30"
+  },
+];
+
 export default function Landing() {
-  const [activePhase, setActivePhase] = useState("discovery");
+  const [activePhase, setActivePhase] = useState("discover_qualify");
   
   return (
     <div className="min-h-screen bg-background">
@@ -122,16 +210,20 @@ export default function Landing() {
                 
                 {/* Feature Stats Overlay */}
                 <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-background/95 via-background/80 to-transparent">
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-4 gap-4">
                     <div className="text-center">
+                      <div className="text-2xl font-bold text-foreground">5</div>
+                      <div className="text-xs text-muted-foreground">Phases</div>
+                    </div>
+                    <div className="text-center border-l border-border">
+                      <div className="text-2xl font-bold text-foreground">4</div>
+                      <div className="text-xs text-muted-foreground">Role Views</div>
+                    </div>
+                    <div className="text-center border-l border-border">
                       <div className="text-2xl font-bold text-foreground">AI</div>
                       <div className="text-xs text-muted-foreground">Powered</div>
                     </div>
-                    <div className="text-center border-l border-r border-border">
-                      <div className="text-2xl font-bold text-foreground">3</div>
-                      <div className="text-xs text-muted-foreground">Phases</div>
-                    </div>
-                    <div className="text-center">
+                    <div className="text-center border-l border-border">
                       <div className="text-2xl font-bold text-foreground">∞</div>
                       <div className="text-xs text-muted-foreground">Value</div>
                     </div>
@@ -202,6 +294,140 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* 5-Phase Lifecycle Journey */}
+      <section id="lifecycle" className="py-24 lg:py-36 relative overflow-hidden bg-gradient-to-br from-muted/30 via-background to-muted/30">
+        <div className="container mx-auto max-w-7xl px-4 lg:px-8 relative">
+          <div className="text-center mb-16">
+            <Badge variant="secondary" className="mb-6 shadow-md">
+              <Rocket className="w-3.5 h-3.5 mr-2" />
+              Complete Customer Journey
+            </Badge>
+            <h2 className="text-4xl lg:text-5xl font-bold mb-6">
+              5-Phase Value Lifecycle
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+              Guide every engagement from initial discovery through scaled success with a unified view across all phases
+            </p>
+          </div>
+
+          {/* Lifecycle Timeline */}
+          <div className="relative mb-16">
+            {/* Connection Line */}
+            <div className="absolute top-1/2 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 via-emerald-500 via-amber-500 to-rose-500 transform -translate-y-1/2 hidden lg:block" />
+            
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+              {lifecyclePhases.map((phase, index) => {
+                const Icon = phase.icon;
+                return (
+                  <div 
+                    key={phase.id}
+                    className="relative group"
+                    data-testid={`lifecycle-phase-${phase.id}`}
+                  >
+                    <Card className={`hover-elevate transition-all duration-300 border-2 ${phase.borderColor} ${activePhase === phase.id ? 'ring-2 ring-primary ring-offset-2' : ''}`}>
+                      <CardContent className="pt-6 pb-4 text-center">
+                        <div className={`w-14 h-14 mx-auto rounded-2xl ${phase.bgColor} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
+                          <Icon className={`w-7 h-7 ${phase.color}`} />
+                        </div>
+                        <Badge variant="outline" className="mb-2 text-xs">Phase {index + 1}</Badge>
+                        <h3 className="font-bold text-base mb-2">{phase.shortLabel}</h3>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          {phase.description}
+                        </p>
+                      </CardContent>
+                    </Card>
+                    {/* Arrow connector for mobile */}
+                    {index < lifecyclePhases.length - 1 && (
+                      <div className="flex justify-center my-2 md:hidden">
+                        <ArrowRight className="w-5 h-5 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Value Flow Visual */}
+          <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
+            <CardContent className="py-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+                <div>
+                  <div className="text-4xl font-bold text-primary mb-2">Promised</div>
+                  <p className="text-muted-foreground">Track value commitments made to clients</p>
+                </div>
+                <div className="flex items-center justify-center">
+                  <ArrowRight className="w-8 h-8 text-primary hidden md:block" />
+                  <div className="md:hidden text-4xl font-bold text-primary">→</div>
+                </div>
+                <div>
+                  <div className="text-4xl font-bold text-emerald-600 dark:text-emerald-400 mb-2">Delivered</div>
+                  <p className="text-muted-foreground">Measure and prove realized outcomes</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* Role-Based Views */}
+      <section id="roles" className="py-24 lg:py-36 relative overflow-hidden">
+        <div className="container mx-auto max-w-7xl px-4 lg:px-8 relative">
+          <div className="text-center mb-16">
+            <Badge variant="secondary" className="mb-6 shadow-md">
+              <Users className="w-3.5 h-3.5 mr-2" />
+              Tailored Experiences
+            </Badge>
+            <h2 className="text-4xl lg:text-5xl font-bold mb-6">
+              Role-Based Dashboards
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+              Every team member sees what matters most to their role—from pipeline to delivery to renewals
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {roleViews.map((role) => {
+              const Icon = role.icon;
+              return (
+                <Card 
+                  key={role.id}
+                  className="hover-elevate transition-all duration-300 border-2 hover:border-primary/30 group"
+                  data-testid={`role-card-${role.id}`}
+                >
+                  <CardHeader className="pb-2">
+                    <div className={`w-12 h-12 rounded-xl ${role.bgColor} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300`}>
+                      <Icon className={`w-6 h-6 ${role.color}`} />
+                    </div>
+                    <CardTitle className="text-lg">{role.label}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+                      {role.description}
+                    </p>
+                    <Link href="/accounts">
+                      <Button variant="outline" size="sm" className="w-full" data-testid={`button-explore-${role.id}`}>
+                        Explore View
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          <div className="mt-12 text-center">
+            <Link href="/accounts">
+              <Button size="lg" className="shadow-lg shadow-primary/20" data-testid="button-open-hub">
+                <Building2 className="mr-2 w-5 h-5" />
+                Open Client Value Hub
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* Interactive Process Demo */}
       <section id="how-it-works" className="py-24 lg:py-36 relative overflow-hidden">
         {/* Layered Background */}
@@ -215,54 +441,35 @@ export default function Landing() {
               <Play className="w-3.5 h-3.5 mr-2" />
               See It In Action
             </Badge>
-            <h2 className="text-4xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
-              Complete Value Lifecycle Demo
+            <h2 className="text-4xl lg:text-5xl font-bold mb-6">
+              AI-Powered Value Discovery
             </h2>
-            <p className="text-xl lg:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              Follow a sample engagement from initial research to measurable outcomes
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+              From research to realization—watch how AI accelerates the entire engagement lifecycle
             </p>
           </div>
 
           {/* Phase Tabs */}
           <Tabs value={activePhase} onValueChange={setActivePhase} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-12 h-auto p-2 bg-muted/50" data-testid="tabs-demo-phases">
-              <TabsTrigger 
-                value="discovery" 
-                className="text-base lg:text-lg py-4 data-[state=active]:bg-background data-[state=active]:shadow-lg"
-                data-testid="tab-discovery"
-              >
-                <Search className="w-5 h-5 mr-2" />
-                <div className="flex flex-col items-start">
-                  <span className="font-bold">Discovery</span>
-                  <span className="text-xs text-muted-foreground hidden sm:block">AI Research & Insights</span>
-                </div>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="alignment" 
-                className="text-base lg:text-lg py-4 data-[state=active]:bg-background data-[state=active]:shadow-lg"
-                data-testid="tab-alignment"
-              >
-                <Target className="w-5 h-5 mr-2" />
-                <div className="flex flex-col items-start">
-                  <span className="font-bold">Alignment</span>
-                  <span className="text-xs text-muted-foreground hidden sm:block">Jobs & KPI Targets</span>
-                </div>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="realization" 
-                className="text-base lg:text-lg py-4 data-[state=active]:bg-background data-[state=active]:shadow-lg"
-                data-testid="tab-realization"
-              >
-                <TrendingUp className="w-5 h-5 mr-2" />
-                <div className="flex flex-col items-start">
-                  <span className="font-bold">Realization</span>
-                  <span className="text-xs text-muted-foreground hidden sm:block">Track & Measure</span>
-                </div>
-              </TabsTrigger>
+            <TabsList className="grid w-full grid-cols-5 mb-12 h-auto p-2 bg-muted/50" data-testid="tabs-demo-phases">
+              {lifecyclePhases.map((phase) => {
+                const Icon = phase.icon;
+                return (
+                  <TabsTrigger 
+                    key={phase.id}
+                    value={phase.id} 
+                    className="text-sm lg:text-base py-3 data-[state=active]:bg-background data-[state=active]:shadow-lg"
+                    data-testid={`tab-${phase.id}`}
+                  >
+                    <Icon className="w-4 h-4 mr-1 lg:mr-2" />
+                    <span className="font-medium hidden sm:inline">{phase.shortLabel}</span>
+                  </TabsTrigger>
+                );
+              })}
             </TabsList>
 
-            {/* Discovery Phase Demo */}
-            <TabsContent value="discovery" className="space-y-8" data-testid="demo-discovery">
+            {/* Discover & Qualify Phase Demo */}
+            <TabsContent value="discover_qualify" className="space-y-8" data-testid="demo-discover-qualify">
               <Card className="border-2 border-primary/20 shadow-2xl">
                 <CardHeader className="border-b bg-gradient-to-r from-primary/5 to-primary/10">
                   <div className="flex items-center gap-4">
@@ -381,7 +588,7 @@ export default function Landing() {
             </TabsContent>
 
             {/* Alignment Phase Demo */}
-            <TabsContent value="alignment" className="space-y-8" data-testid="demo-alignment">
+            <TabsContent value="shape_sell" className="space-y-8" data-testid="demo-shape-sell">
               <Card className="border-2 border-primary/20 shadow-2xl">
                 <CardHeader className="border-b bg-gradient-to-r from-primary/5 to-primary/10">
                   <div className="flex items-center gap-4">
@@ -547,7 +754,7 @@ export default function Landing() {
             </TabsContent>
 
             {/* Realization Phase Demo */}
-            <TabsContent value="realization" className="space-y-8" data-testid="demo-realization">
+            <TabsContent value="deliver_realise" className="space-y-8" data-testid="demo-deliver-realise">
               <Card className="border-2 border-primary/20 shadow-2xl">
                 <CardHeader className="border-b bg-gradient-to-r from-primary/5 to-primary/10">
                   <div className="flex items-center gap-4">
@@ -710,22 +917,142 @@ export default function Landing() {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {/* Review & Renew Phase Demo */}
+            <TabsContent value="review_renew" className="space-y-8" data-testid="demo-review-renew">
+              <Card className="border-2 border-primary/20 shadow-2xl">
+                <CardHeader className="border-b bg-gradient-to-r from-amber-500/10 to-amber-500/5">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg">
+                      <RefreshCw className="w-7 h-7 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-2xl">Review & Renew</CardTitle>
+                      <CardDescription className="text-base mt-1">
+                        Evaluate outcomes, capture wins, and identify expansion opportunities
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-6 space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <Card className="bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800">
+                      <CardContent className="pt-6 text-center">
+                        <div className="text-4xl font-bold text-emerald-600 dark:text-emerald-400 mb-2">87%</div>
+                        <p className="text-sm text-muted-foreground">Value Realized</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                      <CardContent className="pt-6 text-center">
+                        <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">$2.4M</div>
+                        <p className="text-sm text-muted-foreground">Proven Impact</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800">
+                      <CardContent className="pt-6 text-center">
+                        <div className="text-4xl font-bold text-purple-600 dark:text-purple-400 mb-2">3</div>
+                        <p className="text-sm text-muted-foreground">Expansion Opportunities</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                  <div className="bg-amber-500/10 border-l-4 border-l-amber-500 p-4 rounded-r-lg">
+                    <div className="flex items-start gap-3">
+                      <RefreshCw className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold mb-1">Quarterly Business Reviews</p>
+                        <p className="text-sm text-muted-foreground">
+                          Structured QBRs with value scorecards, client sentiment tracking, and renewal planning
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Learn & Scale Phase Demo */}
+            <TabsContent value="learn_scale" className="space-y-8" data-testid="demo-learn-scale">
+              <Card className="border-2 border-primary/20 shadow-2xl">
+                <CardHeader className="border-b bg-gradient-to-r from-rose-500/10 to-rose-500/5">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center shadow-lg">
+                      <GraduationCap className="w-7 h-7 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-2xl">Learn & Scale</CardTitle>
+                      <CardDescription className="text-base mt-1">
+                        Capture learnings and scale success across the organization
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-6 space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Card className="bg-muted/30">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <Award className="w-5 h-5 text-primary" />
+                          Success Story Library
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Verified case studies with measurable outcomes that can be shared with new prospects
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <Badge variant="secondary">12 Verified Stories</Badge>
+                          <Badge variant="outline">$45M Total Impact</Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="bg-muted/30">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <BarChart3 className="w-5 h-5 text-primary" />
+                          Pattern Recognition
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          AI identifies winning patterns across engagements to accelerate future deals
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <Badge variant="secondary">Industry Insights</Badge>
+                          <Badge variant="outline">Best Practices</Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                  <div className="bg-rose-500/10 border-l-4 border-l-rose-500 p-4 rounded-r-lg">
+                    <div className="flex items-start gap-3">
+                      <GraduationCap className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold mb-1">Organizational Learning</p>
+                        <p className="text-sm text-muted-foreground">
+                          Turn individual engagement successes into repeatable playbooks for the entire team
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
           </Tabs>
 
           {/* CTA */}
           <div className="text-center mt-16">
-            <Link href="/projects">
+            <Link href="/accounts">
               <Button 
                 size="lg" 
                 className="px-12 py-7 text-lg font-semibold shadow-2xl shadow-primary/30 hover:shadow-primary/40 hover:scale-105 transition-all duration-300"
                 data-testid="button-demo-cta"
               >
-                Try It Yourself
-                <ArrowRight className="ml-2 w-5 h-5" />
+                <Building2 className="mr-2 w-5 h-5" />
+                Explore Client Value Hub
               </Button>
             </Link>
             <p className="text-sm text-muted-foreground mt-4">
-              Start with a real engagement in under 2 minutes
+              View accounts, initiatives, and role-based dashboards
             </p>
           </div>
         </div>

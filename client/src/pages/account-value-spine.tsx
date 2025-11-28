@@ -436,9 +436,9 @@ export default function AccountValueSpine() {
                     id: k.id,
                     name: k.name,
                     status: k.status,
-                    baselineValue: k.baselineValue,
-                    targetValue: k.targetValue,
-                    currentValue: k.currentValue,
+                    baselineValue: k.baseline ? parseFloat(k.baseline) : null,
+                    targetValue: k.target ? parseFloat(k.target) : null,
+                    currentValue: k.current ? parseFloat(k.current) : null,
                     initiativeId: k.initiativeId
                   }))}
                   issues={openIssues.map(i => ({

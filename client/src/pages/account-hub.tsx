@@ -593,6 +593,43 @@ export default function AccountHub() {
                           </p>
                         </div>
                       </div>
+                      
+                      {/* Quick Phase Links */}
+                      <div className="flex items-center gap-1 pt-3 border-t" onClick={(e) => e.stopPropagation()}>
+                        <Link href={`/projects/${initiative.id}/discovery`}>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-7 px-2 text-xs"
+                            data-testid={`button-discovery-${initiative.id}`}
+                          >
+                            <Search className="w-3 h-3 mr-1" />
+                            Discovery
+                          </Button>
+                        </Link>
+                        <Link href={`/projects/${initiative.id}/alignment`}>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-7 px-2 text-xs"
+                            data-testid={`button-alignment-${initiative.id}`}
+                          >
+                            <Target className="w-3 h-3 mr-1" />
+                            Alignment
+                          </Button>
+                        </Link>
+                        <Link href={`/projects/${initiative.id}/realisation`}>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-7 px-2 text-xs"
+                            data-testid={`button-realisation-${initiative.id}`}
+                          >
+                            <Activity className="w-3 h-3 mr-1" />
+                            Realize
+                          </Button>
+                        </Link>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

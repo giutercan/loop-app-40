@@ -33,6 +33,7 @@ import {
   Briefcase,
   BarChart3,
   AlertTriangle,
+  AlertCircle,
   CheckCircle2,
   Clock,
   FileText,
