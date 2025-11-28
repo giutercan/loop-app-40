@@ -2115,42 +2115,77 @@ export default function ProjectRoleView() {
             ]
           };
           
-          // Success stories for credibility
+          // Success stories for credibility - enhanced with storytelling and relevance
           const successStories = [
             {
               client: "Fortune 500 Technology Company",
+              industry: "Technology",
               challenge: "Leadership pipeline gap ahead of major digital transformation",
+              situation: "The CHRO discovered only 2 of 12 executive roles had ready-now successors, with a major cloud transition planned in 18 months.",
               solution: "Korn Ferry Leadership Assessment & Development program",
+              approach: "We assessed 200 senior leaders, identified 40 high-potentials, and created personalized 12-month acceleration plans with executive coaching.",
               outcome: "Accelerated 40 leaders to readiness in 12 months, 85% retention of high-potentials",
-              relevantTo: ["leadership", "transformation"]
+              metrics: ["40 leaders accelerated", "85% retention rate", "12-month timeline"],
+              relevantTo: ["leadership", "transformation", "kf-full-search"],
+              storyLink: "/success-stories/tech-leadership-pipeline",
+              whyRelevantTo: (company: string) => `Like ${company}, this client faced pressure to develop leaders quickly during a major business transformation. The accelerated timeline and measurable outcomes demonstrate our ability to deliver results under pressure.`,
+              howToTell: "Start with the urgency: 'Only 2 of 12 executive seats had successors.' Then paint the solution and close with the metric that matters most to your buyer."
             },
             {
               client: "Global Healthcare Provider",
+              industry: "Healthcare",
               challenge: "High turnover in critical clinical roles driving quality concerns",
+              situation: "35% first-year turnover in nursing and clinical roles was affecting patient satisfaction scores and driving up recruitment costs by $4M annually.",
               solution: "Korn Ferry Success Profiles and predictive hiring assessments",
+              approach: "We built success profiles for 15 critical clinical roles, implemented predictive assessments, and trained 80 hiring managers on behavioral interviewing.",
               outcome: "Reduced first-year turnover by 45%, improved patient satisfaction scores by 22%",
-              relevantTo: ["talent-acquisition"]
+              metrics: ["45% turnover reduction", "22% satisfaction improvement", "$2.1M annual savings"],
+              relevantTo: ["talent-acquisition", "kf-full-search"],
+              storyLink: "/success-stories/healthcare-talent",
+              whyRelevantTo: (company: string) => `${company}'s industry relies heavily on getting the right people in critical roles. This story shows how better hiring decisions cascade into customer satisfaction and cost savings.`,
+              howToTell: "Lead with the cost: '$4M in wasted recruitment.' Show the human impact on patients. End with ROI that any CFO would appreciate."
             },
             {
               client: "Multinational Manufacturer",
+              industry: "Manufacturing",
               challenge: "Post-merger integration with redundant structures and culture clash",
+              situation: "Following a $3B acquisition, leadership faced 40% role overlap, two competing cultures, and synergy targets of $300M within 24 months.",
               solution: "Korn Ferry Organization Design and Culture Integration",
+              approach: "We designed the new operating model, created a culture integration roadmap, and provided change management support for 15,000 affected employees.",
               outcome: "Achieved $200M synergies 6 months ahead of schedule, 90% retention of key talent",
-              relevantTo: ["transformation"]
+              metrics: ["$200M synergies", "6 months early", "90% key talent retention"],
+              relevantTo: ["transformation", "kf-full-search"],
+              storyLink: "/success-stories/manufacturing-merger",
+              whyRelevantTo: (company: string) => `If ${company} is navigating any significant structural change—M&A, reorganization, or operating model shift—this story demonstrates our ability to deliver hard synergy targets while protecting the talent that matters.`,
+              howToTell: "Set the stakes: '$3B deal on the line.' Describe the complexity. Celebrate the early delivery and retention—that's the differentiator."
             },
             {
               client: "Regional Financial Services Firm",
+              industry: "Financial Services",
               challenge: "Pay equity concerns and difficulty attracting top talent",
+              situation: "A pay equity audit revealed 12% gender pay gap, and offer acceptance rates had dropped to 65% as competitors offered more compelling packages.",
               solution: "Korn Ferry Total Rewards Strategy and benchmarking",
+              approach: "We conducted comprehensive market benchmarking, redesigned the pay structure with equity principles, and created a compelling EVP narrative.",
               outcome: "Closed gender pay gap, improved offer acceptance rate from 65% to 88%",
-              relevantTo: ["rewards"]
+              metrics: ["Pay gap closed", "88% offer acceptance", "23% improvement"],
+              relevantTo: ["rewards", "kf-full-search"],
+              storyLink: "/success-stories/finserv-rewards",
+              whyRelevantTo: (company: string) => `Pay equity and talent competitiveness are board-level concerns for most organizations like ${company}. This story shows how strategic rewards work can solve both problems simultaneously.`,
+              howToTell: "Frame it as a risk story first: 'Potential lawsuit exposure from pay gaps.' Then show the talent win: 'From losing candidates to winning them.'"
             },
             {
               client: "B2B Software Company",
+              industry: "Technology",
               challenge: "Missed revenue targets 3 consecutive quarters despite market growth",
+              situation: "Despite a growing TAM, the sales team missed quota 3 quarters running. Win rates were 18%, below the 25% industry benchmark.",
               solution: "Korn Ferry Sales Effectiveness program and talent assessment",
+              approach: "We assessed the entire 120-person sales force, redesigned territories, implemented a new sales methodology, and restructured incentive compensation.",
               outcome: "Increased win rates by 35%, shortened sales cycle by 20%",
-              relevantTo: ["sales-effectiveness"]
+              metrics: ["35% higher win rates", "20% faster deals", "$15M incremental revenue"],
+              relevantTo: ["sales-effectiveness", "kf-full-search"],
+              storyLink: "/success-stories/software-sales",
+              whyRelevantTo: (company: string) => `Revenue performance is every CEO's priority. This story shows how ${company} could unlock hidden potential in their commercial organization—without adding headcount.`,
+              howToTell: "Use the contrast: 'Growing market, shrinking results.' Show the diagnosis. Land on the revenue number—that's what executives remember."
             }
           ].filter(story => isFullSearch || story.relevantTo.includes(selectedDiscoveryTheme || ""));
           
@@ -2356,29 +2391,67 @@ export default function ProjectRoleView() {
                   <Trophy className="w-5 h-5" />
                   Success Stories to Share
                 </CardTitle>
-                <CardDescription>Relevant examples to build credibility and tell compelling stories</CardDescription>
+                <CardDescription>Relevant examples to build credibility and tell compelling stories for {project?.companyName}</CardDescription>
               </CardHeader>
               <CardContent className="pt-4">
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-6">
                   {successStories.map((story, idx) => (
-                    <div key={idx} className="p-4 rounded-lg border bg-background hover-elevate">
-                      <div className="flex items-start justify-between mb-2">
-                        <h4 className="font-semibold text-sm">{story.client}</h4>
-                        <Badge variant="outline" className="text-xs">{story.relevantTo[0]}</Badge>
+                    <div key={idx} className="p-5 rounded-xl border-2 border-amber-500/20 bg-gradient-to-r from-amber-500/5 to-orange-500/5">
+                      {/* Header */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-bold text-base">{story.client}</h4>
+                            <Badge variant="outline" className="text-xs">{story.industry}</Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{story.challenge}</p>
+                        </div>
+                        <Link href={story.storyLink}>
+                          <Button size="sm" variant="outline" className="text-xs" data-testid={`link-story-${idx}`}>
+                            <FileText className="w-3 h-3 mr-1" />
+                            Full Story
+                          </Button>
+                        </Link>
                       </div>
-                      <div className="space-y-2 text-sm">
-                        <div>
-                          <span className="text-muted-foreground font-medium">Challenge: </span>
-                          {story.challenge}
+                      
+                      {/* Why Relevant to THIS Client */}
+                      <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 mb-4">
+                        <h5 className="text-xs font-semibold uppercase tracking-wider text-primary mb-1 flex items-center gap-1">
+                          <Target className="w-3 h-3" />
+                          Why This Story Matters for {project?.companyName}
+                        </h5>
+                        <p className="text-sm">{story.whyRelevantTo(project?.companyName || "this client")}</p>
+                      </div>
+                      
+                      {/* The Story Details */}
+                      <div className="grid gap-3 md:grid-cols-2 mb-4">
+                        <div className="p-3 rounded-lg bg-background border">
+                          <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">The Situation</h5>
+                          <p className="text-sm">{story.situation}</p>
                         </div>
-                        <div>
-                          <span className="text-muted-foreground font-medium">Solution: </span>
-                          {story.solution}
+                        <div className="p-3 rounded-lg bg-background border">
+                          <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Our Approach</h5>
+                          <p className="text-sm">{story.approach}</p>
                         </div>
-                        <div className="text-emerald-600 font-medium">
-                          <span className="text-muted-foreground">Outcome: </span>
-                          {story.outcome}
-                        </div>
+                      </div>
+                      
+                      {/* Metrics */}
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {story.metrics.map((metric, mIdx) => (
+                          <Badge key={mIdx} className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            {metric}
+                          </Badge>
+                        ))}
+                      </div>
+                      
+                      {/* How to Tell This Story */}
+                      <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                        <h5 className="text-xs font-semibold uppercase tracking-wider text-amber-700 mb-1 flex items-center gap-1">
+                          <MessageCircle className="w-3 h-3" />
+                          How to Tell This Story
+                        </h5>
+                        <p className="text-sm italic">"{story.howToTell}"</p>
                       </div>
                     </div>
                   ))}
@@ -2533,8 +2606,8 @@ export default function ProjectRoleView() {
                             <p className="font-medium text-sm">{q.question}</p>
                             <p className="text-xs text-muted-foreground mt-1">{q.purpose}</p>
                             <div className="flex flex-wrap items-center gap-2 mt-2">
-                              <Badge className={methodologyMeta[q.methodology]?.color || "bg-muted"} variant="outline">
-                                {methodologyMeta[q.methodology]?.label || q.methodology}
+                              <Badge className={q.methodology ? (methodologyMeta[q.methodology]?.color || "bg-muted") : "bg-muted"} variant="outline">
+                                {q.methodology ? (methodologyMeta[q.methodology]?.label || q.methodology) : "Other"}
                               </Badge>
                               {q.methodologyStage && (
                                 <Badge variant="secondary" className="text-xs">
