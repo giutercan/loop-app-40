@@ -420,69 +420,51 @@ export default function AccountRoleView() {
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Briefcase className="w-5 h-5" />
-              Pipeline Opportunities
-            </CardTitle>
-            <CardDescription>Active deals and their status</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {filteredInitiatives.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No opportunities in pipeline</p>
-            ) : (
-              <div className="space-y-3">
-                {filteredInitiatives.slice(0, 5).map(init => (
-                  <Link key={init.id} href={`/projects/${init.id}/discovery`} data-testid={`link-initiative-${init.id}`}>
-                    <div className="flex items-center justify-between p-3 rounded-lg hover-elevate cursor-pointer border bg-card">
-                      <div>
-                        <p className="font-medium">{init.name}</p>
-                        <p className="text-xs text-muted-foreground capitalize">{init.lifecyclePhase || init.phase}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Briefcase className="w-5 h-5" />
+            Projects in Pipeline
+          </CardTitle>
+          <CardDescription>Click a project to open your personalized sales workspace</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {filteredInitiatives.length === 0 ? (
+            <div className="text-center py-8">
+              <Briefcase className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No projects in this phase</p>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {filteredInitiatives.map(init => (
+                <Link key={init.id} href={`/projects/${init.id}/sales`} data-testid={`link-project-sales-${init.id}`}>
+                  <Card className="hover-elevate cursor-pointer h-full">
+                    <CardContent className="pt-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold truncate">{init.name}</h4>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {init.lifecyclePhase ? phaseLabels[init.lifecyclePhase as keyof typeof phaseLabels] || init.lifecyclePhase : init.phase}
+                          </p>
+                        </div>
                         {init.ragStatus && (
-                          <span className={`w-3 h-3 rounded-full ${ragColors[init.ragStatus] || "bg-gray-400"}`} />
+                          <span className={`w-3 h-3 rounded-full flex-shrink-0 ${ragColors[init.ragStatus] || "bg-gray-400"}`} />
                         )}
-                        <Badge variant="outline" className="capitalize">{init.status}</Badge>
                       </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5" />
-              Quick Actions
-            </CardTitle>
-            <CardDescription>Common sales activities</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Button variant="outline" className="w-full justify-start gap-2" data-testid="button-create-value-case-sales-full">
-              <FileText className="w-4 h-4" />
-              Create New Value Case
-            </Button>
-            <Button variant="outline" className="w-full justify-start gap-2" data-testid="button-schedule-discovery-sales-full">
-              <Calendar className="w-4 h-4" />
-              Schedule Discovery Session
-            </Button>
-            <Button variant="outline" className="w-full justify-start gap-2" data-testid="button-browse-success-stories-sales-full">
-              <Star className="w-4 h-4" />
-              Browse Success Stories
-            </Button>
-            <Button variant="outline" className="w-full justify-start gap-2" data-testid="button-export-pipeline-sales-full">
-              <Download className="w-4 h-4" />
-              Export Pipeline Report
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+                      <div className="flex items-center justify-between">
+                        <Badge variant="outline" className="capitalize">{init.status}</Badge>
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          Open workspace <ChevronRight className="w-3 h-3" />
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {criticalIssues.length > 0 && (
         <Card className="border-red-500/30 bg-red-500/5">
@@ -719,14 +701,60 @@ export default function AccountRoleView() {
         </Card>
       </div>
 
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Briefcase className="w-5 h-5" />
+            Projects in Delivery
+          </CardTitle>
+          <CardDescription>Click a project to open your personalized delivery workspace</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {filteredInitiatives.length === 0 ? (
+            <div className="text-center py-8">
+              <Briefcase className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No projects in this phase</p>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {filteredInitiatives.map(init => (
+                <Link key={init.id} href={`/projects/${init.id}/delivery`} data-testid={`link-project-delivery-${init.id}`}>
+                  <Card className="hover-elevate cursor-pointer h-full">
+                    <CardContent className="pt-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold truncate">{init.name}</h4>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {init.lifecyclePhase ? phaseLabels[init.lifecyclePhase as keyof typeof phaseLabels] || init.lifecyclePhase : init.phase}
+                          </p>
+                        </div>
+                        {init.ragStatus && (
+                          <span className={`w-3 h-3 rounded-full flex-shrink-0 ${ragColors[init.ragStatus] || "bg-gray-400"}`} />
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Badge variant="outline" className="capitalize">{init.status}</Badge>
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          Open workspace <ChevronRight className="w-3 h-3" />
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="w-5 h-5" />
-              KPIs Requiring Measurement
+              KPIs Across Projects
             </CardTitle>
-            <CardDescription>Log actual values for tracked KPIs</CardDescription>
+            <CardDescription>Aggregate KPI status across all delivery projects</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -740,19 +768,17 @@ export default function AccountRoleView() {
                       <span>Current: {kpi.currentValue ?? "N/A"}</span>
                     </div>
                   </div>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => {
-                      setSelectedKPI(kpi);
-                      setIsLogKPIOpen(true);
-                    }}
-                    data-testid={`button-log-kpi-${kpi.id}`}
-                  >
-                    Log
-                  </Button>
+                  <Badge variant={
+                    kpi.status === "on-track" ? "default" :
+                    kpi.status === "at-risk" ? "secondary" : "destructive"
+                  }>
+                    {kpi.status}
+                  </Badge>
                 </div>
               ))}
+              {filteredKpis.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">No KPIs tracked</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -761,7 +787,7 @@ export default function AccountRoleView() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <RefreshCcw className="w-5 h-5" />
-              Delivery Actions
+              Quick Actions
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -773,10 +799,6 @@ export default function AccountRoleView() {
             >
               <BarChart3 className="w-4 h-4" />
               Log KPI Measurement
-            </Button>
-            <Button variant="outline" className="w-full justify-start gap-2" data-testid="button-update-status-delivery-full">
-              <RefreshCcw className="w-4 h-4" />
-              Update Initiative Status
             </Button>
             <Button variant="outline" className="w-full justify-start gap-2" data-testid="button-flag-risk-delivery-full">
               <AlertTriangle className="w-4 h-4" />

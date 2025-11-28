@@ -17,6 +17,7 @@ import AccountsDashboard from "@/pages/accounts";
 import AccountValueSpine from "@/pages/account-value-spine";
 import AccountHub from "@/pages/account-hub";
 import AccountRoleView from "@/pages/account-role-view";
+import ProjectRoleView from "@/pages/project-role-view";
 import ProjectLayout from "@/components/ProjectLayout";
 import { CommandPalette } from "@/components/CommandPalette";
 
@@ -78,6 +79,7 @@ function Router() {
       <Route path="/accounts/:id/hub" component={AccountHub} />
       <Route path="/accounts/:id/:role" component={AccountRoleView} />
       <Route path="/accounts/:id" component={AccountValueSpine} />
+      <Route path="/projects/:id/:role" component={ProjectRoleView} />
       <Route path="/discovery">
         <Redirect to="/projects" />
       </Route>
