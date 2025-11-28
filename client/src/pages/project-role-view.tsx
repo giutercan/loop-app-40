@@ -1001,7 +1001,7 @@ export default function ProjectRoleView() {
     }
   });
 
-  const groupedQuestions = discoveryQuestions.reduce((acc, q) => {
+  const groupedQuestions = (discoveryQuestions || []).reduce((acc, q) => {
     const method = q.methodology || "OTHER";
     if (!acc[method]) acc[method] = [];
     acc[method].push(q);
@@ -3041,7 +3041,7 @@ export default function ProjectRoleView() {
 
                 {/* AI Questions - Interactive Cards */}
                 <div className="space-y-3">
-                  {discoveryQuestions.length === 0 ? (
+                  {(discoveryQuestions || []).length === 0 ? (
                     <div className="text-center py-12 rounded-xl border-2 border-dashed">
                       <Sparkles className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                       <h4 className="font-semibold mb-2">Generate Personalized Questions</h4>
@@ -3063,7 +3063,7 @@ export default function ProjectRoleView() {
                         <h4 className="font-semibold text-sm flex items-center gap-2">
                           <Sparkles className="w-4 h-4 text-purple-600" />
                           AI-Suggested Questions
-                          <Badge variant="secondary" className="text-xs">{discoveryQuestions.filter(q => !activeMethodologyFilter || q.methodology === activeMethodologyFilter).length}</Badge>
+                          <Badge variant="secondary" className="text-xs">{(discoveryQuestions || []).filter(q => !activeMethodologyFilter || q.methodology === activeMethodologyFilter).length}</Badge>
                         </h4>
                         <Button 
                           size="sm" 
@@ -3076,7 +3076,7 @@ export default function ProjectRoleView() {
                         </Button>
                       </div>
                       <div className="grid gap-3 md:grid-cols-2">
-                        {discoveryQuestions
+                        {(discoveryQuestions || [])
                           .filter(q => !activeMethodologyFilter || q.methodology === activeMethodologyFilter)
                           .slice(0, 10)
                           .map(q => {
@@ -3214,6 +3214,8 @@ export default function ProjectRoleView() {
 
         {/* Step 4: Review & Select Questions */}
         {discoveryStep === "review" && (() => {
+          const hasExportableContent = myCallFlow.length > 0 || selectedQuestions.size > 0;
+          
           const generateExportContent = () => {
             const themeName = selectedDiscoveryTheme ? discoveryThemes.find(t => t.id === selectedDiscoveryTheme)?.name : "Discovery";
             const lines: string[] = [];
@@ -3221,15 +3223,16 @@ export default function ProjectRoleView() {
             lines.push(`Generated: ${new Date().toLocaleDateString()}`);
             lines.push("");
             
-            const hasCallFlow = myCallFlow && myCallFlow.length > 0;
-            const selectedQs = discoveryQuestions && selectedQuestions 
-              ? discoveryQuestions.filter(q => selectedQuestions.has(q.id)) 
-              : [];
+            const callFlow = myCallFlow || [];
+            const questions = discoveryQuestions || [];
+            const selected = selectedQuestions || new Set<number>();
+            
+            const hasCallFlow = callFlow.length > 0;
+            const selectedQs = questions.filter(q => selected.has(q.id));
             const hasSelectedQuestions = selectedQs.length > 0;
             
             if (!hasCallFlow && !hasSelectedQuestions) {
-              lines.push("No questions selected for this discovery session.");
-              return lines.join("\n");
+              return null;
             }
             
             if (hasCallFlow) {
@@ -3237,7 +3240,7 @@ export default function ProjectRoleView() {
               lines.push("");
               const phases = ["opening", "discovery", "support", "closing"];
               phases.forEach(phase => {
-                const phaseQuestions = myCallFlow.filter(q => q.phase === phase);
+                const phaseQuestions = callFlow.filter(q => q.phase === phase);
                 if (phaseQuestions.length > 0) {
                   lines.push(`### ${phase.charAt(0).toUpperCase() + phase.slice(1)}`);
                   phaseQuestions.forEach((q, i) => {
@@ -3265,8 +3268,17 @@ export default function ProjectRoleView() {
           };
           
           const handleCopyToClipboard = async () => {
+            if (!hasExportableContent) {
+              toast({ title: "Nothing to export", description: "Select questions or build a call flow first", variant: "destructive" });
+              return;
+            }
             try {
-              await navigator.clipboard.writeText(generateExportContent());
+              const content = generateExportContent();
+              if (!content) {
+                toast({ title: "Nothing to export", description: "Select questions or build a call flow first", variant: "destructive" });
+                return;
+              }
+              await navigator.clipboard.writeText(content);
               toast({ title: "Copied!", description: "Call preparation exported to clipboard" });
             } catch {
               toast({ title: "Copy failed", description: "Please try the download option instead", variant: "destructive" });
@@ -3274,8 +3286,16 @@ export default function ProjectRoleView() {
           };
           
           const handleDownload = () => {
+            if (!hasExportableContent) {
+              toast({ title: "Nothing to export", description: "Select questions or build a call flow first", variant: "destructive" });
+              return;
+            }
             try {
               const content = generateExportContent();
+              if (!content) {
+                toast({ title: "Nothing to export", description: "Select questions or build a call flow first", variant: "destructive" });
+                return;
+              }
               const blob = new Blob([content], { type: "text/markdown" });
               const url = URL.createObjectURL(blob);
               const a = document.createElement("a");
@@ -3358,7 +3378,7 @@ export default function ProjectRoleView() {
                           <Button 
                             variant="outline" 
                             size="sm"
-                            onClick={() => setSelectedQuestions(new Set(discoveryQuestions.map(q => q.id)))}
+                            onClick={() => setSelectedQuestions(new Set((discoveryQuestions || []).map(q => q.id)))}
                             data-testid="button-select-all"
                           >
                             Select All
@@ -3372,7 +3392,7 @@ export default function ProjectRoleView() {
                             Clear All
                           </Button>
                           <span className="text-sm text-muted-foreground">
-                            {selectedQuestions.size} of {discoveryQuestions.length} selected
+                            {selectedQuestions.size} of {(discoveryQuestions || []).length} selected
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -3399,7 +3419,7 @@ export default function ProjectRoleView() {
                         </div>
                       </div>
                       <div className="space-y-3 max-h-[500px] overflow-y-auto">
-                        {discoveryQuestions.map((q) => {
+                        {(discoveryQuestions || []).map((q) => {
                           const meta = methodologyMeta[q.methodology || "SPIN"];
                           const isSelected = selectedQuestions.has(q.id);
                           return (
@@ -3463,7 +3483,7 @@ export default function ProjectRoleView() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {discoveryQuestions.filter(q => selectedQuestions.has(q.id)).slice(0, 5).map((q) => (
+                    {(discoveryQuestions || []).filter(q => selectedQuestions.has(q.id)).slice(0, 5).map((q) => (
                       <div key={q.id} className="p-4 rounded-lg border">
                         <p className="text-sm font-medium mb-2">{q.question}</p>
                         <Textarea 
@@ -3510,7 +3530,8 @@ export default function ProjectRoleView() {
         {/* Step 5: Enhanced Insights */}
         {discoveryStep === "insights" && discoveryCompleted && (() => {
           const themeName = selectedDiscoveryTheme ? discoveryThemes.find(t => t.id === selectedDiscoveryTheme)?.name : "General";
-          const selectedQs = discoveryQuestions.filter(q => selectedQuestions.has(q.id));
+          const questions = discoveryQuestions || [];
+          const selectedQs = questions.filter(q => selectedQuestions.has(q.id));
           const answeredCount = Object.values(questionAnswers).filter(a => a && a.trim().length > 0).length;
           
           const methodologyCounts = {
