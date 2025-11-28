@@ -48,7 +48,9 @@ import {
   Download,
   MessageSquare,
   TrendingDown,
-  Minus
+  Minus,
+  Filter,
+  LayoutGrid
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -57,6 +59,7 @@ interface Initiative {
   id: number;
   name: string;
   phase: string;
+  lifecyclePhase: string | null;
   status: string;
   ragStatus: string | null;
   owner: string | null;
@@ -140,6 +143,15 @@ const roleFilters = [
   { value: "client_sponsor", label: "Client Sponsor" },
 ];
 
+const phaseFilters = [
+  { value: "all", label: "All Phases" },
+  { value: "discover_qualify", label: "Discover & Qualify" },
+  { value: "shape_sell", label: "Shape & Sell" },
+  { value: "deliver_realise", label: "Deliver & Realise" },
+  { value: "review_renew", label: "Review & Renew" },
+  { value: "learn_scale", label: "Learn & Scale" },
+];
+
 const severityColors: Record<string, string> = {
   low: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
   medium: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
@@ -165,6 +177,7 @@ export default function AccountValueSpine() {
   const accountId = parseInt(params?.id || "0");
   const { toast } = useToast();
   const [roleFilter, setRoleFilter] = useState("all");
+  const [phaseFilter, setPhaseFilter] = useState("all");
   const [isNewIssueOpen, setIsNewIssueOpen] = useState(false);
   const [newIssueTitle, setNewIssueTitle] = useState("");
   const [newIssueDescription, setNewIssueDescription] = useState("");
@@ -237,9 +250,19 @@ export default function AccountValueSpine() {
 
   const { account, initiatives, issues, evidenceArtefacts, kpis, valueMetrics, headlineValueCase } = valueSpine;
   
-  const kpisOnTrack = kpis.filter(k => k.status === "on-track").length;
-  const kpisAtRisk = kpis.filter(k => k.status === "at-risk").length;
-  const kpisOffTrack = kpis.filter(k => k.status === "off-track").length;
+  // Apply phase filter to initiatives and KPIs
+  const filteredInitiatives = phaseFilter === "all" 
+    ? initiatives 
+    : initiatives.filter(i => i.lifecyclePhase === phaseFilter);
+  
+  const filteredInitiativeIds = new Set(filteredInitiatives.map(i => i.id));
+  const filteredKpis = phaseFilter === "all" 
+    ? kpis 
+    : kpis.filter(k => filteredInitiativeIds.has(k.initiativeId));
+  
+  const kpisOnTrack = filteredKpis.filter(k => k.status === "on-track").length;
+  const kpisAtRisk = filteredKpis.filter(k => k.status === "at-risk").length;
+  const kpisOffTrack = filteredKpis.filter(k => k.status === "off-track").length;
   const openIssues = issues.filter(i => i.status === "open" || i.status === "in_progress");
 
   const formatCurrency = (value: number) => {
@@ -277,6 +300,25 @@ export default function AccountValueSpine() {
             </div>
             
             <div className="flex items-center gap-3">
+              <Link href={`/accounts/${accountId}/hub`}>
+                <Button variant="outline" size="sm" data-testid="button-hub">
+                  <LayoutGrid className="w-4 h-4 mr-2" />
+                  Hub
+                </Button>
+              </Link>
+              <Select value={phaseFilter} onValueChange={setPhaseFilter}>
+                <SelectTrigger className="w-[160px]" data-testid="select-phase-filter">
+                  <Filter className="w-4 h-4 mr-2" />
+                  <SelectValue placeholder="Filter by phase" />
+                </SelectTrigger>
+                <SelectContent>
+                  {phaseFilters.map(phase => (
+                    <SelectItem key={phase.value} value={phase.value}>
+                      {phase.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Select value={roleFilter} onValueChange={setRoleFilter}>
                 <SelectTrigger className="w-[160px]" data-testid="select-role-filter">
                   <Users className="w-4 h-4 mr-2" />
@@ -345,7 +387,7 @@ export default function AccountValueSpine() {
                   <span className="text-sm font-medium">{kpisOffTrack}</span>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">{kpis.length} total KPIs tracked</p>
+              <p className="text-xs text-muted-foreground mt-2">{filteredKpis.length} total KPIs tracked</p>
             </CardContent>
           </Card>
           
@@ -403,16 +445,16 @@ export default function AccountValueSpine() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {initiatives.length === 0 ? (
+                  {filteredInitiatives.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No initiatives linked to this account yet.</p>
                   ) : (
                     <div className="space-y-3">
-                      {initiatives.slice(0, 3).map(init => (
+                      {filteredInitiatives.slice(0, 3).map(init => (
                         <Link key={init.id} href={`/projects/${init.id}/discovery`}>
                           <div className="flex items-center justify-between p-3 rounded-lg hover-elevate cursor-pointer border bg-card">
                             <div>
                               <p className="font-medium">{init.name}</p>
-                              <p className="text-xs text-muted-foreground capitalize">{init.phase}</p>
+                              <p className="text-xs text-muted-foreground capitalize">{init.lifecyclePhase || init.phase}</p>
                             </div>
                             <div className="flex items-center gap-2">
                               {init.ragStatus && (
@@ -423,9 +465,9 @@ export default function AccountValueSpine() {
                           </div>
                         </Link>
                       ))}
-                      {initiatives.length > 3 && (
+                      {filteredInitiatives.length > 3 && (
                         <p className="text-sm text-muted-foreground text-center">
-                          +{initiatives.length - 3} more initiatives
+                          +{filteredInitiatives.length - 3} more initiatives
                         </p>
                       )}
                     </div>
@@ -477,19 +519,24 @@ export default function AccountValueSpine() {
               </Link>
             </div>
             
-            {initiatives.length === 0 ? (
+            {filteredInitiatives.length === 0 ? (
               <Card className="border-dashed">
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <Briefcase className="w-12 h-12 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground mb-4">No initiatives linked to this account</p>
+                  <p className="text-muted-foreground mb-4">
+                    {phaseFilter === "all" 
+                      ? "No initiatives linked to this account"
+                      : `No initiatives in the ${phaseFilters.find(p => p.value === phaseFilter)?.label} phase`
+                    }
+                  </p>
                   <Link href="/projects/new">
-                    <Button variant="outline">Create Initiative</Button>
+                    <Button variant="outline" data-testid="button-create-initiative">Create Initiative</Button>
                   </Link>
                 </CardContent>
               </Card>
             ) : (
               <div className="grid gap-4">
-                {initiatives.map(init => (
+                {filteredInitiatives.map(init => (
                   <Card key={init.id} className="hover-elevate">
                     <CardContent className="py-4">
                       <div className="flex items-center justify-between">
@@ -500,7 +547,7 @@ export default function AccountValueSpine() {
                           <div>
                             <h3 className="font-semibold">{init.name}</h3>
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <span className="capitalize">{init.phase}</span>
+                              <span className="capitalize">{init.lifecyclePhase || init.phase}</span>
                               {init.owner && (
                                 <>
                                   <span className="text-muted-foreground">•</span>
@@ -531,18 +578,30 @@ export default function AccountValueSpine() {
           </TabsContent>
 
           <TabsContent value="kpis" className="space-y-6">
-            <h2 className="text-lg font-semibold">KPI Tracking</h2>
+            <h2 className="text-lg font-semibold">
+              KPI Tracking 
+              {phaseFilter !== "all" && (
+                <span className="text-muted-foreground font-normal text-sm ml-2">
+                  ({filteredKpis.length} in {phaseFilters.find(p => p.value === phaseFilter)?.label})
+                </span>
+              )}
+            </h2>
             
-            {kpis.length === 0 ? (
+            {filteredKpis.length === 0 ? (
               <Card className="border-dashed">
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <BarChart3 className="w-12 h-12 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">No KPIs tracked yet</p>
+                  <p className="text-muted-foreground">
+                    {phaseFilter === "all" 
+                      ? "No KPIs tracked yet"
+                      : `No KPIs in the ${phaseFilters.find(p => p.value === phaseFilter)?.label} phase`
+                    }
+                  </p>
                 </CardContent>
               </Card>
             ) : (
               <div className="space-y-4">
-                {kpis.map(kpi => (
+                {filteredKpis.map(kpi => (
                   <Card key={kpi.id} className="hover-elevate">
                     <CardContent className="py-4">
                       <div className="flex items-center justify-between">
