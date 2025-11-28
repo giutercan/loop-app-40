@@ -2642,27 +2642,145 @@ export default function ProjectRoleView() {
               </Card>
             </div>
 
-            {/* Success Stories */}
+            {/* Success Stories with Storytelling Coach */}
             <Card className="border-amber-500/20">
               <CardHeader className="bg-amber-500/5">
                 <CardTitle className="flex items-center gap-2 text-amber-700">
                   <Trophy className="w-5 h-5" />
-                  Success Stories to Share
+                  Success Stories & Storytelling Coach
                 </CardTitle>
-                <CardDescription>Relevant examples to build credibility and tell compelling stories for {project?.companyName}</CardDescription>
+                <CardDescription>Build credibility with compelling stories for {project?.companyName}</CardDescription>
               </CardHeader>
-              <CardContent className="pt-4">
-                <div className="space-y-6">
+              <CardContent className="pt-4 space-y-6">
+                {/* Storytelling Framework - Collapsible */}
+                <Collapsible>
+                  <CollapsibleTrigger asChild>
+                    <div className="p-4 rounded-xl border-2 border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-orange-500/10 cursor-pointer hover-elevate">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                            <Sparkles className="w-5 h-5 text-amber-700" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-sm text-amber-800">Story Crafting Guide</h4>
+                            <p className="text-xs text-amber-700">Before, During & After - Make your stories memorable</p>
+                          </div>
+                        </div>
+                        <ChevronDown className="w-5 h-5 text-amber-700" />
+                      </div>
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="mt-4 space-y-4">
+                      {/* BEFORE */}
+                      <div className="p-4 rounded-lg border bg-background">
+                        <h5 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                          <Badge className="bg-blue-500/10 text-blue-700 border-blue-500/30">1</Badge>
+                          BEFORE: Craft Your Story
+                        </h5>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex items-start gap-2 p-2 rounded bg-blue-500/5">
+                            <Target className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <span><strong>Single Message:</strong> What's the one idea they MUST remember? Say it in one sentence.</span>
+                          </div>
+                          <div className="flex items-start gap-2 p-2 rounded bg-blue-500/5">
+                            <Heart className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <span><strong>Emotion:</strong> What should they feel? Urgency? Hope? Resolve? What's at stake?</span>
+                          </div>
+                          <div className="flex items-start gap-2 p-2 rounded bg-blue-500/5">
+                            <Zap className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <span><strong>Hook:</strong> High tension moment? Provocative question? "Picture this..." Surprising fact?</span>
+                          </div>
+                          <div className="flex items-start gap-2 p-2 rounded bg-blue-500/5">
+                            <ArrowRight className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <span><strong>Structure:</strong> Situation → Struggle → Insight → Outcome</span>
+                          </div>
+                          <div className="flex items-start gap-2 p-2 rounded bg-blue-500/5">
+                            <Users className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <span><strong>Hero:</strong> Who's the character? Their motivations? How did they change?</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* DURING */}
+                      <div className="p-4 rounded-lg border bg-background">
+                        <h5 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                          <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30">2</Badge>
+                          DURING: Tell Your Story
+                        </h5>
+                        <div className="grid gap-2 md:grid-cols-2 text-sm">
+                          <div className="p-2 rounded bg-emerald-500/5 flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                            <span>Start fast — no preamble</span>
+                          </div>
+                          <div className="p-2 rounded bg-emerald-500/5 flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                            <span>Short sentences in tension</span>
+                          </div>
+                          <div className="p-2 rounded bg-emerald-500/5 flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                            <span>Show the turning point</span>
+                          </div>
+                          <div className="p-2 rounded bg-emerald-500/5 flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                            <span>Don't over-explain data</span>
+                          </div>
+                          <div className="p-2 rounded bg-emerald-500/5 flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                            <span>Keep it conversational</span>
+                          </div>
+                          <div className="p-2 rounded bg-emerald-500/5 flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                            <span>Pause strategically</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* AFTER */}
+                      <div className="p-4 rounded-lg border bg-background">
+                        <h5 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                          <Badge className="bg-purple-500/10 text-purple-700 border-purple-500/30">3</Badge>
+                          AFTER: Land Your Story
+                        </h5>
+                        <div className="space-y-2 text-sm">
+                          <div className="p-2 rounded bg-purple-500/5 flex items-start gap-2">
+                            <Lightbulb className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                            <span>Finish with a "moment of meaning" — crisp insight or forward-looking question</span>
+                          </div>
+                          <div className="p-2 rounded bg-purple-500/5 flex items-start gap-2">
+                            <ArrowRight className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                            <span>Make the takeaway explicit but not obvious — connect story to action</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* TEST */}
+                      <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                        <h5 className="font-semibold text-sm mb-2 text-amber-800 flex items-center gap-2">
+                          <HelpCircle className="w-4 h-4" />
+                          Test Your Story
+                        </h5>
+                        <div className="space-y-1 text-sm text-amber-900">
+                          <p>• Would a stranger care? If not, sharpen the tension.</p>
+                          <p>• Can someone retell it? Keep it simple.</p>
+                          <p>• Does it reveal leadership, judgment, or values? That's a leader's story.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Success Stories List - Simplified */}
+                <div className="space-y-4">
                   {successStories.map((story, idx) => (
-                    <div key={idx} className="p-5 rounded-xl border-2 border-amber-500/20 bg-gradient-to-r from-amber-500/5 to-orange-500/5">
-                      {/* Header */}
-                      <div className="flex items-start justify-between mb-4">
+                    <div key={idx} className="p-4 rounded-xl border border-amber-500/20 bg-gradient-to-r from-amber-500/5 to-orange-500/5">
+                      <div className="flex items-start justify-between gap-3 mb-3">
                         <div>
                           <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-bold text-base">{story.client}</h4>
+                            <h4 className="font-bold text-sm">{story.client}</h4>
                             <Badge variant="outline" className="text-xs">{story.industry}</Badge>
                           </div>
-                          <p className="text-sm text-muted-foreground">{story.challenge}</p>
+                          <p className="text-xs text-muted-foreground">{story.challenge}</p>
                         </div>
                         <Link href={story.storyLink}>
                           <Button size="sm" variant="outline" className="text-xs" data-testid={`link-story-${idx}`}>
@@ -2672,175 +2790,108 @@ export default function ProjectRoleView() {
                         </Link>
                       </div>
                       
-                      {/* Why Relevant to THIS Client */}
-                      <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 mb-4">
-                        <h5 className="text-xs font-semibold uppercase tracking-wider text-primary mb-1 flex items-center gap-1">
-                          <Target className="w-3 h-3" />
-                          Why This Story Matters for {project?.companyName}
-                        </h5>
-                        <p className="text-sm">{story.whyRelevantTo(project?.companyName || "this client")}</p>
+                      {/* Why Relevant */}
+                      <div className="p-2 rounded bg-primary/5 border border-primary/20 mb-3">
+                        <p className="text-xs"><strong>For {project?.companyName}:</strong> {story.whyRelevantTo(project?.companyName || "this client")}</p>
                       </div>
                       
-                      {/* The Story Details */}
-                      <div className="grid gap-3 md:grid-cols-2 mb-4">
-                        <div className="p-3 rounded-lg bg-background border">
-                          <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">The Situation</h5>
-                          <p className="text-sm">{story.situation}</p>
-                        </div>
-                        <div className="p-3 rounded-lg bg-background border">
-                          <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Our Approach</h5>
-                          <p className="text-sm">{story.approach}</p>
-                        </div>
-                      </div>
-                      
-                      {/* Metrics */}
-                      <div className="flex flex-wrap gap-2 mb-4">
+                      {/* Metrics inline */}
+                      <div className="flex flex-wrap gap-1 mb-2">
                         {story.metrics.map((metric, mIdx) => (
-                          <Badge key={mIdx} className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30">
-                            <CheckCircle className="w-3 h-3 mr-1" />
+                          <Badge key={mIdx} className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30 text-xs">
                             {metric}
                           </Badge>
                         ))}
                       </div>
                       
-                      {/* How to Tell This Story */}
-                      <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                        <h5 className="text-xs font-semibold uppercase tracking-wider text-amber-700 mb-1 flex items-center gap-1">
-                          <MessageCircle className="w-3 h-3" />
-                          How to Tell This Story
-                        </h5>
-                        <p className="text-sm italic">"{story.howToTell}"</p>
-                      </div>
+                      {/* How to tell */}
+                      <p className="text-xs italic text-amber-700">Tip: "{story.howToTell}"</p>
                     </div>
                   ))}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Strategic Questions by Methodology */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <HelpCircle className="w-5 h-5 text-primary" />
-                Strategic Questions by Methodology
-              </h3>
-              
-              {/* SPIN Selling */}
-              <Collapsible open={expandedMethodologies.SPIN} onOpenChange={(open) => setExpandedMethodologies(prev => ({ ...prev, SPIN: open }))}>
-                <Card className="border-purple-500/20">
-                  <CollapsibleTrigger asChild>
-                    <CardHeader className="cursor-pointer hover-elevate bg-purple-500/5">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Badge className="bg-purple-100 text-purple-700 border-purple-300">SPIN Selling</Badge>
-                          <div>
-                            <CardTitle className="text-base">Situation → Problem → Implication → Need-Payoff</CardTitle>
-                            <CardDescription>Uncover pain points and build value through questioning</CardDescription>
-                          </div>
+            {/* Strategic Questions - Simplified Single Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <HelpCircle className="w-5 h-5 text-primary" />
+                  Question Frameworks
+                </CardTitle>
+                <CardDescription>Quick reference guides for each methodology - expand for examples</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Methodology Pills */}
+                <div className="grid gap-3 md:grid-cols-3">
+                  {/* SPIN */}
+                  <Collapsible>
+                    <CollapsibleTrigger asChild>
+                      <div className="p-3 rounded-lg border cursor-pointer hover-elevate bg-purple-500/5 border-purple-500/20">
+                        <div className="flex items-center justify-between mb-2">
+                          <Badge className="bg-purple-100 text-purple-700 border-purple-300 text-xs">SPIN</Badge>
+                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
                         </div>
-                        <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${expandedMethodologies.SPIN ? "rotate-180" : ""}`} />
+                        <p className="text-xs font-medium">Situation → Problem → Implication → Need</p>
+                        <p className="text-xs text-muted-foreground">Uncover pain & build value</p>
                       </div>
-                    </CardHeader>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <CardContent className="pt-0">
-                      <div className="grid gap-4 md:grid-cols-2">
-                        {Object.entries(spinQuestions).map(([stage, questions]) => (
-                          <div key={stage} className="space-y-2">
-                            <h4 className="font-semibold text-sm capitalize flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs">{stage.charAt(0).toUpperCase()}</Badge>
-                              {stage.charAt(0).toUpperCase() + stage.slice(1)} Questions
-                            </h4>
-                            {questions.map((q, idx) => (
-                              <div key={idx} className="p-3 rounded-lg bg-background border text-sm hover-elevate">
-                                "{q}"
-                              </div>
-                            ))}
-                          </div>
-                        ))}
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="mt-2 p-3 rounded-lg border bg-purple-500/5 space-y-2">
+                        <div className="text-xs"><Badge variant="outline" className="text-xs mr-1">S</Badge> {spinQuestions.situation[0]}</div>
+                        <div className="text-xs"><Badge variant="outline" className="text-xs mr-1">P</Badge> {spinQuestions.problem[0]}</div>
+                        <div className="text-xs"><Badge variant="outline" className="text-xs mr-1">I</Badge> {spinQuestions.implication[0]}</div>
+                        <div className="text-xs"><Badge variant="outline" className="text-xs mr-1">N</Badge> {spinQuestions.needPayoff[0]}</div>
                       </div>
-                    </CardContent>
-                  </CollapsibleContent>
-                </Card>
-              </Collapsible>
-
-              {/* Miller Heiman */}
-              <Collapsible open={expandedMethodologies.MILLER_HEIMAN} onOpenChange={(open) => setExpandedMethodologies(prev => ({ ...prev, MILLER_HEIMAN: open }))}>
-                <Card className="border-blue-500/20">
-                  <CollapsibleTrigger asChild>
-                    <CardHeader className="cursor-pointer hover-elevate bg-blue-500/5">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Badge className="bg-blue-100 text-blue-700 border-blue-300">Miller Heiman</Badge>
-                          <div>
-                            <CardTitle className="text-base">Strategic Selling - Identify Buying Influences</CardTitle>
-                            <CardDescription>Map stakeholders and understand the buying process</CardDescription>
-                          </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                  
+                  {/* Miller Heiman */}
+                  <Collapsible>
+                    <CollapsibleTrigger asChild>
+                      <div className="p-3 rounded-lg border cursor-pointer hover-elevate bg-blue-500/5 border-blue-500/20">
+                        <div className="flex items-center justify-between mb-2">
+                          <Badge className="bg-blue-100 text-blue-700 border-blue-300 text-xs">Miller Heiman</Badge>
+                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
                         </div>
-                        <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${expandedMethodologies.MILLER_HEIMAN ? "rotate-180" : ""}`} />
+                        <p className="text-xs font-medium">Map Buying Influences</p>
+                        <p className="text-xs text-muted-foreground">Economic • User • Technical • Coach</p>
                       </div>
-                    </CardHeader>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <CardContent className="pt-0">
-                      <div className="grid gap-4 md:grid-cols-2">
-                        {Object.entries(millerHeimanQuestions).map(([buyer, questions]) => (
-                          <div key={buyer} className="space-y-2">
-                            <h4 className="font-semibold text-sm capitalize flex items-center gap-2">
-                              <Users className="w-4 h-4 text-blue-600" />
-                              {buyer === "conceptual" ? "Concept" : buyer === "economicBuyer" ? "Economic Buyer" : buyer === "technicalBuyer" ? "Technical Buyer" : "User Buyer"}
-                            </h4>
-                            {questions.map((q, idx) => (
-                              <div key={idx} className="p-3 rounded-lg bg-background border text-sm hover-elevate">
-                                "{q}"
-                              </div>
-                            ))}
-                          </div>
-                        ))}
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="mt-2 p-3 rounded-lg border bg-blue-500/5 space-y-2">
+                        <div className="text-xs"><Users className="w-3 h-3 inline mr-1" /> <strong>Concept:</strong> {millerHeimanQuestions.conceptual[0]}</div>
+                        <div className="text-xs"><Users className="w-3 h-3 inline mr-1" /> <strong>Economic:</strong> {millerHeimanQuestions.economicBuyer[0]}</div>
+                        <div className="text-xs"><Users className="w-3 h-3 inline mr-1" /> <strong>Technical:</strong> {millerHeimanQuestions.technicalBuyer[0]}</div>
+                        <div className="text-xs"><Users className="w-3 h-3 inline mr-1" /> <strong>User:</strong> {millerHeimanQuestions.userBuyer[0]}</div>
                       </div>
-                    </CardContent>
-                  </CollapsibleContent>
-                </Card>
-              </Collapsible>
-
-              {/* PSS */}
-              <Collapsible open={expandedMethodologies.PSS} onOpenChange={(open) => setExpandedMethodologies(prev => ({ ...prev, PSS: open }))}>
-                <Card className="border-emerald-500/20">
-                  <CollapsibleTrigger asChild>
-                    <CardHeader className="cursor-pointer hover-elevate bg-emerald-500/5">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300">PSS</Badge>
-                          <div>
-                            <CardTitle className="text-base">Professional Selling Skills - Conversation Flow</CardTitle>
-                            <CardDescription>Structure your conversation from opening to close</CardDescription>
-                          </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                  
+                  {/* PSS */}
+                  <Collapsible>
+                    <CollapsibleTrigger asChild>
+                      <div className="p-3 rounded-lg border cursor-pointer hover-elevate bg-emerald-500/5 border-emerald-500/20">
+                        <div className="flex items-center justify-between mb-2">
+                          <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 text-xs">PSS</Badge>
+                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
                         </div>
-                        <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${expandedMethodologies.PSS ? "rotate-180" : ""}`} />
+                        <p className="text-xs font-medium">Open → Probe → Support → Close</p>
+                        <p className="text-xs text-muted-foreground">Conversation flow structure</p>
                       </div>
-                    </CardHeader>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <CardContent className="pt-0">
-                      <div className="grid gap-4 md:grid-cols-2">
-                        {Object.entries(pssQuestions).map(([phase, questions]) => (
-                          <div key={phase} className="space-y-2">
-                            <h4 className="font-semibold text-sm capitalize flex items-center gap-2">
-                              <ArrowRight className="w-4 h-4 text-emerald-600" />
-                              {phase.charAt(0).toUpperCase() + phase.slice(1)}
-                            </h4>
-                            {questions.map((q, idx) => (
-                              <div key={idx} className="p-3 rounded-lg bg-background border text-sm hover-elevate italic">
-                                {q}
-                              </div>
-                            ))}
-                          </div>
-                        ))}
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="mt-2 p-3 rounded-lg border bg-emerald-500/5 space-y-2">
+                        <div className="text-xs"><ArrowRight className="w-3 h-3 inline mr-1" /> <strong>Open:</strong> "{pssQuestions.opening[0]}"</div>
+                        <div className="text-xs"><ArrowRight className="w-3 h-3 inline mr-1" /> <strong>Probe:</strong> "{pssQuestions.probing[0]}"</div>
+                        <div className="text-xs"><ArrowRight className="w-3 h-3 inline mr-1" /> <strong>Support:</strong> "{pssQuestions.supporting[0]}"</div>
+                        <div className="text-xs"><ArrowRight className="w-3 h-3 inline mr-1" /> <strong>Close:</strong> "{pssQuestions.closing[0]}"</div>
                       </div>
-                    </CardContent>
-                  </CollapsibleContent>
-                </Card>
-              </Collapsible>
-            </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* AI-Generated Questions (if available) */}
             {discoveryQuestions.length > 0 && (
