@@ -296,53 +296,8 @@ export default function AccountsDashboard() {
 
       <div className="bg-gradient-to-b from-primary/5 to-background py-8 lg:py-12">
         <div className="container mx-auto max-w-7xl px-4 lg:px-8">
-          {/* Role Portal Selection */}
-          <div className="mb-10">
-            <h2 className="text-lg font-semibold text-muted-foreground mb-4">Choose Your View</h2>
-            <div className="grid gap-4 md:grid-cols-2">
-              {rolePortals.map((portal) => {
-                const Icon = portal.icon;
-                return (
-                  <Card 
-                    key={portal.id}
-                    className="hover-elevate cursor-pointer group border-2 border-transparent hover:border-primary/30 transition-all"
-                    onClick={() => {
-                      if (accounts.length > 0) {
-                        setLocation(`/accounts/${accounts[0].id}/${portal.id}`);
-                      }
-                    }}
-                    data-testid={`card-portal-${portal.id}`}
-                  >
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-12 h-12 rounded-xl ${portal.bgColor} flex items-center justify-center`}>
-                          <Icon className={`w-6 h-6 ${portal.color}`} />
-                        </div>
-                        <div>
-                          <CardTitle className="text-lg group-hover:text-primary transition-colors">
-                            {portal.label}
-                          </CardTitle>
-                          <CardDescription>{portal.description}</CardDescription>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardFooter className="pt-0">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>Focus:</span>
-                        <Badge variant="outline" className="font-normal">
-                          {portal.focus}
-                        </Badge>
-                        <ArrowRight className="w-4 h-4 ml-auto group-hover:translate-x-1 transition-transform" />
-                      </div>
-                    </CardFooter>
-                  </Card>
-                );
-              })}
-            </div>
-          </div>
-
           {/* Lifecycle Flow Visual */}
-          <div className="mb-10 hidden lg:block">
+          <div className="mb-8 hidden lg:block">
             <div className="flex items-center justify-between bg-card rounded-xl p-4 border">
               {lifecyclePhases.map((phase, index) => {
                 const Icon = phase.icon;
@@ -363,12 +318,12 @@ export default function AccountsDashboard() {
             </div>
           </div>
 
-          {/* Accounts Section */}
+          {/* Accounts Section with Role Access */}
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-6">
             <div>
               <h2 className="text-2xl font-bold tracking-tight mb-1">Your Accounts</h2>
               <p className="text-muted-foreground">
-                Select an account to view its value spine and initiatives
+                Select an account and choose your role view
               </p>
             </div>
             <div className="flex gap-2 flex-wrap">
@@ -400,64 +355,79 @@ export default function AccountsDashboard() {
               {accounts.map((account) => {
                 const health = getHealthStatus(account.healthScore);
                 return (
-                  <Link key={account.id} href={`/accounts/${account.id}/hub`}>
-                    <Card 
-                      className="hover-elevate cursor-pointer transition-all duration-200 group h-full"
-                      data-testid={`card-account-${account.id}`}
-                    >
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                              <Building2 className="w-6 h-6 text-primary" />
-                            </div>
-                            <div>
-                              <CardTitle className="text-lg group-hover:text-primary transition-colors">
-                                {account.name}
-                              </CardTitle>
-                              {account.industry && (
-                                <CardDescription>{account.industry}</CardDescription>
-                              )}
-                            </div>
+                  <Card 
+                    key={account.id}
+                    className="transition-all duration-200 h-full"
+                    data-testid={`card-account-${account.id}`}
+                  >
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                            <Building2 className="w-6 h-6 text-primary" />
                           </div>
-                          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="flex items-center justify-between gap-4">
-                          {account.tier && (
-                            <Badge className={tierColors[account.tier] || "bg-muted"}>
-                              {account.tier.charAt(0).toUpperCase() + account.tier.slice(1)}
-                            </Badge>
-                          )}
-                          <div className="flex items-center gap-2">
-                            <span className={`text-sm font-medium ${health.color}`}>
-                              {health.label}
-                            </span>
-                            {account.healthScore !== null && (
-                              <span className="text-xs text-muted-foreground">
-                                ({account.healthScore}%)
-                              </span>
+                          <div>
+                            <CardTitle className="text-lg">
+                              {account.name}
+                            </CardTitle>
+                            {account.industry && (
+                              <CardDescription>{account.industry}</CardDescription>
                             )}
                           </div>
                         </div>
-                        
-                        {account.healthScore !== null && (
-                          <Progress 
-                            value={account.healthScore} 
-                            className="h-2"
-                          />
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center justify-between gap-4 flex-wrap">
+                        {account.tier && (
+                          <Badge className={tierColors[account.tier] || "bg-muted"}>
+                            {account.tier.charAt(0).toUpperCase() + account.tier.slice(1)}
+                          </Badge>
                         )}
+                        <div className="flex items-center gap-2">
+                          <span className={`text-sm font-medium ${health.color}`}>
+                            {health.label}
+                          </span>
+                          {account.healthScore !== null && (
+                            <span className="text-xs text-muted-foreground">
+                              ({account.healthScore}%)
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {account.healthScore !== null && (
+                        <Progress 
+                          value={account.healthScore} 
+                          className="h-2"
+                        />
+                      )}
 
-                        {account.annualContractValue && (
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Target className="w-4 h-4" />
-                            <span>ACV: {account.annualContractValue}</span>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </Link>
+                      {/* Role Access Buttons */}
+                      <div className="pt-2 border-t space-y-2">
+                        <p className="text-xs text-muted-foreground font-medium">Open as:</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {rolePortals.map((portal) => {
+                            const Icon = portal.icon;
+                            return (
+                              <Link key={portal.id} href={`/accounts/${account.id}/${portal.id}`}>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="w-full justify-start gap-2 group"
+                                  data-testid={`button-${portal.id}-${account.id}`}
+                                >
+                                  <Icon className={`w-4 h-4 ${portal.color}`} />
+                                  <span className="truncate">{portal.label.replace(' Portal', '')}</span>
+                                  <ArrowRight className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </Button>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 );
               })}
             </div>

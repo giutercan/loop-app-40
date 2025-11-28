@@ -156,13 +156,6 @@ export default function AccountRoleView() {
   const { toast } = useToast();
   const [phaseFilter, setPhaseFilter] = useState("all");
   const [isLogKPIOpen, setIsLogKPIOpen] = useState(false);
-
-  useEffect(() => {
-    if (role) {
-      const defaultPhase = roleDefaultPhases[role][0] === "all" ? "all" : roleDefaultPhases[role][0];
-      setPhaseFilter(defaultPhase);
-    }
-  }, [role]);
   const [selectedKPI, setSelectedKPI] = useState<KPI | null>(null);
   const [kpiActualValue, setKpiActualValue] = useState("");
   const [kpiNote, setKpiNote] = useState("");
@@ -171,25 +164,6 @@ export default function AccountRoleView() {
   const [newIssueDescription, setNewIssueDescription] = useState("");
   const [newIssueSeverity, setNewIssueSeverity] = useState("medium");
   const [newIssueType, setNewIssueType] = useState<"issue" | "risk" | "opportunity">("opportunity");
-
-  if (!role) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card className="max-w-md">
-          <CardContent className="pt-6 text-center">
-            <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
-            <h2 className="text-xl font-bold mb-2">Invalid Role</h2>
-            <p className="text-muted-foreground mb-4">
-              The role "{roleParam}" is not recognized. Please select a valid role.
-            </p>
-            <Link href={`/accounts/${accountId}`}>
-              <Button data-testid="button-back-to-account">Return to Account</Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   const { data: valueSpine, isLoading } = useQuery<ValueSpineData>({
     queryKey: ["/api/accounts", accountId, "value-spine"],
@@ -255,6 +229,32 @@ export default function AccountRoleView() {
       });
     }
   });
+
+  useEffect(() => {
+    if (role) {
+      const defaultPhase = roleDefaultPhases[role][0] === "all" ? "all" : roleDefaultPhases[role][0];
+      setPhaseFilter(defaultPhase);
+    }
+  }, [role]);
+
+  if (!role) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardContent className="pt-6 text-center">
+            <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+            <h2 className="text-xl font-bold mb-2">Invalid Role</h2>
+            <p className="text-muted-foreground mb-4">
+              The role "{roleParam}" is not recognized. Please select a valid role.
+            </p>
+            <Link href={`/accounts/${accountId}`}>
+              <Button data-testid="button-back-to-account">Return to Account</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const handleCreateIssue = () => {
     if (!newIssueTitle.trim()) {
