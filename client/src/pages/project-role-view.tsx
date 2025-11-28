@@ -1335,12 +1335,18 @@ export default function ProjectRoleView() {
           <div className="flex h-16 lg:h-20 items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                <Link href="/accounts">
+                  <Button variant="ghost" size="sm" className="h-auto py-1 px-2" data-testid="breadcrumb-accounts">
+                    <Building2 className="w-3 h-3 mr-1" />
+                    Accounts
+                  </Button>
+                </Link>
+                <ChevronRight className="w-4 h-4" />
                 {accountId && (
                   <>
                     <Link href={`/accounts/${accountId}/${role}`}>
                       <Button variant="ghost" size="sm" className="h-auto py-1 px-2" data-testid="breadcrumb-account">
-                        <Building2 className="w-3 h-3 mr-1" />
-                        Account
+                        {project.companyName}
                       </Button>
                     </Link>
                     <ChevronRight className="w-4 h-4" />
