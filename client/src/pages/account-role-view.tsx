@@ -140,6 +140,11 @@ export default function AccountRoleView() {
   const [selectedKPI, setSelectedKPI] = useState<KPI | null>(null);
   const [kpiActualValue, setKpiActualValue] = useState("");
   const [kpiNote, setKpiNote] = useState("");
+  const [isNewIssueOpen, setIsNewIssueOpen] = useState(false);
+  const [newIssueTitle, setNewIssueTitle] = useState("");
+  const [newIssueDescription, setNewIssueDescription] = useState("");
+  const [newIssueSeverity, setNewIssueSeverity] = useState("medium");
+  const [newIssueType, setNewIssueType] = useState<"issue" | "risk" | "opportunity">("opportunity");
 
   if (!role) {
     return (
@@ -175,7 +180,7 @@ export default function AccountRoleView() {
       const response = await apiRequest("POST", `/api/kpis/${data.kpiId}/actuals`, {
         actualValue: data.actualValue,
         note: data.note,
-        recordedAt: new Date().toISOString()
+        actualDate: new Date().toISOString()
       });
       return response.json();
     },
@@ -198,6 +203,50 @@ export default function AccountRoleView() {
       });
     }
   });
+
+  const createIssueMutation = useMutation({
+    mutationFn: async (data: { title: string; description: string; severity: string; type: string; status: string }) => {
+      const response = await apiRequest("POST", `/api/accounts/${accountId}/issues`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/accounts", accountId, "value-spine"] });
+      setIsNewIssueOpen(false);
+      setNewIssueTitle("");
+      setNewIssueDescription("");
+      setNewIssueSeverity("medium");
+      setNewIssueType("opportunity");
+      toast({
+        title: "Issue created",
+        description: "The discovery finding has been logged to the account.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to create issue.",
+      });
+    }
+  });
+
+  const handleCreateIssue = () => {
+    if (!newIssueTitle.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Missing information",
+        description: "Please enter a title for the finding.",
+      });
+      return;
+    }
+    createIssueMutation.mutate({
+      title: newIssueTitle.trim(),
+      description: newIssueDescription.trim() || "",
+      severity: newIssueSeverity,
+      type: newIssueType,
+      status: "open"
+    });
+  };
 
   const handleLogKPI = () => {
     if (!selectedKPI || !kpiActualValue.trim()) {
@@ -525,6 +574,15 @@ export default function AccountRoleView() {
               <Lightbulb className="w-4 h-4" />
               Conduct Discovery Research
             </Button>
+            <Button 
+              variant="outline" 
+              className="w-full justify-start gap-2" 
+              onClick={() => setIsNewIssueOpen(true)}
+              data-testid="button-log-discovery-finding-consultant-full"
+            >
+              <AlertCircle className="w-4 h-4" />
+              Log Discovery Finding
+            </Button>
             <Button variant="outline" className="w-full justify-start gap-2" data-testid="button-build-value-case-consultant-full">
               <FileText className="w-4 h-4" />
               Build Value Case
@@ -545,6 +603,42 @@ export default function AccountRoleView() {
 
   const renderDeliveryDashboard = () => (
     <div className="space-y-6">
+      <Card className="bg-gradient-to-r from-primary/5 to-emerald-500/5 border-primary/20">
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <TrendingUp className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold">Value Delivery Progress</h3>
+                <p className="text-sm text-muted-foreground">Promised vs Delivered</p>
+              </div>
+            </div>
+            <Badge variant={valueMetrics.realizationPercent >= 80 ? "default" : valueMetrics.realizationPercent >= 50 ? "secondary" : "destructive"}>
+              {valueMetrics.realizationPercent}% Realized
+            </Badge>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center p-3 rounded-lg bg-background/50">
+              <p className="text-2xl font-bold text-primary">{formatCurrency(valueMetrics.totalValuePromised)}</p>
+              <p className="text-xs text-muted-foreground">Promised Value</p>
+            </div>
+            <div className="text-center p-3 rounded-lg bg-background/50">
+              <p className="text-2xl font-bold text-emerald-600">{formatCurrency(valueMetrics.totalValueRealized)}</p>
+              <p className="text-xs text-muted-foreground">Delivered Value</p>
+            </div>
+            <div className="text-center p-3 rounded-lg bg-background/50">
+              <p className="text-2xl font-bold">{formatCurrency(valueMetrics.totalValuePromised - valueMetrics.totalValueRealized)}</p>
+              <p className="text-xs text-muted-foreground">Value Gap</p>
+            </div>
+          </div>
+          <div className="mt-4">
+            <Progress value={valueMetrics.realizationPercent} className="h-3" />
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 md:grid-cols-4">
         <Card className="hover-elevate bg-green-500/5 border-green-500/20">
           <CardContent className="pt-6 text-center">
@@ -1111,6 +1205,88 @@ export default function AccountRoleView() {
               data-testid="button-save-log-kpi"
             >
               {logKPIActualMutation.isPending ? "Saving..." : "Log Measurement"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isNewIssueOpen} onOpenChange={(open) => {
+        setIsNewIssueOpen(open);
+        if (!open) {
+          setNewIssueTitle("");
+          setNewIssueDescription("");
+          setNewIssueSeverity("medium");
+          setNewIssueType("opportunity");
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Log Discovery Finding</DialogTitle>
+            <DialogDescription>
+              Record an opportunity, risk, or issue discovered during the engagement.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="issueTitle">Title</Label>
+              <Input
+                id="issueTitle"
+                value={newIssueTitle}
+                onChange={(e) => setNewIssueTitle(e.target.value)}
+                placeholder="Describe the finding..."
+                data-testid="input-issue-title"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="issueDescription">Description (optional)</Label>
+              <Textarea
+                id="issueDescription"
+                value={newIssueDescription}
+                onChange={(e) => setNewIssueDescription(e.target.value)}
+                placeholder="Add additional context..."
+                data-testid="input-issue-description"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="issueType">Type</Label>
+                <Select value={newIssueType} onValueChange={(v) => setNewIssueType(v as "issue" | "risk" | "opportunity")}>
+                  <SelectTrigger data-testid="select-issue-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="opportunity" data-testid="option-type-opportunity">Opportunity</SelectItem>
+                    <SelectItem value="risk" data-testid="option-type-risk">Risk</SelectItem>
+                    <SelectItem value="issue" data-testid="option-type-issue">Issue</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="issueSeverity">Severity</Label>
+                <Select value={newIssueSeverity} onValueChange={setNewIssueSeverity}>
+                  <SelectTrigger data-testid="select-issue-severity">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low" data-testid="option-severity-low">Low</SelectItem>
+                    <SelectItem value="medium" data-testid="option-severity-medium">Medium</SelectItem>
+                    <SelectItem value="high" data-testid="option-severity-high">High</SelectItem>
+                    <SelectItem value="critical" data-testid="option-severity-critical">Critical</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsNewIssueOpen(false)} data-testid="button-cancel-issue">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateIssue} 
+              disabled={!newIssueTitle.trim() || createIssueMutation.isPending}
+              data-testid="button-save-issue"
+            >
+              {createIssueMutation.isPending ? "Creating..." : "Create Finding"}
             </Button>
           </DialogFooter>
         </DialogContent>
