@@ -82,7 +82,8 @@ import {
   X,
   Play,
   Search,
-  RefreshCw
+  RefreshCw,
+  GraduationCap
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -864,7 +865,7 @@ export default function ProjectRoleView() {
           knownConcerns: meetingContact.knownConcerns,
           decisionCriteria: meetingContact.decisionCriteria
         },
-        discoveryTheme: selectedDiscoveryTheme?.name || "General business consulting",
+        discoveryTheme: selectedDiscoveryTheme || "General business consulting",
         successStories: stories || [],
         currentDraft: {
           singleMessage: storyDraft.singleMessage,
@@ -3076,18 +3077,102 @@ export default function ProjectRoleView() {
                     })}
                   </div>
                   
+                  {/* Integrated Coach Panel */}
+                  {meetingContact.name && (
+                    <div className="p-4 rounded-xl bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-purple-500/20">
+                      <div className="flex items-start gap-4">
+                        {/* Contact Context */}
+                        <div className="flex-shrink-0">
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                            {meetingContact.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-foreground">{meetingContact.name}</span>
+                            {meetingContact.title && (
+                              <span className="text-sm text-muted-foreground">• {meetingContact.title}</span>
+                            )}
+                            {meetingContact.role && (
+                              <Badge variant="outline" className="text-xs bg-purple-500/10 border-purple-500/30 text-purple-700">
+                                {meetingContact.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                              </Badge>
+                            )}
+                            {meetingContact.influence && (
+                              <Badge variant="outline" className={`text-xs ${
+                                meetingContact.influence === 'high' ? 'bg-red-500/10 border-red-500/30 text-red-700' :
+                                meetingContact.influence === 'medium' ? 'bg-amber-500/10 border-amber-500/30 text-amber-700' :
+                                'bg-gray-500/10 border-gray-500/30 text-gray-700'
+                              }`}>
+                                {meetingContact.influence} influence
+                              </Badge>
+                            )}
+                          </div>
+                          
+                          {/* Dynamic Coaching based on role and phase */}
+                          <div className="mt-2 p-2 rounded-lg bg-white/50 border border-purple-500/10">
+                            <div className="flex items-start gap-2">
+                              <GraduationCap className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                              <div className="text-sm">
+                                <span className="font-medium text-purple-700">Coach Tip:</span>{' '}
+                                <span className="text-muted-foreground">
+                                  {activeStoryPhase === "before" && meetingContact.role === "economic_buyer" && "Focus your story on ROI and business outcomes. Economic buyers want to see the bottom-line impact."}
+                                  {activeStoryPhase === "before" && meetingContact.role === "user_buyer" && "Emphasize day-to-day impact. User buyers care about how this makes their life easier."}
+                                  {activeStoryPhase === "before" && meetingContact.role === "technical_buyer" && "Lead with methodology and data. Technical buyers screen for fit and feasibility."}
+                                  {activeStoryPhase === "before" && meetingContact.role === "coach" && "Focus on process insights. Coaches can help you navigate the buying journey."}
+                                  {activeStoryPhase === "before" && meetingContact.role === "champion" && "Give them quotable soundbites. Champions will sell this story internally for you."}
+                                  {activeStoryPhase === "before" && !meetingContact.role && "Craft a story that resonates with their role and decision-making style."}
+                                  
+                                  {activeStoryPhase === "during" && meetingContact.role === "economic_buyer" && "Keep it brief and outcome-focused. They're busy—get to the value quickly."}
+                                  {activeStoryPhase === "during" && meetingContact.role === "user_buyer" && "Use relatable scenarios. Paint a picture of their improved daily experience."}
+                                  {activeStoryPhase === "during" && meetingContact.role === "technical_buyer" && "Be prepared for questions. Pause for their input on methodology."}
+                                  {activeStoryPhase === "during" && meetingContact.role === "coach" && "Ask for their perspective. Coaches appreciate being consulted."}
+                                  {activeStoryPhase === "during" && meetingContact.role === "champion" && "Make them the hero. Frame the story so they can take ownership."}
+                                  {activeStoryPhase === "during" && !meetingContact.role && "Maintain eye contact and pause at key moments for impact."}
+                                  
+                                  {activeStoryPhase === "after" && meetingContact.role === "economic_buyer" && "End with a clear ask tied to business value. What decision do you need?"}
+                                  {activeStoryPhase === "after" && meetingContact.role === "user_buyer" && "Leave them with a vision of success they can imagine themselves in."}
+                                  {activeStoryPhase === "after" && meetingContact.role === "technical_buyer" && "Offer to provide additional data or a deeper technical dive."}
+                                  {activeStoryPhase === "after" && meetingContact.role === "coach" && "Ask who else should hear this story and how to best approach them."}
+                                  {activeStoryPhase === "after" && meetingContact.role === "champion" && "Arm them with materials they can share. Make it easy to advocate for you."}
+                                  {activeStoryPhase === "after" && !meetingContact.role && "Close with a clear, actionable next step."}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Known concerns callout */}
+                          {meetingContact.knownConcerns && (
+                            <div className="mt-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                              <div className="flex items-start gap-2">
+                                <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                                <div className="text-sm">
+                                  <span className="font-medium text-amber-700">Address this concern:</span>{' '}
+                                  <span className="text-muted-foreground">{meetingContact.knownConcerns}</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Prompt to add contact if missing */}
+                  {!meetingContact.name && (
+                    <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                      <div className="flex items-center gap-2 text-sm text-amber-700">
+                        <Users className="w-4 h-4" />
+                        <span>Add contact details in the Green Sheet above to unlock personalized coaching tips</span>
+                      </div>
+                    </div>
+                  )}
+                  
                   {/* BEFORE Phase - Crafting */}
                   {activeStoryPhase === "before" && (
                     <div className="space-y-4">
                       {/* AI Suggest All Button */}
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm text-muted-foreground">
-                          {meetingContact.name ? (
-                            <span>Crafting story for <strong>{meetingContact.name}</strong> ({meetingContact.title || "Unknown role"})</span>
-                          ) : (
-                            <span className="text-amber-600">Tip: Add contact info in Green Sheet for personalized AI suggestions</span>
-                          )}
-                        </div>
+                      <div className="flex items-center justify-end">
                         <Button 
                           onClick={() => handleAiSuggest("all")} 
                           disabled={aiSuggestionLoading === "all"}
