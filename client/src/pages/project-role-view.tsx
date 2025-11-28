@@ -817,6 +817,67 @@ export default function ProjectRoleView() {
     }
   }, [activeStoryPhase]);
   
+  // AI Story Suggestions state
+  const [aiSuggestionLoading, setAiSuggestionLoading] = useState<string | null>(null);
+  const [aiSuggestionReasoning, setAiSuggestionReasoning] = useState<string>("");
+  
+  // AI Story Suggestion mutation
+  const storySuggestionMutation = useMutation({
+    mutationFn: async ({ fieldToSuggest, phase, stories }: { 
+      fieldToSuggest: string; 
+      phase: "before" | "during" | "after";
+      stories?: Array<{ client: string; industry: string; challenge: string; metrics: string[] }>;
+    }) => {
+      const response = await apiRequest("POST", `/api/projects/${projectId}/ai/story-suggestion`, {
+        meetingContact: {
+          name: meetingContact.name,
+          title: meetingContact.title,
+          role: meetingContact.role,
+          influence: meetingContact.influence,
+          knownConcerns: meetingContact.knownConcerns,
+          decisionCriteria: meetingContact.decisionCriteria
+        },
+        discoveryTheme: selectedDiscoveryTheme?.name || "General business consulting",
+        successStories: stories || [],
+        currentDraft: {
+          singleMessage: storyDraft.singleMessage,
+          emotionalReaction: storyDraft.emotionalReaction,
+          startingHook: storyDraft.startingHook,
+          structure: storyDraft.structure,
+          heroCharacter: storyDraft.heroCharacter,
+          evidence: storyDraft.evidence
+        },
+        fieldToSuggest,
+        phase
+      });
+      return response;
+    },
+    onSuccess: (data: any) => {
+      if (data.suggestions) {
+        setStoryDraft(prev => ({
+          ...prev,
+          ...data.suggestions
+        }));
+        setAiSuggestionReasoning(data.reasoning || "");
+      }
+      setAiSuggestionLoading(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "AI Suggestion Failed",
+        description: error.message || "Could not generate suggestions. Please try again.",
+        variant: "destructive"
+      });
+      setAiSuggestionLoading(null);
+    }
+  });
+  
+  const handleAiSuggestWithStories = (fieldToSuggest: string, stories: Array<{ client: string; industry: string; challenge: string; metrics: string[] }>) => {
+    setAiSuggestionLoading(fieldToSuggest);
+    setAiSuggestionReasoning("");
+    storySuggestionMutation.mutate({ fieldToSuggest, phase: activeStoryPhase, stories });
+  };
+  
   // Legacy discovery mode (for backward compatibility)
   const [isDiscoveryModeDialogOpen, setIsDiscoveryModeDialogOpen] = useState(false);
   const [discoveryMode, setDiscoveryMode] = useState<"focused" | "full">("full");
@@ -2533,6 +2594,17 @@ export default function ProjectRoleView() {
             }
           ].filter(story => isFullSearch || story.relevantTo.includes(selectedDiscoveryTheme || ""));
           
+          // Local handleAiSuggest that passes successStories to the mutation
+          const handleAiSuggest = (fieldToSuggest: string) => {
+            const storiesForAi = successStories.map((s) => ({
+              client: s.client,
+              industry: s.industry,
+              challenge: s.challenge,
+              metrics: s.metrics
+            }));
+            handleAiSuggestWithStories(fieldToSuggest, storiesForAi);
+          };
+          
           // SPIN Questions framework
           const spinQuestions = {
             situation: [
@@ -2963,6 +3035,49 @@ export default function ProjectRoleView() {
                   {/* BEFORE Phase - Crafting */}
                   {activeStoryPhase === "before" && (
                     <div className="space-y-4">
+                      {/* AI Suggest All Button */}
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm text-muted-foreground">
+                          {meetingContact.name ? (
+                            <span>Crafting story for <strong>{meetingContact.name}</strong> ({meetingContact.title || "Unknown role"})</span>
+                          ) : (
+                            <span className="text-amber-600">Tip: Add contact info in Green Sheet for personalized AI suggestions</span>
+                          )}
+                        </div>
+                        <Button 
+                          onClick={() => handleAiSuggest("all")} 
+                          disabled={aiSuggestionLoading === "all"}
+                          variant="default"
+                          size="sm"
+                          className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600"
+                          data-testid="button-ai-suggest-all-before"
+                        >
+                          {aiSuggestionLoading === "all" ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Generating...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-4 h-4 mr-2" />
+                              Generate Full Story Draft
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      
+                      {/* AI Reasoning display */}
+                      {aiSuggestionReasoning && activeStoryPhase === "before" && (
+                        <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                          <div className="flex items-start gap-2">
+                            <Lightbulb className="w-4 h-4 text-purple-600 mt-0.5" />
+                            <div className="text-sm text-purple-800">
+                              <strong>AI Insight:</strong> {aiSuggestionReasoning}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
                       <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20">
                         <h4 className="font-bold text-blue-800 mb-4 flex items-center gap-2">
                           <Target className="w-5 h-5" />
@@ -2970,11 +3085,30 @@ export default function ProjectRoleView() {
                         </h4>
                         <div className="grid gap-4">
                           <div className="space-y-2">
-                            <Label className="text-sm font-semibold flex items-center gap-2">
-                              <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">1</span>
-                              What's the single (provocative) message?
-                              <span className="text-xs font-normal text-muted-foreground">The one idea they MUST remember</span>
-                            </Label>
+                            <div className="flex items-center justify-between">
+                              <Label className="text-sm font-semibold flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">1</span>
+                                What's the single (provocative) message?
+                                <span className="text-xs font-normal text-muted-foreground">The one idea they MUST remember</span>
+                              </Label>
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => handleAiSuggest("singleMessage")}
+                                disabled={aiSuggestionLoading === "singleMessage"}
+                                className="h-7 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-500/10"
+                                data-testid="button-ai-suggest-message"
+                              >
+                                {aiSuggestionLoading === "singleMessage" ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Sparkles className="w-3 h-3 mr-1" />
+                                    Suggest
+                                  </>
+                                )}
+                              </Button>
+                            </div>
                             <Textarea 
                               placeholder="e.g., 'Leaders who invest in succession planning before a crisis outperform those who don't by 40%.'"
                               value={storyDraft.singleMessage}
@@ -2986,10 +3120,29 @@ export default function ProjectRoleView() {
                           
                           <div className="grid gap-4 md:grid-cols-2">
                             <div className="space-y-2">
-                              <Label className="text-sm font-semibold flex items-center gap-2">
-                                <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">2</span>
-                                Emotional Reaction
-                              </Label>
+                              <div className="flex items-center justify-between">
+                                <Label className="text-sm font-semibold flex items-center gap-2">
+                                  <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">2</span>
+                                  Emotional Reaction
+                                </Label>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  onClick={() => handleAiSuggest("emotionalReaction")}
+                                  disabled={aiSuggestionLoading === "emotionalReaction"}
+                                  className="h-7 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-500/10"
+                                  data-testid="button-ai-suggest-emotion"
+                                >
+                                  {aiSuggestionLoading === "emotionalReaction" ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <>
+                                      <Sparkles className="w-3 h-3 mr-1" />
+                                      Suggest
+                                    </>
+                                  )}
+                                </Button>
+                              </div>
                               <Select 
                                 value={storyDraft.emotionalReaction} 
                                 onValueChange={(v) => setStoryDraft(prev => ({ ...prev, emotionalReaction: v }))}
@@ -3029,11 +3182,30 @@ export default function ProjectRoleView() {
                           </div>
                           
                           <div className="space-y-2">
-                            <Label className="text-sm font-semibold flex items-center gap-2">
-                              <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">4</span>
-                              Starting Hook
-                              <span className="text-xs font-normal text-muted-foreground">High tension, provocative question, or surprising fact</span>
-                            </Label>
+                            <div className="flex items-center justify-between">
+                              <Label className="text-sm font-semibold flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">4</span>
+                                Starting Hook
+                                <span className="text-xs font-normal text-muted-foreground">High tension, provocative question, or surprising fact</span>
+                              </Label>
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => handleAiSuggest("startingHook")}
+                                disabled={aiSuggestionLoading === "startingHook"}
+                                className="h-7 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-500/10"
+                                data-testid="button-ai-suggest-hook"
+                              >
+                                {aiSuggestionLoading === "startingHook" ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Sparkles className="w-3 h-3 mr-1" />
+                                    Suggest
+                                  </>
+                                )}
+                              </Button>
+                            </div>
                             <Textarea 
                               placeholder="e.g., 'Picture this: It's Monday morning and your top 3 executives just resigned...'"
                               value={storyDraft.startingHook}
@@ -3045,10 +3217,29 @@ export default function ProjectRoleView() {
                           
                           <div className="grid gap-4 md:grid-cols-2">
                             <div className="space-y-2">
-                              <Label className="text-sm font-semibold flex items-center gap-2">
-                                <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">5</span>
-                                Who's the Hero?
-                              </Label>
+                              <div className="flex items-center justify-between">
+                                <Label className="text-sm font-semibold flex items-center gap-2">
+                                  <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">5</span>
+                                  Who's the Hero?
+                                </Label>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  onClick={() => handleAiSuggest("heroCharacter")}
+                                  disabled={aiSuggestionLoading === "heroCharacter"}
+                                  className="h-7 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-500/10"
+                                  data-testid="button-ai-suggest-hero"
+                                >
+                                  {aiSuggestionLoading === "heroCharacter" ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <>
+                                      <Sparkles className="w-3 h-3 mr-1" />
+                                      Suggest
+                                    </>
+                                  )}
+                                </Button>
+                              </div>
                               <Textarea 
                                 placeholder="The CHRO who championed the change... Their motivations, concerns, and transformation"
                                 value={storyDraft.heroCharacter}
@@ -3058,10 +3249,29 @@ export default function ProjectRoleView() {
                               />
                             </div>
                             <div className="space-y-2">
-                              <Label className="text-sm font-semibold flex items-center gap-2">
-                                <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">6</span>
-                                Evidence to Reference
-                              </Label>
+                              <div className="flex items-center justify-between">
+                                <Label className="text-sm font-semibold flex items-center gap-2">
+                                  <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">6</span>
+                                  Evidence to Reference
+                                </Label>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  onClick={() => handleAiSuggest("evidence")}
+                                  disabled={aiSuggestionLoading === "evidence"}
+                                  className="h-7 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-500/10"
+                                  data-testid="button-ai-suggest-evidence"
+                                >
+                                  {aiSuggestionLoading === "evidence" ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <>
+                                      <Sparkles className="w-3 h-3 mr-1" />
+                                      Suggest
+                                    </>
+                                  )}
+                                </Button>
+                              </div>
                               <Textarea 
                                 placeholder="40% improvement in retention, 85% of high-potentials promoted within 18 months..."
                                 value={storyDraft.evidence}
@@ -3085,6 +3295,42 @@ export default function ProjectRoleView() {
                   {/* DURING Phase - Telling */}
                   {activeStoryPhase === "during" && (
                     <div className="space-y-4">
+                      {/* AI Suggest All Button for DURING */}
+                      <div className="flex items-center justify-end">
+                        <Button 
+                          onClick={() => handleAiSuggest("all")} 
+                          disabled={aiSuggestionLoading === "all"}
+                          variant="default"
+                          size="sm"
+                          className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
+                          data-testid="button-ai-suggest-all-during"
+                        >
+                          {aiSuggestionLoading === "all" ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Generating...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-4 h-4 mr-2" />
+                              Generate Telling Points
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      
+                      {/* AI Reasoning display for DURING */}
+                      {aiSuggestionReasoning && activeStoryPhase === "during" && (
+                        <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                          <div className="flex items-start gap-2">
+                            <Lightbulb className="w-4 h-4 text-emerald-600 mt-0.5" />
+                            <div className="text-sm text-emerald-800">
+                              <strong>AI Insight:</strong> {aiSuggestionReasoning}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
                       <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
                         <h4 className="font-bold text-emerald-800 mb-4 flex items-center gap-2">
                           <Play className="w-5 h-5" />
@@ -3110,11 +3356,30 @@ export default function ProjectRoleView() {
                         
                         <div className="grid gap-4">
                           <div className="space-y-2">
-                            <Label className="text-sm font-semibold flex items-center gap-2">
-                              <Zap className="w-4 h-4 text-emerald-600" />
-                              Your Opening Line
-                              <span className="text-xs font-normal text-muted-foreground">Enter at the moment of action</span>
-                            </Label>
+                            <div className="flex items-center justify-between">
+                              <Label className="text-sm font-semibold flex items-center gap-2">
+                                <Zap className="w-4 h-4 text-emerald-600" />
+                                Your Opening Line
+                                <span className="text-xs font-normal text-muted-foreground">Enter at the moment of action</span>
+                              </Label>
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => handleAiSuggest("openingLine")}
+                                disabled={aiSuggestionLoading === "openingLine"}
+                                className="h-7 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
+                                data-testid="button-ai-suggest-opening"
+                              >
+                                {aiSuggestionLoading === "openingLine" ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Sparkles className="w-3 h-3 mr-1" />
+                                    Suggest
+                                  </>
+                                )}
+                              </Button>
+                            </div>
                             <Textarea 
                               placeholder={storyDraft.startingHook || "Start with your hook from the previous step..."}
                               value={storyDraft.openingLine}
@@ -3125,11 +3390,30 @@ export default function ProjectRoleView() {
                           </div>
                           
                           <div className="space-y-2">
-                            <Label className="text-sm font-semibold flex items-center gap-2">
-                              <ArrowUpRight className="w-4 h-4 text-emerald-600" />
-                              The Turning Point
-                              <span className="text-xs font-normal text-muted-foreground">What realization changed the course?</span>
-                            </Label>
+                            <div className="flex items-center justify-between">
+                              <Label className="text-sm font-semibold flex items-center gap-2">
+                                <ArrowUpRight className="w-4 h-4 text-emerald-600" />
+                                The Turning Point
+                                <span className="text-xs font-normal text-muted-foreground">What realization changed the course?</span>
+                              </Label>
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => handleAiSuggest("turningPoint")}
+                                disabled={aiSuggestionLoading === "turningPoint"}
+                                className="h-7 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
+                                data-testid="button-ai-suggest-turning"
+                              >
+                                {aiSuggestionLoading === "turningPoint" ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Sparkles className="w-3 h-3 mr-1" />
+                                    Suggest
+                                  </>
+                                )}
+                              </Button>
+                            </div>
                             <Textarea 
                               placeholder="The moment when the CEO realized that their succession crisis was actually an opportunity to accelerate their entire leadership pipeline..."
                               value={storyDraft.turningPoint}
@@ -3140,11 +3424,30 @@ export default function ProjectRoleView() {
                           </div>
                           
                           <div className="space-y-2">
-                            <Label className="text-sm font-semibold flex items-center gap-2">
-                              <BarChart3 className="w-4 h-4 text-emerald-600" />
-                              Key Data Point
-                              <span className="text-xs font-normal text-muted-foreground">Use data as evidence, not the story itself</span>
-                            </Label>
+                            <div className="flex items-center justify-between">
+                              <Label className="text-sm font-semibold flex items-center gap-2">
+                                <BarChart3 className="w-4 h-4 text-emerald-600" />
+                                Key Data Point
+                                <span className="text-xs font-normal text-muted-foreground">Use data as evidence, not the story itself</span>
+                              </Label>
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => handleAiSuggest("keyDataPoint")}
+                                disabled={aiSuggestionLoading === "keyDataPoint"}
+                                className="h-7 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
+                                data-testid="button-ai-suggest-data"
+                              >
+                                {aiSuggestionLoading === "keyDataPoint" ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Sparkles className="w-3 h-3 mr-1" />
+                                    Suggest
+                                  </>
+                                )}
+                              </Button>
+                            </div>
                             <Input 
                               placeholder={storyDraft.evidence || "e.g., 40% improvement in 12 months"}
                               value={storyDraft.keyDataPoint}
@@ -3171,6 +3474,42 @@ export default function ProjectRoleView() {
                   {/* AFTER Phase - Landing */}
                   {activeStoryPhase === "after" && (
                     <div className="space-y-4">
+                      {/* AI Suggest All Button for AFTER */}
+                      <div className="flex items-center justify-end">
+                        <Button 
+                          onClick={() => handleAiSuggest("all")} 
+                          disabled={aiSuggestionLoading === "all"}
+                          variant="default"
+                          size="sm"
+                          className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                          data-testid="button-ai-suggest-all-after"
+                        >
+                          {aiSuggestionLoading === "all" ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Generating...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-4 h-4 mr-2" />
+                              Generate Landing Points
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      
+                      {/* AI Reasoning display for AFTER */}
+                      {aiSuggestionReasoning && activeStoryPhase === "after" && (
+                        <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                          <div className="flex items-start gap-2">
+                            <Lightbulb className="w-4 h-4 text-purple-600 mt-0.5" />
+                            <div className="text-sm text-purple-800">
+                              <strong>AI Insight:</strong> {aiSuggestionReasoning}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
                       <div className="p-4 rounded-xl bg-purple-500/5 border border-purple-500/20">
                         <h4 className="font-bold text-purple-800 mb-4 flex items-center gap-2">
                           <Flag className="w-5 h-5" />
@@ -3179,11 +3518,30 @@ export default function ProjectRoleView() {
                         
                         <div className="grid gap-4">
                           <div className="space-y-2">
-                            <Label className="text-sm font-semibold flex items-center gap-2">
-                              <Lightbulb className="w-4 h-4 text-purple-600" />
-                              Moment of Meaning
-                              <span className="text-xs font-normal text-muted-foreground">Crisp insight or forward-looking question</span>
-                            </Label>
+                            <div className="flex items-center justify-between">
+                              <Label className="text-sm font-semibold flex items-center gap-2">
+                                <Lightbulb className="w-4 h-4 text-purple-600" />
+                                Moment of Meaning
+                                <span className="text-xs font-normal text-muted-foreground">Crisp insight or forward-looking question</span>
+                              </Label>
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => handleAiSuggest("meaningMoment")}
+                                disabled={aiSuggestionLoading === "meaningMoment"}
+                                className="h-7 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-500/10"
+                                data-testid="button-ai-suggest-meaning"
+                              >
+                                {aiSuggestionLoading === "meaningMoment" ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Sparkles className="w-3 h-3 mr-1" />
+                                    Suggest
+                                  </>
+                                )}
+                              </Button>
+                            </div>
                             <Textarea 
                               placeholder="The CHRO later told me: 'That crisis became the best thing that happened to our leadership culture.'"
                               value={storyDraft.meaningMoment}
@@ -3194,11 +3552,30 @@ export default function ProjectRoleView() {
                           </div>
                           
                           <div className="space-y-2">
-                            <Label className="text-sm font-semibold flex items-center gap-2">
-                              <Target className="w-4 h-4 text-purple-600" />
-                              Explicit Takeaway
-                              <span className="text-xs font-normal text-muted-foreground">Connect story to action for your listener</span>
-                            </Label>
+                            <div className="flex items-center justify-between">
+                              <Label className="text-sm font-semibold flex items-center gap-2">
+                                <Target className="w-4 h-4 text-purple-600" />
+                                Explicit Takeaway
+                                <span className="text-xs font-normal text-muted-foreground">Connect story to action for your listener</span>
+                              </Label>
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => handleAiSuggest("takeaway")}
+                                disabled={aiSuggestionLoading === "takeaway"}
+                                className="h-7 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-500/10"
+                                data-testid="button-ai-suggest-takeaway"
+                              >
+                                {aiSuggestionLoading === "takeaway" ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Sparkles className="w-3 h-3 mr-1" />
+                                    Suggest
+                                  </>
+                                )}
+                              </Button>
+                            </div>
                             <Textarea 
                               placeholder="Organizations that invest in leadership pipelines before a crisis have 40% better outcomes than those who react..."
                               value={storyDraft.takeaway}
@@ -3209,11 +3586,30 @@ export default function ProjectRoleView() {
                           </div>
                           
                           <div className="space-y-2">
-                            <Label className="text-sm font-semibold flex items-center gap-2">
-                              <ArrowRight className="w-4 h-4 text-purple-600" />
-                              Call to Action
-                              <span className="text-xs font-normal text-muted-foreground">What do you want them to do next?</span>
-                            </Label>
+                            <div className="flex items-center justify-between">
+                              <Label className="text-sm font-semibold flex items-center gap-2">
+                                <ArrowRight className="w-4 h-4 text-purple-600" />
+                                Call to Action
+                                <span className="text-xs font-normal text-muted-foreground">What do you want them to do next?</span>
+                              </Label>
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => handleAiSuggest("callToAction")}
+                                disabled={aiSuggestionLoading === "callToAction"}
+                                className="h-7 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-500/10"
+                                data-testid="button-ai-suggest-cta"
+                              >
+                                {aiSuggestionLoading === "callToAction" ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Sparkles className="w-3 h-3 mr-1" />
+                                    Suggest
+                                  </>
+                                )}
+                              </Button>
+                            </div>
                             <Input 
                               placeholder="I'd love to explore what a proactive approach could look like for your organization..."
                               value={storyDraft.callToAction}
