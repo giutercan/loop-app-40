@@ -411,7 +411,15 @@ IMPORTANT:
 
 export async function generateDiscoveryQuestions(
   companyName: string,
-  capabilityQuestions: DiscoveryQuestionInput[]
+  capabilityQuestions: DiscoveryQuestionInput[],
+  companyContext?: {
+    sector?: string | null;
+    industry?: string | null;
+    employeeCount?: number | null;
+    revenue?: string | null;
+    headquarters?: string | null;
+    description?: string | null;
+  }
 ): Promise<Record<string, GeneratedQuestion[]>> {
   const knowledgeBase = getSolutionSummary();
   
@@ -421,7 +429,20 @@ Job Theme Insights:
 ${cq.insights.map(i => `- ${i.label}: ${i.value}${i.relatedKPIs && i.relatedKPIs.length > 0 ? ` (KPIs: ${i.relatedKPIs.join(', ')})` : ''}`).join('\n')}
 `).join('\n');
 
+  // Build company profile context
+  const companyProfileContext = companyContext ? `
+=== COMPANY PROFILE ===
+Company: ${companyName}
+${companyContext.sector ? `Sector: ${companyContext.sector}` : ''}
+${companyContext.industry ? `Industry: ${companyContext.industry}` : ''}
+${companyContext.employeeCount ? `Size: ~${companyContext.employeeCount.toLocaleString()} employees` : ''}
+${companyContext.revenue ? `Revenue: ${companyContext.revenue}` : ''}
+${companyContext.headquarters ? `Headquarters: ${companyContext.headquarters}` : ''}
+${companyContext.description ? `Overview: ${companyContext.description}` : ''}
+` : '';
+
   const prompt = `You are a Korn Ferry consultant preparing for a discovery session with ${companyName}. You are trained in three proven sales and consulting methodologies that Korn Ferry uses to guide impactful client conversations.
+${companyProfileContext}
 
 === CRITICAL CONTEXT ===
 Your questions MUST be highly relevant and specific to:

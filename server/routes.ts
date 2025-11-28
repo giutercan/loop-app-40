@@ -1419,39 +1419,63 @@ export function registerRoutes(app: Express) {
         }
       }
 
-      // Get all data points and filter to job theme insights
+      // Get ALL research insights for the company (not just those linked to job themes)
       const allDataPoints = await storage.getCompanyDataPoints(projectId);
+      
+      // Use all available research data - prioritize by score and recency
+      const allResearchInsights = allDataPoints
+        .filter(dp => dp.value && dp.value.length > 10) // Filter out empty/trivial insights
+        .sort((a, b) => {
+          // Sort by priority score (higher first), then by date (newer first)
+          const scoreDiff = (b.priorityScore || 0) - (a.priorityScore || 0);
+          if (scoreDiff !== 0) return scoreDiff;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        })
+        .slice(0, 30); // Limit to top 30 most relevant insights
+      
+      // Use job theme linked insights as primary, but add ALL research insights as context
       let jobThemeInsights = jobThemeInsightIds.size > 0 
         ? allDataPoints.filter(dp => jobThemeInsightIds.has(dp.id))
         : [];
       
-      // If no insights linked to job themes, create synthetic insights from job theme names
+      // If no insights linked to job themes, use ALL research insights + job theme names
       if (jobThemeInsights.length === 0) {
-        jobThemeInsights = jobThemes.map((theme, idx) => ({
-          id: -1 - idx,
-          projectId,
-          label: theme.jobName,
-          value: theme.aggregationSummary || `Priority area: ${theme.jobName}`,
-          confidence: "high" as const,
-          source: "job_theme",
-          relevantCapability: theme.capabilityName,
-          priority: theme.priorityRank || 1,
-          isFollowUp: false,
-          relatedKPIs: null,
-          aiGenerated: false,
-          createdAt: new Date(),
-          solutionArea: theme.solutionArea || null,
-          provenance: null,
-          sourceUrl: null,
-          kornferryBenchmark: null,
-          followUpQuestion: null,
-          category: null,
-          sentimentScore: null,
-          selectedForNotes: false,
-          relevantJob: null,
-          priorityScore: 0,
-          kornFerryPillar: null
-        }));
+        // Start with all research insights
+        jobThemeInsights = allResearchInsights.length > 0 ? allResearchInsights : [];
+        
+        // Add synthetic insights from job theme names if no research at all
+        if (jobThemeInsights.length === 0) {
+          jobThemeInsights = jobThemes.map((theme, idx) => ({
+            id: -1 - idx,
+            projectId,
+            label: theme.jobName,
+            value: theme.aggregationSummary || `Priority area: ${theme.jobName}`,
+            confidence: "high" as const,
+            source: "job_theme",
+            relevantCapability: theme.capabilityName,
+            priority: theme.priorityRank || 1,
+            isFollowUp: false,
+            relatedKPIs: null,
+            aiGenerated: false,
+            createdAt: new Date(),
+            solutionArea: theme.solutionArea || null,
+            provenance: null,
+            sourceUrl: null,
+            kornferryBenchmark: null,
+            followUpQuestion: null,
+            category: null,
+            sentimentScore: null,
+            selectedForNotes: false,
+            relevantJob: null,
+            priorityScore: 0,
+            kornFerryPillar: null
+          }));
+        }
+      } else {
+        // Add research insights that aren't already in job themes as additional context
+        const existingIds = new Set(jobThemeInsights.map(i => i.id));
+        const additionalInsights = allResearchInsights.filter(i => !existingIds.has(i.id));
+        jobThemeInsights = [...jobThemeInsights, ...additionalInsights.slice(0, 15)];
       }
 
       // Filter by solution area if in focused mode
@@ -1492,10 +1516,21 @@ export function registerRoutes(app: Express) {
         }))
       }));
 
-      // Generate questions with AI
+      // Generate questions with AI - include company context
       let generatedQuestions;
       try {
-        generatedQuestions = await generateDiscoveryQuestions(project.companyName, capabilityQuestions);
+        generatedQuestions = await generateDiscoveryQuestions(
+          project.companyName, 
+          capabilityQuestions,
+          {
+            sector: project.sector,
+            industry: project.industry,
+            employeeCount: project.employeeCount,
+            revenue: project.revenue,
+            headquarters: project.headquarters,
+            description: project.description
+          }
+        );
       } catch (aiError: any) {
         return res.status(500).json({ 
           error: "AI question generation failed",
