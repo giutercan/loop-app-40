@@ -1419,16 +1419,39 @@ export function registerRoutes(app: Express) {
         }
       }
 
-      if (jobThemeInsightIds.size === 0) {
-        return res.status(400).json({ error: "No insights found in job themes. Please ensure your highlighted priorities have associated insights." });
-      }
-
-      // Get only insights that are part of job themes
+      // Get all data points and filter to job theme insights
       const allDataPoints = await storage.getCompanyDataPoints(projectId);
-      let jobThemeInsights = allDataPoints.filter(dp => jobThemeInsightIds.has(dp.id));
+      let jobThemeInsights = jobThemeInsightIds.size > 0 
+        ? allDataPoints.filter(dp => jobThemeInsightIds.has(dp.id))
+        : [];
       
+      // If no insights linked to job themes, create synthetic insights from job theme names
       if (jobThemeInsights.length === 0) {
-        return res.status(400).json({ error: "No valid insights found for job themes" });
+        jobThemeInsights = jobThemes.map((theme, idx) => ({
+          id: -1 - idx,
+          projectId,
+          label: theme.jobName,
+          value: theme.aggregationSummary || `Priority area: ${theme.jobName}`,
+          confidence: "high" as const,
+          source: "job_theme",
+          relevantCapability: theme.capabilityName,
+          priority: theme.priorityRank || 1,
+          isFollowUp: false,
+          relatedKPIs: null,
+          aiGenerated: false,
+          createdAt: new Date(),
+          solutionArea: theme.solutionArea || null,
+          provenance: null,
+          sourceUrl: null,
+          kornferryBenchmark: null,
+          followUpQuestion: null,
+          category: null,
+          sentimentScore: null,
+          selectedForNotes: false,
+          relevantJob: null,
+          priorityScore: 0,
+          kornFerryPillar: null
+        }));
       }
 
       // Filter by solution area if in focused mode
