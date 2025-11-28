@@ -1395,6 +1395,8 @@ export function registerRoutes(app: Express) {
   app.post("/api/projects/:projectId/discovery-questions/generate", async (req, res) => {
     try {
       const projectId = parseInt(req.params.projectId);
+      const { mode = "full", solutionArea } = req.body;
+      
       const project = await storage.getProject(projectId);
       if (!project) {
         return res.status(404).json({ error: "Project not found" });
@@ -1423,10 +1425,24 @@ export function registerRoutes(app: Express) {
 
       // Get only insights that are part of job themes
       const allDataPoints = await storage.getCompanyDataPoints(projectId);
-      const jobThemeInsights = allDataPoints.filter(dp => jobThemeInsightIds.has(dp.id));
+      let jobThemeInsights = allDataPoints.filter(dp => jobThemeInsightIds.has(dp.id));
       
       if (jobThemeInsights.length === 0) {
         return res.status(400).json({ error: "No valid insights found for job themes" });
+      }
+
+      // Filter by solution area if in focused mode
+      if (mode === "focused" && solutionArea) {
+        jobThemeInsights = jobThemeInsights.filter(insight => 
+          insight.solutionArea === solutionArea || 
+          (insight.relevantCapability && insight.relevantCapability.toUpperCase().includes(solutionArea.toUpperCase()))
+        );
+        
+        if (jobThemeInsights.length === 0) {
+          return res.status(400).json({ 
+            error: `No insights found for solution area "${solutionArea}". Try using full discovery mode.` 
+          });
+        }
       }
 
       // Group by capability
@@ -1443,7 +1459,7 @@ export function registerRoutes(app: Express) {
         return res.status(400).json({ error: "Job theme insights must have capability classification" });
       }
 
-      // Prepare input for AI
+      // Prepare input for AI with mode context
       const capabilityQuestions = Array.from(capabilityGroups.entries()).map(([capability, insights]) => ({
         capability,
         insights: insights.map(i => ({
@@ -1500,9 +1516,13 @@ export function registerRoutes(app: Express) {
         }
       }
 
+      const modeLabel = mode === "focused" && solutionArea 
+        ? `focused on ${solutionArea}` 
+        : "across all Korn Ferry solutions";
+      
       res.json({
         questions: savedQuestions,
-        summary: `Generated ${savedQuestions.length} discovery questions across ${capabilityGroups.size} capabilities`
+        summary: `Generated ${savedQuestions.length} discovery questions ${modeLabel} (${capabilityGroups.size} capabilities)`
       });
     } catch (error: any) {
       res.status(500).json({ 

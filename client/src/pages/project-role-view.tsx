@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { 
   ArrowLeft,
   ArrowRight,
@@ -213,6 +214,20 @@ export default function ProjectRoleView() {
   const [isAddNoteOpen, setIsAddNoteOpen] = useState(false);
   const [newNoteContent, setNewNoteContent] = useState("");
   const [newNoteCategory, setNewNoteCategory] = useState("general");
+  
+  // Discovery mode selection
+  const [isDiscoveryModeDialogOpen, setIsDiscoveryModeDialogOpen] = useState(false);
+  const [discoveryMode, setDiscoveryMode] = useState<"focused" | "full">("full");
+  const [selectedSolutionArea, setSelectedSolutionArea] = useState<string>("");
+  
+  // Korn Ferry Solution Areas
+  const solutionAreas = [
+    { id: "ASSESS", name: "Assess", description: "Success Profiles & Assessments - hiring, promotion, development data" },
+    { id: "DEVELOP", name: "Develop", description: "Leadership & Development - build leaders, AI-ready leadership" },
+    { id: "TRANSFORM", name: "Transform", description: "Organisation Strategy - operating models, structural savings" },
+    { id: "REWARD", name: "Reward", description: "Total Rewards - optimize reward mix, retention, pay equity" },
+    { id: "COMMERCIAL", name: "Commercial", description: "Sales Effectiveness - go-to-market, sales enablement" }
+  ];
 
   const { data: project, isLoading: projectLoading } = useQuery<Project>({
     queryKey: ["/api/projects", projectId],
@@ -314,12 +329,16 @@ export default function ProjectRoleView() {
   });
 
   const generateQuestionsMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", `/api/projects/${projectId}/discovery-questions/generate`);
+    mutationFn: async (params: { mode: "focused" | "full"; solutionArea?: string }) => {
+      const response = await apiRequest("POST", `/api/projects/${projectId}/discovery-questions/generate`, {
+        mode: params.mode,
+        solutionArea: params.solutionArea
+      });
       return response.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "discovery-questions"] });
+      setIsDiscoveryModeDialogOpen(false);
       toast({ 
         title: "Questions Generated", 
         description: data.summary || "AI-powered discovery questions are ready." 
@@ -333,6 +352,27 @@ export default function ProjectRoleView() {
       });
     }
   });
+  
+  const handleStartDiscovery = () => {
+    setDiscoveryMode("full");
+    setSelectedSolutionArea("");
+    setIsDiscoveryModeDialogOpen(true);
+  };
+  
+  const handleRunDiscovery = () => {
+    if (discoveryMode === "focused" && !selectedSolutionArea) {
+      toast({
+        variant: "destructive",
+        title: "Select a Solution Area",
+        description: "Please select a Korn Ferry solution area to focus the discovery."
+      });
+      return;
+    }
+    generateQuestionsMutation.mutate({
+      mode: discoveryMode,
+      solutionArea: discoveryMode === "focused" ? selectedSolutionArea : undefined
+    });
+  };
 
   const markQuestionAskedMutation = useMutation({
     mutationFn: async ({ questionId, isAsked }: { questionId: number; isAsked: boolean }) => {
@@ -775,7 +815,7 @@ export default function ProjectRoleView() {
               </div>
               <div className="flex items-center gap-2">
                 <Button 
-                  onClick={() => generateQuestionsMutation.mutate()}
+                  onClick={handleStartDiscovery}
                   disabled={generateQuestionsMutation.isPending}
                   data-testid="button-generate-questions"
                 >
@@ -787,7 +827,7 @@ export default function ProjectRoleView() {
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4 mr-2" />
-                      Generate Questions
+                      AI Discovery
                     </>
                   )}
                 </Button>
@@ -851,7 +891,7 @@ export default function ProjectRoleView() {
                 Generate AI-powered questions based on your discovery insights. Ensure you have job themes set up first.
               </p>
               <Button 
-                onClick={() => generateQuestionsMutation.mutate()}
+                onClick={handleStartDiscovery}
                 disabled={generateQuestionsMutation.isPending}
                 data-testid="button-generate-questions-empty"
               >
@@ -863,7 +903,7 @@ export default function ProjectRoleView() {
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4 mr-2" />
-                    Generate Questions
+                    Start AI Discovery
                   </>
                 )}
               </Button>
@@ -1970,6 +2010,107 @@ export default function ProjectRoleView() {
               data-testid="button-save-note"
             >
               {addNoteMutation.isPending ? "Saving..." : "Save Note"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Discovery Mode Selection Dialog */}
+      <Dialog open={isDiscoveryModeDialogOpen} onOpenChange={setIsDiscoveryModeDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-purple-600" />
+              AI Discovery Mode
+            </DialogTitle>
+            <DialogDescription>
+              Choose how you want AI to generate discovery questions
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            <RadioGroup value={discoveryMode} onValueChange={(v) => setDiscoveryMode(v as "focused" | "full")}>
+              <div 
+                className={`p-4 rounded-lg border cursor-pointer transition-all ${discoveryMode === "focused" ? "border-primary bg-primary/5" : "hover-elevate"}`}
+                onClick={() => setDiscoveryMode("focused")}
+              >
+                <div className="flex items-start gap-3">
+                  <RadioGroupItem value="focused" id="focused" className="mt-1" />
+                  <div className="flex-1">
+                    <Label htmlFor="focused" className="text-base font-medium cursor-pointer">
+                      Focused Search
+                    </Label>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Focus on a specific Korn Ferry solution area. Best when you know which capability will deliver the most impact.
+                    </p>
+                    {discoveryMode === "focused" && (
+                      <div className="mt-4">
+                        <Label className="text-sm">Select Solution Area</Label>
+                        <Select value={selectedSolutionArea} onValueChange={setSelectedSolutionArea}>
+                          <SelectTrigger className="mt-2" data-testid="select-solution-area">
+                            <SelectValue placeholder="Choose a solution area..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {solutionAreas.map(area => (
+                              <SelectItem key={area.id} value={area.id}>
+                                <div className="flex flex-col items-start">
+                                  <span className="font-medium">{area.name}</span>
+                                  <span className="text-xs text-muted-foreground">{area.description}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div 
+                className={`p-4 rounded-lg border cursor-pointer transition-all ${discoveryMode === "full" ? "border-primary bg-primary/5" : "hover-elevate"}`}
+                onClick={() => setDiscoveryMode("full")}
+              >
+                <div className="flex items-start gap-3">
+                  <RadioGroupItem value="full" id="full" className="mt-1" />
+                  <div className="flex-1">
+                    <Label htmlFor="full" className="text-base font-medium cursor-pointer">
+                      We Are Korn Ferry Search
+                    </Label>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Comprehensive discovery across all Korn Ferry solutions. Groups questions by capability and recommends solution combinations for maximum impact.
+                    </p>
+                    <div className="flex flex-wrap gap-1 mt-3">
+                      {solutionAreas.map(area => (
+                        <Badge key={area.id} variant="outline" className="text-xs">
+                          {area.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </RadioGroup>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDiscoveryModeDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleRunDiscovery}
+              disabled={generateQuestionsMutation.isPending || (discoveryMode === "focused" && !selectedSolutionArea)}
+              data-testid="button-run-discovery"
+            >
+              {generateQuestionsMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Run Discovery
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
