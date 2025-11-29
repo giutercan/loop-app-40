@@ -1288,6 +1288,131 @@ export const valueJustificationWithMessagesSchema = z.object({
 });
 
 // ============================================================================
+// KPI COMMITMENTS & SALES-TO-CSM HANDOFF
+// ============================================================================
+
+// KPI Commitments - Sales-defined deliverables linked to customer strategies
+export const kpiCommitments = pgTable("kpi_commitments", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  
+  // Link to Discovery
+  discoveryThemeId: text("discovery_theme_id"), // Which discovery theme this relates to
+  jobThemeId: integer("job_theme_id").references(() => jobThemes.id, { onDelete: "set null" }),
+  
+  // Strategic Alignment - links to customer's organizational strategy
+  strategicPillarId: integer("strategic_pillar_id").references(() => strategicPillars.id, { onDelete: "set null" }),
+  pillarObjectiveId: integer("pillar_objective_id").references(() => pillarObjectives.id, { onDelete: "set null" }),
+  strategyAlignmentRationale: text("strategy_alignment_rationale"), // Why this links to their strategy
+  
+  // The Commitment Details
+  commitmentTitle: text("commitment_title").notNull(), // e.g., "Reduce Leadership Turnover by 25%"
+  commitmentDescription: text("commitment_description"), // Detailed description
+  
+  // KPI Definition
+  kpiId: integer("kpi_id").references(() => kpis.id, { onDelete: "set null" }), // Link to existing KPI if applicable
+  customMetricName: text("custom_metric_name"), // For new metrics not yet in system
+  metricUnit: text("metric_unit"), // e.g., "%", "$", "days", "score"
+  baselineValue: text("baseline_value"), // Current state
+  targetValue: text("target_value"), // Committed target
+  targetDate: timestamp("target_date"), // When to achieve
+  
+  // Ownership
+  customerStakeholderName: text("customer_stakeholder_name"), // Client-side owner
+  customerStakeholderTitle: text("customer_stakeholder_title"),
+  customerStakeholderEmail: text("customer_stakeholder_email"),
+  kfOwnerRole: text("kf_owner_role", { enum: ["sales", "consultant", "delivery", "csm"] }), // KF team member role
+  kfOwnerName: text("kf_owner_name"),
+  
+  // Financial Value
+  estimatedAnnualValue: integer("estimated_annual_value"), // $ value per year
+  valueCalculationNotes: text("value_calculation_notes"), // How value was calculated
+  
+  // Success Narrative - what does success look like?
+  successNarrative: text("success_narrative"), // Qualitative description of success
+  
+  // Client Collaboration
+  collaborationNotes: text("collaboration_notes"), // Notes from client discussions
+  clientConfirmedAt: timestamp("client_confirmed_at"), // When client approved
+  clientConfirmedBy: text("client_confirmed_by"), // Who approved
+  
+  // Workflow Status
+  status: text("status", { 
+    enum: ["draft", "in_review", "client_confirmed", "handed_off", "in_delivery", "completed", "cancelled"] 
+  }).notNull().default("draft"),
+  
+  // Provenance
+  provenance: jsonb("provenance"), // AI suggestions, source data, etc.
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertKpiCommitmentSchema = createInsertSchema(kpiCommitments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertKpiCommitment = z.infer<typeof insertKpiCommitmentSchema>;
+export type KpiCommitment = typeof kpiCommitments.$inferSelect;
+
+// Handoff Packets - Bundle of commitments transferred from Sales to CSM
+export const handoffPackets = pgTable("handoff_packets", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  
+  // Packet Details
+  packetName: text("packet_name").notNull(), // e.g., "Q1 2025 Value Commitments"
+  
+  // Commitments included
+  commitmentIds: integer("commitment_ids").array().notNull(), // Array of kpiCommitment IDs
+  
+  // Sales Side
+  generatedByRole: text("generated_by_role", { enum: ["sales", "consultant"] }).notNull(),
+  generatedByName: text("generated_by_name"),
+  generatedAt: timestamp("generated_at").defaultNow().notNull(),
+  
+  // Summary for client/CSM
+  executiveSummary: text("executive_summary"), // High-level summary
+  clientVisibleSummary: text("client_visible_summary"), // What client sees
+  keyDeliverables: text("key_deliverables").array(), // Bullet-point deliverables
+  
+  // Total Value
+  totalCommittedValue: integer("total_committed_value"), // Sum of all commitment values
+  
+  // CSM Acceptance
+  csmOwnerId: text("csm_owner_id"), // CSM who will own delivery
+  csmOwnerName: text("csm_owner_name"),
+  csmOwnerEmail: text("csm_owner_email"),
+  
+  // Acceptance Status
+  acceptanceState: text("acceptance_state", { 
+    enum: ["pending", "accepted", "needs_clarification", "rejected"] 
+  }).notNull().default("pending"),
+  acceptedAt: timestamp("accepted_at"),
+  acceptanceNotes: text("acceptance_notes"), // CSM notes on acceptance
+  
+  // Follow-up
+  clarificationRequests: jsonb("clarification_requests"), // Array of {question, askedAt, answeredAt, answer}
+  
+  // Handoff Meeting
+  handoffMeetingDate: timestamp("handoff_meeting_date"),
+  handoffMeetingNotes: text("handoff_meeting_notes"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertHandoffPacketSchema = createInsertSchema(handoffPackets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  generatedAt: true,
+});
+export type InsertHandoffPacket = z.infer<typeof insertHandoffPacketSchema>;
+export type HandoffPacket = typeof handoffPackets.$inferSelect;
+
+// ============================================================================
 // ACCOUNT HUB - Aggregated view for Client Value Hub
 // ============================================================================
 
