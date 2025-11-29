@@ -1305,6 +1305,21 @@ export const kpiCommitments = pgTable("kpi_commitments", {
   pillarObjectiveId: integer("pillar_objective_id").references(() => pillarObjectives.id, { onDelete: "set null" }),
   strategyAlignmentRationale: text("strategy_alignment_rationale"), // Why this links to their strategy
   
+  // Value Pillar - ties to Korn Ferry value framework (Grow, Optimise, De-risk, Strengthen)
+  valuePillar: text("value_pillar", { 
+    enum: ["grow", "optimise", "derisk", "strengthen"] 
+  }),
+  
+  // Solution Pattern - which KF solution this relates to
+  solutionPattern: text("solution_pattern", { 
+    enum: ["sales_effectiveness", "leadership_development", "org_transformation", "talent_acquisition", "rewards_optimization"] 
+  }),
+  
+  // Health Score for tracking progress
+  healthStatus: text("health_status", { 
+    enum: ["on_track", "at_risk", "off_track", "needs_data"] 
+  }).default("needs_data"),
+  
   // The Commitment Details
   commitmentTitle: text("commitment_title").notNull(), // e.g., "Reduce Leadership Turnover by 25%"
   commitmentDescription: text("commitment_description"), // Detailed description
@@ -1338,7 +1353,7 @@ export const kpiCommitments = pgTable("kpi_commitments", {
   
   // Workflow Status
   status: text("status", { 
-    enum: ["draft", "in_review", "client_confirmed", "handed_off", "in_delivery", "completed", "cancelled"] 
+    enum: ["draft", "proposed", "client_confirmed", "handed_off", "in_delivery", "completed", "cancelled"] 
   }).notNull().default("draft"),
   
   // Provenance

@@ -91,6 +91,15 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Project, JobTheme } from "@shared/schema";
+import { 
+  VALUE_PILLARS, 
+  SOLUTION_VALUE_PATTERNS, 
+  LEADING_INDICATORS, 
+  LAGGING_INDICATORS,
+  HEALTH_SCORES,
+  type ValuePillarId,
+  type SolutionPatternId
+} from "@shared/value-frameworks";
 
 type Role = "sales" | "consultant" | "delivery" | "csm" | "client_sponsor";
 
@@ -1309,6 +1318,9 @@ export default function ProjectRoleView() {
       pillarObjectiveId: null as number | null,
       linkedDiscoveryTheme: null as string | null,
       rationale: "",
+      valuePillar: null as ValuePillarId | null,
+      solutionPattern: null as SolutionPatternId | null,
+      selectedKpiTemplate: null as string | null,
     });
 
     // Fetch commitments
@@ -1411,7 +1423,38 @@ export default function ProjectRoleView() {
         pillarObjectiveId: null,
         linkedDiscoveryTheme: null,
         rationale: "",
+        valuePillar: null,
+        solutionPattern: null,
+        selectedKpiTemplate: null,
       });
+    };
+
+    // Get recommended KPIs based on solution pattern
+    const getRecommendedKPIs = () => {
+      if (!newCommitment.solutionPattern) return { leading: [], lagging: [] };
+      const pattern = SOLUTION_VALUE_PATTERNS[newCommitment.solutionPattern];
+      return {
+        leading: pattern.recommendedKPIs.leading.map(id => LEADING_INDICATORS[id as keyof typeof LEADING_INDICATORS]).filter(Boolean),
+        lagging: pattern.recommendedKPIs.lagging.map(id => LAGGING_INDICATORS[id as keyof typeof LAGGING_INDICATORS]).filter(Boolean),
+      };
+    };
+
+    // Apply KPI template to form
+    const applyKpiTemplate = (kpiId: string, type: 'leading' | 'lagging') => {
+      const kpi = type === 'leading' 
+        ? LEADING_INDICATORS[kpiId as keyof typeof LEADING_INDICATORS]
+        : LAGGING_INDICATORS[kpiId as keyof typeof LAGGING_INDICATORS];
+      
+      if (kpi) {
+        setNewCommitment(prev => ({
+          ...prev,
+          name: kpi.name,
+          description: kpi.description,
+          kpiUnit: kpi.unit,
+          valuePillar: kpi.pillar as ValuePillarId,
+          selectedKpiTemplate: kpiId,
+        }));
+      }
     };
 
     const handleCreateCommitment = () => {
@@ -1427,6 +1470,8 @@ export default function ProjectRoleView() {
         pillarObjectiveId: newCommitment.pillarObjectiveId,
         linkedDiscoveryTheme: newCommitment.linkedDiscoveryTheme,
         rationale: newCommitment.rationale || null,
+        valuePillar: newCommitment.valuePillar,
+        solutionPattern: newCommitment.solutionPattern,
         status: "draft",
         definedBy: "Sales Team",
       });
@@ -1449,6 +1494,44 @@ export default function ProjectRoleView() {
         default:
           return <Badge variant="outline">{status}</Badge>;
       }
+    };
+
+    const getValuePillarBadge = (pillar: string | null) => {
+      if (!pillar) return null;
+      const pillarData = VALUE_PILLARS[pillar as ValuePillarId];
+      if (!pillarData) return null;
+      
+      const colorMap: Record<string, string> = {
+        emerald: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30",
+        blue: "bg-blue-500/10 text-blue-600 border-blue-500/30",
+        amber: "bg-amber-500/10 text-amber-600 border-amber-500/30",
+        violet: "bg-violet-500/10 text-violet-600 border-violet-500/30",
+      };
+      
+      return (
+        <Badge className={`${colorMap[pillarData.color]} border text-xs`}>
+          {pillarData.name}
+        </Badge>
+      );
+    };
+
+    const getHealthStatusBadge = (healthStatus: string | null) => {
+      if (!healthStatus) return null;
+      const health = HEALTH_SCORES[healthStatus as keyof typeof HEALTH_SCORES];
+      if (!health) return null;
+      
+      const colorMap: Record<string, string> = {
+        emerald: "bg-emerald-500/10 text-emerald-600",
+        amber: "bg-amber-500/10 text-amber-600",
+        red: "bg-red-500/10 text-red-600",
+        slate: "bg-slate-500/10 text-slate-600",
+      };
+      
+      return (
+        <Badge className={`${colorMap[health.color]} text-xs`}>
+          {health.label}
+        </Badge>
+      );
     };
 
     const draftCommitments = (commitments as any[]).filter(c => c.status === "draft");
@@ -1524,7 +1607,10 @@ export default function ProjectRoleView() {
                   <div key={c.id} className="p-3 rounded-lg border hover-elevate" data-testid={`commitment-draft-${c.id}`}>
                     <div className="flex items-start justify-between mb-2">
                       <h4 className="font-medium text-sm">{c.name}</h4>
-                      {getStatusBadge(c.status)}
+                      <div className="flex gap-1">
+                        {getValuePillarBadge(c.valuePillar)}
+                        {getStatusBadge(c.status)}
+                      </div>
                     </div>
                     {c.description && (
                       <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{c.description}</p>
@@ -1582,7 +1668,10 @@ export default function ProjectRoleView() {
                   <div key={c.id} className="p-3 rounded-lg border border-blue-500/20 bg-blue-500/5" data-testid={`commitment-review-${c.id}`}>
                     <div className="flex items-start justify-between mb-2">
                       <h4 className="font-medium text-sm">{c.name}</h4>
-                      {getStatusBadge(c.status)}
+                      <div className="flex gap-1">
+                        {getValuePillarBadge(c.valuePillar)}
+                        {getStatusBadge(c.status)}
+                      </div>
                     </div>
                     {c.description && (
                       <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{c.description}</p>
@@ -1630,7 +1719,11 @@ export default function ProjectRoleView() {
                   <div key={c.id} className="p-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5" data-testid={`commitment-confirmed-${c.id}`}>
                     <div className="flex items-start justify-between mb-2">
                       <h4 className="font-medium text-sm">{c.name}</h4>
-                      {getStatusBadge(c.status)}
+                      <div className="flex gap-1">
+                        {getValuePillarBadge(c.valuePillar)}
+                        {getHealthStatusBadge(c.healthStatus)}
+                        {getStatusBadge(c.status)}
+                      </div>
                     </div>
                     {c.description && (
                       <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{c.description}</p>
@@ -1699,6 +1792,101 @@ export default function ProjectRoleView() {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
+              {/* Value Framework Selection */}
+              <div className="p-4 rounded-lg bg-gradient-to-r from-violet-500/5 to-blue-500/5 border border-violet-500/20 space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="w-4 h-4 text-violet-600" />
+                  <span className="font-medium text-sm">Value Framework</span>
+                </div>
+                
+                {/* Value Pillar Selection */}
+                <div className="space-y-2">
+                  <Label>Value Pillar</Label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {Object.entries(VALUE_PILLARS).map(([id, pillar]) => (
+                      <button
+                        key={id}
+                        type="button"
+                        className={`p-3 rounded-lg border text-left transition-all ${
+                          newCommitment.valuePillar === id 
+                            ? `border-${pillar.color}-500 bg-${pillar.color}-500/10` 
+                            : "border-muted hover-elevate"
+                        }`}
+                        onClick={() => setNewCommitment({ ...newCommitment, valuePillar: id as ValuePillarId })}
+                        data-testid={`pillar-${id}`}
+                      >
+                        <div className="font-medium text-sm">{pillar.name}</div>
+                        <div className="text-xs text-muted-foreground">{pillar.description}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Solution Pattern Selection */}
+                <div className="space-y-2">
+                  <Label>Solution Pattern</Label>
+                  <Select 
+                    value={newCommitment.solutionPattern || ""}
+                    onValueChange={(val) => setNewCommitment({ 
+                      ...newCommitment, 
+                      solutionPattern: val as SolutionPatternId 
+                    })}
+                  >
+                    <SelectTrigger data-testid="select-solution-pattern">
+                      <SelectValue placeholder="Select a solution pattern for KPI suggestions" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(SOLUTION_VALUE_PATTERNS).map(([id, pattern]) => (
+                        <SelectItem key={id} value={id}>
+                          <div className="flex flex-col">
+                            <span>{pattern.name}</span>
+                            <span className="text-xs text-muted-foreground">{pattern.description}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* KPI Suggestions based on Solution Pattern */}
+                {newCommitment.solutionPattern && (
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Lightbulb className="w-4 h-4 text-amber-500" />
+                      Suggested KPIs
+                    </Label>
+                    <div className="grid gap-2">
+                      <div className="text-xs font-medium text-muted-foreground">Leading Indicators</div>
+                      <div className="flex flex-wrap gap-2">
+                        {getRecommendedKPIs().leading.map((kpi: any) => (
+                          <Badge 
+                            key={kpi.id} 
+                            variant={newCommitment.selectedKpiTemplate === kpi.id ? "default" : "outline"}
+                            className="cursor-pointer"
+                            onClick={() => applyKpiTemplate(kpi.id, 'leading')}
+                          >
+                            {kpi.name}
+                          </Badge>
+                        ))}
+                      </div>
+                      <div className="text-xs font-medium text-muted-foreground mt-2">Lagging Indicators</div>
+                      <div className="flex flex-wrap gap-2">
+                        {getRecommendedKPIs().lagging.map((kpi: any) => (
+                          <Badge 
+                            key={kpi.id}
+                            variant={newCommitment.selectedKpiTemplate === kpi.id ? "default" : "outline"}
+                            className="cursor-pointer"
+                            onClick={() => applyKpiTemplate(kpi.id, 'lagging')}
+                          >
+                            {kpi.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="commitment-name">Commitment Name *</Label>
                 <Input
