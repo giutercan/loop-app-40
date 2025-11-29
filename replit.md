@@ -22,6 +22,12 @@ The system is built on a robust architecture leveraging AI and a structured work
 - **Alignment Phase**: Value case building, client collaboration, Jobs & Priorities system, AI-powered value case/KPI recommendations, and AI-generated value narratives.
 - **Realization Phase**: Value tracking, Business Review management, KPI Progress Tracking, and Success Story linking.
 - **Data Model**: Simple schema with essential fields, JSON provenance for AI data, confidence, priority, Korn Ferry pillar, solution area, related KPIs, and a success_story_library.
+- **Value Realisation Framework** (shared/value-frameworks.ts):
+  - **4 Value Pillars**: Grow (revenue/market share), Optimise (productivity/cost), De-risk (turnover/compliance), Strengthen Capability (leadership/culture)
+  - **6 Solution Patterns**: Leadership Development, Talent Acquisition, Succession Planning, Culture Transformation, Org Design, Change Management
+  - **KPI Library**: 50+ pre-defined KPIs with formulas, benchmarks, and pillar alignment (Leading Indicators + Lagging Indicators)
+  - **Health Scores**: On Track, At Risk, Off Track, Needs Data - for tracking KPI progress with color-coded badges
+  - **QBR Templates**: Standard quarterly business review structure with executive summary, value delivered, health overview, and strategic alignment sections
 - **Account-centric Architecture**: Primary entity is now `accounts`, with `projects` as initiatives. Includes `accountUserRoles` (sales, consultant, delivery, csm, client_sponsor), `accountIssues`, and `evidenceArtefacts`.
 - **Role-Based Workspaces**: 
   - **Sales Workspace**: Guided Discovery (first, with AI-powered questions using Korn Ferry methodologies - Miller Heiman, SPIN, PSS), Execution Canvas (renamed from Value Canvas, with KPI health status and actionable next steps), Success Stories, Value Cases, and Handoff tabs.
