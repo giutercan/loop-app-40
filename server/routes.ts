@@ -6498,6 +6498,7 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
       const { 
         meetingContact, 
         discoveryTheme, 
+        discoveryInsights,
         successStories, 
         currentDraft, 
         fieldToSuggest, 
@@ -6508,10 +6509,24 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
         return res.status(400).json({ error: "fieldToSuggest and phase are required" });
       }
       
+      // Fetch insights from database if not provided in request
+      let insightsForAi = discoveryInsights;
+      if (!insightsForAi || insightsForAi.length === 0) {
+        const storedInsights = await storage.getInsights(projectId);
+        insightsForAi = storedInsights.slice(0, 10).map(i => ({
+          title: i.title,
+          content: i.content || "",
+          category: i.category,
+          priority: i.priority,
+          confidence: i.confidence || undefined
+        }));
+      }
+      
       const suggestion = await generateStorySuggestion({
         companyName: project.companyName,
         companyContext: project.sector ? `${project.sector} sector` : undefined,
         discoveryTheme,
+        discoveryInsights: insightsForAi,
         meetingContact,
         successStories,
         currentDraft,

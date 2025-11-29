@@ -1409,6 +1409,11 @@ export default function ProjectRoleView() {
       valuePillar: null as ValuePillarId | null,
       solutionPattern: null as SolutionPatternId | null,
       selectedKpiTemplate: null as string | null,
+      sourceAiSuggestion: null as {
+        sourceInsightTitle: string;
+        kpiType: "primary" | "supporting";
+        generatedAt: string;
+      } | null,
     });
 
     // Effect to handle prefill from AI suggestions
@@ -1437,6 +1442,11 @@ export default function ProjectRoleView() {
           valuePillar: pillarMap[prefillSuggestion.valuePillar] || null,
           solutionPattern: null,
           selectedKpiTemplate: null,
+          sourceAiSuggestion: {
+            sourceInsightTitle: prefillSuggestion.sourceInsightTitle,
+            kpiType: prefillSuggestion.kpiType,
+            generatedAt: new Date().toISOString(),
+          },
         });
         setIsAddCommitmentOpen(true);
         onPrefillUsed?.();
@@ -1546,6 +1556,7 @@ export default function ProjectRoleView() {
         valuePillar: null,
         solutionPattern: null,
         selectedKpiTemplate: null,
+        sourceAiSuggestion: null,
       });
     };
 
@@ -1594,6 +1605,12 @@ export default function ProjectRoleView() {
         solutionPattern: newCommitment.solutionPattern,
         status: "draft",
         definedBy: "Sales Team",
+        provenance: newCommitment.sourceAiSuggestion ? {
+          source: "ai_generated",
+          sourceInsightTitle: newCommitment.sourceAiSuggestion.sourceInsightTitle,
+          kpiType: newCommitment.sourceAiSuggestion.kpiType,
+          generatedAt: newCommitment.sourceAiSuggestion.generatedAt,
+        } : null,
       });
     };
 
@@ -1727,7 +1744,13 @@ export default function ProjectRoleView() {
                   <div key={c.id} className="p-3 rounded-lg border hover-elevate" data-testid={`commitment-draft-${c.id}`}>
                     <div className="flex items-start justify-between mb-2">
                       <h4 className="font-medium text-sm">{c.name}</h4>
-                      <div className="flex gap-1">
+                      <div className="flex flex-wrap gap-1 items-center">
+                        {c.provenance?.source === "ai_generated" && (
+                          <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/30 text-[10px] px-1.5">
+                            <Sparkles className="w-3 h-3 mr-0.5" />
+                            AI
+                          </Badge>
+                        )}
                         {getValuePillarBadge(c.valuePillar)}
                         {getStatusBadge(c.status)}
                       </div>
@@ -1788,7 +1811,13 @@ export default function ProjectRoleView() {
                   <div key={c.id} className="p-3 rounded-lg border border-blue-500/20 bg-blue-500/5" data-testid={`commitment-review-${c.id}`}>
                     <div className="flex items-start justify-between mb-2">
                       <h4 className="font-medium text-sm">{c.name}</h4>
-                      <div className="flex gap-1">
+                      <div className="flex flex-wrap gap-1 items-center">
+                        {c.provenance?.source === "ai_generated" && (
+                          <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/30 text-[10px] px-1.5">
+                            <Sparkles className="w-3 h-3 mr-0.5" />
+                            AI
+                          </Badge>
+                        )}
                         {getValuePillarBadge(c.valuePillar)}
                         {getStatusBadge(c.status)}
                       </div>
@@ -1839,7 +1868,13 @@ export default function ProjectRoleView() {
                   <div key={c.id} className="p-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5" data-testid={`commitment-confirmed-${c.id}`}>
                     <div className="flex items-start justify-between mb-2">
                       <h4 className="font-medium text-sm">{c.name}</h4>
-                      <div className="flex gap-1">
+                      <div className="flex flex-wrap gap-1 items-center">
+                        {c.provenance?.source === "ai_generated" && (
+                          <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/30 text-[10px] px-1.5">
+                            <Sparkles className="w-3 h-3 mr-0.5" />
+                            AI
+                          </Badge>
+                        )}
                         {getValuePillarBadge(c.valuePillar)}
                         {getHealthStatusBadge(c.healthStatus)}
                         {getStatusBadge(c.status)}

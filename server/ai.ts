@@ -2603,6 +2603,13 @@ export interface StorySuggestionInput {
   companyName: string;
   companyContext?: string;
   discoveryTheme?: string;
+  discoveryInsights?: Array<{
+    title: string;
+    content: string;
+    category?: string;
+    priority?: string;
+    confidence?: number;
+  }>;
   meetingContact?: {
     name?: string;
     title?: string;
@@ -2688,6 +2695,11 @@ RELEVANT SUCCESS STORIES TO REFERENCE:
 ${input.successStories.map(s => `- ${s.client} (${s.industry}): ${s.challenge}. Results: ${s.metrics.join(", ")}`).join("\n")}
 ` : "";
 
+  const discoveryInsightsContext = input.discoveryInsights?.length ? `
+DISCOVERY INSIGHTS (Use these to ground your story in real company data):
+${input.discoveryInsights.slice(0, 10).map(i => `- ${i.title}: ${i.content}${i.priority ? ` [Priority: ${i.priority}]` : ""}`).join("\n")}
+` : "";
+
   const currentDraftContext = input.currentDraft ? `
 CURRENT DRAFT ELEMENTS:
 - Single Message: ${input.currentDraft.singleMessage || "(not yet defined)"}
@@ -2763,6 +2775,7 @@ ${buyerRoleContext ? `BUYER ROLE GUIDANCE: ${buyerRoleContext}` : ""}
 ${influenceContext ? `INFLUENCE LEVEL: ${influenceContext}` : ""}
 
 ${successStoriesContext}
+${discoveryInsightsContext}
 ${currentDraftContext}
 
 ${phaseInstructions[input.phase]}
