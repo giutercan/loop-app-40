@@ -52,7 +52,9 @@ import type {
   AccountUserRole, InsertAccountUserRole,
   AccountIssue, InsertAccountIssue,
   EvidenceArtefact, InsertEvidenceArtefact,
-  AccountHub, LifecyclePhase
+  AccountHub, LifecyclePhase,
+  KpiCommitment, InsertKpiCommitment,
+  HandoffPacket, InsertHandoffPacket
 } from "@shared/schema";
 
 export interface IStorage {
@@ -332,6 +334,26 @@ export interface IStorage {
   
   // Migration helper - auto-create accounts for existing projects
   migrateProjectsToAccounts(): Promise<void>;
+  
+  // ============================================================================
+  // KPI COMMITMENTS & SALES-TO-CSM HANDOFF
+  // ============================================================================
+  
+  // KPI Commitments (Sales-defined deliverables)
+  getKpiCommitments(projectId: number): Promise<KpiCommitment[]>;
+  getKpiCommitment(id: number): Promise<KpiCommitment | undefined>;
+  getKpiCommitmentsByStatus(projectId: number, status: string): Promise<KpiCommitment[]>;
+  createKpiCommitment(commitment: InsertKpiCommitment): Promise<KpiCommitment>;
+  updateKpiCommitment(id: number, commitment: Partial<InsertKpiCommitment>): Promise<KpiCommitment | undefined>;
+  deleteKpiCommitment(id: number): Promise<void>;
+  
+  // Handoff Packets (Sales to CSM transfer)
+  getHandoffPackets(projectId: number): Promise<HandoffPacket[]>;
+  getHandoffPacket(id: number): Promise<HandoffPacket | undefined>;
+  getHandoffPacketsByAcceptanceState(projectId: number, state: string): Promise<HandoffPacket[]>;
+  createHandoffPacket(packet: InsertHandoffPacket): Promise<HandoffPacket>;
+  updateHandoffPacket(id: number, packet: Partial<InsertHandoffPacket>): Promise<HandoffPacket | undefined>;
+  deleteHandoffPacket(id: number): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -1924,6 +1946,88 @@ export class DbStorage implements IStorage {
         });
       }
     }
+  }
+  
+  // ============================================================================
+  // KPI COMMITMENTS & SALES-TO-CSM HANDOFF
+  // ============================================================================
+  
+  // KPI Commitments
+  async getKpiCommitments(projectId: number): Promise<KpiCommitment[]> {
+    return await db.select().from(schema.kpiCommitments)
+      .where(eq(schema.kpiCommitments.projectId, projectId))
+      .orderBy(desc(schema.kpiCommitments.createdAt));
+  }
+  
+  async getKpiCommitment(id: number): Promise<KpiCommitment | undefined> {
+    const results = await db.select().from(schema.kpiCommitments)
+      .where(eq(schema.kpiCommitments.id, id));
+    return results[0];
+  }
+  
+  async getKpiCommitmentsByStatus(projectId: number, status: string): Promise<KpiCommitment[]> {
+    return await db.select().from(schema.kpiCommitments)
+      .where(and(
+        eq(schema.kpiCommitments.projectId, projectId),
+        eq(schema.kpiCommitments.status, status)
+      ))
+      .orderBy(desc(schema.kpiCommitments.createdAt));
+  }
+  
+  async createKpiCommitment(commitment: InsertKpiCommitment): Promise<KpiCommitment> {
+    const results = await db.insert(schema.kpiCommitments).values(commitment).returning();
+    return results[0];
+  }
+  
+  async updateKpiCommitment(id: number, commitment: Partial<InsertKpiCommitment>): Promise<KpiCommitment | undefined> {
+    const results = await db.update(schema.kpiCommitments)
+      .set({ ...commitment, updatedAt: new Date() })
+      .where(eq(schema.kpiCommitments.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deleteKpiCommitment(id: number): Promise<void> {
+    await db.delete(schema.kpiCommitments).where(eq(schema.kpiCommitments.id, id));
+  }
+  
+  // Handoff Packets
+  async getHandoffPackets(projectId: number): Promise<HandoffPacket[]> {
+    return await db.select().from(schema.handoffPackets)
+      .where(eq(schema.handoffPackets.projectId, projectId))
+      .orderBy(desc(schema.handoffPackets.generatedAt));
+  }
+  
+  async getHandoffPacket(id: number): Promise<HandoffPacket | undefined> {
+    const results = await db.select().from(schema.handoffPackets)
+      .where(eq(schema.handoffPackets.id, id));
+    return results[0];
+  }
+  
+  async getHandoffPacketsByAcceptanceState(projectId: number, state: string): Promise<HandoffPacket[]> {
+    return await db.select().from(schema.handoffPackets)
+      .where(and(
+        eq(schema.handoffPackets.projectId, projectId),
+        eq(schema.handoffPackets.acceptanceState, state)
+      ))
+      .orderBy(desc(schema.handoffPackets.generatedAt));
+  }
+  
+  async createHandoffPacket(packet: InsertHandoffPacket): Promise<HandoffPacket> {
+    const results = await db.insert(schema.handoffPackets).values(packet).returning();
+    return results[0];
+  }
+  
+  async updateHandoffPacket(id: number, packet: Partial<InsertHandoffPacket>): Promise<HandoffPacket | undefined> {
+    const results = await db.update(schema.handoffPackets)
+      .set({ ...packet, updatedAt: new Date() })
+      .where(eq(schema.handoffPackets.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deleteHandoffPacket(id: number): Promise<void> {
+    await db.delete(schema.handoffPackets).where(eq(schema.handoffPackets.id, id));
   }
 }
 
