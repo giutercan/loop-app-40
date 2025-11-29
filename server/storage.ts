@@ -1969,7 +1969,7 @@ export class DbStorage implements IStorage {
     return await db.select().from(schema.kpiCommitments)
       .where(and(
         eq(schema.kpiCommitments.projectId, projectId),
-        eq(schema.kpiCommitments.status, status)
+        eq(schema.kpiCommitments.status, status as "draft" | "in_review" | "client_confirmed" | "handed_off" | "in_delivery" | "completed" | "cancelled")
       ))
       .orderBy(desc(schema.kpiCommitments.createdAt));
   }
@@ -2008,7 +2008,7 @@ export class DbStorage implements IStorage {
     return await db.select().from(schema.handoffPackets)
       .where(and(
         eq(schema.handoffPackets.projectId, projectId),
-        eq(schema.handoffPackets.acceptanceState, state)
+        eq(schema.handoffPackets.acceptanceState, state as "pending" | "accepted" | "needs_clarification" | "rejected")
       ))
       .orderBy(desc(schema.handoffPackets.generatedAt));
   }

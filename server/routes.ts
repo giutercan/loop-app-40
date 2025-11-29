@@ -41,6 +41,8 @@ import {
   insertAccountUserRoleSchema,
   insertAccountIssueSchema,
   insertEvidenceArtefactSchema,
+  insertKpiCommitmentSchema,
+  insertHandoffPacketSchema,
   lifecyclePhases,
   type LifecyclePhase
 } from "@shared/schema";
@@ -6479,6 +6481,322 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
     try {
       await storage.migrateProjectsToAccounts();
       res.json({ success: true, message: "Migration completed - projects linked to accounts" });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // ============================================================================
+  // KPI COMMITMENTS API - Sales-defined deliverables with customer
+  // ============================================================================
+  
+  // GET /api/projects/:projectId/commitments - Get all KPI commitments for a project
+  app.get("/api/projects/:projectId/commitments", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const { status } = req.query;
+      
+      let commitments;
+      if (status && typeof status === 'string') {
+        commitments = await storage.getKpiCommitmentsByStatus(projectId, status);
+      } else {
+        commitments = await storage.getKpiCommitments(projectId);
+      }
+      
+      res.json(commitments);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // GET /api/projects/:projectId/commitments/:id - Get a specific commitment
+  app.get("/api/projects/:projectId/commitments/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const commitment = await storage.getKpiCommitment(id);
+      
+      if (!commitment) {
+        return res.status(404).json({ error: "Commitment not found" });
+      }
+      
+      res.json(commitment);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // POST /api/projects/:projectId/commitments - Create a new commitment
+  app.post("/api/projects/:projectId/commitments", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      
+      // Verify project exists
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const validated = insertKpiCommitmentSchema.parse({
+        ...req.body,
+        projectId,
+      });
+      
+      const commitment = await storage.createKpiCommitment(validated);
+      res.status(201).json(commitment);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // PATCH /api/projects/:projectId/commitments/:id - Update a commitment
+  app.patch("/api/projects/:projectId/commitments/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      const updated = await storage.updateKpiCommitment(id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Commitment not found" });
+      }
+      
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // DELETE /api/projects/:projectId/commitments/:id - Delete a commitment
+  app.delete("/api/projects/:projectId/commitments/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteKpiCommitment(id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // PATCH /api/projects/:projectId/commitments/:id/confirm - Client confirms a commitment
+  app.patch("/api/projects/:projectId/commitments/:id/confirm", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { clientConfirmedBy } = req.body;
+      
+      const updated = await storage.updateKpiCommitment(id, {
+        status: "client_confirmed",
+        clientConfirmedAt: new Date(),
+        clientConfirmedBy: clientConfirmedBy || "Client",
+      });
+      
+      if (!updated) {
+        return res.status(404).json({ error: "Commitment not found" });
+      }
+      
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // ============================================================================
+  // HANDOFF PACKETS API - Sales to CSM transfer
+  // ============================================================================
+  
+  // GET /api/projects/:projectId/handoffs - Get all handoff packets for a project
+  app.get("/api/projects/:projectId/handoffs", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const { state } = req.query;
+      
+      let packets;
+      if (state && typeof state === 'string') {
+        packets = await storage.getHandoffPacketsByAcceptanceState(projectId, state);
+      } else {
+        packets = await storage.getHandoffPackets(projectId);
+      }
+      
+      res.json(packets);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // GET /api/projects/:projectId/handoffs/:id - Get a specific handoff packet
+  app.get("/api/projects/:projectId/handoffs/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const packet = await storage.getHandoffPacket(id);
+      
+      if (!packet) {
+        return res.status(404).json({ error: "Handoff packet not found" });
+      }
+      
+      res.json(packet);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // POST /api/projects/:projectId/handoffs - Create a new handoff packet
+  app.post("/api/projects/:projectId/handoffs", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      
+      // Verify project exists
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Get all the commitments being handed off
+      const { commitmentIds } = req.body;
+      if (!commitmentIds || !Array.isArray(commitmentIds) || commitmentIds.length === 0) {
+        return res.status(400).json({ error: "At least one commitment ID is required" });
+      }
+      
+      // Calculate total committed value
+      let totalValue = 0;
+      for (const cId of commitmentIds) {
+        const commitment = await storage.getKpiCommitment(cId);
+        if (commitment?.estimatedAnnualValue) {
+          totalValue += commitment.estimatedAnnualValue;
+        }
+      }
+      
+      const validated = insertHandoffPacketSchema.parse({
+        ...req.body,
+        projectId,
+        totalCommittedValue: totalValue,
+      });
+      
+      const packet = await storage.createHandoffPacket(validated);
+      
+      // Mark all included commitments as handed off
+      for (const cId of commitmentIds) {
+        await storage.updateKpiCommitment(cId, { status: "handed_off" });
+      }
+      
+      res.status(201).json(packet);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // PATCH /api/projects/:projectId/handoffs/:id - Update a handoff packet
+  app.patch("/api/projects/:projectId/handoffs/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      const updated = await storage.updateHandoffPacket(id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Handoff packet not found" });
+      }
+      
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // PATCH /api/projects/:projectId/handoffs/:id/accept - CSM accepts a handoff packet
+  app.patch("/api/projects/:projectId/handoffs/:id/accept", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { csmOwnerName, csmOwnerEmail, acceptanceNotes } = req.body;
+      
+      const updated = await storage.updateHandoffPacket(id, {
+        acceptanceState: "accepted",
+        acceptedAt: new Date(),
+        csmOwnerName,
+        csmOwnerEmail,
+        acceptanceNotes,
+      });
+      
+      if (!updated) {
+        return res.status(404).json({ error: "Handoff packet not found" });
+      }
+      
+      // Mark all commitments as in_delivery
+      if (updated.commitmentIds) {
+        for (const cId of updated.commitmentIds) {
+          await storage.updateKpiCommitment(cId, { status: "in_delivery" });
+        }
+      }
+      
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // PATCH /api/projects/:projectId/handoffs/:id/clarify - CSM requests clarification
+  app.patch("/api/projects/:projectId/handoffs/:id/clarify", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { question } = req.body;
+      
+      if (!question) {
+        return res.status(400).json({ error: "Clarification question is required" });
+      }
+      
+      const packet = await storage.getHandoffPacket(id);
+      if (!packet) {
+        return res.status(404).json({ error: "Handoff packet not found" });
+      }
+      
+      const existingRequests = (packet.clarificationRequests as any[]) || [];
+      const newRequest = {
+        question,
+        askedAt: new Date().toISOString(),
+        answeredAt: null,
+        answer: null,
+      };
+      
+      const updated = await storage.updateHandoffPacket(id, {
+        acceptanceState: "needs_clarification",
+        clarificationRequests: [...existingRequests, newRequest],
+      });
+      
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // PATCH /api/projects/:projectId/handoffs/:id/answer - Sales answers clarification
+  app.patch("/api/projects/:projectId/handoffs/:id/answer", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { questionIndex, answer } = req.body;
+      
+      if (questionIndex === undefined || !answer) {
+        return res.status(400).json({ error: "questionIndex and answer are required" });
+      }
+      
+      const packet = await storage.getHandoffPacket(id);
+      if (!packet) {
+        return res.status(404).json({ error: "Handoff packet not found" });
+      }
+      
+      const requests = (packet.clarificationRequests as any[]) || [];
+      if (questionIndex < 0 || questionIndex >= requests.length) {
+        return res.status(400).json({ error: "Invalid question index" });
+      }
+      
+      requests[questionIndex] = {
+        ...requests[questionIndex],
+        answer,
+        answeredAt: new Date().toISOString(),
+      };
+      
+      // Check if all questions are answered
+      const allAnswered = requests.every(r => r.answer !== null);
+      
+      const updated = await storage.updateHandoffPacket(id, {
+        acceptanceState: allAnswered ? "pending" : "needs_clarification",
+        clarificationRequests: requests,
+      });
+      
+      res.json(updated);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
