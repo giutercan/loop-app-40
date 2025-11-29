@@ -2864,15 +2864,30 @@ export default function ProjectRoleView() {
                         </div>
                       </div>
                       
-                      {/* Context-aware coaching based on role */}
-                      {meetingContact.role && (
-                        <div className="mt-4 p-3 rounded-lg bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20">
-                          <div className="flex items-start gap-2">
-                            <Lightbulb className="w-4 h-4 text-emerald-700 mt-0.5 flex-shrink-0" />
-                            <div className="text-sm">
-                              <span className="font-semibold text-emerald-800">Role-Based Approach: </span>
-                              <span className="text-emerald-700">{roleCoaching[meetingContact.role]}</span>
+                      {/* Connection to Story Builder coaching */}
+                      {meetingContact.role && meetingContact.name && (
+                        <div className="mt-4 p-3 rounded-lg bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-blue-500/10 border border-purple-500/20">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                              <GraduationCap className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                              <span className="text-sm text-purple-700">
+                                <span className="font-semibold">Coach ready for {meetingContact.name}</span>
+                                {" · "}
+                                Role-specific tips will appear in the Story Builder below
+                              </span>
                             </div>
+                            {!storyBuilderOpen && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-purple-700 border-purple-500/30 hover:bg-purple-500/10"
+                                onClick={() => setStoryBuilderOpen(true)}
+                                data-testid="button-open-story-builder-from-greensheet"
+                              >
+                                <Sparkles className="w-3 h-3 mr-1" />
+                                Open Story Builder
+                              </Button>
+                            )}
                           </div>
                         </div>
                       )}
@@ -3041,134 +3056,57 @@ export default function ProjectRoleView() {
               </CardHeader>
               
               {storyBuilderOpen && (
-                <CardContent className="pt-6 space-y-6">
-                  {/* Phase Navigation */}
-                  <div className="flex items-center gap-2 p-2 rounded-xl bg-background border">
-                    {([
-                      { id: "before" as const, label: "BEFORE", sublabel: "Craft", icon: Target, color: "blue" as const },
-                      { id: "during" as const, label: "DURING", sublabel: "Tell", icon: Play, color: "emerald" as const },
-                      { id: "after" as const, label: "AFTER", sublabel: "Land", icon: Flag, color: "purple" as const }
-                    ] as const).map((phase, idx) => {
-                      const PhaseIcon = phase.icon;
-                      const isActive = activeStoryPhase === phase.id;
-                      const colorClasses: Record<"blue" | "emerald" | "purple", string> = {
-                        blue: isActive ? "bg-blue-500 text-white" : "bg-blue-500/10 text-blue-700 hover:bg-blue-500/20",
-                        emerald: isActive ? "bg-emerald-500 text-white" : "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20",
-                        purple: isActive ? "bg-purple-500 text-white" : "bg-purple-500/10 text-purple-700 hover:bg-purple-500/20"
-                      };
-                      return (
-                        <div key={phase.id} className="flex items-center flex-1">
-                          <button
-                            onClick={() => setActiveStoryPhase(phase.id)}
-                            className={`flex-1 p-3 rounded-lg transition-all ${colorClasses[phase.color]}`}
-                            data-testid={`button-story-phase-${phase.id}`}
-                          >
-                            <div className="flex items-center justify-center gap-2">
-                              <PhaseIcon className="w-4 h-4" />
-                              <div className="text-left">
-                                <div className="font-bold text-sm">{phase.label}</div>
-                                <div className={`text-xs ${isActive ? 'opacity-80' : ''}`}>{phase.sublabel}</div>
-                              </div>
-                            </div>
-                          </button>
-                          {idx < 2 && <ChevronRight className="w-5 h-5 text-muted-foreground mx-1" />}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  
-                  {/* Integrated Coach Panel */}
-                  {meetingContact.name && (
-                    <div className="p-4 rounded-xl bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-purple-500/20">
-                      <div className="flex items-start gap-4">
-                        {/* Contact Context */}
-                        <div className="flex-shrink-0">
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
-                            {meetingContact.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                          </div>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-foreground">{meetingContact.name}</span>
-                            {meetingContact.title && (
-                              <span className="text-sm text-muted-foreground">• {meetingContact.title}</span>
-                            )}
-                            {meetingContact.role && (
-                              <Badge variant="outline" className="text-xs bg-purple-500/10 border-purple-500/30 text-purple-700">
-                                {meetingContact.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                              </Badge>
-                            )}
-                            {meetingContact.influence && (
-                              <Badge variant="outline" className={`text-xs ${
-                                meetingContact.influence === 'high' ? 'bg-red-500/10 border-red-500/30 text-red-700' :
-                                meetingContact.influence === 'medium' ? 'bg-amber-500/10 border-amber-500/30 text-amber-700' :
-                                'bg-gray-500/10 border-gray-500/30 text-gray-700'
-                              }`}>
-                                {meetingContact.influence} influence
-                              </Badge>
-                            )}
-                          </div>
-                          
-                          {/* Dynamic Coaching based on role and phase */}
-                          <div className="mt-2 p-2 rounded-lg bg-white/50 border border-purple-500/10">
-                            <div className="flex items-start gap-2">
-                              <GraduationCap className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                              <div className="text-sm">
-                                <span className="font-medium text-purple-700">Coach Tip:</span>{' '}
-                                <span className="text-muted-foreground">
-                                  {activeStoryPhase === "before" && meetingContact.role === "economic_buyer" && "Focus your story on ROI and business outcomes. Economic buyers want to see the bottom-line impact."}
-                                  {activeStoryPhase === "before" && meetingContact.role === "user_buyer" && "Emphasize day-to-day impact. User buyers care about how this makes their life easier."}
-                                  {activeStoryPhase === "before" && meetingContact.role === "technical_buyer" && "Lead with methodology and data. Technical buyers screen for fit and feasibility."}
-                                  {activeStoryPhase === "before" && meetingContact.role === "coach" && "Focus on process insights. Coaches can help you navigate the buying journey."}
-                                  {activeStoryPhase === "before" && meetingContact.role === "champion" && "Give them quotable soundbites. Champions will sell this story internally for you."}
-                                  {activeStoryPhase === "before" && !meetingContact.role && "Craft a story that resonates with their role and decision-making style."}
-                                  
-                                  {activeStoryPhase === "during" && meetingContact.role === "economic_buyer" && "Keep it brief and outcome-focused. They're busy—get to the value quickly."}
-                                  {activeStoryPhase === "during" && meetingContact.role === "user_buyer" && "Use relatable scenarios. Paint a picture of their improved daily experience."}
-                                  {activeStoryPhase === "during" && meetingContact.role === "technical_buyer" && "Be prepared for questions. Pause for their input on methodology."}
-                                  {activeStoryPhase === "during" && meetingContact.role === "coach" && "Ask for their perspective. Coaches appreciate being consulted."}
-                                  {activeStoryPhase === "during" && meetingContact.role === "champion" && "Make them the hero. Frame the story so they can take ownership."}
-                                  {activeStoryPhase === "during" && !meetingContact.role && "Maintain eye contact and pause at key moments for impact."}
-                                  
-                                  {activeStoryPhase === "after" && meetingContact.role === "economic_buyer" && "End with a clear ask tied to business value. What decision do you need?"}
-                                  {activeStoryPhase === "after" && meetingContact.role === "user_buyer" && "Leave them with a vision of success they can imagine themselves in."}
-                                  {activeStoryPhase === "after" && meetingContact.role === "technical_buyer" && "Offer to provide additional data or a deeper technical dive."}
-                                  {activeStoryPhase === "after" && meetingContact.role === "coach" && "Ask who else should hear this story and how to best approach them."}
-                                  {activeStoryPhase === "after" && meetingContact.role === "champion" && "Arm them with materials they can share. Make it easy to advocate for you."}
-                                  {activeStoryPhase === "after" && !meetingContact.role && "Close with a clear, actionable next step."}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Known concerns callout */}
-                          {meetingContact.knownConcerns && (
-                            <div className="mt-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                              <div className="flex items-start gap-2">
-                                <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                                <div className="text-sm">
-                                  <span className="font-medium text-amber-700">Address this concern:</span>{' '}
-                                  <span className="text-muted-foreground">{meetingContact.knownConcerns}</span>
+                <CardContent className="pt-6">
+                  {/* Two-column layout: Story Content + Sticky Coach Sidebar */}
+                  <div className="flex gap-6">
+                    {/* Left Column: Story Building Content */}
+                    <div className="flex-1 space-y-6 min-w-0">
+                      {/* Phase Navigation */}
+                      <div className="flex items-center gap-2 p-2 rounded-xl bg-background border">
+                        {([
+                          { id: "before" as const, label: "BEFORE", sublabel: "Craft", icon: Target, color: "blue" as const },
+                          { id: "during" as const, label: "DURING", sublabel: "Tell", icon: Play, color: "emerald" as const },
+                          { id: "after" as const, label: "AFTER", sublabel: "Land", icon: Flag, color: "purple" as const }
+                        ] as const).map((phase, idx) => {
+                          const PhaseIcon = phase.icon;
+                          const isActive = activeStoryPhase === phase.id;
+                          const colorClasses: Record<"blue" | "emerald" | "purple", string> = {
+                            blue: isActive ? "bg-blue-500 text-white" : "bg-blue-500/10 text-blue-700 hover:bg-blue-500/20",
+                            emerald: isActive ? "bg-emerald-500 text-white" : "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20",
+                            purple: isActive ? "bg-purple-500 text-white" : "bg-purple-500/10 text-purple-700 hover:bg-purple-500/20"
+                          };
+                          return (
+                            <div key={phase.id} className="flex items-center flex-1">
+                              <button
+                                onClick={() => setActiveStoryPhase(phase.id)}
+                                className={`flex-1 p-3 rounded-lg transition-all ${colorClasses[phase.color]}`}
+                                data-testid={`button-story-phase-${phase.id}`}
+                              >
+                                <div className="flex items-center justify-center gap-2">
+                                  <PhaseIcon className="w-4 h-4" />
+                                  <div className="text-left">
+                                    <div className="font-bold text-sm">{phase.label}</div>
+                                    <div className={`text-xs ${isActive ? 'opacity-80' : ''}`}>{phase.sublabel}</div>
+                                  </div>
                                 </div>
-                              </div>
+                              </button>
+                              {idx < 2 && <ChevronRight className="w-5 h-5 text-muted-foreground mx-1" />}
                             </div>
-                          )}
+                          );
+                        })}
+                      </div>
+                      
+                      {/* Prompt to add contact if missing - inline in story area */}
+                      {!meetingContact.name && (
+                        <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                          <div className="flex items-center gap-2 text-sm text-amber-700">
+                            <Users className="w-4 h-4" />
+                            <span>Add contact details in the Green Sheet above to unlock personalized coaching in the sidebar</span>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Prompt to add contact if missing */}
-                  {!meetingContact.name && (
-                    <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                      <div className="flex items-center gap-2 text-sm text-amber-700">
-                        <Users className="w-4 h-4" />
-                        <span>Add contact details in the Green Sheet above to unlock personalized coaching tips</span>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* BEFORE Phase - Crafting */}
+                      )}
+                      
+                      {/* BEFORE Phase - Crafting */}
                   {activeStoryPhase === "before" && (
                     <div className="space-y-4">
                       {/* AI Suggest All Button */}
@@ -3922,6 +3860,119 @@ export default function ProjectRoleView() {
                         <p className="text-xs italic text-amber-700">Tip: "{story.howToTell}"</p>
                       </div>
                     ))}
+                    </div>
+                    </div>
+                    {/* End of Left Column */}
+                    
+                    {/* Right Column: Sticky Coach Sidebar */}
+                    <div className="w-80 flex-shrink-0 hidden lg:block">
+                      <div className="sticky top-4 space-y-4">
+                        {/* Coach Panel */}
+                        {meetingContact.name ? (
+                          <div className="p-4 rounded-xl bg-gradient-to-b from-indigo-500/10 via-purple-500/10 to-pink-500/10 border-2 border-purple-500/30 shadow-lg">
+                            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-purple-500/20">
+                              <GraduationCap className="w-5 h-5 text-purple-600" />
+                              <span className="font-bold text-purple-800">Your Coach</span>
+                            </div>
+                            
+                            {/* Contact Info */}
+                            <div className="flex items-center gap-3 mb-4">
+                              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg ring-2 ring-purple-500/30 ring-offset-2">
+                                {meetingContact.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                              </div>
+                              <div>
+                                <div className="font-semibold text-foreground">{meetingContact.name}</div>
+                                {meetingContact.title && (
+                                  <div className="text-xs text-muted-foreground">{meetingContact.title}</div>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* Role & Influence Badges */}
+                            <div className="flex flex-wrap gap-2 mb-4">
+                              {meetingContact.role && (
+                                <Badge className="text-xs bg-purple-500 text-white border-0">
+                                  {meetingContact.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                </Badge>
+                              )}
+                              {meetingContact.influence && (
+                                <Badge variant="outline" className={`text-xs ${
+                                  meetingContact.influence === 'high' ? 'bg-red-500/10 border-red-500/30 text-red-700' :
+                                  meetingContact.influence === 'medium' ? 'bg-amber-500/10 border-amber-500/30 text-amber-700' :
+                                  'bg-gray-500/10 border-gray-500/30 text-gray-700'
+                                }`}>
+                                  {meetingContact.influence} influence
+                                </Badge>
+                              )}
+                            </div>
+                            
+                            {/* Phase-Aware Coach Tip */}
+                            <div className="p-3 rounded-lg bg-white/70 border border-purple-500/20 mb-3">
+                              <div className="flex items-start gap-2">
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                  activeStoryPhase === "before" ? "bg-blue-500" :
+                                  activeStoryPhase === "during" ? "bg-emerald-500" :
+                                  "bg-purple-500"
+                                } text-white`}>
+                                  {activeStoryPhase === "before" ? <Target className="w-3 h-3" /> :
+                                   activeStoryPhase === "during" ? <Play className="w-3 h-3" /> :
+                                   <Flag className="w-3 h-3" />}
+                                </div>
+                                <div className="text-sm">
+                                  <div className="font-semibold text-purple-800 mb-1">
+                                    {activeStoryPhase === "before" ? "Craft Phase" :
+                                     activeStoryPhase === "during" ? "Tell Phase" :
+                                     "Land Phase"} Tip
+                                  </div>
+                                  <p className="text-muted-foreground text-xs leading-relaxed">
+                                    {activeStoryPhase === "before" && meetingContact.role === "economic_buyer" && "Focus on ROI and business outcomes. Economic buyers want bottom-line impact."}
+                                    {activeStoryPhase === "before" && meetingContact.role === "user_buyer" && "Emphasize day-to-day impact. User buyers care how this makes their life easier."}
+                                    {activeStoryPhase === "before" && meetingContact.role === "technical_buyer" && "Lead with methodology and data. Technical buyers screen for fit and feasibility."}
+                                    {activeStoryPhase === "before" && meetingContact.role === "coach" && "Focus on process insights. Coaches help navigate the buying journey."}
+                                    {activeStoryPhase === "before" && meetingContact.role === "champion" && "Give quotable soundbites. Champions will sell this story internally."}
+                                    {activeStoryPhase === "before" && !meetingContact.role && "Craft a story that resonates with their role and decision-making style."}
+                                    
+                                    {activeStoryPhase === "during" && meetingContact.role === "economic_buyer" && "Keep it brief and outcome-focused. They're busy—get to the value quickly."}
+                                    {activeStoryPhase === "during" && meetingContact.role === "user_buyer" && "Use relatable scenarios. Paint their improved daily experience."}
+                                    {activeStoryPhase === "during" && meetingContact.role === "technical_buyer" && "Be prepared for questions. Pause for their input on methodology."}
+                                    {activeStoryPhase === "during" && meetingContact.role === "coach" && "Ask for their perspective. Coaches appreciate being consulted."}
+                                    {activeStoryPhase === "during" && meetingContact.role === "champion" && "Make them the hero. Frame the story so they take ownership."}
+                                    {activeStoryPhase === "during" && !meetingContact.role && "Maintain eye contact and pause at key moments for impact."}
+                                    
+                                    {activeStoryPhase === "after" && meetingContact.role === "economic_buyer" && "End with a clear ask tied to business value. What decision do you need?"}
+                                    {activeStoryPhase === "after" && meetingContact.role === "user_buyer" && "Leave them with a vision of success they can imagine themselves in."}
+                                    {activeStoryPhase === "after" && meetingContact.role === "technical_buyer" && "Offer to provide additional data or a deeper technical dive."}
+                                    {activeStoryPhase === "after" && meetingContact.role === "coach" && "Ask who else should hear this story and how to best approach them."}
+                                    {activeStoryPhase === "after" && meetingContact.role === "champion" && "Arm them with materials they can share. Make it easy to advocate."}
+                                    {activeStoryPhase === "after" && !meetingContact.role && "Close with a clear, actionable next step."}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Known Concerns */}
+                            {meetingContact.knownConcerns && (
+                              <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                                <div className="flex items-start gap-2">
+                                  <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                                  <div>
+                                    <div className="text-xs font-semibold text-amber-700 mb-1">Address This</div>
+                                    <p className="text-xs text-muted-foreground">{meetingContact.knownConcerns}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="p-4 rounded-xl bg-muted/50 border border-dashed border-muted-foreground/30">
+                            <div className="text-center space-y-2">
+                              <GraduationCap className="w-8 h-8 text-muted-foreground/50 mx-auto" />
+                              <p className="text-sm text-muted-foreground">Add contact details in the Green Sheet to unlock coaching tips</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               )}
