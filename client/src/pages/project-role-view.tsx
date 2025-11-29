@@ -722,13 +722,13 @@ export default function ProjectRoleView() {
   
   const isSalesRoleParam = roleParam === "sales" || roleParam === "consultant";
   const isDeliveryRoleParam = roleParam === "delivery" || roleParam === "csm";
-  const [activeTab, setActiveTab] = useState(isSalesRoleParam ? "guided-discovery" : "health");
+  const [activeTab, setActiveTab] = useState(isSalesRoleParam ? "discover" : "health");
   const [isLogKPIOpen, setIsLogKPIOpen] = useState(false);
   
   // Reset tab when role changes
   useEffect(() => {
     if (isSalesRoleParam) {
-      setActiveTab("guided-discovery");
+      setActiveTab("discover");
     } else if (isDeliveryRoleParam) {
       setActiveTab("health");
     }
@@ -742,6 +742,7 @@ export default function ProjectRoleView() {
   
   // Discovery workflow state - initialized from project data
   const [discoveryStep, setDiscoveryStepLocal] = useState<"theme-select" | "intelligence" | "questions" | "review" | "insights">("theme-select");
+  const [buildValueSection, setBuildValueSection] = useState<"overview" | "commitments" | "stories">("overview");
   const [selectedDiscoveryTheme, setSelectedDiscoveryThemeLocal] = useState<string | null>(null);
   const [selectedQuestions, setSelectedQuestions] = useState<Set<number>>(new Set());
   const [questionAnswers, setQuestionAnswers] = useState<Record<number, string>>({});
@@ -1101,6 +1102,18 @@ export default function ProjectRoleView() {
       if (!response.ok) return [];
       return response.json();
     },
+    enabled: projectId > 0
+  });
+
+  // Commitments for workflow progress tracking
+  const { data: commitments = [] } = useQuery<any[]>({
+    queryKey: ["/api/projects", projectId, "commitments"],
+    enabled: projectId > 0
+  });
+
+  // Handoff packets for workflow progress tracking
+  const { data: handoffPackets = [] } = useQuery<any[]>({
+    queryKey: ["/api/projects", projectId, "handoffs"],
     enabled: projectId > 0
   });
 
@@ -2216,72 +2229,197 @@ export default function ProjectRoleView() {
     );
   };
 
-  const renderSalesWorkspace = () => (
-    <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-      <TabsList className="grid grid-cols-6 w-full max-w-4xl">
-        <TabsTrigger value="guided-discovery" data-testid="tab-guided-discovery">
-          <Sparkles className="w-4 h-4 mr-2" />
-          Guided Discovery
-        </TabsTrigger>
-        <TabsTrigger value="execution-canvas" data-testid="tab-execution-canvas">
-          <Target className="w-4 h-4 mr-2" />
-          Execution Canvas
-        </TabsTrigger>
-        <TabsTrigger value="success-stories" data-testid="tab-success-stories">
-          <Star className="w-4 h-4 mr-2" />
-          Success Stories
-        </TabsTrigger>
-        <TabsTrigger value="value-cases" data-testid="tab-value-cases">
-          <DollarSign className="w-4 h-4 mr-2" />
-          Value Cases
-        </TabsTrigger>
-        <TabsTrigger value="value-agreement" data-testid="tab-value-agreement">
-          <Handshake className="w-4 h-4 mr-2" />
-          Value Agreement
-        </TabsTrigger>
-        <TabsTrigger value="handoff" data-testid="tab-handoff">
-          <ArrowUpRight className="w-4 h-4 mr-2" />
-          Handoff
-        </TabsTrigger>
-      </TabsList>
+  // Calculate workflow stage completion for progress indicator
+  const getWorkflowProgress = () => {
+    const hasDiscoveryInsights = insights.length > 0;
+    const hasAskedQuestions = discoveryQuestions.filter(q => q.isAsked).length > 0;
+    const hasCommitments = commitments.length > 0;
+    const hasConfirmedCommitments = commitments.filter((c: any) => c.status === "client_confirmed").length > 0;
+    const hasHandoffs = handoffPackets.length > 0;
+    
+    return {
+      discover: hasDiscoveryInsights || hasAskedQuestions ? 100 : (selectedDiscoveryTheme ? 50 : 0),
+      buildValue: hasCommitments ? (hasConfirmedCommitments ? 100 : 50) : 0,
+      align: hasConfirmedCommitments ? 100 : (hasCommitments ? 50 : 0),
+      handoff: hasHandoffs ? 100 : (hasConfirmedCommitments ? 50 : 0),
+    };
+  };
+  
+  const workflowProgress = getWorkflowProgress();
 
-      {/* Execution Canvas - Core 3-5 KPIs per engagement (Trend #1: Outcomes & shared KPIs) */}
-      <TabsContent value="execution-canvas" className="space-y-6">
-        <Card className="bg-gradient-to-r from-primary/5 to-emerald-500/5 border-primary/20">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Target className="w-6 h-6 text-primary" />
+  const renderSalesWorkspace = () => (
+    <div className="flex gap-6">
+      {/* Workflow Progress Sidebar */}
+      <div className="hidden lg:block w-56 shrink-0">
+        <div className="sticky top-4 space-y-2">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Sales Journey</p>
+          {[
+            { id: "discover", label: "Discover", icon: Sparkles, progress: workflowProgress.discover, description: "Research & Questions" },
+            { id: "build-value", label: "Build Value", icon: Target, progress: workflowProgress.buildValue, description: "KPIs & Commitments" },
+            { id: "align", label: "Align", icon: Handshake, progress: workflowProgress.align, description: "Client Collaboration" },
+            { id: "handoff", label: "Handoff", icon: ArrowUpRight, progress: workflowProgress.handoff, description: "Transition to Delivery" },
+          ].map((stage, idx) => {
+            const isActive = activeTab === stage.id;
+            const isComplete = stage.progress === 100;
+            const StageIcon = stage.icon;
+            
+            return (
+              <button
+                key={stage.id}
+                onClick={() => setActiveTab(stage.id)}
+                className={`w-full text-left p-3 rounded-lg border transition-all ${
+                  isActive 
+                    ? "bg-primary/10 border-primary/30 shadow-sm" 
+                    : "bg-background border-border/50 hover-elevate"
+                }`}
+                data-testid={`nav-${stage.id}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                    isComplete 
+                      ? "bg-emerald-500 text-white" 
+                      : isActive 
+                        ? "bg-primary text-primary-foreground" 
+                        : "bg-muted text-muted-foreground"
+                  }`}>
+                    {isComplete ? <Check className="w-4 h-4" /> : <StageIcon className="w-4 h-4" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-medium ${isActive ? "text-primary" : ""}`}>{stage.label}</p>
+                    <p className="text-xs text-muted-foreground truncate">{stage.description}</p>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle>Execution Canvas</CardTitle>
-                  <CardDescription>Track shared KPIs, value progress, and actionable next steps</CardDescription>
-                </div>
+                {stage.progress > 0 && stage.progress < 100 && (
+                  <div className="mt-2 ml-11">
+                    <Progress value={stage.progress} className="h-1" />
+                  </div>
+                )}
+              </button>
+            );
+          })}
+          
+          {/* Quick Stats */}
+          <div className="mt-6 p-3 rounded-lg bg-muted/30 border">
+            <p className="text-xs font-medium text-muted-foreground mb-2">Quick Stats</p>
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Insights</span>
+                <span className="font-medium">{insights.length}</span>
               </div>
-              <Badge variant="secondary" className="text-xs">
-                {kpis.filter(k => k.baselineValue && k.targetValue).length} / 5 Defined
-              </Badge>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Commitments</span>
+                <span className="font-medium">{commitments.length}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Confirmed</span>
+                <span className="font-medium text-emerald-600">{commitments.filter((c: any) => c.status === "client_confirmed").length}</span>
+              </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {/* Summary stats */}
-              <div className="p-4 rounded-lg bg-background border">
-                <p className="text-sm text-muted-foreground">Total Value Potential</p>
-                <p className="text-2xl font-bold text-primary">${(totalValue / 1000000).toFixed(1)}M</p>
-              </div>
-              <div className="p-4 rounded-lg bg-background border">
-                <p className="text-sm text-muted-foreground">Strategic Priorities</p>
-                <p className="text-2xl font-bold">{jobThemes.length}</p>
-              </div>
-              <div className="p-4 rounded-lg bg-background border">
-                <p className="text-sm text-muted-foreground">Discovery Insights</p>
-                <p className="text-2xl font-bold">{insights.length}</p>
-              </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 min-w-0">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          {/* Mobile Tab Navigation */}
+          <TabsList className="grid grid-cols-4 w-full lg:hidden">
+            <TabsTrigger value="discover" data-testid="tab-discover">
+              <Sparkles className="w-4 h-4 mr-1" />
+              <span className="hidden sm:inline">Discover</span>
+            </TabsTrigger>
+            <TabsTrigger value="build-value" data-testid="tab-build-value">
+              <Target className="w-4 h-4 mr-1" />
+              <span className="hidden sm:inline">Build</span>
+            </TabsTrigger>
+            <TabsTrigger value="align" data-testid="tab-align">
+              <Handshake className="w-4 h-4 mr-1" />
+              <span className="hidden sm:inline">Align</span>
+            </TabsTrigger>
+            <TabsTrigger value="handoff" data-testid="tab-handoff">
+              <ArrowUpRight className="w-4 h-4 mr-1" />
+              <span className="hidden sm:inline">Handoff</span>
+            </TabsTrigger>
+          </TabsList>
+
+          {/* STAGE 2: BUILD VALUE - KPIs, Commitments, Stories */}
+          <TabsContent value="build-value" className="space-y-6">
+            {/* Sub-navigation for Build Value sections */}
+            <div className="flex items-center gap-2 border-b pb-4">
+              <Button
+                variant={buildValueSection === "overview" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setBuildValueSection("overview")}
+                data-testid="btn-build-overview"
+              >
+                <BarChart3 className="w-4 h-4 mr-2" />
+                Overview
+              </Button>
+              <Button
+                variant={buildValueSection === "commitments" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setBuildValueSection("commitments")}
+                data-testid="btn-build-commitments"
+              >
+                <Handshake className="w-4 h-4 mr-2" />
+                Commitments
+                {commitments.length > 0 && (
+                  <Badge variant="secondary" className="ml-2 text-xs">{commitments.length}</Badge>
+                )}
+              </Button>
+              <Button
+                variant={buildValueSection === "stories" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setBuildValueSection("stories")}
+                data-testid="btn-build-stories"
+              >
+                <Star className="w-4 h-4 mr-2" />
+                Success Stories
+              </Button>
             </div>
-          </CardContent>
-        </Card>
+
+            {/* Overview Section */}
+            {buildValueSection === "overview" && (
+              <>
+                <Card className="bg-gradient-to-r from-primary/5 to-emerald-500/5 border-primary/20">
+                  <CardHeader>
+                    <div className="flex items-center justify-between flex-wrap gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <Target className="w-6 h-6 text-primary" />
+                        </div>
+                        <div>
+                          <CardTitle>Value Overview</CardTitle>
+                          <CardDescription>Track shared KPIs, value progress, and next steps</CardDescription>
+                        </div>
+                      </div>
+                      <Button onClick={() => setBuildValueSection("commitments")} data-testid="btn-add-commitment-cta">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Commitment
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                      <div className="p-4 rounded-lg bg-background border">
+                        <p className="text-sm text-muted-foreground">Total Value Potential</p>
+                        <p className="text-2xl font-bold text-primary">${(totalValue / 1000000).toFixed(1)}M</p>
+                      </div>
+                      <div className="p-4 rounded-lg bg-background border">
+                        <p className="text-sm text-muted-foreground">Commitments</p>
+                        <p className="text-2xl font-bold">{commitments.length}</p>
+                      </div>
+                      <div className="p-4 rounded-lg bg-background border">
+                        <p className="text-sm text-muted-foreground">Client Confirmed</p>
+                        <p className="text-2xl font-bold text-emerald-600">{commitments.filter((c: any) => c.status === "client_confirmed").length}</p>
+                      </div>
+                      <div className="p-4 rounded-lg bg-background border">
+                        <p className="text-sm text-muted-foreground">Discovery Insights</p>
+                        <p className="text-2xl font-bold">{insights.length}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
         {/* KPI Health Overview */}
         <div className="grid gap-4 md:grid-cols-4">
@@ -2418,6 +2556,58 @@ export default function ProjectRoleView() {
           </CardContent>
         </Card>
 
+        {/* AI-Suggested KPIs from Discovery */}
+        {selectedDiscoveryTheme && insights.length > 0 && (
+          <Card className="bg-gradient-to-r from-purple-500/5 via-blue-500/5 to-emerald-500/5 border-purple-500/20">
+            <CardHeader>
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                    <Sparkles className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">AI-Suggested KPIs from Discovery</CardTitle>
+                    <CardDescription>Based on insights from "{discoveryThemes.find(t => t.id === selectedDiscoveryTheme)?.name || selectedDiscoveryTheme}" theme</CardDescription>
+                  </div>
+                </div>
+                <Badge className="bg-purple-500/10 text-purple-600">
+                  {insights.length} Insight(s) Analyzed
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {/* Generate suggestions based on discovery theme and insights */}
+                {insights.slice(0, 3).map((insight, idx) => {
+                  const suggestedKpi = insight.relatedKPIs?.[0] || (insight.category === "Grow" ? "Revenue per employee growth" : insight.category === "Optimise" ? "Cost per hire reduction" : insight.category === "De-risk" ? "Regrettable turnover rate" : "Leadership bench strength");
+                  return (
+                    <div key={idx} className="p-3 rounded-lg bg-background border flex items-start gap-3 hover-elevate">
+                      <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                        <Target className="w-4 h-4 text-purple-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">{suggestedKpi}</p>
+                        <p className="text-xs text-muted-foreground truncate">Based on: {insight.title}</p>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => {
+                          setBuildValueSection("commitments");
+                        }}
+                        data-testid={`btn-add-suggested-kpi-${idx}`}
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        Add
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Actionable Next Steps */}
         <Card>
           <CardHeader>
@@ -2537,10 +2727,73 @@ export default function ProjectRoleView() {
             </div>
           </CardContent>
         </Card>
-      </TabsContent>
+              </>
+            )}
 
-      {/* Guided Discovery - Theme-Driven Workflow */}
-      <TabsContent value="guided-discovery" className="space-y-6">
+            {/* Commitments Section */}
+            {buildValueSection === "commitments" && (
+              <ValueAgreementTab 
+                projectId={projectId} 
+                project={project}
+                insights={insights}
+                kpis={kpis}
+                jobThemes={jobThemes}
+              />
+            )}
+
+            {/* Success Stories Section */}
+            {buildValueSection === "stories" && (
+              <Card className="bg-gradient-to-r from-amber-500/5 to-orange-500/5 border-amber-500/20">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                      <Star className="w-6 h-6 text-amber-600" />
+                    </div>
+                    <div>
+                      <CardTitle>Success Stories</CardTitle>
+                      <CardDescription>Verified case studies and proof points for value conversations</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="p-4 rounded-lg border hover-elevate">
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="font-semibold">Leadership Development ROI</h4>
+                        <Badge className="bg-emerald-500/10 text-emerald-600">Verified</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Global manufacturing company achieved 32% improvement in leadership bench strength through targeted development program.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="outline" className="text-xs">Manufacturing</Badge>
+                        <Badge variant="outline" className="text-xs">Leadership</Badge>
+                        <Badge variant="secondary" className="text-xs">+32% Bench</Badge>
+                      </div>
+                    </div>
+                    <div className="p-4 rounded-lg border hover-elevate">
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="font-semibold">Talent Acquisition Transform</h4>
+                        <Badge className="bg-emerald-500/10 text-emerald-600">Verified</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Technology company reduced time-to-hire by 40% while improving quality of hire scores.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="outline" className="text-xs">Technology</Badge>
+                        <Badge variant="outline" className="text-xs">Talent Acquisition</Badge>
+                        <Badge variant="secondary" className="text-xs">-40% Time-to-hire</Badge>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* Guided Discovery - Theme-Driven Workflow */}
+          {/* STAGE 1: DISCOVER - Research & Questions */}
+          <TabsContent value="discover" className="space-y-6">
         {/* Discovery Workflow Progress */}
         <Card className="bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-amber-500/5 border-blue-500/20">
           <CardHeader>
@@ -5976,145 +6229,24 @@ export default function ProjectRoleView() {
         })()}
       </TabsContent>
 
-      <TabsContent value="value-cases" className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Value Cases</CardTitle>
-            <CardDescription>Business value propositions for this engagement</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {valueCases.map(vc => (
-                <div key={vc.id} className="p-4 rounded-lg border hover-elevate">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h4 className="font-semibold">{vc.title}</h4>
-                      {vc.description && (
-                        <p className="text-sm text-muted-foreground mt-1">{vc.description}</p>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <Badge variant="outline">{vc.status}</Badge>
-                      {vc.estimatedValue && (
-                        <p className="text-lg font-bold text-green-600 mt-1">
-                          ${(vc.estimatedValue / 1000000).toFixed(2)}M
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {valueCases.length === 0 && (
-                <div className="text-center py-8">
-                  <DollarSign className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No value cases created yet</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
+          {/* STAGE 3: ALIGN - Value Agreement & Client Collaboration */}
+          <TabsContent value="align" className="space-y-6">
+            <ValueAgreementTab 
+              projectId={projectId} 
+              project={project}
+              insights={insights}
+              kpis={kpis}
+              jobThemes={jobThemes}
+            />
+          </TabsContent>
 
-      {/* Success Stories - KF success stories for proof points (Trend #6: HR value quantification) */}
-      <TabsContent value="success-stories" className="space-y-6">
-        <Card className="bg-gradient-to-r from-amber-500/5 to-orange-500/5 border-amber-500/20">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                <Star className="w-6 h-6 text-amber-600" />
-              </div>
-              <div>
-                <CardTitle>Korn Ferry Success Stories</CardTitle>
-                <CardDescription>Verified case studies and proof points for value conversations</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="p-4 rounded-lg bg-background border">
-                <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp className="w-4 h-4 text-emerald-600" />
-                  <span className="font-medium text-sm">ROI Stories</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Proven impact ranges and financial bridges
-                </p>
-              </div>
-              <div className="p-4 rounded-lg bg-background border">
-                <div className="flex items-center gap-2 mb-2">
-                  <Users className="w-4 h-4 text-blue-600" />
-                  <span className="font-medium text-sm">Industry Benchmarks</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Selection accuracy, development lift, turnover changes
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Star className="w-5 h-5 text-amber-600" />
-              Relevant Success Stories
-            </CardTitle>
-            <CardDescription>
-              Stories matching this engagement's solution areas
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {/* Sample success story cards - would be populated from API */}
-              <div className="p-4 rounded-lg border hover-elevate">
-                <div className="flex items-start justify-between mb-2">
-                  <h4 className="font-semibold">Leadership Development Program</h4>
-                  <Badge className="bg-emerald-500/10 text-emerald-600">Verified</Badge>
-                </div>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Fortune 500 technology company achieved 35% improvement in leadership pipeline quality
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className="text-xs">Develop</Badge>
-                  <Badge variant="outline" className="text-xs">Leadership</Badge>
-                  <Badge variant="secondary" className="text-xs">+35% Pipeline Quality</Badge>
-                </div>
-              </div>
-              <div className="p-4 rounded-lg border hover-elevate">
-                <div className="flex items-start justify-between mb-2">
-                  <h4 className="font-semibold">Sales Effectiveness Transformation</h4>
-                  <Badge className="bg-emerald-500/10 text-emerald-600">Verified</Badge>
-                </div>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Global manufacturing company increased sales productivity by 22% within 12 months
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className="text-xs">Transform</Badge>
-                  <Badge variant="outline" className="text-xs">Sales</Badge>
-                  <Badge variant="secondary" className="text-xs">+22% Productivity</Badge>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
-
-      {/* Value Agreement - Define KPI commitments with client */}
-      <TabsContent value="value-agreement" className="space-y-6">
-        <ValueAgreementTab 
-          projectId={projectId} 
-          project={project}
-          insights={insights}
-          kpis={kpis}
-          jobThemes={jobThemes}
-        />
-      </TabsContent>
-
-      {/* Handoff - Transition to Delivery (Sales to Delivery flow) */}
-      <TabsContent value="handoff" className="space-y-6">
-        <HandoffTab projectId={projectId} project={project} />
-      </TabsContent>
-    </Tabs>
+          {/* STAGE 4: HANDOFF - Transition to Delivery */}
+          <TabsContent value="handoff" className="space-y-6">
+            <HandoffTab projectId={projectId} project={project} />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
   );
 
   // Handoff Tab Component (Sales sends commitments to CSM)

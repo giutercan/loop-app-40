@@ -1969,7 +1969,7 @@ export class DbStorage implements IStorage {
     return await db.select().from(schema.kpiCommitments)
       .where(and(
         eq(schema.kpiCommitments.projectId, projectId),
-        eq(schema.kpiCommitments.status, status as "draft" | "in_review" | "client_confirmed" | "handed_off" | "in_delivery" | "completed" | "cancelled")
+        eq(schema.kpiCommitments.status, status as "draft" | "proposed" | "client_confirmed" | "handed_off" | "in_delivery" | "completed" | "cancelled")
       ))
       .orderBy(desc(schema.kpiCommitments.createdAt));
   }
