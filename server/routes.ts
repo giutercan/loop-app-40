@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "./storage";
-import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale, generateStrategicPillars, generateStorySuggestion } from "./ai";
+import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale, generateStrategicPillars, generateStorySuggestion, generateDiscoveryKpiSuggestions } from "./ai";
 import { z } from "zod";
 import crypto from "crypto";
 
@@ -3624,6 +3624,56 @@ export function registerRoutes(app: Express) {
     } catch (error: any) {
       console.error("[GET KPI Recommendations] Error:", error);
       res.status(500).json({ error: error.message || "Failed to fetch KPI recommendations" });
+    }
+  });
+
+  // Generate AI KPI suggestions from discovery insights (for Sales workflow)
+  app.post("/api/projects/:projectId/discovery-kpi-suggestions", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Get discovery insights for this project
+      const dataPoints = await storage.getCompanyDataPoints(projectId);
+      
+      if (dataPoints.length === 0) {
+        return res.status(400).json({ error: "No discovery insights found. Complete discovery research first." });
+      }
+      
+      // Get discovery notes for additional context
+      const discoveryNotes = await storage.getDiscoveryNotes(projectId);
+      
+      // Map data points to the format expected by the AI function
+      const insights = dataPoints.map(dp => ({
+        id: dp.id,
+        title: dp.label,
+        value: dp.value,
+        category: dp.kornFerryPillar || undefined,
+        priority: dp.priorityScore >= 4 ? "high" : dp.priorityScore >= 2 ? "medium" : "low",
+        relatedKPIs: dp.relatedKPIs || undefined,
+      }));
+      
+      // Use discoveryTheme from project or fallback to sector
+      const discoveryTheme = project.discoveryTheme || project.sector || "General business consulting";
+      
+      console.log(`[Discovery KPI Suggestions] Project ${projectId}: ${insights.length} insights, theme: ${discoveryTheme}`);
+      
+      const suggestions = await generateDiscoveryKpiSuggestions({
+        companyName: project.companyName,
+        industry: project.sector || undefined,
+        discoveryTheme,
+        insights,
+        consultantNotes: discoveryNotes?.freeformNotes || undefined,
+      });
+      
+      res.json({ suggestions, theme: discoveryTheme, insightsCount: insights.length });
+    } catch (error: any) {
+      console.error("[Discovery KPI Suggestions] Error:", error);
+      res.status(500).json({ error: error.message || "Failed to generate KPI suggestions" });
     }
   });
 

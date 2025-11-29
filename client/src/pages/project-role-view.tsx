@@ -1117,6 +1117,67 @@ export default function ProjectRoleView() {
     enabled: projectId > 0
   });
 
+  // AI-suggested KPIs from discovery insights
+  type DiscoveryKpiSuggestion = {
+    kpiName: string;
+    kpiType: "primary" | "supporting";
+    unit: string;
+    definition: string;
+    strategicRationale: string;
+    valuePillar: "Grow" | "Optimise" | "De-risk" | "Strengthen Capability";
+    baselineEstimate: string;
+    targetEstimate: string;
+    achievabilityScore: number;
+    valueImpactScore: number;
+    sourceInsightTitle: string;
+    kornFerryBenchmark?: string;
+  };
+
+  const [aiKpiSuggestions, setAiKpiSuggestions] = useState<DiscoveryKpiSuggestion[]>([]);
+  const [aiKpiLoading, setAiKpiLoading] = useState(false);
+  const [aiKpiError, setAiKpiError] = useState<string | null>(null);
+  const [prefillSuggestion, setPrefillSuggestion] = useState<DiscoveryKpiSuggestion | null>(null);
+
+  // Function to generate AI KPI suggestions from discovery
+  const generateAiKpiSuggestions = async () => {
+    if (aiKpiLoading) return;
+    setAiKpiLoading(true);
+    setAiKpiError(null);
+    
+    try {
+      const response = await apiRequest("POST", `/api/projects/${projectId}/discovery-kpi-suggestions`, {});
+      const data = await response.json();
+      
+      if (data.suggestions && Array.isArray(data.suggestions)) {
+        setAiKpiSuggestions(data.suggestions);
+        toast({
+          title: "AI Suggestions Ready",
+          description: `Generated ${data.suggestions.length} KPI recommendations based on ${data.insightsCount} discovery insights`
+        });
+      }
+    } catch (error: any) {
+      console.error("Failed to generate AI KPI suggestions:", error);
+      setAiKpiError(error.message || "Failed to generate suggestions");
+      toast({
+        variant: "destructive",
+        title: "Generation Failed",
+        description: error.message || "Could not generate AI suggestions"
+      });
+    } finally {
+      setAiKpiLoading(false);
+    }
+  };
+
+  // Handler to add an AI suggestion as a commitment (pre-fills form)
+  const handleAddSuggestionAsCommitment = (suggestion: DiscoveryKpiSuggestion) => {
+    setPrefillSuggestion(suggestion);
+    setBuildValueSection("commitments");
+    toast({
+      title: "Ready to Create Commitment",
+      description: `Form pre-filled with "${suggestion.kpiName}" - review and confirm`
+    });
+  };
+
   const { data: jobThemes = [] } = useQuery<JobTheme[]>({
     queryKey: ["/api/projects", projectId, "job-themes"],
     enabled: projectId > 0
@@ -1309,13 +1370,27 @@ export default function ProjectRoleView() {
     project, 
     insights, 
     kpis, 
-    jobThemes 
+    jobThemes,
+    prefillSuggestion,
+    onPrefillUsed
   }: { 
     projectId: number; 
     project: Project; 
     insights: ProjectInsight[]; 
     kpis: KPI[]; 
     jobThemes: JobTheme[];
+    prefillSuggestion?: {
+      kpiName: string;
+      kpiType: "primary" | "supporting";
+      unit: string;
+      definition: string;
+      strategicRationale: string;
+      valuePillar: "Grow" | "Optimise" | "De-risk" | "Strengthen Capability";
+      baselineEstimate: string;
+      targetEstimate: string;
+      sourceInsightTitle: string;
+    } | null;
+    onPrefillUsed?: () => void;
   }) => {
     const [isAddCommitmentOpen, setIsAddCommitmentOpen] = useState(false);
     const [editingCommitment, setEditingCommitment] = useState<any>(null);
@@ -1335,6 +1410,38 @@ export default function ProjectRoleView() {
       solutionPattern: null as SolutionPatternId | null,
       selectedKpiTemplate: null as string | null,
     });
+
+    // Effect to handle prefill from AI suggestions
+    useEffect(() => {
+      if (prefillSuggestion) {
+        // Map value pillar string to ValuePillarId
+        const pillarMap: Record<string, ValuePillarId> = {
+          "Grow": "grow",
+          "Optimise": "optimise",
+          "De-risk": "derisk",
+          "Strengthen Capability": "strengthen"
+        };
+        
+        setNewCommitment({
+          name: prefillSuggestion.kpiName,
+          description: prefillSuggestion.definition,
+          kpiUnit: prefillSuggestion.unit,
+          baselineValue: prefillSuggestion.baselineEstimate.replace(/[^0-9.-]/g, ''),
+          targetValue: prefillSuggestion.targetEstimate.replace(/[^0-9.-]/g, ''),
+          targetDate: "",
+          estimatedAnnualValue: "",
+          strategicPillarId: null,
+          pillarObjectiveId: null,
+          linkedDiscoveryTheme: prefillSuggestion.sourceInsightTitle,
+          rationale: prefillSuggestion.strategicRationale,
+          valuePillar: pillarMap[prefillSuggestion.valuePillar] || null,
+          solutionPattern: null,
+          selectedKpiTemplate: null,
+        });
+        setIsAddCommitmentOpen(true);
+        onPrefillUsed?.();
+      }
+    }, [prefillSuggestion, onPrefillUsed]);
 
     // Fetch commitments
     const { data: commitments = [], isLoading: commitmentsLoading } = useQuery({
@@ -2557,7 +2664,7 @@ export default function ProjectRoleView() {
         </Card>
 
         {/* AI-Suggested KPIs from Discovery */}
-        {selectedDiscoveryTheme && insights.length > 0 && (
+        {insights.length > 0 && (
           <Card className="bg-gradient-to-r from-purple-500/5 via-blue-500/5 to-emerald-500/5 border-purple-500/20">
             <CardHeader>
               <div className="flex items-center justify-between flex-wrap gap-4">
@@ -2567,43 +2674,156 @@ export default function ProjectRoleView() {
                   </div>
                   <div>
                     <CardTitle className="text-base">AI-Suggested KPIs from Discovery</CardTitle>
-                    <CardDescription>Based on insights from "{discoveryThemes.find(t => t.id === selectedDiscoveryTheme)?.name || selectedDiscoveryTheme}" theme</CardDescription>
+                    <CardDescription>
+                      {aiKpiSuggestions.length > 0 
+                        ? `${aiKpiSuggestions.length} recommendations based on ${insights.length} insights`
+                        : `Generate strategic KPIs based on ${insights.length} discovery insights`
+                      }
+                    </CardDescription>
                   </div>
                 </div>
-                <Badge className="bg-purple-500/10 text-purple-600">
-                  {insights.length} Insight(s) Analyzed
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-purple-500/10 text-purple-600">
+                    {insights.length} Insight(s)
+                  </Badge>
+                  {aiKpiSuggestions.length === 0 && (
+                    <Button 
+                      size="sm"
+                      onClick={generateAiKpiSuggestions}
+                      disabled={aiKpiLoading}
+                      data-testid="btn-generate-ai-kpis"
+                    >
+                      {aiKpiLoading ? (
+                        <>
+                          <RefreshCcw className="w-3 h-3 mr-1 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3 h-3 mr-1" />
+                          Generate KPIs
+                        </>
+                      )}
+                    </Button>
+                  )}
+                  {aiKpiSuggestions.length > 0 && (
+                    <Button 
+                      size="sm"
+                      variant="outline"
+                      onClick={generateAiKpiSuggestions}
+                      disabled={aiKpiLoading}
+                      data-testid="btn-regenerate-ai-kpis"
+                    >
+                      <RefreshCcw className={`w-3 h-3 mr-1 ${aiKpiLoading ? 'animate-spin' : ''}`} />
+                      Refresh
+                    </Button>
+                  )}
+                </div>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {/* Generate suggestions based on discovery theme and insights */}
-                {insights.slice(0, 3).map((insight, idx) => {
-                  const suggestedKpi = insight.relatedKPIs?.[0] || (insight.category === "Grow" ? "Revenue per employee growth" : insight.category === "Optimise" ? "Cost per hire reduction" : insight.category === "De-risk" ? "Regrettable turnover rate" : "Leadership bench strength");
-                  return (
-                    <div key={idx} className="p-3 rounded-lg bg-background border flex items-start gap-3 hover-elevate">
-                      <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center flex-shrink-0">
-                        <Target className="w-4 h-4 text-purple-600" />
+              {aiKpiError && (
+                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 mb-4">
+                  <p className="text-sm text-red-600">{aiKpiError}</p>
+                </div>
+              )}
+              
+              {aiKpiLoading && (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="p-3 rounded-lg bg-background border animate-pulse">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-muted" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 bg-muted rounded w-3/4" />
+                          <div className="h-3 bg-muted rounded w-1/2" />
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm">{suggestedKpi}</p>
-                        <p className="text-xs text-muted-foreground truncate">Based on: {insight.title}</p>
-                      </div>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => {
-                          setBuildValueSection("commitments");
-                        }}
-                        data-testid={`btn-add-suggested-kpi-${idx}`}
-                      >
-                        <Plus className="w-3 h-3 mr-1" />
-                        Add
-                      </Button>
                     </div>
-                  );
-                })}
-              </div>
+                  ))}
+                </div>
+              )}
+              
+              {!aiKpiLoading && aiKpiSuggestions.length === 0 && (
+                <div className="text-center py-6">
+                  <Sparkles className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Click "Generate KPIs" to get AI recommendations based on your discovery insights
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    KPIs will be mapped to value pillars and include baseline/target estimates
+                  </p>
+                </div>
+              )}
+              
+              {!aiKpiLoading && aiKpiSuggestions.length > 0 && (
+                <div className="space-y-3">
+                  {aiKpiSuggestions.map((suggestion, idx) => {
+                    const pillarColors: Record<string, string> = {
+                      "Grow": "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+                      "Optimise": "bg-blue-500/10 text-blue-600 border-blue-500/20",
+                      "De-risk": "bg-amber-500/10 text-amber-600 border-amber-500/20",
+                      "Strengthen Capability": "bg-purple-500/10 text-purple-600 border-purple-500/20"
+                    };
+                    return (
+                      <div key={idx} className="p-4 rounded-lg bg-background border hover-elevate">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                            <Target className="w-5 h-5 text-purple-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <div>
+                                <p className="font-medium">{suggestion.kpiName}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">{suggestion.definition}</p>
+                              </div>
+                              <Button 
+                                size="sm"
+                                onClick={() => handleAddSuggestionAsCommitment(suggestion)}
+                                data-testid={`btn-add-suggested-kpi-${idx}`}
+                              >
+                                <Plus className="w-3 h-3 mr-1" />
+                                Add as Commitment
+                              </Button>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                              <Badge className={`text-xs ${pillarColors[suggestion.valuePillar] || 'bg-muted'}`}>
+                                {suggestion.valuePillar}
+                              </Badge>
+                              <Badge variant="outline" className="text-xs">
+                                {suggestion.kpiType === "primary" ? "Primary" : "Supporting"}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">
+                                {suggestion.baselineEstimate} → {suggestion.targetEstimate} {suggestion.unit}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              <span className="font-medium">Rationale:</span> {suggestion.strategicRationale}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              <span className="font-medium">Based on:</span> {suggestion.sourceInsightTitle}
+                            </p>
+                            <div className="flex gap-4 mt-2">
+                              <span className="text-xs">
+                                <span className="text-muted-foreground">Achievability:</span>{" "}
+                                <span className={suggestion.achievabilityScore >= 7 ? "text-emerald-600" : suggestion.achievabilityScore >= 5 ? "text-amber-600" : "text-red-600"}>
+                                  {suggestion.achievabilityScore}/10
+                                </span>
+                              </span>
+                              <span className="text-xs">
+                                <span className="text-muted-foreground">Value Impact:</span>{" "}
+                                <span className={suggestion.valueImpactScore >= 7 ? "text-emerald-600" : suggestion.valueImpactScore >= 5 ? "text-amber-600" : "text-red-600"}>
+                                  {suggestion.valueImpactScore}/10
+                                </span>
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -2738,6 +2958,8 @@ export default function ProjectRoleView() {
                 insights={insights}
                 kpis={kpis}
                 jobThemes={jobThemes}
+                prefillSuggestion={prefillSuggestion}
+                onPrefillUsed={() => setPrefillSuggestion(null)}
               />
             )}
 
@@ -6237,6 +6459,8 @@ export default function ProjectRoleView() {
               insights={insights}
               kpis={kpis}
               jobThemes={jobThemes}
+              prefillSuggestion={null}
+              onPrefillUsed={() => {}}
             />
           </TabsContent>
 

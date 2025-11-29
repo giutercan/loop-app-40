@@ -1527,6 +1527,141 @@ const kpiRecommendationSchema = z.object({
   measurementFrequency: z.string().min(3, "Measurement frequency required"),
 });
 
+// Discovery-based KPI suggestion schema (includes pillar and insight linkage)
+const discoveryKpiSuggestionSchema = z.object({
+  kpiName: z.string().min(5),
+  kpiType: z.enum(["primary", "supporting"]),
+  unit: z.string().min(1),
+  definition: z.string().min(20),
+  strategicRationale: z.string().min(30),
+  valuePillar: z.enum(["Grow", "Optimise", "De-risk", "Strengthen Capability"]),
+  baselineEstimate: z.string(),
+  targetEstimate: z.string(),
+  achievabilityScore: z.number().int().min(1).max(10),
+  valueImpactScore: z.number().int().min(1).max(10),
+  sourceInsightTitle: z.string(),
+  kornFerryBenchmark: z.string().optional(),
+});
+
+const discoveryKpiSuggestionsOutputSchema = z.object({
+  suggestions: z.array(discoveryKpiSuggestionSchema).min(3).max(6),
+});
+
+export type DiscoveryKpiSuggestion = z.infer<typeof discoveryKpiSuggestionSchema>;
+
+interface GenerateDiscoveryKpiSuggestionsParams {
+  companyName: string;
+  industry?: string;
+  discoveryTheme: string;
+  insights: Array<{
+    id: number;
+    title: string;
+    value: string;
+    category?: string;
+    priority?: string;
+    relatedKPIs?: string[];
+  }>;
+  consultantNotes?: string;
+}
+
+export async function generateDiscoveryKpiSuggestions(
+  params: GenerateDiscoveryKpiSuggestionsParams
+): Promise<DiscoveryKpiSuggestion[]> {
+  const { companyName, industry, discoveryTheme, insights, consultantNotes } = params;
+  
+  const knowledgeBase = getSolutionSummary();
+  
+  const insightsSummary = insights.map((i, idx) => 
+    `[#${i.id}] ${i.title}: ${i.value}${i.category ? ` (Category: ${i.category})` : ''}${i.priority ? ` [Priority: ${i.priority}]` : ''}${i.relatedKPIs?.length ? ` Related KPIs: ${i.relatedKPIs.join(', ')}` : ''}`
+  ).join('\n');
+
+  const prompt = `You are a Korn Ferry sales consultant helping identify the most strategic KPIs to propose to a client based on discovery research.
+
+CLIENT CONTEXT:
+Company: ${companyName}${industry ? `\nIndustry: ${industry}` : ''}
+Discovery Theme: ${discoveryTheme}
+${consultantNotes ? `\nConsultant Notes: ${consultantNotes}` : ''}
+
+DISCOVERY INSIGHTS:
+${insightsSummary}
+
+KORN FERRY VALUE PILLARS:
+1. Grow - Revenue growth, market share expansion, customer acquisition
+2. Optimise - Cost reduction, productivity improvement, efficiency gains
+3. De-risk - Risk mitigation, compliance, retention improvement
+4. Strengthen Capability - Leadership development, culture, organizational capability
+
+KORN FERRY KNOWLEDGE BASE:
+${knowledgeBase}
+
+YOUR MISSION:
+Based on the discovery insights above, recommend 4-6 strategic KPIs that:
+1. DIRECTLY address the issues/opportunities identified in the insights
+2. Map to one of the 4 Value Pillars (Grow, Optimise, De-risk, Strengthen Capability)
+3. Include realistic baseline and target estimates based on industry benchmarks
+4. Are ACHIEVABLE within a 6-12 month engagement timeframe
+5. Reference the specific insight that supports each recommendation
+
+IMPORTANT:
+- Each KPI must tie back to a specific discovery insight by title
+- Provide realistic baseline and target estimates (use industry benchmarks)
+- Focus on metrics the client can actually measure and improve
+- Balance across value pillars based on what the insights reveal
+- Prioritize KPIs with high value impact that are achievable
+
+Return JSON format:
+{
+  "suggestions": [
+    {
+      "kpiName": "Specific, measurable KPI name",
+      "kpiType": "primary" or "supporting",
+      "unit": "Percentage (%)", "Days", "Score 1-100", "Dollars ($)", etc.,
+      "definition": "Clear definition of what this KPI measures",
+      "strategicRationale": "Why this KPI matters for THIS client based on their discovery insights",
+      "valuePillar": "Grow" | "Optimise" | "De-risk" | "Strengthen Capability",
+      "baselineEstimate": "Current industry average or estimated baseline (e.g., '45%', '$2.5M', '90 days')",
+      "targetEstimate": "Achievable target (e.g., '65%', '$3.2M', '60 days')",
+      "achievabilityScore": 8,
+      "valueImpactScore": 9,
+      "sourceInsightTitle": "Exact title of the insight that supports this KPI",
+      "kornFerryBenchmark": "Korn Ferry benchmark or industry reference if available"
+    }
+  ]
+}`;
+
+  try {
+    console.log(`[AI Discovery KPI Suggestions] Generating for ${companyName}, theme: ${discoveryTheme}, ${insights.length} insights`);
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 2500,
+    });
+
+    const content = response.choices[0]?.message?.content;
+
+    if (!content) {
+      throw new Error("AI returned empty response");
+    }
+
+    const parsedContent = JSON.parse(content);
+
+    const validationResult = discoveryKpiSuggestionsOutputSchema.safeParse(parsedContent);
+    if (!validationResult.success) {
+      console.error("[AI Discovery KPI Suggestions] Validation failed:", validationResult.error);
+      console.error("[AI Discovery KPI Suggestions] Received data:", parsedContent);
+      throw new Error(`AI KPI suggestion validation failed: ${validationResult.error.message}`);
+    }
+
+    console.log(`[AI Discovery KPI Suggestions] Success! Generated ${validationResult.data.suggestions.length} suggestions`);
+    return validationResult.data.suggestions;
+  } catch (error) {
+    console.error("[AI Discovery KPI Suggestions] Error:", error);
+    throw error;
+  }
+}
+
 const kpiRecommendationsOutputSchema = z.object({
   recommendations: z.array(kpiRecommendationSchema).min(3).max(5),
 });
