@@ -1,0 +1,253 @@
+You’re right that this is a hot topic – the whole consulting industry is having a small existential crisis about “prove it, don’t just pitch it”.
+
+Let’s break this into four things:
+	1.	What “client value realisation” actually is (in 2025 language)
+	2.	What’s changed – current trends and what clients are asking for
+	3.	How organisations are actually doing value realisation in practice
+	4.	What this implies for how Korn Ferry should simplify, innovate and change its own approach
+
+⸻
+
+1. What is client value realisation now?
+
+In plain terms:
+
+Client value realisation = tracking the actual, quantified outcomes a client gets from your work, against the value you promised, over time.
+
+A few common threads in recent definitions:
+	•	It’s explicitly quantified: business KPIs, not just “happy client” sentiment. Ecosystems’ definition is typical: tracking the quantified value a stakeholder receives from a solution and linking it to business impact and shareholder value.  ￼
+	•	It is anchored to executive-level objectives – think OKRs / strategic pillars – not just project outputs. IBM frames value realisation as measuring impact on “executive-level business objectives” and tying it to a clear “North Star” using OKRs.  ￼
+	•	It is a journey, not a post-project report: identify benefits, baseline, track, adjust, sustain – that’s the Benefits Realisation Management (BRM) pattern codified by PMI and others.  ￼
+
+Your conversations with Jerry and Mirka are already in this territory: closed-loop input → process → output; conditions for success at the start; multiple loops; replication across the client’s business.  ￼  ￼
+
+⸻
+
+2. What are the big trends and what are clients actually asking for?
+
+Trend 1: From “deliverables” to outcomes and shared KPIs
+	•	Tech/services associations like TSIA describe a shift to “outcome-based, value-driven services” – engagements framed around business outcomes with contracts and service portfolios designed to deliver those outcomes.  ￼
+	•	KPMG and others stress that “engineering your value realisation roadmap is as critical as implementing the capabilities” – value planning is now a core workstream, not an afterthought.  ￼
+
+What clients are asking for here:
+	•	“Don’t just deliver workshops / sprints – show me how this moves my OKRs.”
+	•	Clear line of sight from intervention → operational metric → financial impact (e.g. time-to-fill → revenue at risk; leadership capability → productivity / risk).
+	•	3–5 co-owned KPIs, not 30 vanity metrics.
+
+This aligns tightly with your Value Lifecycle Platform concept of mapping discovery insights to strategic priorities and KPIs, then tracking them through the engagement.  ￼
+
+⸻
+
+Trend 2: Outcome-based and value-linked commercial models
+	•	There’s a very explicit move (especially in tech and managed services) toward outcomes-based pricing and risk/reward sharing. TSIA and others highlight pricing models where payment is linked to business outcomes, not effort.  ￼
+	•	Commentary on firms like McKinsey points to AI-enabled value verification enabling hybrid contracts where fees are linked to quantified impact (e.g. churn reduction, energy savings) because the data is now trackable.  ￼
+
+Clients’ ask:
+	•	“We want you to have skin in the game – but only if you can measure impact credibly and transparently.”
+	•	CFOs in particular want payback period, NPV, and scenario analysis baked into the case, not just a slide labelled “ROI”.
+
+Your SIOP ROI Estimation Process and examples are exactly the kind of pre-work firms are scaling – but others are now wiring this through into live tracking, not just pre-sale justification.  ￼
+
+⸻
+
+Trend 3: Institutionalising Value Realisation Offices and “value PMOs”
+	•	Capgemini, PwC, Wavestone and others are now explicitly selling Value Realisation Offices (VROs) – AI-enabled teams and processes that connect strategy, delivery and benefits tracking across transformations.  ￼
+	•	These VROs act as a central engine that keeps value on track: they own benefit registers, define KPIs, monitor progress, and feed insights back into portfolio decisions.
+
+Clients’ ask:
+	•	“Help us build the capability, not just the project.”
+	•	Playbooks and tooling for benefits governance, not just project governance (who owns which metric, how it’s baselined, how often we review).
+
+This is very close to your idea of a “closed loop value capture” system that can span multiple engagements and loops with a client.  ￼
+
+⸻
+
+Trend 4: Customer Success–style health scores, QBRs and value dashboards
+
+SaaS and Customer Success are a few years ahead of most people businesses:
+	•	Gainsight and others push customer health scores that blend leading indicators (adoption, engagement) with lagging ones (renewals, expansion, ROI).  ￼
+	•	The 2024 Customer Success Index describes CS as a “strategic growth engine” focused on measurable ROI, expansion and AI-enhanced digital touchpoints.  ￼
+
+Clients’ ask:
+	•	“Don’t send us random status updates – give us a single view of health and value.”
+	•	Structured QBR / EBR packs with a consistent story: where we started, what’s changed, what the data says, what we do next.
+
+Your Value Lifecycle design already nods to this with KPI tracking, health scores and business review management as Phase 3 features.  ￼
+
+⸻
+
+Trend 5: Real-time, AI-assisted value tracking
+	•	Multiple sources talk about real-time value tracking as the next step – using analytics to measure value continuously, not annually.  ￼
+	•	AI is being used to:
+	•	classify insights against value drivers,
+	•	recommend KPIs, and
+	•	detect early signals that benefits are at risk.  ￼
+
+Clients’ ask:
+	•	Faster time-to-insight: “Don’t make me wait three months for a benefits report; show me movement weekly/monthly.”
+	•	Help to connect messy operational data to clear stories (“What is this doing to growth, cost, risk, talent?”).
+
+Your platform concept – AI research, KPI recommendation, stakeholder narratives, financial engine – is directly in line with where the market is going.  ￼
+
+⸻
+
+Trend 6: People, HR and rewards value being pushed to hard numbers
+
+In your space specifically:
+	•	HR and benefits surveys (Aon, Mercer) show mounting pressure to link people investments to business performance, risk and resilience, not just engagement scores.  ￼
+	•	Benefits and BRM literature stresses the need to quantify gains in productivity, retention and wellbeing in financial and risk terms, not just “culture”.  ￼
+
+Clients’ ask:
+	•	“If we invest in leaders, talent, org design or rewards – what’s the impact on margin, growth, risk and capability?”
+	•	Benchmarks: “What does ‘good’ look like in my industry, and how far off are we?”
+
+This is where Korn Ferry can differentiate harder than the generic value-realisation players, because you can tie talent levers directly to outcome patterns across Assess / Develop / Transform / Reward.
+
+⸻
+
+3. How are companies actually realising value?
+
+Across the research, most “grown-up” value realisation setups follow a similar loop:
+	1.	Define value up front
+	•	Use a framework (Value Realisation, BRM, OKRs) to turn strategy into a small set of target outcomes.  ￼
+	•	Create a benefits map: how specific initiatives (including people interventions) ladder to those outcomes.
+	2.	Baseline and business case
+	•	Quantify “today” (baseline) and “target” for each KPI.
+	•	Build a financial case (NPV, payback, upside/downside scenarios).
+	3.	Assign benefit owners
+	•	Each benefit has a named owner on the client side; the provider co-owns methods and evidence.
+	•	This is baked into governance, not treated as a finance exercise at year-end.  ￼
+	4.	Track and intervene
+	•	Use dashboards, health scores and QBRs – borrowed from Customer Success – to track progress, intervene early, and agree course corrections.  ￼
+	5.	Codify and scale
+	•	Convert successful patterns into templates and playbooks – value frameworks for specific solution types (e.g. SIOP, leadership pipelines, org redesign).
+	•	Some firms wrap this in branded frameworks like Deloitte’s “Vision to Value” for ERP or IBM’s Value Realization for hybrid cloud.  ￼
+
+Where they struggle:
+	•	Data quality and access (especially for people/HR metrics).
+	•	Maintaining focus on a few meaningful KPIs instead of bloated scorecards.
+	•	Linking qualitative change (behaviour, culture, leadership) into hard value narratives.
+
+That last piece is where Korn Ferry has an unfair advantage if you embrace it properly.
+
+⸻
+
+4. So what for Korn Ferry? How to simplify, innovate and change your own value realisation
+
+You already have several ingredients:
+	•	A clear strategic intent to build a Value Lifecycle Platform that joins discovery, alignment and realisation in one workspace, including KPI libraries and financial models.  ￼
+	•	Existing ROI models (e.g. SIOP) that show how to quantify impact in specific offerings.  ￼
+	•	A conceptual closed-loop value capture model (conditions for success → input → process → output → loops and replication) from your work with Jerry.  ￼
+	•	The Mirka conversation highlighting the key design question: does this stop at “closed won”, or does it span active projects, backlog and ongoing value?  ￼
+
+Here’s a way to turn the market trends into a simplified, KF-specific approach.
+
+⸻
+
+A. Simplify: standard, reusable value patterns
+
+1. One simple value narrative across all service lines
+
+Anchor everything on a small, shared value frame, e.g.:
+	•	Grow (revenue, market share, innovation)
+	•	Optimise (productivity, cost, efficiency)
+	•	De-risk (turnover, critical role failure, compliance, reputation)
+	•	Strengthen capability (leadership, culture, skills, diversity)
+
+Every KF solution – Assess, Develop, Transform, Reward, Digital – hangs off one or more of these.
+
+This gives sellers and consultants a common language to talk outcomes, and gives your platform a skeleton for templates.
+
+2. Starter KPI packs, not encyclopaedias
+
+You’ve already identified the need to start with 1–2 solution lines and small KPI libraries rather than boiling the ocean.  ￼
+
+For those chosen lines (say: Sales Effectiveness + Leadership Development), define:
+	•	5–10 leading indicators (behavioural / process metrics)
+	•	5–10 lagging indicators (hard business results)
+	•	For each: standard logic to link to financials (e.g. % improvement → £ impact bands)
+
+This keeps it cognitively light for consultants and clients, but still defensible.
+
+⸻
+
+B. Innovate: design the platform and methods for multi-loop, multi-role value
+
+Your current thinking about “a platform where sales, CSMs and professional services all see their own view on the same data” is exactly where the market is going; you’re just aiming it at consulting rather than SaaS.
+
+So: treat the Value Lifecycle Platform as the operating system for value, not as a pre-sales tool.
+
+Across your lifecycle flow (Discover & Qualify → Shape & Sell → Deliver & Realise → Review & Renew / Expand → Learn & Scale), build in:
+	1.	Value Canvas at entry
+	•	Standard template that captures: client North Star, 3–5 value outcomes, baseline, target, time horizon, and who owns each KPI on the client side.
+	•	Pre-populated with KF IP for when client data is weak, as you and Jerry discussed.  ￼
+	2.	Live “Value Board” during delivery
+	•	Pull your ROI logic into a live board: each initiative has a value hypothesis, KPIs, owner and current status.
+	•	Incorporate health scores (inspired by Customer Success) for each outcome: on track / at risk / off track.
+	3.	Automated value stories at review points
+	•	Use AI to generate:
+	•	Exec summary (“Here’s how we’ve moved the dial on your top 3 priorities”)
+	•	CFO annex (assumptions, deltas vs initial business case)
+	•	People/HR story (behaviours, capability shifts and their contribution to outcomes)
+	4.	Learning loop for KF itself
+	•	Every engagement feeds anonymised patterns into your internal library: “For SIOP in industrial clients, these KPIs moved, by roughly this magnitude, over this timeframe.”
+	•	This is exactly what others are doing inside VROs – but with your people-science twist.  ￼
+
+⸻
+
+C. Change: how Korn Ferry works around value realisation
+
+Three concrete shifts to aim for:
+
+1. Make value realisation a non-negotiable part of every engagement
+	•	No major Assess / Develop / Transform programme without:
+	•	A defined value canvas
+	•	Named benefit owners on the client side
+	•	Planned value review cadence (e.g. quarterly)
+	•	You already have this philosophy in your FY26 roadmap (“Korn Ferry as Client 1”, internal case note, etc.); the trick is making it a policy, not a slide.  ￼
+
+2. Align commercial models gradually with value maturity
+Don’t jump straight to risky outcomes-based pricing everywhere. Use a ladder:
+	•	Tier 1 – Evidence-rich fixed fee: traditional commercials, but with robust value tracking and case notes used for renewals and references.
+	•	Tier 2 – Value-influenced: small success fees or bonuses linked to milestone outcomes (e.g. adoption, completion, early indicator movement).
+	•	Tier 3 – Outcome-based pilots: only where data quality and control are high, and your platform can track impact credibly.
+
+This mirrors what others are doing: using AI and data to underwrite more creative contracts, not as a gimmick.  ￼
+
+3. Treat “Value Realisation” as a capability, not a project
+You don’t necessarily need a full Value Realisation Office tomorrow, but you do need:
+	•	A small central team (under Digital / Transformation) to curate KPI libraries, financial bridges and templates.
+	•	Embedded “value leads” in key offerings who can shape how Assess / Develop / Transform / Reward express value in the shared framework.
+	•	Explicit partnership with Finance to sign off on the ROI logic (so consultants aren’t inventing multipliers on the fly).
+
+This is exactly the pattern in the VRO / BRM world – and your platform becomes the tooling for it.  ￼
+
+⸻
+
+5. Risks and trade-offs to keep in view
+
+If you pitch this internally, leaders will (rightly) worry about:
+	•	Data burden on consultants and clients
+→ Your simplification lever is small KPI sets and automated data ingestion where possible.
+	•	Over-promising impact
+→ Use bands and scenarios, not false precision; keep Finance in the tent; pilot before you move to outcomes-based fees.
+	•	Cultural resistance (“We already show value”)
+→ Use storytelling plus hard numbers. Start with a few flagship client stories where you can show before/after KPI movement using the new approach.
+	•	Tool vs behaviour
+→ The platform will help, but the win is getting consultants to think in value loops. Training, playbooks and coaching need to reinforce that.
+
+⸻
+
+6. Short path to impact for you
+
+Given where you are with the Value Lifecycle work:
+	1.	Codify the external trends into a 2–3 slide “market reality” pack for internal audiences:
+	•	Growing demands for ROI, outcomes and value offices
+	•	Customer Success–style health and QBRs
+	•	AI-enabled, real-time value tracking
+	2.	Overlay KF’s response:
+	•	Show how the Value Lifecycle Platform, ROI models and closed-loop concept are your answer to that market reality.
+	3.	Pick one flagship pilot:
+	•	One solution line, one region, 3–5 engagements where you mandate use of a simple value canvas + tracking + case note.
+
+From there you’re not just “doing research”; you’re building the first proof points that Korn Ferry can be the firm that finally cracks closed-loop value realisation in the people and organisation space.

@@ -83,7 +83,9 @@ import {
   Play,
   Search,
   RefreshCw,
-  GraduationCap
+  GraduationCap,
+  Handshake,
+  ClipboardCheck
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -1279,9 +1281,756 @@ export default function ProjectRoleView() {
   const kpisAtRisk = kpis.filter(k => k.status === "at-risk" || k.status === "off-track").length;
   const totalValue = valueCases.reduce((sum, vc) => sum + (vc.estimatedValue || 0), 0);
 
+  // Value Agreement Tab Component
+  const ValueAgreementTab = ({ 
+    projectId, 
+    project, 
+    insights, 
+    kpis, 
+    jobThemes 
+  }: { 
+    projectId: number; 
+    project: Project; 
+    insights: ProjectInsight[]; 
+    kpis: KPI[]; 
+    jobThemes: JobTheme[];
+  }) => {
+    const [isAddCommitmentOpen, setIsAddCommitmentOpen] = useState(false);
+    const [editingCommitment, setEditingCommitment] = useState<any>(null);
+    const [newCommitment, setNewCommitment] = useState({
+      name: "",
+      description: "",
+      kpiUnit: "",
+      baselineValue: "",
+      targetValue: "",
+      targetDate: "",
+      estimatedAnnualValue: "",
+      strategicPillarId: null as number | null,
+      pillarObjectiveId: null as number | null,
+      linkedDiscoveryTheme: null as string | null,
+      rationale: "",
+    });
+
+    // Fetch commitments
+    const { data: commitments = [], isLoading: commitmentsLoading } = useQuery({
+      queryKey: ["/api/projects", projectId, "commitments"],
+    });
+
+    // Fetch strategic pillars for this account
+    const { data: strategicPillars = [] } = useQuery({
+      queryKey: ["/api/accounts", project.accountId, "strategic-pillars"],
+      enabled: !!project.accountId,
+    });
+
+    // Fetch pillar objectives when a pillar is selected
+    const { data: pillarObjectives = [] } = useQuery({
+      queryKey: ["/api/strategic-pillars", newCommitment.strategicPillarId, "objectives"],
+      enabled: !!newCommitment.strategicPillarId,
+    });
+
+    // Create commitment mutation
+    const createCommitmentMutation = useMutation({
+      mutationFn: async (data: any) => {
+        const response = await apiRequest("POST", `/api/projects/${projectId}/commitments`, data);
+        return response.json();
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "commitments"] });
+        setIsAddCommitmentOpen(false);
+        resetNewCommitment();
+        toast({ title: "Commitment created", description: "KPI commitment has been added." });
+      },
+      onError: () => {
+        toast({ variant: "destructive", title: "Error", description: "Failed to create commitment." });
+      }
+    });
+
+    // Update commitment mutation
+    const updateCommitmentMutation = useMutation({
+      mutationFn: async ({ id, data }: { id: number; data: any }) => {
+        const response = await apiRequest("PATCH", `/api/projects/${projectId}/commitments/${id}`, data);
+        return response.json();
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "commitments"] });
+        setEditingCommitment(null);
+        toast({ title: "Commitment updated", description: "Changes have been saved." });
+      },
+      onError: () => {
+        toast({ variant: "destructive", title: "Error", description: "Failed to update commitment." });
+      }
+    });
+
+    // Submit for client review
+    const submitForReviewMutation = useMutation({
+      mutationFn: async (id: number) => {
+        const response = await apiRequest("PATCH", `/api/projects/${projectId}/commitments/${id}`, {
+          status: "proposed"
+        });
+        return response.json();
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "commitments"] });
+        toast({ title: "Submitted for review", description: "Client can now review this commitment." });
+      }
+    });
+
+    // Client confirm commitment
+    const confirmCommitmentMutation = useMutation({
+      mutationFn: async (id: number) => {
+        const response = await apiRequest("PATCH", `/api/projects/${projectId}/commitments/${id}/confirm`, {});
+        return response.json();
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "commitments"] });
+        toast({ title: "Commitment confirmed", description: "Client has confirmed this commitment." });
+      }
+    });
+
+    // Delete commitment
+    const deleteCommitmentMutation = useMutation({
+      mutationFn: async (id: number) => {
+        await apiRequest("DELETE", `/api/projects/${projectId}/commitments/${id}`, undefined);
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "commitments"] });
+        toast({ title: "Commitment deleted", description: "The commitment has been removed." });
+      }
+    });
+
+    const resetNewCommitment = () => {
+      setNewCommitment({
+        name: "",
+        description: "",
+        kpiUnit: "",
+        baselineValue: "",
+        targetValue: "",
+        targetDate: "",
+        estimatedAnnualValue: "",
+        strategicPillarId: null,
+        pillarObjectiveId: null,
+        linkedDiscoveryTheme: null,
+        rationale: "",
+      });
+    };
+
+    const handleCreateCommitment = () => {
+      createCommitmentMutation.mutate({
+        name: newCommitment.name,
+        description: newCommitment.description || null,
+        kpiUnit: newCommitment.kpiUnit || null,
+        baselineValue: newCommitment.baselineValue ? parseFloat(newCommitment.baselineValue) : null,
+        targetValue: newCommitment.targetValue ? parseFloat(newCommitment.targetValue) : null,
+        targetDate: newCommitment.targetDate ? new Date(newCommitment.targetDate) : null,
+        estimatedAnnualValue: newCommitment.estimatedAnnualValue ? parseFloat(newCommitment.estimatedAnnualValue) : null,
+        strategicPillarId: newCommitment.strategicPillarId,
+        pillarObjectiveId: newCommitment.pillarObjectiveId,
+        linkedDiscoveryTheme: newCommitment.linkedDiscoveryTheme,
+        rationale: newCommitment.rationale || null,
+        status: "draft",
+        definedBy: "Sales Team",
+      });
+    };
+
+    const getStatusBadge = (status: string) => {
+      switch (status) {
+        case "draft":
+          return <Badge variant="secondary">Draft</Badge>;
+        case "proposed":
+          return <Badge className="bg-blue-500/10 text-blue-600">Pending Client Review</Badge>;
+        case "client_confirmed":
+          return <Badge className="bg-emerald-500/10 text-emerald-600">Client Confirmed</Badge>;
+        case "handed_off":
+          return <Badge className="bg-purple-500/10 text-purple-600">Handed Off</Badge>;
+        case "in_delivery":
+          return <Badge className="bg-cyan-500/10 text-cyan-600">In Delivery</Badge>;
+        case "completed":
+          return <Badge className="bg-emerald-600 text-white">Completed</Badge>;
+        default:
+          return <Badge variant="outline">{status}</Badge>;
+      }
+    };
+
+    const draftCommitments = (commitments as any[]).filter(c => c.status === "draft");
+    const proposedCommitments = (commitments as any[]).filter(c => c.status === "proposed");
+    const confirmedCommitments = (commitments as any[]).filter(c => c.status === "client_confirmed" || c.status === "handed_off");
+    const inDeliveryCommitments = (commitments as any[]).filter(c => c.status === "in_delivery" || c.status === "completed");
+    const totalCommittedValue = (commitments as any[]).reduce((sum, c) => sum + (c.estimatedAnnualValue || 0), 0);
+    const confirmedValue = confirmedCommitments.reduce((sum, c) => sum + (c.estimatedAnnualValue || 0), 0);
+
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <Card className="bg-gradient-to-r from-violet-500/5 to-purple-500/5 border-violet-500/20">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                  <Handshake className="w-6 h-6 text-violet-600" />
+                </div>
+                <div>
+                  <CardTitle>Value Agreement</CardTitle>
+                  <CardDescription>
+                    Define KPI commitments with your client that link to their strategic objectives
+                  </CardDescription>
+                </div>
+              </div>
+              <Button onClick={() => setIsAddCommitmentOpen(true)} data-testid="button-add-commitment">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Commitment
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="p-4 rounded-lg bg-background border">
+                <p className="text-sm text-muted-foreground">Total Commitments</p>
+                <p className="text-2xl font-bold">{(commitments as any[]).length}</p>
+              </div>
+              <div className="p-4 rounded-lg bg-background border">
+                <p className="text-sm text-muted-foreground">Client Confirmed</p>
+                <p className="text-2xl font-bold text-emerald-600">{confirmedCommitments.length}</p>
+              </div>
+              <div className="p-4 rounded-lg bg-background border">
+                <p className="text-sm text-muted-foreground">Pending Review</p>
+                <p className="text-2xl font-bold text-blue-600">{proposedCommitments.length}</p>
+              </div>
+              <div className="p-4 rounded-lg bg-background border">
+                <p className="text-sm text-muted-foreground">Total Committed Value</p>
+                <p className="text-2xl font-bold text-violet-600">
+                  ${(confirmedValue / 1000000).toFixed(1)}M
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Commitment Pipeline */}
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Draft */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <FileText className="w-4 h-4 text-muted-foreground" />
+                Draft
+                <Badge variant="secondary" className="ml-auto">{draftCommitments.length}</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {draftCommitments.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No draft commitments</p>
+              ) : (
+                draftCommitments.map((c: any) => (
+                  <div key={c.id} className="p-3 rounded-lg border hover-elevate" data-testid={`commitment-draft-${c.id}`}>
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="font-medium text-sm">{c.name}</h4>
+                      {getStatusBadge(c.status)}
+                    </div>
+                    {c.description && (
+                      <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{c.description}</p>
+                    )}
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+                      {c.baselineValue !== null && c.targetValue !== null && (
+                        <span>{c.baselineValue} → {c.targetValue} {c.kpiUnit || ""}</span>
+                      )}
+                      {c.estimatedAnnualValue && (
+                        <span className="text-violet-600 font-medium">
+                          ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="flex-1"
+                        onClick={() => setEditingCommitment(c)}
+                        data-testid={`button-edit-commitment-${c.id}`}
+                      >
+                        Edit
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => submitForReviewMutation.mutate(c.id)}
+                        disabled={submitForReviewMutation.isPending}
+                        data-testid={`button-submit-review-${c.id}`}
+                      >
+                        Submit for Review
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Pending Review */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Clock className="w-4 h-4 text-blue-600" />
+                Pending Review
+                <Badge className="ml-auto bg-blue-500/10 text-blue-600">{proposedCommitments.length}</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {proposedCommitments.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No commitments pending review</p>
+              ) : (
+                proposedCommitments.map((c: any) => (
+                  <div key={c.id} className="p-3 rounded-lg border border-blue-500/20 bg-blue-500/5" data-testid={`commitment-review-${c.id}`}>
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="font-medium text-sm">{c.name}</h4>
+                      {getStatusBadge(c.status)}
+                    </div>
+                    {c.description && (
+                      <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{c.description}</p>
+                    )}
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+                      {c.baselineValue !== null && c.targetValue !== null && (
+                        <span>{c.baselineValue} → {c.targetValue} {c.kpiUnit || ""}</span>
+                      )}
+                      {c.estimatedAnnualValue && (
+                        <span className="text-violet-600 font-medium">
+                          ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr
+                        </span>
+                      )}
+                    </div>
+                    <Button 
+                      size="sm" 
+                      className="w-full bg-emerald-600 hover:bg-emerald-700"
+                      onClick={() => confirmCommitmentMutation.mutate(c.id)}
+                      disabled={confirmCommitmentMutation.isPending}
+                      data-testid={`button-confirm-commitment-${c.id}`}
+                    >
+                      <Check className="w-4 h-4 mr-2" />
+                      Mark as Client Confirmed
+                    </Button>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Confirmed */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                Confirmed
+                <Badge className="ml-auto bg-emerald-500/10 text-emerald-600">{confirmedCommitments.length}</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {confirmedCommitments.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No confirmed commitments yet</p>
+              ) : (
+                confirmedCommitments.map((c: any) => (
+                  <div key={c.id} className="p-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5" data-testid={`commitment-confirmed-${c.id}`}>
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="font-medium text-sm">{c.name}</h4>
+                      {getStatusBadge(c.status)}
+                    </div>
+                    {c.description && (
+                      <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{c.description}</p>
+                    )}
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {c.baselineValue !== null && c.targetValue !== null && (
+                        <span>{c.baselineValue} → {c.targetValue} {c.kpiUnit || ""}</span>
+                      )}
+                      {c.estimatedAnnualValue && (
+                        <span className="text-emerald-600 font-medium">
+                          ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr
+                        </span>
+                      )}
+                    </div>
+                    {c.clientConfirmedAt && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Confirmed: {new Date(c.clientConfirmedAt).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Ready for Handoff Summary */}
+        {confirmedCommitments.length > 0 && (
+          <Card className="bg-gradient-to-r from-emerald-500/5 to-violet-500/5 border-emerald-500/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ClipboardCheck className="w-5 h-5 text-emerald-600" />
+                Ready for CSM Handoff
+              </CardTitle>
+              <CardDescription>
+                {confirmedCommitments.length} commitment(s) confirmed and ready to be handed off to delivery
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Value Committed</p>
+                  <p className="text-2xl font-bold text-emerald-600">
+                    ${(confirmedValue / 1000000).toFixed(2)}M
+                  </p>
+                </div>
+                <Button 
+                  onClick={() => setActiveTab("handoff")}
+                  data-testid="button-go-to-handoff"
+                >
+                  <ArrowUpRight className="w-4 h-4 mr-2" />
+                  Proceed to Handoff
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Add Commitment Dialog */}
+        <Dialog open={isAddCommitmentOpen} onOpenChange={setIsAddCommitmentOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Add KPI Commitment</DialogTitle>
+              <DialogDescription>
+                Define a measurable outcome you'll deliver for the client
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="commitment-name">Commitment Name *</Label>
+                <Input
+                  id="commitment-name"
+                  placeholder="e.g., Reduce time-to-hire by 30%"
+                  value={newCommitment.name}
+                  onChange={(e) => setNewCommitment({ ...newCommitment, name: e.target.value })}
+                  data-testid="input-commitment-name"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="commitment-description">Description</Label>
+                <Textarea
+                  id="commitment-description"
+                  placeholder="Describe what this commitment entails..."
+                  value={newCommitment.description}
+                  onChange={(e) => setNewCommitment({ ...newCommitment, description: e.target.value })}
+                  data-testid="input-commitment-description"
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="commitment-baseline">Baseline Value</Label>
+                  <Input
+                    id="commitment-baseline"
+                    type="number"
+                    placeholder="Current state"
+                    value={newCommitment.baselineValue}
+                    onChange={(e) => setNewCommitment({ ...newCommitment, baselineValue: e.target.value })}
+                    data-testid="input-commitment-baseline"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="commitment-target">Target Value</Label>
+                  <Input
+                    id="commitment-target"
+                    type="number"
+                    placeholder="Goal"
+                    value={newCommitment.targetValue}
+                    onChange={(e) => setNewCommitment({ ...newCommitment, targetValue: e.target.value })}
+                    data-testid="input-commitment-target"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="commitment-unit">Unit</Label>
+                  <Input
+                    id="commitment-unit"
+                    placeholder="e.g., days, %, $"
+                    value={newCommitment.kpiUnit}
+                    onChange={(e) => setNewCommitment({ ...newCommitment, kpiUnit: e.target.value })}
+                    data-testid="input-commitment-unit"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="commitment-target-date">Target Date</Label>
+                  <Input
+                    id="commitment-target-date"
+                    type="date"
+                    value={newCommitment.targetDate}
+                    onChange={(e) => setNewCommitment({ ...newCommitment, targetDate: e.target.value })}
+                    data-testid="input-commitment-target-date"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="commitment-value">Estimated Annual Value ($)</Label>
+                  <Input
+                    id="commitment-value"
+                    type="number"
+                    placeholder="e.g., 500000"
+                    value={newCommitment.estimatedAnnualValue}
+                    onChange={(e) => setNewCommitment({ ...newCommitment, estimatedAnnualValue: e.target.value })}
+                    data-testid="input-commitment-value"
+                  />
+                </div>
+              </div>
+
+              {/* Strategic Pillar Linking */}
+              {(strategicPillars as any[]).length > 0 && (
+                <div className="space-y-2">
+                  <Label>Link to Strategic Pillar</Label>
+                  <Select 
+                    value={newCommitment.strategicPillarId?.toString() || ""}
+                    onValueChange={(val) => setNewCommitment({ 
+                      ...newCommitment, 
+                      strategicPillarId: val ? parseInt(val) : null,
+                      pillarObjectiveId: null
+                    })}
+                  >
+                    <SelectTrigger data-testid="select-strategic-pillar">
+                      <SelectValue placeholder="Select a strategic pillar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(strategicPillars as any[]).map((pillar: any) => (
+                        <SelectItem key={pillar.id} value={pillar.id.toString()}>
+                          {pillar.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Pillar Objective Linking */}
+              {newCommitment.strategicPillarId && (pillarObjectives as any[]).length > 0 && (
+                <div className="space-y-2">
+                  <Label>Link to Pillar Objective</Label>
+                  <Select 
+                    value={newCommitment.pillarObjectiveId?.toString() || ""}
+                    onValueChange={(val) => setNewCommitment({ 
+                      ...newCommitment, 
+                      pillarObjectiveId: val ? parseInt(val) : null 
+                    })}
+                  >
+                    <SelectTrigger data-testid="select-pillar-objective">
+                      <SelectValue placeholder="Select an objective" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(pillarObjectives as any[]).map((obj: any) => (
+                        <SelectItem key={obj.id} value={obj.id.toString()}>
+                          {obj.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Discovery Theme Linking */}
+              {jobThemes.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Link to Discovery Theme</Label>
+                  <Select 
+                    value={newCommitment.linkedDiscoveryTheme || ""}
+                    onValueChange={(val) => setNewCommitment({ 
+                      ...newCommitment, 
+                      linkedDiscoveryTheme: val || null 
+                    })}
+                  >
+                    <SelectTrigger data-testid="select-discovery-theme">
+                      <SelectValue placeholder="Select a discovery theme" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {jobThemes.map((theme: any) => (
+                        <SelectItem key={theme.id} value={theme.name}>
+                          {theme.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="commitment-rationale">Rationale</Label>
+                <Textarea
+                  id="commitment-rationale"
+                  placeholder="Why is this commitment important? What evidence supports it?"
+                  value={newCommitment.rationale}
+                  onChange={(e) => setNewCommitment({ ...newCommitment, rationale: e.target.value })}
+                  data-testid="input-commitment-rationale"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsAddCommitmentOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleCreateCommitment}
+                disabled={!newCommitment.name || createCommitmentMutation.isPending}
+                data-testid="button-save-commitment"
+              >
+                {createCommitmentMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Plus className="w-4 h-4 mr-2" />
+                )}
+                Create Commitment
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Commitment Dialog */}
+        <Dialog open={!!editingCommitment} onOpenChange={() => setEditingCommitment(null)}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Commitment</DialogTitle>
+            </DialogHeader>
+            {editingCommitment && (
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-commitment-name">Commitment Name *</Label>
+                  <Input
+                    id="edit-commitment-name"
+                    value={editingCommitment.name}
+                    onChange={(e) => setEditingCommitment({ ...editingCommitment, name: e.target.value })}
+                    data-testid="input-edit-commitment-name"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="edit-commitment-description">Description</Label>
+                  <Textarea
+                    id="edit-commitment-description"
+                    value={editingCommitment.description || ""}
+                    onChange={(e) => setEditingCommitment({ ...editingCommitment, description: e.target.value })}
+                    data-testid="input-edit-commitment-description"
+                  />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-commitment-baseline">Baseline Value</Label>
+                    <Input
+                      id="edit-commitment-baseline"
+                      type="number"
+                      value={editingCommitment.baselineValue || ""}
+                      onChange={(e) => setEditingCommitment({ ...editingCommitment, baselineValue: e.target.value ? parseFloat(e.target.value) : null })}
+                      data-testid="input-edit-commitment-baseline"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-commitment-target">Target Value</Label>
+                    <Input
+                      id="edit-commitment-target"
+                      type="number"
+                      value={editingCommitment.targetValue || ""}
+                      onChange={(e) => setEditingCommitment({ ...editingCommitment, targetValue: e.target.value ? parseFloat(e.target.value) : null })}
+                      data-testid="input-edit-commitment-target"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-commitment-unit">Unit</Label>
+                    <Input
+                      id="edit-commitment-unit"
+                      value={editingCommitment.kpiUnit || ""}
+                      onChange={(e) => setEditingCommitment({ ...editingCommitment, kpiUnit: e.target.value })}
+                      data-testid="input-edit-commitment-unit"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-commitment-target-date">Target Date</Label>
+                    <Input
+                      id="edit-commitment-target-date"
+                      type="date"
+                      value={editingCommitment.targetDate ? new Date(editingCommitment.targetDate).toISOString().split('T')[0] : ""}
+                      onChange={(e) => setEditingCommitment({ ...editingCommitment, targetDate: e.target.value ? new Date(e.target.value) : null })}
+                      data-testid="input-edit-commitment-target-date"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-commitment-value">Estimated Annual Value ($)</Label>
+                    <Input
+                      id="edit-commitment-value"
+                      type="number"
+                      value={editingCommitment.estimatedAnnualValue || ""}
+                      onChange={(e) => setEditingCommitment({ ...editingCommitment, estimatedAnnualValue: e.target.value ? parseFloat(e.target.value) : null })}
+                      data-testid="input-edit-commitment-value"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-commitment-rationale">Rationale</Label>
+                  <Textarea
+                    id="edit-commitment-rationale"
+                    value={editingCommitment.rationale || ""}
+                    onChange={(e) => setEditingCommitment({ ...editingCommitment, rationale: e.target.value })}
+                    data-testid="input-edit-commitment-rationale"
+                  />
+                </div>
+              </div>
+            )}
+            <DialogFooter className="flex justify-between">
+              <Button 
+                variant="destructive" 
+                onClick={() => {
+                  deleteCommitmentMutation.mutate(editingCommitment.id);
+                  setEditingCommitment(null);
+                }}
+                data-testid="button-delete-commitment"
+              >
+                Delete
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setEditingCommitment(null)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={() => updateCommitmentMutation.mutate({ 
+                    id: editingCommitment.id, 
+                    data: {
+                      name: editingCommitment.name,
+                      description: editingCommitment.description,
+                      kpiUnit: editingCommitment.kpiUnit,
+                      baselineValue: editingCommitment.baselineValue,
+                      targetValue: editingCommitment.targetValue,
+                      targetDate: editingCommitment.targetDate,
+                      estimatedAnnualValue: editingCommitment.estimatedAnnualValue,
+                      rationale: editingCommitment.rationale,
+                    }
+                  })}
+                  disabled={!editingCommitment?.name || updateCommitmentMutation.isPending}
+                  data-testid="button-update-commitment"
+                >
+                  {updateCommitmentMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4 mr-2" />
+                  )}
+                  Save Changes
+                </Button>
+              </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  };
+
   const renderSalesWorkspace = () => (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-      <TabsList className="grid grid-cols-5 w-full max-w-3xl">
+      <TabsList className="grid grid-cols-6 w-full max-w-4xl">
         <TabsTrigger value="guided-discovery" data-testid="tab-guided-discovery">
           <Sparkles className="w-4 h-4 mr-2" />
           Guided Discovery
@@ -1297,6 +2046,10 @@ export default function ProjectRoleView() {
         <TabsTrigger value="value-cases" data-testid="tab-value-cases">
           <DollarSign className="w-4 h-4 mr-2" />
           Value Cases
+        </TabsTrigger>
+        <TabsTrigger value="value-agreement" data-testid="tab-value-agreement">
+          <Handshake className="w-4 h-4 mr-2" />
+          Value Agreement
         </TabsTrigger>
         <TabsTrigger value="handoff" data-testid="tab-handoff">
           <ArrowUpRight className="w-4 h-4 mr-2" />
@@ -5158,8 +5911,105 @@ export default function ProjectRoleView() {
         </Card>
       </TabsContent>
 
+      {/* Value Agreement - Define KPI commitments with client */}
+      <TabsContent value="value-agreement" className="space-y-6">
+        <ValueAgreementTab 
+          projectId={projectId} 
+          project={project}
+          insights={insights}
+          kpis={kpis}
+          jobThemes={jobThemes}
+        />
+      </TabsContent>
+
       {/* Handoff - Transition to Delivery (Sales to Delivery flow) */}
       <TabsContent value="handoff" className="space-y-6">
+        <HandoffTab projectId={projectId} project={project} />
+      </TabsContent>
+    </Tabs>
+  );
+
+  // Handoff Tab Component (Sales sends commitments to CSM)
+  const HandoffTab = ({ 
+    projectId, 
+    project 
+  }: { 
+    projectId: number; 
+    project: Project; 
+  }) => {
+    const [executiveSummary, setExecutiveSummary] = useState("");
+    const [isCreateHandoffOpen, setIsCreateHandoffOpen] = useState(false);
+    const [selectedCommitmentIds, setSelectedCommitmentIds] = useState<number[]>([]);
+
+    // Fetch commitments
+    const { data: commitments = [] } = useQuery({
+      queryKey: ["/api/projects", projectId, "commitments"],
+    });
+
+    // Fetch existing handoff packets
+    const { data: handoffPackets = [] } = useQuery({
+      queryKey: ["/api/projects", projectId, "handoffs"],
+    });
+
+    // Create handoff packet mutation
+    const createHandoffMutation = useMutation({
+      mutationFn: async (data: any) => {
+        const response = await apiRequest("POST", `/api/projects/${projectId}/handoffs`, data);
+        return response.json();
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "handoffs"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "commitments"] });
+        setIsCreateHandoffOpen(false);
+        setExecutiveSummary("");
+        setSelectedCommitmentIds([]);
+        toast({ title: "Handoff created", description: "The CSM team has been notified." });
+      },
+      onError: () => {
+        toast({ variant: "destructive", title: "Error", description: "Failed to create handoff package." });
+      }
+    });
+
+    const confirmedCommitments = (commitments as any[]).filter(c => c.status === "client_confirmed");
+    const handedOffCommitments = (commitments as any[]).filter(c => c.status === "handed_off");
+    const confirmedValue = confirmedCommitments.reduce((sum, c) => sum + (c.estimatedAnnualValue || 0), 0);
+
+    const toggleCommitmentSelection = (id: number) => {
+      if (selectedCommitmentIds.includes(id)) {
+        setSelectedCommitmentIds(prev => prev.filter(cid => cid !== id));
+      } else {
+        setSelectedCommitmentIds(prev => [...prev, id]);
+      }
+    };
+
+    const selectAllConfirmed = () => {
+      setSelectedCommitmentIds(confirmedCommitments.map(c => c.id));
+    };
+
+    const handleCreateHandoff = () => {
+      createHandoffMutation.mutate({
+        commitmentIds: selectedCommitmentIds,
+        executiveSummary: executiveSummary || null,
+        salesOwnerName: "Sales Team",
+      });
+    };
+
+    const getPacketStatusBadge = (state: string) => {
+      switch (state) {
+        case "pending":
+          return <Badge className="bg-amber-500/10 text-amber-600">Pending CSM Review</Badge>;
+        case "accepted":
+          return <Badge className="bg-emerald-500/10 text-emerald-600">Accepted</Badge>;
+        case "needs_clarification":
+          return <Badge className="bg-blue-500/10 text-blue-600">Needs Clarification</Badge>;
+        default:
+          return <Badge variant="outline">{state}</Badge>;
+      }
+    };
+
+    return (
+      <div className="space-y-6">
+        {/* Header */}
         <Card className="bg-gradient-to-r from-emerald-500/5 to-primary/5 border-emerald-500/20">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -5169,124 +6019,672 @@ export default function ProjectRoleView() {
                 </div>
                 <div>
                   <CardTitle>Handoff to Delivery</CardTitle>
-                  <CardDescription>Transition this engagement to the delivery team</CardDescription>
+                  <CardDescription>
+                    Bundle confirmed commitments and send to CSM for delivery tracking
+                  </CardDescription>
                 </div>
               </div>
-              <Badge variant={kpis.length >= 3 && valueCases.length >= 1 ? "default" : "secondary"}>
-                {kpis.length >= 3 && valueCases.length >= 1 ? "Ready for Handoff" : "Preparation Needed"}
-              </Badge>
+              {confirmedCommitments.length > 0 && (
+                <Badge className="bg-emerald-500/10 text-emerald-600">
+                  {confirmedCommitments.length} Ready
+                </Badge>
+              )}
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Before handing off, ensure the Value Canvas is complete with shared KPIs, baselines, and targets.
-              </p>
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className={`p-4 rounded-lg border ${kpis.length >= 3 ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5"}`}>
-                  <div className="flex items-center gap-2 mb-2">
-                    {kpis.length >= 3 ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    ) : (
-                      <AlertCircle className="w-4 h-4 text-amber-600" />
-                    )}
-                    <span className="font-medium text-sm">Value Canvas KPIs</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {kpis.length} / 3 minimum defined
-                  </p>
-                </div>
-                <div className={`p-4 rounded-lg border ${valueCases.length >= 1 ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5"}`}>
-                  <div className="flex items-center gap-2 mb-2">
-                    {valueCases.length >= 1 ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    ) : (
-                      <AlertCircle className="w-4 h-4 text-amber-600" />
-                    )}
-                    <span className="font-medium text-sm">Value Cases</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {valueCases.length} case(s) created
-                  </p>
-                </div>
-                <div className={`p-4 rounded-lg border ${insights.length >= 5 ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5"}`}>
-                  <div className="flex items-center gap-2 mb-2">
-                    {insights.length >= 5 ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    ) : (
-                      <AlertCircle className="w-4 h-4 text-amber-600" />
-                    )}
-                    <span className="font-medium text-sm">Discovery Complete</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {insights.length} insights captured
-                  </p>
-                </div>
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="p-4 rounded-lg bg-background border">
+                <p className="text-sm text-muted-foreground">Confirmed Commitments</p>
+                <p className="text-2xl font-bold text-emerald-600">{confirmedCommitments.length}</p>
+              </div>
+              <div className="p-4 rounded-lg bg-background border">
+                <p className="text-sm text-muted-foreground">Handed Off</p>
+                <p className="text-2xl font-bold text-purple-600">{handedOffCommitments.length}</p>
+              </div>
+              <div className="p-4 rounded-lg bg-background border">
+                <p className="text-sm text-muted-foreground">Handoff Packets Sent</p>
+                <p className="text-2xl font-bold">{(handoffPackets as any[]).length}</p>
+              </div>
+              <div className="p-4 rounded-lg bg-background border">
+                <p className="text-sm text-muted-foreground">Value Ready for Handoff</p>
+                <p className="text-2xl font-bold text-emerald-600">
+                  ${(confirmedValue / 1000000).toFixed(1)}M
+                </p>
               </div>
             </div>
           </CardContent>
-          <CardFooter className="flex justify-between">
-            <p className="text-sm text-muted-foreground">
-              Handoff will notify the delivery team and lock value canvas items
-            </p>
-            <Link href={`/projects/${projectId}/delivery`}>
-              <Button 
-                disabled={kpis.length < 3 || valueCases.length < 1}
-                data-testid="button-handoff-to-delivery"
-              >
-                <ArrowUpRight className="w-4 h-4 mr-2" />
-                Complete Handoff
-              </Button>
-            </Link>
-          </CardFooter>
         </Card>
 
-        <Card>
+        {/* Ready for Handoff */}
+        {confirmedCommitments.length > 0 && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                  Client-Confirmed Commitments
+                </CardTitle>
+                <CardDescription>
+                  Select commitments to include in handoff package
+                </CardDescription>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={selectAllConfirmed}>
+                  Select All
+                </Button>
+                <Button 
+                  onClick={() => setIsCreateHandoffOpen(true)}
+                  disabled={selectedCommitmentIds.length === 0}
+                  data-testid="button-create-handoff"
+                >
+                  <ArrowUpRight className="w-4 h-4 mr-2" />
+                  Create Handoff ({selectedCommitmentIds.length})
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {confirmedCommitments.map((c: any) => (
+                  <div 
+                    key={c.id}
+                    className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                      selectedCommitmentIds.includes(c.id) 
+                        ? "border-primary bg-primary/5" 
+                        : "border-emerald-500/20 bg-emerald-500/5 hover-elevate"
+                    }`}
+                    onClick={() => toggleCommitmentSelection(c.id)}
+                    data-testid={`commitment-select-${c.id}`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3">
+                        <div className={`mt-1 w-5 h-5 rounded border flex items-center justify-center ${
+                          selectedCommitmentIds.includes(c.id) 
+                            ? "bg-primary border-primary" 
+                            : "border-muted-foreground/30"
+                        }`}>
+                          {selectedCommitmentIds.includes(c.id) && (
+                            <Check className="w-3 h-3 text-primary-foreground" />
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="font-semibold">{c.name}</h4>
+                          {c.description && (
+                            <p className="text-sm text-muted-foreground mt-1">{c.description}</p>
+                          )}
+                          <div className="flex items-center gap-4 mt-2 text-sm">
+                            {c.baselineValue !== null && c.targetValue !== null && (
+                              <span className="text-muted-foreground">
+                                {c.baselineValue} → {c.targetValue} {c.kpiUnit || ""}
+                              </span>
+                            )}
+                            {c.targetDate && (
+                              <span className="text-muted-foreground">
+                                Target: {new Date(c.targetDate).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <Badge className="bg-emerald-500/10 text-emerald-600">Confirmed</Badge>
+                        {c.estimatedAnnualValue && (
+                          <p className="text-lg font-bold text-emerald-600 mt-2">
+                            ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* No Confirmed Commitments */}
+        {confirmedCommitments.length === 0 && (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <Handshake className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="font-semibold mb-2">No Commitments Ready</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Confirm commitments with clients in the Value Agreement tab before handing off.
+              </p>
+              <Button variant="outline" onClick={() => setActiveTab("value-agreement")}>
+                Go to Value Agreement
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Existing Handoff Packets */}
+        {(handoffPackets as any[]).length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Handoff History
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {(handoffPackets as any[]).map((packet: any) => (
+                  <div key={packet.id} className="p-4 rounded-lg border">
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <h4 className="font-medium">Package #{packet.id}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Sent: {new Date(packet.generatedAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      {getPacketStatusBadge(packet.acceptanceState)}
+                    </div>
+                    {packet.executiveSummary && (
+                      <p className="text-sm text-muted-foreground mb-2">{packet.executiveSummary}</p>
+                    )}
+                    <div className="flex items-center gap-4 text-sm">
+                      <span>{packet.commitmentIds?.length || 0} commitments</span>
+                      {packet.totalCommittedValue && (
+                        <span className="text-emerald-600 font-medium">
+                          ${(packet.totalCommittedValue / 1000000).toFixed(2)}M
+                        </span>
+                      )}
+                      {packet.acceptedAt && (
+                        <span className="text-muted-foreground">
+                          Accepted: {new Date(packet.acceptedAt).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                    {/* Show clarification requests if any */}
+                    {packet.clarificationRequests && (packet.clarificationRequests as any[]).length > 0 && (
+                      <div className="mt-3 pt-3 border-t">
+                        <p className="text-sm font-medium mb-2">Clarification Requests:</p>
+                        {(packet.clarificationRequests as any[]).map((req: any, idx: number) => (
+                          <div key={idx} className="p-2 rounded bg-muted/50 text-sm mb-2">
+                            <p className="font-medium">Q: {req.question}</p>
+                            {req.answer ? (
+                              <p className="text-muted-foreground mt-1">A: {req.answer}</p>
+                            ) : (
+                              <p className="text-blue-600 mt-1">Awaiting your response...</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Create Handoff Dialog */}
+        <Dialog open={isCreateHandoffOpen} onOpenChange={setIsCreateHandoffOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create Handoff Package</DialogTitle>
+              <DialogDescription>
+                Bundle {selectedCommitmentIds.length} commitment(s) and send to the delivery team.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="p-4 rounded-lg bg-muted/50">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium">Selected Commitments</span>
+                  <Badge variant="secondary">{selectedCommitmentIds.length}</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Total Value: ${(confirmedCommitments
+                    .filter(c => selectedCommitmentIds.includes(c.id))
+                    .reduce((sum, c) => sum + (c.estimatedAnnualValue || 0), 0) / 1000000
+                  ).toFixed(2)}M
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="executive-summary">Executive Summary (optional)</Label>
+                <Textarea
+                  id="executive-summary"
+                  placeholder="Provide context for the delivery team..."
+                  value={executiveSummary}
+                  onChange={(e) => setExecutiveSummary(e.target.value)}
+                  data-testid="input-executive-summary"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsCreateHandoffOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleCreateHandoff}
+                disabled={createHandoffMutation.isPending}
+                data-testid="button-confirm-handoff"
+              >
+                {createHandoffMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <ArrowUpRight className="w-4 h-4 mr-2" />
+                )}
+                Send to Delivery
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  };
+
+  // Incoming Handoffs Tab Component (CSM receives commitments from Sales)
+  const IncomingHandoffsTab = ({ 
+    projectId, 
+    project 
+  }: { 
+    projectId: number; 
+    project: Project; 
+  }) => {
+    const [clarificationQuestion, setClarificationQuestion] = useState("");
+    const [selectedHandoff, setSelectedHandoff] = useState<any>(null);
+    const [acceptanceNotes, setAcceptanceNotes] = useState("");
+    const [isAcceptDialogOpen, setIsAcceptDialogOpen] = useState(false);
+    const [isClarifyDialogOpen, setIsClarifyDialogOpen] = useState(false);
+
+    // Fetch handoff packets
+    const { data: handoffPackets = [], isLoading: packetsLoading } = useQuery({
+      queryKey: ["/api/projects", projectId, "handoffs"],
+    });
+
+    // Fetch commitments for display
+    const { data: commitments = [] } = useQuery({
+      queryKey: ["/api/projects", projectId, "commitments"],
+    });
+
+    // Accept handoff mutation
+    const acceptHandoffMutation = useMutation({
+      mutationFn: async ({ id, data }: { id: number; data: any }) => {
+        const response = await apiRequest("PATCH", `/api/projects/${projectId}/handoffs/${id}/accept`, data);
+        return response.json();
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "handoffs"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "commitments"] });
+        setIsAcceptDialogOpen(false);
+        setSelectedHandoff(null);
+        setAcceptanceNotes("");
+        toast({ title: "Handoff accepted", description: "Commitments are now ready for delivery tracking." });
+      },
+      onError: () => {
+        toast({ variant: "destructive", title: "Error", description: "Failed to accept handoff." });
+      }
+    });
+
+    // Request clarification mutation
+    const requestClarificationMutation = useMutation({
+      mutationFn: async ({ id, question }: { id: number; question: string }) => {
+        const response = await apiRequest("PATCH", `/api/projects/${projectId}/handoffs/${id}/clarify`, { question });
+        return response.json();
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "handoffs"] });
+        setIsClarifyDialogOpen(false);
+        setSelectedHandoff(null);
+        setClarificationQuestion("");
+        toast({ title: "Clarification requested", description: "Sales team has been notified." });
+      },
+      onError: () => {
+        toast({ variant: "destructive", title: "Error", description: "Failed to request clarification." });
+      }
+    });
+
+    const getPacketStatusBadge = (state: string) => {
+      switch (state) {
+        case "pending":
+          return <Badge className="bg-amber-500/10 text-amber-600">Pending Review</Badge>;
+        case "accepted":
+          return <Badge className="bg-emerald-500/10 text-emerald-600">Accepted</Badge>;
+        case "needs_clarification":
+          return <Badge className="bg-blue-500/10 text-blue-600">Awaiting Clarification</Badge>;
+        case "rejected":
+          return <Badge variant="destructive">Rejected</Badge>;
+        default:
+          return <Badge variant="outline">{state}</Badge>;
+      }
+    };
+
+    // Get commitment details for a packet
+    const getPacketCommitments = (packet: any) => {
+      if (!packet.commitmentIds) return [];
+      return (commitments as any[]).filter(c => packet.commitmentIds.includes(c.id));
+    };
+
+    const pendingPackets = (handoffPackets as any[]).filter(p => p.acceptanceState === "pending");
+    const clarificationPackets = (handoffPackets as any[]).filter(p => p.acceptanceState === "needs_clarification");
+    const acceptedPackets = (handoffPackets as any[]).filter(p => p.acceptanceState === "accepted");
+    
+    const activeCommitments = (commitments as any[]).filter(c => 
+      c.status === "in_delivery" || c.status === "handed_off"
+    );
+    const totalActiveValue = activeCommitments.reduce((sum, c) => sum + (c.estimatedAnnualValue || 0), 0);
+
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <Card className="bg-gradient-to-r from-cyan-500/5 to-blue-500/5 border-cyan-500/20">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5" />
-              Handoff Checklist
-            </CardTitle>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                <Handshake className="w-6 h-6 text-cyan-600" />
+              </div>
+              <div>
+                <CardTitle>Incoming Handoffs</CardTitle>
+                <CardDescription>
+                  Review and accept commitment packages from Sales
+                </CardDescription>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                <CheckCircle2 className={`w-5 h-5 ${kpis.length >= 3 ? "text-emerald-600" : "text-muted-foreground"}`} />
-                <span className={kpis.length >= 3 ? "" : "text-muted-foreground"}>
-                  3-5 shared KPIs defined with baselines and targets
-                </span>
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="p-4 rounded-lg bg-background border">
+                <p className="text-sm text-muted-foreground">Pending Review</p>
+                <p className="text-2xl font-bold text-amber-600">{pendingPackets.length}</p>
               </div>
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                <CheckCircle2 className={`w-5 h-5 ${valueCases.length >= 1 ? "text-emerald-600" : "text-muted-foreground"}`} />
-                <span className={valueCases.length >= 1 ? "" : "text-muted-foreground"}>
-                  At least one value case created
-                </span>
+              <div className="p-4 rounded-lg bg-background border">
+                <p className="text-sm text-muted-foreground">Awaiting Clarification</p>
+                <p className="text-2xl font-bold text-blue-600">{clarificationPackets.length}</p>
               </div>
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                <CheckCircle2 className={`w-5 h-5 ${insights.length >= 5 ? "text-emerald-600" : "text-muted-foreground"}`} />
-                <span className={insights.length >= 5 ? "" : "text-muted-foreground"}>
-                  Discovery insights documented (5+ recommended)
-                </span>
+              <div className="p-4 rounded-lg bg-background border">
+                <p className="text-sm text-muted-foreground">Active Commitments</p>
+                <p className="text-2xl font-bold text-emerald-600">{activeCommitments.length}</p>
               </div>
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                <CheckCircle2 className="w-5 h-5 text-muted-foreground" />
-                <span className="text-muted-foreground">
-                  Success fee / commercial terms noted (optional)
-                </span>
+              <div className="p-4 rounded-lg bg-background border">
+                <p className="text-sm text-muted-foreground">Total Value in Delivery</p>
+                <p className="text-2xl font-bold text-cyan-600">
+                  ${(totalActiveValue / 1000000).toFixed(1)}M
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
-      </TabsContent>
-    </Tabs>
-  );
+
+        {/* Pending Handoffs */}
+        {pendingPackets.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="w-5 h-5 text-amber-600" />
+                Pending Review
+              </CardTitle>
+              <CardDescription>
+                Review these handoff packages and accept or request clarification
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {pendingPackets.map((packet: any) => {
+                const packetCommitments = getPacketCommitments(packet);
+                const packetValue = packetCommitments.reduce((sum: number, c: any) => sum + (c.estimatedAnnualValue || 0), 0);
+                
+                return (
+                  <div 
+                    key={packet.id} 
+                    className="p-4 rounded-lg border border-amber-500/20 bg-amber-500/5"
+                    data-testid={`handoff-pending-${packet.id}`}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h4 className="font-semibold">Handoff Package #{packet.id}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          From: {packet.salesOwnerName || "Sales Team"} • {new Date(packet.generatedAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      {getPacketStatusBadge(packet.acceptanceState)}
+                    </div>
+                    
+                    {packet.executiveSummary && (
+                      <p className="text-sm mb-3">{packet.executiveSummary}</p>
+                    )}
+
+                    <div className="grid gap-2 mb-4">
+                      <p className="text-sm font-medium">Included Commitments ({packetCommitments.length}):</p>
+                      {packetCommitments.map((c: any) => (
+                        <div key={c.id} className="p-2 rounded bg-background/50 flex items-center justify-between">
+                          <div>
+                            <span className="font-medium text-sm">{c.name}</span>
+                            {c.baselineValue !== null && c.targetValue !== null && (
+                              <span className="text-xs text-muted-foreground ml-2">
+                                ({c.baselineValue} → {c.targetValue} {c.kpiUnit || ""})
+                              </span>
+                            )}
+                          </div>
+                          {c.estimatedAnnualValue && (
+                            <span className="text-sm font-medium text-emerald-600">
+                              ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 border-t">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Value</p>
+                        <p className="text-lg font-bold text-emerald-600">
+                          ${(packetValue / 1000000).toFixed(2)}M
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedHandoff(packet);
+                            setIsClarifyDialogOpen(true);
+                          }}
+                          data-testid={`button-request-clarification-${packet.id}`}
+                        >
+                          <MessageCircle className="w-4 h-4 mr-2" />
+                          Request Clarification
+                        </Button>
+                        <Button 
+                          onClick={() => {
+                            setSelectedHandoff(packet);
+                            setIsAcceptDialogOpen(true);
+                          }}
+                          data-testid={`button-accept-handoff-${packet.id}`}
+                        >
+                          <Check className="w-4 h-4 mr-2" />
+                          Accept Handoff
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Active Commitments in Delivery */}
+        {activeCommitments.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                Active Commitments in Delivery
+              </CardTitle>
+              <CardDescription>
+                Commitments you've accepted and are now tracking
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {activeCommitments.map((c: any) => (
+                  <div 
+                    key={c.id} 
+                    className="p-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5"
+                    data-testid={`commitment-active-${c.id}`}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <h4 className="font-medium">{c.name}</h4>
+                        {c.description && (
+                          <p className="text-xs text-muted-foreground mt-1">{c.description}</p>
+                        )}
+                      </div>
+                      <Badge className="bg-cyan-500/10 text-cyan-600">In Delivery</Badge>
+                    </div>
+                    <div className="grid grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Baseline</p>
+                        <p className="font-medium">{c.baselineValue ?? "—"} {c.kpiUnit || ""}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Target</p>
+                        <p className="font-medium">{c.targetValue ?? "—"} {c.kpiUnit || ""}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Target Date</p>
+                        <p className="font-medium">
+                          {c.targetDate ? new Date(c.targetDate).toLocaleDateString() : "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Annual Value</p>
+                        <p className="font-medium text-emerald-600">
+                          ${c.estimatedAnnualValue ? (c.estimatedAnnualValue / 1000).toFixed(0) + "K" : "—"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Empty State */}
+        {pendingPackets.length === 0 && activeCommitments.length === 0 && (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <Handshake className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="font-semibold mb-2">No Handoffs Yet</h3>
+              <p className="text-sm text-muted-foreground">
+                When Sales sends commitments, they'll appear here for your review.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Accept Dialog */}
+        <Dialog open={isAcceptDialogOpen} onOpenChange={setIsAcceptDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Accept Handoff Package</DialogTitle>
+              <DialogDescription>
+                By accepting, you're committing to track and deliver on these KPIs.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="acceptance-notes">Acceptance Notes (optional)</Label>
+                <Textarea
+                  id="acceptance-notes"
+                  placeholder="Add any notes about your acceptance..."
+                  value={acceptanceNotes}
+                  onChange={(e) => setAcceptanceNotes(e.target.value)}
+                  data-testid="input-acceptance-notes"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsAcceptDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => {
+                  if (selectedHandoff) {
+                    acceptHandoffMutation.mutate({
+                      id: selectedHandoff.id,
+                      data: {
+                        csmOwnerName: "CSM Team",
+                        acceptanceNotes,
+                      }
+                    });
+                  }
+                }}
+                disabled={acceptHandoffMutation.isPending}
+                data-testid="button-confirm-accept"
+              >
+                {acceptHandoffMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4 mr-2" />
+                )}
+                Accept Handoff
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Clarification Dialog */}
+        <Dialog open={isClarifyDialogOpen} onOpenChange={setIsClarifyDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Request Clarification</DialogTitle>
+              <DialogDescription>
+                Ask the Sales team for more information before accepting.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="clarification-question">Your Question *</Label>
+                <Textarea
+                  id="clarification-question"
+                  placeholder="What do you need clarification on?"
+                  value={clarificationQuestion}
+                  onChange={(e) => setClarificationQuestion(e.target.value)}
+                  data-testid="input-clarification-question"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsClarifyDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => {
+                  if (selectedHandoff && clarificationQuestion) {
+                    requestClarificationMutation.mutate({
+                      id: selectedHandoff.id,
+                      question: clarificationQuestion
+                    });
+                  }
+                }}
+                disabled={!clarificationQuestion || requestClarificationMutation.isPending}
+                data-testid="button-submit-clarification"
+              >
+                {requestClarificationMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                )}
+                Send Question
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  };
 
   const renderDeliveryWorkspace = () => (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-      <TabsList className="grid grid-cols-5 w-full max-w-3xl">
+      <TabsList className="grid grid-cols-6 w-full max-w-4xl">
         <TabsTrigger value="health" data-testid="tab-health">
           <Activity className="w-4 h-4 mr-2" />
           Health Dashboard
+        </TabsTrigger>
+        <TabsTrigger value="incoming-handoffs" data-testid="tab-incoming-handoffs">
+          <Handshake className="w-4 h-4 mr-2" />
+          Incoming Handoffs
         </TabsTrigger>
         <TabsTrigger value="kpis" data-testid="tab-kpis">
           <BarChart3 className="w-4 h-4 mr-2" />
@@ -5441,6 +6839,14 @@ export default function ProjectRoleView() {
             </CardContent>
           </Card>
         </div>
+      </TabsContent>
+
+      {/* Incoming Handoffs - CSM receives commitments from Sales */}
+      <TabsContent value="incoming-handoffs" className="space-y-6">
+        <IncomingHandoffsTab 
+          projectId={projectId} 
+          project={project}
+        />
       </TabsContent>
 
       <TabsContent value="kpis" className="space-y-6">
