@@ -777,11 +777,21 @@ export default function ProjectRoleView() {
     saveDiscoveryProgressMutation.mutate({ discoveryCompleted: completed });
   };
   
-  // Interactive Call Builder state
+  // Interactive Call Builder state (legacy - keeping for compatibility)
   const [callPhase, setCallPhase] = useState<"opening" | "discovery" | "support" | "closing">("opening");
   const [myCallFlow, setMyCallFlow] = useState<{id: number; question: string; phase: string; methodology?: string}[]>([]);
   const [activeMethodologyFilter, setActiveMethodologyFilter] = useState<string | null>(null);
   const [showCoachingTip, setShowCoachingTip] = useState(true);
+  
+  // Unified Narrative Canvas state - simplified storyboard
+  const [narrativeCanvas, setNarrativeCanvas] = useState({
+    opener: "",
+    keyMessage: "",
+    proofPoint: "",
+    keyQuestions: [] as string[],
+    callToAction: ""
+  });
+  const [isGeneratingNarrative, setIsGeneratingNarrative] = useState(false);
   
   // Enhanced Green Sheet state - Meeting Contact Context
   type BuyingRole = "economic_buyer" | "user_buyer" | "technical_buyer" | "coach" | "champion";
@@ -4699,1391 +4709,257 @@ export default function ProjectRoleView() {
               </Collapsible>
             </Card>
 
-            {/* Interactive Story Builder */}
-            <Card className="border-2 border-amber-500/30 bg-gradient-to-br from-amber-500/5 via-orange-500/5 to-rose-500/5">
-              <CardHeader className="bg-amber-500/10">
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
-                      <Trophy className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <CardTitle className="flex items-center gap-2 text-amber-800">
-                        Interactive Story Builder
-                        <Badge className="bg-amber-100 text-amber-700 border-amber-300 text-xs">Craft Compelling Narratives</Badge>
-                      </CardTitle>
-                      <CardDescription>Build memorable stories for {project?.companyName} using proven methodology</CardDescription>
-                    </div>
-                  </div>
-                  <Button 
-                    onClick={() => setStoryBuilderOpen(!storyBuilderOpen)}
-                    variant={storyBuilderOpen ? "default" : "outline"}
-                    className={storyBuilderOpen ? "bg-amber-600 hover:bg-amber-700" : ""}
-                    data-testid="button-toggle-story-builder"
-                  >
-                    {storyBuilderOpen ? (
-                      <>
-                        <X className="w-4 h-4 mr-2" />
-                        Close Builder
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        Open Story Builder
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </CardHeader>
-              
-              {storyBuilderOpen && (
-                <CardContent className="pt-6">
-                  {/* Two-column layout: Story Content + Sticky Coach Sidebar */}
-                  <div className="flex gap-6">
-                    {/* Left Column: Story Building Content */}
-                    <div className="flex-1 space-y-6 min-w-0">
-                      {/* Phase Navigation */}
-                      <div className="flex items-center gap-2 p-2 rounded-xl bg-background border">
-                        {([
-                          { id: "before" as const, label: "BEFORE", sublabel: "Craft", icon: Target, color: "blue" as const },
-                          { id: "during" as const, label: "DURING", sublabel: "Tell", icon: Play, color: "emerald" as const },
-                          { id: "after" as const, label: "AFTER", sublabel: "Land", icon: Flag, color: "purple" as const }
-                        ] as const).map((phase, idx) => {
-                          const PhaseIcon = phase.icon;
-                          const isActive = activeStoryPhase === phase.id;
-                          const colorClasses: Record<"blue" | "emerald" | "purple", string> = {
-                            blue: isActive ? "bg-blue-500 text-white" : "bg-blue-500/10 text-blue-700 hover:bg-blue-500/20",
-                            emerald: isActive ? "bg-emerald-500 text-white" : "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20",
-                            purple: isActive ? "bg-purple-500 text-white" : "bg-purple-500/10 text-purple-700 hover:bg-purple-500/20"
-                          };
-                          return (
-                            <div key={phase.id} className="flex items-center flex-1">
-                              <button
-                                onClick={() => setActiveStoryPhase(phase.id)}
-                                className={`flex-1 p-3 rounded-lg transition-all ${colorClasses[phase.color]}`}
-                                data-testid={`button-story-phase-${phase.id}`}
-                              >
-                                <div className="flex items-center justify-center gap-2">
-                                  <PhaseIcon className="w-4 h-4" />
-                                  <div className="text-left">
-                                    <div className="font-bold text-sm">{phase.label}</div>
-                                    <div className={`text-xs ${isActive ? 'opacity-80' : ''}`}>{phase.sublabel}</div>
-                                  </div>
-                                </div>
-                              </button>
-                              {idx < 2 && <ChevronRight className="w-5 h-5 text-muted-foreground mx-1" />}
-                            </div>
-                          );
-                        })}
-                      </div>
-                      
-                      {/* Prompt to add contact if missing - inline in story area */}
-                      {!meetingContact.name && (
-                        <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                          <div className="flex items-center gap-2 text-sm text-amber-700">
-                            <Users className="w-4 h-4" />
-                            <span>Add contact details in the Green Sheet above to unlock personalized coaching in the sidebar</span>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {/* BEFORE Phase - Crafting */}
-                  {activeStoryPhase === "before" && (
-                    <div className="space-y-4">
-                      {/* AI Suggest All Button */}
-                      <div className="flex items-center justify-end">
-                        <Button 
-                          onClick={() => handleAiSuggest("all")} 
-                          disabled={aiSuggestionLoading === "all"}
-                          variant="default"
-                          size="sm"
-                          className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600"
-                          data-testid="button-ai-suggest-all-before"
-                        >
-                          {aiSuggestionLoading === "all" ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Generating...
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles className="w-4 h-4 mr-2" />
-                              Generate Full Story Draft
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                      
-                      {/* AI Reasoning display */}
-                      {aiSuggestionReasoning && activeStoryPhase === "before" && (
-                        <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
-                          <div className="flex items-start gap-2">
-                            <Lightbulb className="w-4 h-4 text-purple-600 mt-0.5" />
-                            <div className="text-sm text-purple-800">
-                              <strong>AI Insight:</strong> {aiSuggestionReasoning}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      
-                      <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20">
-                        <h4 className="font-bold text-blue-800 mb-4 flex items-center gap-2">
-                          <Target className="w-5 h-5" />
-                          Craft Your Story
-                        </h4>
-                        <div className="grid gap-4">
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-sm font-semibold flex items-center gap-2">
-                                <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">1</span>
-                                What's the single (provocative) message?
-                                <span className="text-xs font-normal text-muted-foreground">The one idea they MUST remember</span>
-                              </Label>
-                              <Button 
-                                size="sm" 
-                                variant="ghost" 
-                                onClick={() => handleAiSuggest("singleMessage")}
-                                disabled={aiSuggestionLoading === "singleMessage"}
-                                className="h-7 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-500/10"
-                                data-testid="button-ai-suggest-message"
-                              >
-                                {aiSuggestionLoading === "singleMessage" ? (
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                ) : (
-                                  <>
-                                    <Sparkles className="w-3 h-3 mr-1" />
-                                    Suggest
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                            <Textarea 
-                              placeholder="e.g., 'Leaders who invest in succession planning before a crisis outperform those who don't by 40%.'"
-                              value={storyDraft.singleMessage}
-                              onChange={(e) => setStoryDraft(prev => ({ ...prev, singleMessage: e.target.value }))}
-                              className="min-h-[60px] text-sm"
-                              data-testid="input-story-message"
-                            />
-                          </div>
-                          
-                          <div className="grid gap-4 md:grid-cols-2">
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <Label className="text-sm font-semibold flex items-center gap-2">
-                                  <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">2</span>
-                                  Emotional Reaction
-                                </Label>
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost" 
-                                  onClick={() => handleAiSuggest("emotionalReaction")}
-                                  disabled={aiSuggestionLoading === "emotionalReaction"}
-                                  className="h-7 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-500/10"
-                                  data-testid="button-ai-suggest-emotion"
-                                >
-                                  {aiSuggestionLoading === "emotionalReaction" ? (
-                                    <Loader2 className="w-3 h-3 animate-spin" />
-                                  ) : (
-                                    <>
-                                      <Sparkles className="w-3 h-3 mr-1" />
-                                      Suggest
-                                    </>
-                                  )}
-                                </Button>
-                              </div>
-                              <Select 
-                                value={storyDraft.emotionalReaction} 
-                                onValueChange={(v) => setStoryDraft(prev => ({ ...prev, emotionalReaction: v }))}
-                              >
-                                <SelectTrigger data-testid="select-emotion">
-                                  <SelectValue placeholder="What should they feel?" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="urgency">Urgency - "We need to act now"</SelectItem>
-                                  <SelectItem value="hope">Hope - "This is possible for us"</SelectItem>
-                                  <SelectItem value="resolve">Resolve - "We can overcome this"</SelectItem>
-                                  <SelectItem value="momentum">Momentum - "We're on the right track"</SelectItem>
-                                  <SelectItem value="concern">Concern - "We might be missing something"</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="space-y-2">
-                              <Label className="text-sm font-semibold flex items-center gap-2">
-                                <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">3</span>
-                                Story Structure
-                              </Label>
-                              <Select 
-                                value={storyDraft.structure} 
-                                onValueChange={(v) => setStoryDraft(prev => ({ ...prev, structure: v }))}
-                              >
-                                <SelectTrigger data-testid="select-structure">
-                                  <SelectValue placeholder="Choose structure..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="situation-struggle-insight-outcome">Situation → Struggle → Insight → Outcome</SelectItem>
-                                  <SelectItem value="problem-agitate-solve">Problem → Agitate → Solve</SelectItem>
-                                  <SelectItem value="before-after-bridge">Before → After → Bridge</SelectItem>
-                                  <SelectItem value="hook-story-offer">Hook → Story → Offer</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-sm font-semibold flex items-center gap-2">
-                                <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">4</span>
-                                Starting Hook
-                                <span className="text-xs font-normal text-muted-foreground">High tension, provocative question, or surprising fact</span>
-                              </Label>
-                              <Button 
-                                size="sm" 
-                                variant="ghost" 
-                                onClick={() => handleAiSuggest("startingHook")}
-                                disabled={aiSuggestionLoading === "startingHook"}
-                                className="h-7 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-500/10"
-                                data-testid="button-ai-suggest-hook"
-                              >
-                                {aiSuggestionLoading === "startingHook" ? (
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                ) : (
-                                  <>
-                                    <Sparkles className="w-3 h-3 mr-1" />
-                                    Suggest
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                            <Textarea 
-                              placeholder="e.g., 'Picture this: It's Monday morning and your top 3 executives just resigned...'"
-                              value={storyDraft.startingHook}
-                              onChange={(e) => setStoryDraft(prev => ({ ...prev, startingHook: e.target.value }))}
-                              className="min-h-[60px] text-sm"
-                              data-testid="input-story-hook"
-                            />
-                          </div>
-                          
-                          <div className="grid gap-4 md:grid-cols-2">
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <Label className="text-sm font-semibold flex items-center gap-2">
-                                  <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">5</span>
-                                  Who's the Hero?
-                                </Label>
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost" 
-                                  onClick={() => handleAiSuggest("heroCharacter")}
-                                  disabled={aiSuggestionLoading === "heroCharacter"}
-                                  className="h-7 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-500/10"
-                                  data-testid="button-ai-suggest-hero"
-                                >
-                                  {aiSuggestionLoading === "heroCharacter" ? (
-                                    <Loader2 className="w-3 h-3 animate-spin" />
-                                  ) : (
-                                    <>
-                                      <Sparkles className="w-3 h-3 mr-1" />
-                                      Suggest
-                                    </>
-                                  )}
-                                </Button>
-                              </div>
-                              <Textarea 
-                                placeholder="The CHRO who championed the change... Their motivations, concerns, and transformation"
-                                value={storyDraft.heroCharacter}
-                                onChange={(e) => setStoryDraft(prev => ({ ...prev, heroCharacter: e.target.value }))}
-                                className="min-h-[60px] text-sm"
-                                data-testid="input-story-hero"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <Label className="text-sm font-semibold flex items-center gap-2">
-                                  <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">6</span>
-                                  Evidence to Reference
-                                </Label>
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost" 
-                                  onClick={() => handleAiSuggest("evidence")}
-                                  disabled={aiSuggestionLoading === "evidence"}
-                                  className="h-7 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-500/10"
-                                  data-testid="button-ai-suggest-evidence"
-                                >
-                                  {aiSuggestionLoading === "evidence" ? (
-                                    <Loader2 className="w-3 h-3 animate-spin" />
-                                  ) : (
-                                    <>
-                                      <Sparkles className="w-3 h-3 mr-1" />
-                                      Suggest
-                                    </>
-                                  )}
-                                </Button>
-                              </div>
-                              <Textarea 
-                                placeholder="40% improvement in retention, 85% of high-potentials promoted within 18 months..."
-                                value={storyDraft.evidence}
-                                onChange={(e) => setStoryDraft(prev => ({ ...prev, evidence: e.target.value }))}
-                                className="min-h-[60px] text-sm"
-                                data-testid="input-story-evidence"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex justify-end">
-                        <Button onClick={() => setActiveStoryPhase("during")} data-testid="button-next-during">
-                          Continue to Telling
-                          <ArrowRight className="w-4 h-4 ml-2" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* DURING Phase - Telling */}
-                  {activeStoryPhase === "during" && (
-                    <div className="space-y-4">
-                      {/* AI Suggest All Button for DURING */}
-                      <div className="flex items-center justify-end">
-                        <Button 
-                          onClick={() => handleAiSuggest("all")} 
-                          disabled={aiSuggestionLoading === "all"}
-                          variant="default"
-                          size="sm"
-                          className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
-                          data-testid="button-ai-suggest-all-during"
-                        >
-                          {aiSuggestionLoading === "all" ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Generating...
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles className="w-4 h-4 mr-2" />
-                              Generate Telling Points
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                      
-                      {/* AI Reasoning display for DURING */}
-                      {aiSuggestionReasoning && activeStoryPhase === "during" && (
-                        <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                          <div className="flex items-start gap-2">
-                            <Lightbulb className="w-4 h-4 text-emerald-600 mt-0.5" />
-                            <div className="text-sm text-emerald-800">
-                              <strong>AI Insight:</strong> {aiSuggestionReasoning}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      
-                      <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
-                        <h4 className="font-bold text-emerald-800 mb-4 flex items-center gap-2">
-                          <Play className="w-5 h-5" />
-                          Tell Your Story
-                        </h4>
-                        
-                        {/* Coaching Tips */}
-                        <div className="grid gap-3 md:grid-cols-3 mb-6">
-                          {[
-                            { tip: "Start fast — no preamble", detail: "Enter at the moment of action" },
-                            { tip: "Pace like a movie", detail: "Short sentences in tension, longer in reflection" },
-                            { tip: "Keep it conversational", detail: "Speak like a human, not a script" }
-                          ].map((item, idx) => (
-                            <div key={idx} className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                              <div className="flex items-center gap-2 text-sm font-semibold text-emerald-800">
-                                <CheckCircle className="w-4 h-4" />
-                                {item.tip}
-                              </div>
-                              <p className="text-xs text-emerald-700 mt-1">{item.detail}</p>
-                            </div>
-                          ))}
-                        </div>
-                        
-                        <div className="grid gap-4">
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-sm font-semibold flex items-center gap-2">
-                                <Zap className="w-4 h-4 text-emerald-600" />
-                                Your Opening Line
-                                <span className="text-xs font-normal text-muted-foreground">Enter at the moment of action</span>
-                              </Label>
-                              <Button 
-                                size="sm" 
-                                variant="ghost" 
-                                onClick={() => handleAiSuggest("openingLine")}
-                                disabled={aiSuggestionLoading === "openingLine"}
-                                className="h-7 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
-                                data-testid="button-ai-suggest-opening"
-                              >
-                                {aiSuggestionLoading === "openingLine" ? (
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                ) : (
-                                  <>
-                                    <Sparkles className="w-3 h-3 mr-1" />
-                                    Suggest
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                            <Textarea 
-                              placeholder={storyDraft.startingHook || "Start with your hook from the previous step..."}
-                              value={storyDraft.openingLine}
-                              onChange={(e) => setStoryDraft(prev => ({ ...prev, openingLine: e.target.value }))}
-                              className="min-h-[60px] text-sm"
-                              data-testid="input-story-opening"
-                            />
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-sm font-semibold flex items-center gap-2">
-                                <ArrowUpRight className="w-4 h-4 text-emerald-600" />
-                                The Turning Point
-                                <span className="text-xs font-normal text-muted-foreground">What realization changed the course?</span>
-                              </Label>
-                              <Button 
-                                size="sm" 
-                                variant="ghost" 
-                                onClick={() => handleAiSuggest("turningPoint")}
-                                disabled={aiSuggestionLoading === "turningPoint"}
-                                className="h-7 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
-                                data-testid="button-ai-suggest-turning"
-                              >
-                                {aiSuggestionLoading === "turningPoint" ? (
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                ) : (
-                                  <>
-                                    <Sparkles className="w-3 h-3 mr-1" />
-                                    Suggest
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                            <Textarea 
-                              placeholder="The moment when the CEO realized that their succession crisis was actually an opportunity to accelerate their entire leadership pipeline..."
-                              value={storyDraft.turningPoint}
-                              onChange={(e) => setStoryDraft(prev => ({ ...prev, turningPoint: e.target.value }))}
-                              className="min-h-[80px] text-sm"
-                              data-testid="input-story-turning"
-                            />
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-sm font-semibold flex items-center gap-2">
-                                <BarChart3 className="w-4 h-4 text-emerald-600" />
-                                Key Data Point
-                                <span className="text-xs font-normal text-muted-foreground">Use data as evidence, not the story itself</span>
-                              </Label>
-                              <Button 
-                                size="sm" 
-                                variant="ghost" 
-                                onClick={() => handleAiSuggest("keyDataPoint")}
-                                disabled={aiSuggestionLoading === "keyDataPoint"}
-                                className="h-7 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
-                                data-testid="button-ai-suggest-data"
-                              >
-                                {aiSuggestionLoading === "keyDataPoint" ? (
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                ) : (
-                                  <>
-                                    <Sparkles className="w-3 h-3 mr-1" />
-                                    Suggest
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                            <Input 
-                              placeholder={storyDraft.evidence || "e.g., 40% improvement in 12 months"}
-                              value={storyDraft.keyDataPoint}
-                              onChange={(e) => setStoryDraft(prev => ({ ...prev, keyDataPoint: e.target.value }))}
-                              className="text-sm"
-                              data-testid="input-story-data"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex justify-between">
-                        <Button variant="outline" onClick={() => setActiveStoryPhase("before")} data-testid="button-back-before">
-                          <ArrowLeft className="w-4 h-4 mr-2" />
-                          Back to Crafting
-                        </Button>
-                        <Button onClick={() => setActiveStoryPhase("after")} data-testid="button-next-after">
-                          Continue to Landing
-                          <ArrowRight className="w-4 h-4 ml-2" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* AFTER Phase - Landing */}
-                  {activeStoryPhase === "after" && (
-                    <div className="space-y-4">
-                      {/* AI Suggest All Button for AFTER */}
-                      <div className="flex items-center justify-end">
-                        <Button 
-                          onClick={() => handleAiSuggest("all")} 
-                          disabled={aiSuggestionLoading === "all"}
-                          variant="default"
-                          size="sm"
-                          className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-                          data-testid="button-ai-suggest-all-after"
-                        >
-                          {aiSuggestionLoading === "all" ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Generating...
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles className="w-4 h-4 mr-2" />
-                              Generate Landing Points
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                      
-                      {/* AI Reasoning display for AFTER */}
-                      {aiSuggestionReasoning && activeStoryPhase === "after" && (
-                        <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
-                          <div className="flex items-start gap-2">
-                            <Lightbulb className="w-4 h-4 text-purple-600 mt-0.5" />
-                            <div className="text-sm text-purple-800">
-                              <strong>AI Insight:</strong> {aiSuggestionReasoning}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      
-                      <div className="p-4 rounded-xl bg-purple-500/5 border border-purple-500/20">
-                        <h4 className="font-bold text-purple-800 mb-4 flex items-center gap-2">
-                          <Flag className="w-5 h-5" />
-                          Land Your Story
-                        </h4>
-                        
-                        <div className="grid gap-4">
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-sm font-semibold flex items-center gap-2">
-                                <Lightbulb className="w-4 h-4 text-purple-600" />
-                                Moment of Meaning
-                                <span className="text-xs font-normal text-muted-foreground">Crisp insight or forward-looking question</span>
-                              </Label>
-                              <Button 
-                                size="sm" 
-                                variant="ghost" 
-                                onClick={() => handleAiSuggest("meaningMoment")}
-                                disabled={aiSuggestionLoading === "meaningMoment"}
-                                className="h-7 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-500/10"
-                                data-testid="button-ai-suggest-meaning"
-                              >
-                                {aiSuggestionLoading === "meaningMoment" ? (
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                ) : (
-                                  <>
-                                    <Sparkles className="w-3 h-3 mr-1" />
-                                    Suggest
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                            <Textarea 
-                              placeholder="The CHRO later told me: 'That crisis became the best thing that happened to our leadership culture.'"
-                              value={storyDraft.meaningMoment}
-                              onChange={(e) => setStoryDraft(prev => ({ ...prev, meaningMoment: e.target.value }))}
-                              className="min-h-[60px] text-sm"
-                              data-testid="input-story-meaning"
-                            />
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-sm font-semibold flex items-center gap-2">
-                                <Target className="w-4 h-4 text-purple-600" />
-                                Explicit Takeaway
-                                <span className="text-xs font-normal text-muted-foreground">Connect story to action for your listener</span>
-                              </Label>
-                              <Button 
-                                size="sm" 
-                                variant="ghost" 
-                                onClick={() => handleAiSuggest("takeaway")}
-                                disabled={aiSuggestionLoading === "takeaway"}
-                                className="h-7 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-500/10"
-                                data-testid="button-ai-suggest-takeaway"
-                              >
-                                {aiSuggestionLoading === "takeaway" ? (
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                ) : (
-                                  <>
-                                    <Sparkles className="w-3 h-3 mr-1" />
-                                    Suggest
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                            <Textarea 
-                              placeholder="Organizations that invest in leadership pipelines before a crisis have 40% better outcomes than those who react..."
-                              value={storyDraft.takeaway}
-                              onChange={(e) => setStoryDraft(prev => ({ ...prev, takeaway: e.target.value }))}
-                              className="min-h-[60px] text-sm"
-                              data-testid="input-story-takeaway"
-                            />
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-sm font-semibold flex items-center gap-2">
-                                <ArrowRight className="w-4 h-4 text-purple-600" />
-                                Call to Action
-                                <span className="text-xs font-normal text-muted-foreground">What do you want them to do next?</span>
-                              </Label>
-                              <Button 
-                                size="sm" 
-                                variant="ghost" 
-                                onClick={() => handleAiSuggest("callToAction")}
-                                disabled={aiSuggestionLoading === "callToAction"}
-                                className="h-7 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-500/10"
-                                data-testid="button-ai-suggest-cta"
-                              >
-                                {aiSuggestionLoading === "callToAction" ? (
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                ) : (
-                                  <>
-                                    <Sparkles className="w-3 h-3 mr-1" />
-                                    Suggest
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                            <Input 
-                              placeholder="I'd love to explore what a proactive approach could look like for your organization..."
-                              value={storyDraft.callToAction}
-                              onChange={(e) => setStoryDraft(prev => ({ ...prev, callToAction: e.target.value }))}
-                              className="text-sm"
-                              data-testid="input-story-cta"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* Story Test */}
-                      <div className="p-4 rounded-xl bg-amber-500/10 border-2 border-amber-500/30">
-                        <h4 className="font-bold text-amber-800 mb-4 flex items-center gap-2">
-                          <HelpCircle className="w-5 h-5" />
-                          Test Your Story
-                        </h4>
-                        <div className="grid gap-3 md:grid-cols-3">
-                          <div className="p-3 rounded-lg bg-white/50 border">
-                            <p className="text-sm font-medium mb-2">Would a stranger care?</p>
-                            <p className="text-xs text-muted-foreground mb-3">If not, sharpen the tension or emotional core.</p>
-                            <div className="flex gap-2">
-                              <Button 
-                                size="sm" 
-                                variant={storyTestResults.strangerCare === true ? "default" : "outline"}
-                                onClick={() => setStoryTestResults(prev => ({ ...prev, strangerCare: true }))}
-                                className={storyTestResults.strangerCare === true ? "bg-emerald-500" : ""}
-                                data-testid="button-test-stranger-yes"
-                              >
-                                <Check className="w-3 h-3 mr-1" />
-                                Yes
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant={storyTestResults.strangerCare === false ? "default" : "outline"}
-                                onClick={() => setStoryTestResults(prev => ({ ...prev, strangerCare: false }))}
-                                className={storyTestResults.strangerCare === false ? "bg-red-500" : ""}
-                                data-testid="button-test-stranger-no"
-                              >
-                                <X className="w-3 h-3 mr-1" />
-                                No
-                              </Button>
-                            </div>
-                          </div>
-                          <div className="p-3 rounded-lg bg-white/50 border">
-                            <p className="text-sm font-medium mb-2">Simple enough to repeat?</p>
-                            <p className="text-xs text-muted-foreground mb-3">Others should retell it without losing impact.</p>
-                            <div className="flex gap-2">
-                              <Button 
-                                size="sm" 
-                                variant={storyTestResults.simpleEnough === true ? "default" : "outline"}
-                                onClick={() => setStoryTestResults(prev => ({ ...prev, simpleEnough: true }))}
-                                className={storyTestResults.simpleEnough === true ? "bg-emerald-500" : ""}
-                                data-testid="button-test-simple-yes"
-                              >
-                                <Check className="w-3 h-3 mr-1" />
-                                Yes
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant={storyTestResults.simpleEnough === false ? "default" : "outline"}
-                                onClick={() => setStoryTestResults(prev => ({ ...prev, simpleEnough: false }))}
-                                className={storyTestResults.simpleEnough === false ? "bg-red-500" : ""}
-                                data-testid="button-test-simple-no"
-                              >
-                                <X className="w-3 h-3 mr-1" />
-                                No
-                              </Button>
-                            </div>
-                          </div>
-                          <div className="p-3 rounded-lg bg-white/50 border">
-                            <p className="text-sm font-medium mb-2">Reveals leadership/values?</p>
-                            <p className="text-xs text-muted-foreground mb-3">If yes — it's a leader's story.</p>
-                            <div className="flex gap-2">
-                              <Button 
-                                size="sm" 
-                                variant={storyTestResults.revealsMeaning === true ? "default" : "outline"}
-                                onClick={() => setStoryTestResults(prev => ({ ...prev, revealsMeaning: true }))}
-                                className={storyTestResults.revealsMeaning === true ? "bg-emerald-500" : ""}
-                                data-testid="button-test-meaning-yes"
-                              >
-                                <Check className="w-3 h-3 mr-1" />
-                                Yes
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant={storyTestResults.revealsMeaning === false ? "default" : "outline"}
-                                onClick={() => setStoryTestResults(prev => ({ ...prev, revealsMeaning: false }))}
-                                className={storyTestResults.revealsMeaning === false ? "bg-red-500" : ""}
-                                data-testid="button-test-meaning-no"
-                              >
-                                <X className="w-3 h-3 mr-1" />
-                                No
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Story Score */}
-                        {(storyTestResults.strangerCare !== null || storyTestResults.simpleEnough !== null || storyTestResults.revealsMeaning !== null) && (
-                          <div className="mt-4 p-3 rounded-lg bg-gradient-to-r from-amber-500/20 to-orange-500/20">
-                            <div className="flex items-center justify-between">
-                              <span className="font-semibold text-amber-800">Story Readiness:</span>
-                              <div className="flex items-center gap-2">
-                                {[storyTestResults.strangerCare, storyTestResults.simpleEnough, storyTestResults.revealsMeaning].filter(r => r === true).length === 3 ? (
-                                  <Badge className="bg-emerald-500 text-white">Ready to Tell!</Badge>
-                                ) : [storyTestResults.strangerCare, storyTestResults.simpleEnough, storyTestResults.revealsMeaning].filter(r => r === true).length >= 2 ? (
-                                  <Badge className="bg-amber-500 text-white">Almost There</Badge>
-                                ) : (
-                                  <Badge className="bg-red-500 text-white">Needs Work</Badge>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="flex justify-between">
-                        <Button variant="outline" onClick={() => setActiveStoryPhase("during")} data-testid="button-back-during">
-                          <ArrowLeft className="w-4 h-4 mr-2" />
-                          Back to Telling
-                        </Button>
-                        <Button 
-                          onClick={() => {
-                            toast({ 
-                              title: "Story Saved!", 
-                              description: "Your story has been added to your call preparation." 
-                            });
-                            setStoryBuilderOpen(false);
-                          }}
-                          className="bg-amber-600 hover:bg-amber-700"
-                          data-testid="button-save-story"
-                        >
-                          <Check className="w-4 h-4 mr-2" />
-                          Save Story to Prep
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                  {/* Success Stories Section - Inside the same CardContent when builder is open */}
-                  <div className="border-t border-amber-500/20 pt-6 mt-6">
-                    <h4 className="font-semibold text-sm text-amber-800 flex items-center gap-2 mb-4">
-                      <Star className="w-4 h-4" />
-                      Reference Stories for {project?.companyName}
-                    </h4>
-                    
-                    {/* Success Stories List */}
-                    {successStories.map((story, idx) => (
-                      <div key={idx} className="p-4 rounded-xl border border-amber-500/20 bg-gradient-to-r from-amber-500/5 to-orange-500/5 mb-4">
-                        <div className="flex items-start justify-between gap-3 mb-3">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-bold text-sm">{story.client}</h4>
-                              <Badge variant="outline" className="text-xs">{story.industry}</Badge>
-                            </div>
-                            <p className="text-xs text-muted-foreground">{story.challenge}</p>
-                          </div>
-                          <Link href={story.storyLink}>
-                            <Button size="sm" variant="outline" className="text-xs" data-testid={`link-story-${idx}`}>
-                              <FileText className="w-3 h-3 mr-1" />
-                              Full Story
-                            </Button>
-                          </Link>
-                        </div>
-                        
-                        {/* Why Relevant */}
-                        <div className="p-2 rounded bg-primary/5 border border-primary/20 mb-3">
-                          <p className="text-xs"><strong>For {project?.companyName}:</strong> {story.whyRelevantTo(project?.companyName || "this client")}</p>
-                        </div>
-                        
-                        {/* Metrics inline */}
-                        <div className="flex flex-wrap gap-1 mb-2">
-                          {story.metrics.map((metric, mIdx) => (
-                            <Badge key={mIdx} className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30 text-xs">
-                              {metric}
-                            </Badge>
-                          ))}
-                        </div>
-                        
-                        {/* How to tell */}
-                        <p className="text-xs italic text-amber-700">Tip: "{story.howToTell}"</p>
-                      </div>
-                    ))}
-                    </div>
-                    </div>
-                    {/* End of Left Column */}
-                    
-                    {/* Right Column: Sticky Coach Sidebar */}
-                    <div className="w-80 flex-shrink-0 hidden lg:block">
-                      <div className="sticky top-4 space-y-4">
-                        {/* Coach Panel */}
-                        {meetingContact.name ? (
-                          <div className="p-4 rounded-xl bg-gradient-to-b from-indigo-500/10 via-purple-500/10 to-pink-500/10 border-2 border-purple-500/30 shadow-lg">
-                            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-purple-500/20">
-                              <GraduationCap className="w-5 h-5 text-purple-600" />
-                              <span className="font-bold text-purple-800">Your Coach</span>
-                            </div>
-                            
-                            {/* Contact Info */}
-                            <div className="flex items-center gap-3 mb-4">
-                              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg ring-2 ring-purple-500/30 ring-offset-2">
-                                {meetingContact.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                              </div>
-                              <div>
-                                <div className="font-semibold text-foreground">{meetingContact.name}</div>
-                                {meetingContact.title && (
-                                  <div className="text-xs text-muted-foreground">{meetingContact.title}</div>
-                                )}
-                              </div>
-                            </div>
-                            
-                            {/* Role & Influence Badges */}
-                            <div className="flex flex-wrap gap-2 mb-4">
-                              {meetingContact.role && (
-                                <Badge className="text-xs bg-purple-500 text-white border-0">
-                                  {meetingContact.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                                </Badge>
-                              )}
-                              {meetingContact.influence && (
-                                <Badge variant="outline" className={`text-xs ${
-                                  meetingContact.influence === 'high' ? 'bg-red-500/10 border-red-500/30 text-red-700' :
-                                  meetingContact.influence === 'medium' ? 'bg-amber-500/10 border-amber-500/30 text-amber-700' :
-                                  'bg-gray-500/10 border-gray-500/30 text-gray-700'
-                                }`}>
-                                  {meetingContact.influence} influence
-                                </Badge>
-                              )}
-                            </div>
-                            
-                            {/* Phase-Aware Coach Tip */}
-                            <div className="p-3 rounded-lg bg-white/70 border border-purple-500/20 mb-3">
-                              <div className="flex items-start gap-2">
-                                <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
-                                  activeStoryPhase === "before" ? "bg-blue-500" :
-                                  activeStoryPhase === "during" ? "bg-emerald-500" :
-                                  "bg-purple-500"
-                                } text-white`}>
-                                  {activeStoryPhase === "before" ? <Target className="w-3 h-3" /> :
-                                   activeStoryPhase === "during" ? <Play className="w-3 h-3" /> :
-                                   <Flag className="w-3 h-3" />}
-                                </div>
-                                <div className="text-sm">
-                                  <div className="font-semibold text-purple-800 mb-1">
-                                    {activeStoryPhase === "before" ? "Craft Phase" :
-                                     activeStoryPhase === "during" ? "Tell Phase" :
-                                     "Land Phase"} Tip
-                                  </div>
-                                  <p className="text-muted-foreground text-xs leading-relaxed">
-                                    {activeStoryPhase === "before" && meetingContact.role === "economic_buyer" && "Focus on ROI and business outcomes. Economic buyers want bottom-line impact."}
-                                    {activeStoryPhase === "before" && meetingContact.role === "user_buyer" && "Emphasize day-to-day impact. User buyers care how this makes their life easier."}
-                                    {activeStoryPhase === "before" && meetingContact.role === "technical_buyer" && "Lead with methodology and data. Technical buyers screen for fit and feasibility."}
-                                    {activeStoryPhase === "before" && meetingContact.role === "coach" && "Focus on process insights. Coaches help navigate the buying journey."}
-                                    {activeStoryPhase === "before" && meetingContact.role === "champion" && "Give quotable soundbites. Champions will sell this story internally."}
-                                    {activeStoryPhase === "before" && !meetingContact.role && "Craft a story that resonates with their role and decision-making style."}
-                                    
-                                    {activeStoryPhase === "during" && meetingContact.role === "economic_buyer" && "Keep it brief and outcome-focused. They're busy—get to the value quickly."}
-                                    {activeStoryPhase === "during" && meetingContact.role === "user_buyer" && "Use relatable scenarios. Paint their improved daily experience."}
-                                    {activeStoryPhase === "during" && meetingContact.role === "technical_buyer" && "Be prepared for questions. Pause for their input on methodology."}
-                                    {activeStoryPhase === "during" && meetingContact.role === "coach" && "Ask for their perspective. Coaches appreciate being consulted."}
-                                    {activeStoryPhase === "during" && meetingContact.role === "champion" && "Make them the hero. Frame the story so they take ownership."}
-                                    {activeStoryPhase === "during" && !meetingContact.role && "Maintain eye contact and pause at key moments for impact."}
-                                    
-                                    {activeStoryPhase === "after" && meetingContact.role === "economic_buyer" && "End with a clear ask tied to business value. What decision do you need?"}
-                                    {activeStoryPhase === "after" && meetingContact.role === "user_buyer" && "Leave them with a vision of success they can imagine themselves in."}
-                                    {activeStoryPhase === "after" && meetingContact.role === "technical_buyer" && "Offer to provide additional data or a deeper technical dive."}
-                                    {activeStoryPhase === "after" && meetingContact.role === "coach" && "Ask who else should hear this story and how to best approach them."}
-                                    {activeStoryPhase === "after" && meetingContact.role === "champion" && "Arm them with materials they can share. Make it easy to advocate."}
-                                    {activeStoryPhase === "after" && !meetingContact.role && "Close with a clear, actionable next step."}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            {/* Known Concerns */}
-                            {meetingContact.knownConcerns && (
-                              <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                                <div className="flex items-start gap-2">
-                                  <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                                  <div>
-                                    <div className="text-xs font-semibold text-amber-700 mb-1">Address This</div>
-                                    <p className="text-xs text-muted-foreground">{meetingContact.knownConcerns}</p>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="p-4 rounded-xl bg-muted/50 border border-dashed border-muted-foreground/30">
-                            <div className="text-center space-y-2">
-                              <GraduationCap className="w-8 h-8 text-muted-foreground/50 mx-auto" />
-                              <p className="text-sm text-muted-foreground">Add contact details in the Green Sheet to unlock coaching tips</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              )}
-              
-              {/* Success Stories - When builder is closed */}
-              {!storyBuilderOpen && (
-                <CardContent className="pt-4">
-                  <div className="space-y-4">
-                    <h4 className="font-semibold text-sm text-amber-800 flex items-center gap-2">
-                      <Star className="w-4 h-4" />
-                      Reference Stories for {project?.companyName}
-                    </h4>
-
-                    {/* Success Stories List */}
-                    {successStories.map((story, idx) => (
-                      <div key={idx} className="p-4 rounded-xl border border-amber-500/20 bg-gradient-to-r from-amber-500/5 to-orange-500/5">
-                        <div className="flex items-start justify-between gap-3 mb-3">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-bold text-sm">{story.client}</h4>
-                              <Badge variant="outline" className="text-xs">{story.industry}</Badge>
-                            </div>
-                            <p className="text-xs text-muted-foreground">{story.challenge}</p>
-                          </div>
-                          <Link href={story.storyLink}>
-                            <Button size="sm" variant="outline" className="text-xs" data-testid={`link-story-closed-${idx}`}>
-                              <FileText className="w-3 h-3 mr-1" />
-                              Full Story
-                            </Button>
-                          </Link>
-                        </div>
-                        
-                        {/* Why Relevant */}
-                        <div className="p-2 rounded bg-primary/5 border border-primary/20 mb-3">
-                          <p className="text-xs"><strong>For {project?.companyName}:</strong> {story.whyRelevantTo(project?.companyName || "this client")}</p>
-                        </div>
-                        
-                        {/* Metrics inline */}
-                        <div className="flex flex-wrap gap-1 mb-2">
-                          {story.metrics.map((metric, mIdx) => (
-                            <Badge key={mIdx} className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30 text-xs">
-                              {metric}
-                            </Badge>
-                          ))}
-                        </div>
-                        
-                        {/* How to tell */}
-                        <p className="text-xs italic text-amber-700">Tip: "{story.howToTell}"</p>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              )}
-            </Card>
-
-            {/* Strategic Questions - Simplified Single Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <HelpCircle className="w-5 h-5 text-primary" />
-                  Question Frameworks
-                </CardTitle>
-                <CardDescription>Quick reference guides for each methodology - expand for examples</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Methodology Pills */}
-                <div className="grid gap-3 md:grid-cols-3">
-                  {/* SPIN */}
-                  <Collapsible>
-                    <CollapsibleTrigger asChild>
-                      <div className="p-3 rounded-lg border cursor-pointer hover-elevate bg-purple-500/5 border-purple-500/20">
-                        <div className="flex items-center justify-between mb-2">
-                          <Badge className="bg-purple-100 text-purple-700 border-purple-300 text-xs">SPIN</Badge>
-                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                        </div>
-                        <p className="text-xs font-medium">Situation → Problem → Implication → Need</p>
-                        <p className="text-xs text-muted-foreground">Uncover pain & build value</p>
-                      </div>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="mt-2 p-3 rounded-lg border bg-purple-500/5 space-y-2">
-                        <div className="text-xs"><Badge variant="outline" className="text-xs mr-1">S</Badge> {spinQuestions.situation[0]}</div>
-                        <div className="text-xs"><Badge variant="outline" className="text-xs mr-1">P</Badge> {spinQuestions.problem[0]}</div>
-                        <div className="text-xs"><Badge variant="outline" className="text-xs mr-1">I</Badge> {spinQuestions.implication[0]}</div>
-                        <div className="text-xs"><Badge variant="outline" className="text-xs mr-1">N</Badge> {spinQuestions.needPayoff[0]}</div>
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                  
-                  {/* Miller Heiman */}
-                  <Collapsible>
-                    <CollapsibleTrigger asChild>
-                      <div className="p-3 rounded-lg border cursor-pointer hover-elevate bg-blue-500/5 border-blue-500/20">
-                        <div className="flex items-center justify-between mb-2">
-                          <Badge className="bg-blue-100 text-blue-700 border-blue-300 text-xs">Miller Heiman</Badge>
-                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                        </div>
-                        <p className="text-xs font-medium">Map Buying Influences</p>
-                        <p className="text-xs text-muted-foreground">Economic • User • Technical • Coach</p>
-                      </div>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="mt-2 p-3 rounded-lg border bg-blue-500/5 space-y-2">
-                        <div className="text-xs"><Users className="w-3 h-3 inline mr-1" /> <strong>Concept:</strong> {millerHeimanQuestions.conceptual[0]}</div>
-                        <div className="text-xs"><Users className="w-3 h-3 inline mr-1" /> <strong>Economic:</strong> {millerHeimanQuestions.economicBuyer[0]}</div>
-                        <div className="text-xs"><Users className="w-3 h-3 inline mr-1" /> <strong>Technical:</strong> {millerHeimanQuestions.technicalBuyer[0]}</div>
-                        <div className="text-xs"><Users className="w-3 h-3 inline mr-1" /> <strong>User:</strong> {millerHeimanQuestions.userBuyer[0]}</div>
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                  
-                  {/* PSS */}
-                  <Collapsible>
-                    <CollapsibleTrigger asChild>
-                      <div className="p-3 rounded-lg border cursor-pointer hover-elevate bg-emerald-500/5 border-emerald-500/20">
-                        <div className="flex items-center justify-between mb-2">
-                          <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 text-xs">PSS</Badge>
-                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                        </div>
-                        <p className="text-xs font-medium">Open → Probe → Support → Close</p>
-                        <p className="text-xs text-muted-foreground">Conversation flow structure</p>
-                      </div>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="mt-2 p-3 rounded-lg border bg-emerald-500/5 space-y-2">
-                        <div className="text-xs"><ArrowRight className="w-3 h-3 inline mr-1" /> <strong>Open:</strong> "{pssQuestions.opening[0]}"</div>
-                        <div className="text-xs"><ArrowRight className="w-3 h-3 inline mr-1" /> <strong>Probe:</strong> "{pssQuestions.probing[0]}"</div>
-                        <div className="text-xs"><ArrowRight className="w-3 h-3 inline mr-1" /> <strong>Support:</strong> "{pssQuestions.supporting[0]}"</div>
-                        <div className="text-xs"><ArrowRight className="w-3 h-3 inline mr-1" /> <strong>Close:</strong> "{pssQuestions.closing[0]}"</div>
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Interactive Call Builder */}
+            {/* Unified Narrative Canvas - Combines Story + Questions + Call Flow */}
             <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 via-purple-500/5 to-blue-500/5">
               <CardHeader>
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center">
-                      <MessageCircle className="w-6 h-6 text-white" />
+                      <FileText className="w-6 h-6 text-white" />
                     </div>
                     <div>
                       <CardTitle className="flex items-center gap-2">
-                        Your Call Builder
-                        <Badge className="bg-gradient-to-r from-primary to-purple-600 text-white border-0">Interactive</Badge>
+                        Narrative Canvas
+                        <Badge className="bg-primary/10 text-primary border-primary/30 text-xs">Visual Storyboard</Badge>
                       </CardTitle>
-                      <CardDescription>Build your personalized conversation flow - add questions to your call plan</CardDescription>
+                      <CardDescription>Your complete call narrative for {project?.companyName} - one visual flow</CardDescription>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-sm">
-                      <ClipboardList className="w-3 h-3 mr-1" />
-                      {myCallFlow.length} in your flow
-                    </Badge>
+                    <Button 
+                      onClick={async () => {
+                        setIsGeneratingNarrative(true);
+                        try {
+                          const response = await apiRequest("POST", `/api/projects/${projectId}/ai/generate-narrative`, {
+                            companyName: project?.companyName,
+                            theme: selectedDiscoveryTheme,
+                            contactName: meetingContact.name,
+                            contactRole: meetingContact.role,
+                            insights: insights?.slice(0, 3).map((i: any) => i.title) || []
+                          });
+                          const data = await response.json();
+                          setNarrativeCanvas({
+                            opener: data.opener || "",
+                            keyMessage: data.keyMessage || "",
+                            proofPoint: data.proofPoint || "",
+                            keyQuestions: data.keyQuestions || [],
+                            callToAction: data.callToAction || ""
+                          });
+                          toast({ title: "Narrative generated", description: "Your call storyboard is ready!" });
+                        } catch (error) {
+                          toast({ title: "Generation failed", description: "Please try again", variant: "destructive" });
+                        }
+                        setIsGeneratingNarrative(false);
+                      }}
+                      disabled={isGeneratingNarrative}
+                      className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-700"
+                      data-testid="button-generate-narrative"
+                    >
+                      {isGeneratingNarrative ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          AI Generate All
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        const content = `
+CALL NARRATIVE - ${project?.companyName}
+${new Date().toLocaleDateString()}
+${"=".repeat(40)}
+
+OPENING
+${narrativeCanvas.opener || "(Not set)"}
+
+KEY MESSAGE
+${narrativeCanvas.keyMessage || "(Not set)"}
+
+PROOF POINT
+${narrativeCanvas.proofPoint || "(Not set)"}
+
+KEY QUESTIONS
+${narrativeCanvas.keyQuestions.length > 0 ? narrativeCanvas.keyQuestions.map((q, i) => `${i + 1}. ${q}`).join("\n") : "(Not set)"}
+
+CALL TO ACTION
+${narrativeCanvas.callToAction || "(Not set)"}
+                        `.trim();
+                        navigator.clipboard.writeText(content);
+                        toast({ title: "Copied to clipboard", description: "Paste into your notes or export" });
+                      }}
+                      data-testid="button-export-narrative"
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      Export
+                    </Button>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Coaching Tip - Contextual */}
-                {showCoachingTip && (
-                  <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 relative">
-                    <button 
-                      className="absolute top-2 right-2 text-amber-700 hover:text-amber-900"
-                      onClick={() => setShowCoachingTip(false)}
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
-                        <Lightbulb className="w-5 h-5 text-amber-700" />
+              <CardContent className="pt-6">
+                {/* Visual Storyboard - 4 Connected Lanes */}
+                <div className="relative">
+                  {/* Connection line */}
+                  <div className="absolute left-6 top-12 bottom-12 w-0.5 bg-gradient-to-b from-emerald-500 via-blue-500 via-purple-500 to-amber-500 hidden md:block" />
+                  
+                  <div className="space-y-4">
+                    {/* OPEN Lane */}
+                    <div className="relative pl-0 md:pl-14">
+                      <div className="absolute left-0 top-3 w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center text-sm font-bold hidden md:flex z-10">
+                        1
                       </div>
-                      <div>
-                        <h4 className="font-semibold text-sm text-amber-800 mb-1">Coach Tip: {callPhase === "opening" ? "Start Strong" : callPhase === "discovery" ? "Go Deep" : callPhase === "support" ? "Build Value" : "Land the Next Step"}</h4>
-                        <p className="text-sm text-amber-700">
-                          {callPhase === "opening" && "Open with a provocative insight from your research. Show you've done your homework. Get them curious."}
-                          {callPhase === "discovery" && "Ask one question at a time. Listen more than you talk. Follow the thread - their answers reveal the real opportunity."}
-                          {callPhase === "support" && "Share stories that mirror their situation. Use phrases like 'We've seen this pattern before...' to build credibility."}
-                          {callPhase === "closing" && "Don't ask 'Do you have any questions?' Instead, propose a specific next step with a date."}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Conversation Phase Tabs */}
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { id: "opening", label: "Opening", icon: Play, color: "emerald" },
-                    { id: "discovery", label: "Discovery", icon: Search, color: "blue" },
-                    { id: "support", label: "Support", icon: Award, color: "purple" },
-                    { id: "closing", label: "Closing", icon: Target, color: "amber" }
-                  ].map((phase) => {
-                    const PhaseIcon = phase.icon;
-                    const isActive = callPhase === phase.id;
-                    const phaseQuestions = myCallFlow.filter(q => q.phase === phase.id);
-                    return (
-                      <button
-                        key={phase.id}
-                        onClick={() => setCallPhase(phase.id as typeof callPhase)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-                          isActive 
-                            ? `bg-${phase.color}-500/20 border-2 border-${phase.color}-500/50 text-${phase.color}-700` 
-                            : "border border-muted hover-elevate"
-                        }`}
-                      >
-                        <PhaseIcon className="w-4 h-4" />
-                        <span className="font-medium text-sm">{phase.label}</span>
-                        {phaseQuestions.length > 0 && (
-                          <Badge variant="secondary" className="text-xs">{phaseQuestions.length}</Badge>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* My Call Flow - What I've Added */}
-                {myCallFlow.filter(q => q.phase === callPhase).length > 0 && (
-                  <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
-                    <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                      <ClipboardList className="w-4 h-4 text-primary" />
-                      Your {callPhase.charAt(0).toUpperCase() + callPhase.slice(1)} Questions
-                    </h4>
-                    <div className="space-y-2">
-                      {myCallFlow.filter(q => q.phase === callPhase).map((item, idx) => (
-                        <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg bg-background border">
-                          <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">
-                            {idx + 1}
-                          </div>
-                          <p className="text-sm flex-1">{item.question}</p>
-                          <Button 
-                            size="icon" 
-                            variant="ghost" 
-                            className="h-6 w-6"
-                            onClick={() => setMyCallFlow(prev => prev.filter(q => q.id !== item.id))}
-                          >
-                            <X className="w-3 h-3" />
-                          </Button>
+                      <div className="p-4 rounded-xl border-2 border-emerald-500/30 bg-emerald-500/5">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Play className="w-5 h-5 text-emerald-600" />
+                          <h4 className="font-bold text-emerald-700">OPEN</h4>
+                          <span className="text-xs text-muted-foreground">How to start the conversation</span>
                         </div>
-                      ))}
+                        <Textarea 
+                          placeholder="E.g., 'I noticed your recent acquisition and was curious about how you're approaching leadership integration...'"
+                          value={narrativeCanvas.opener}
+                          onChange={(e) => setNarrativeCanvas(prev => ({ ...prev, opener: e.target.value }))}
+                          className="min-h-[60px] text-sm bg-white/50"
+                          data-testid="input-narrative-opener"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* STORY Lane */}
+                    <div className="relative pl-0 md:pl-14">
+                      <div className="absolute left-0 top-3 w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-bold hidden md:flex z-10">
+                        2
+                      </div>
+                      <div className="p-4 rounded-xl border-2 border-blue-500/30 bg-blue-500/5">
+                        <div className="flex items-center gap-2 mb-3">
+                          <MessageCircle className="w-5 h-5 text-blue-600" />
+                          <h4 className="font-bold text-blue-700">STORY</h4>
+                          <span className="text-xs text-muted-foreground">Your key message + proof</span>
+                        </div>
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <div>
+                            <Label className="text-xs text-muted-foreground mb-1 block">Key Message</Label>
+                            <Textarea 
+                              placeholder="The single idea they MUST remember..."
+                              value={narrativeCanvas.keyMessage}
+                              onChange={(e) => setNarrativeCanvas(prev => ({ ...prev, keyMessage: e.target.value }))}
+                              className="min-h-[60px] text-sm bg-white/50"
+                              data-testid="input-narrative-message"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground mb-1 block">Proof Point</Label>
+                            <Textarea 
+                              placeholder="Evidence, data, or success story..."
+                              value={narrativeCanvas.proofPoint}
+                              onChange={(e) => setNarrativeCanvas(prev => ({ ...prev, proofPoint: e.target.value }))}
+                              className="min-h-[60px] text-sm bg-white/50"
+                              data-testid="input-narrative-proof"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* ASK Lane */}
+                    <div className="relative pl-0 md:pl-14">
+                      <div className="absolute left-0 top-3 w-12 h-12 rounded-full bg-purple-500 text-white flex items-center justify-center text-sm font-bold hidden md:flex z-10">
+                        3
+                      </div>
+                      <div className="p-4 rounded-xl border-2 border-purple-500/30 bg-purple-500/5">
+                        <div className="flex items-center gap-2 mb-3">
+                          <HelpCircle className="w-5 h-5 text-purple-600" />
+                          <h4 className="font-bold text-purple-700">ASK</h4>
+                          <span className="text-xs text-muted-foreground">Key questions to explore</span>
+                        </div>
+                        <div className="space-y-2">
+                          {[0, 1, 2].map((idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-full bg-purple-500/20 text-purple-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                                {idx + 1}
+                              </span>
+                              <Input 
+                                placeholder={idx === 0 ? "What's your biggest priority right now?" : idx === 1 ? "How is that impacting your team?" : "What would success look like?"}
+                                value={narrativeCanvas.keyQuestions[idx] || ""}
+                                onChange={(e) => {
+                                  const newQuestions = [...narrativeCanvas.keyQuestions];
+                                  newQuestions[idx] = e.target.value;
+                                  setNarrativeCanvas(prev => ({ ...prev, keyQuestions: newQuestions }));
+                                }}
+                                className="text-sm bg-white/50"
+                                data-testid={`input-narrative-question-${idx}`}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* CLOSE Lane */}
+                    <div className="relative pl-0 md:pl-14">
+                      <div className="absolute left-0 top-3 w-12 h-12 rounded-full bg-amber-500 text-white flex items-center justify-center text-sm font-bold hidden md:flex z-10">
+                        4
+                      </div>
+                      <div className="p-4 rounded-xl border-2 border-amber-500/30 bg-amber-500/5">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Target className="w-5 h-5 text-amber-600" />
+                          <h4 className="font-bold text-amber-700">CLOSE</h4>
+                          <span className="text-xs text-muted-foreground">Your call to action</span>
+                        </div>
+                        <Textarea 
+                          placeholder="E.g., 'Based on what we've discussed, I'd love to schedule a deeper dive with our leadership practice...'"
+                          value={narrativeCanvas.callToAction}
+                          onChange={(e) => setNarrativeCanvas(prev => ({ ...prev, callToAction: e.target.value }))}
+                          className="min-h-[60px] text-sm bg-white/50"
+                          data-testid="input-narrative-cta"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Visual Preview Card */}
+                {(narrativeCanvas.opener || narrativeCanvas.keyMessage || narrativeCanvas.keyQuestions.some(q => q)) && (
+                  <div className="mt-6 p-4 rounded-xl bg-gradient-to-r from-primary/10 via-purple-500/10 to-blue-500/10 border border-primary/20">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-semibold text-sm flex items-center gap-2">
+                        <Eye className="w-4 h-4 text-primary" />
+                        Preview: Your Call Flow
+                      </h4>
+                      <Badge variant="outline" className="text-xs">
+                        {[narrativeCanvas.opener, narrativeCanvas.keyMessage, narrativeCanvas.proofPoint, ...narrativeCanvas.keyQuestions, narrativeCanvas.callToAction].filter(Boolean).length} / 7 complete
+                      </Badge>
+                    </div>
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      {narrativeCanvas.opener && (
+                        <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-700">
+                          <Play className="w-3 h-3" /> Opening ready
+                        </div>
+                      )}
+                      {narrativeCanvas.keyMessage && (
+                        <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-blue-500/20 text-blue-700">
+                          <MessageCircle className="w-3 h-3" /> Message ready
+                        </div>
+                      )}
+                      {narrativeCanvas.keyQuestions.filter(q => q).length > 0 && (
+                        <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-purple-500/20 text-purple-700">
+                          <HelpCircle className="w-3 h-3" /> {narrativeCanvas.keyQuestions.filter(q => q).length} questions
+                        </div>
+                      )}
+                      {narrativeCanvas.callToAction && (
+                        <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/20 text-amber-700">
+                          <Target className="w-3 h-3" /> CTA ready
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
-
-                {/* Methodology Filter */}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Filter by:</span>
-                  {["SPIN", "MILLER_HEIMAN", "PSS"].map(m => (
-                    <button
-                      key={m}
-                      onClick={() => setActiveMethodologyFilter(activeMethodologyFilter === m ? null : m)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                        activeMethodologyFilter === m 
-                          ? methodologyMeta[m]?.color + " border" 
-                          : "bg-muted/50 hover:bg-muted"
-                      }`}
-                    >
-                      {methodologyMeta[m]?.label || m}
-                    </button>
-                  ))}
-                  {activeMethodologyFilter && (
-                    <button 
-                      onClick={() => setActiveMethodologyFilter(null)}
-                      className="text-xs text-muted-foreground hover:text-foreground"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-
-                {/* AI Questions - Interactive Cards */}
-                <div className="space-y-3">
-                  {(discoveryQuestions || []).length === 0 ? (
-                    <div className="text-center py-12 rounded-xl border-2 border-dashed">
-                      <Sparkles className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                      <h4 className="font-semibold mb-2">Generate Personalized Questions</h4>
-                      <p className="text-sm text-muted-foreground mb-4">AI will create questions based on your research and selected theme</p>
-                      <Button 
-                        onClick={handleStartDiscovery}
-                        disabled={generateQuestionsMutation.isPending}
-                      >
-                        {generateQuestionsMutation.isPending ? (
-                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Generating...</>
-                        ) : (
-                          <><Sparkles className="w-4 h-4 mr-2" />Generate AI Questions</>
-                        )}
-                      </Button>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-semibold text-sm flex items-center gap-2">
-                          <Sparkles className="w-4 h-4 text-purple-600" />
-                          AI-Suggested Questions
-                          <Badge variant="secondary" className="text-xs">{(discoveryQuestions || []).filter(q => !activeMethodologyFilter || q.methodology === activeMethodologyFilter).length}</Badge>
-                        </h4>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={handleStartDiscovery}
-                          disabled={generateQuestionsMutation.isPending}
-                        >
-                          {generateQuestionsMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
-                          Regenerate
-                        </Button>
-                      </div>
-                      <div className="grid gap-3 md:grid-cols-2">
-                        {(discoveryQuestions || [])
-                          .filter(q => !activeMethodologyFilter || q.methodology === activeMethodologyFilter)
-                          .slice(0, 10)
-                          .map(q => {
-                            const isInFlow = myCallFlow.some(f => f.id === q.id);
-                            const meta = methodologyMeta[q.methodology || "SPIN"];
-                            return (
-                              <div 
-                                key={q.id} 
-                                className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${
-                                  isInFlow 
-                                    ? "border-primary bg-primary/5 ring-2 ring-primary/20" 
-                                    : "hover:border-primary/50 hover:bg-primary/5"
-                                }`}
-                                onClick={() => {
-                                  if (isInFlow) {
-                                    setMyCallFlow(prev => prev.filter(f => f.id !== q.id));
-                                  } else {
-                                    setMyCallFlow(prev => [...prev, { id: q.id, question: q.question, phase: callPhase, methodology: q.methodology || undefined }]);
-                                  }
-                                }}
-                              >
-                                <div className="flex items-start justify-between gap-2 mb-2">
-                                  <Badge className={`${meta?.color || ""} border text-xs`}>{meta?.label || q.methodology}</Badge>
-                                  {isInFlow ? (
-                                    <Badge className="bg-primary text-primary-foreground text-xs">
-                                      <Check className="w-3 h-3 mr-1" />Added
-                                    </Badge>
-                                  ) : (
-                                    <Badge variant="outline" className="text-xs hover:bg-primary hover:text-primary-foreground">
-                                      <Plus className="w-3 h-3 mr-1" />Add
-                                    </Badge>
-                                  )}
-                                </div>
-                                <p className="text-sm font-medium mb-2">{q.question}</p>
-                                <p className="text-xs text-muted-foreground">{q.purpose}</p>
-                                {q.relatedKPI && (
-                                  <div className="mt-2 p-2 rounded bg-blue-500/5 border border-blue-500/20">
-                                    <p className="text-xs text-blue-700 flex items-center gap-1">
-                                      <ArrowRight className="w-3 h-3" />
-                                      Related: {q.relatedKPI}
-                                    </p>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Quick Add - Methodology-based questions */}
-                <div className="p-4 rounded-xl border bg-muted/30">
-                  <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-amber-600" />
-                    Quick Add by Methodology
-                  </h4>
-                  <div className="grid gap-3 md:grid-cols-3">
-                    {/* SPIN Quick Add */}
-                    <div className="space-y-2">
-                      <Badge className="bg-purple-100 text-purple-700 border-purple-300 text-xs mb-2">SPIN</Badge>
-                      {Object.entries(spinQuestions).slice(0, 2).map(([stage, questions]) => (
-                        <button
-                          key={stage}
-                          onClick={() => setMyCallFlow(prev => [...prev, { 
-                            id: Date.now() + Math.random(), 
-                            question: questions[0], 
-                            phase: callPhase,
-                            methodology: "SPIN"
-                          }])}
-                          className="w-full text-left p-2 rounded border text-xs hover-elevate bg-background"
-                        >
-                          <Badge variant="outline" className="text-xs mb-1">{stage.charAt(0).toUpperCase()}</Badge>
-                          <p className="line-clamp-2">{questions[0]}</p>
-                        </button>
-                      ))}
-                    </div>
-                    {/* Miller Heiman Quick Add */}
-                    <div className="space-y-2">
-                      <Badge className="bg-blue-100 text-blue-700 border-blue-300 text-xs mb-2">Miller Heiman</Badge>
-                      {Object.entries(millerHeimanQuestions).slice(0, 2).map(([buyer, questions]) => (
-                        <button
-                          key={buyer}
-                          onClick={() => setMyCallFlow(prev => [...prev, { 
-                            id: Date.now() + Math.random(), 
-                            question: questions[0], 
-                            phase: callPhase,
-                            methodology: "MILLER_HEIMAN"
-                          }])}
-                          className="w-full text-left p-2 rounded border text-xs hover-elevate bg-background"
-                        >
-                          <Badge variant="outline" className="text-xs mb-1">{buyer === "conceptual" ? "Concept" : buyer === "economicBuyer" ? "Econ" : "User"}</Badge>
-                          <p className="line-clamp-2">{questions[0]}</p>
-                        </button>
-                      ))}
-                    </div>
-                    {/* PSS Quick Add */}
-                    <div className="space-y-2">
-                      <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 text-xs mb-2">PSS</Badge>
-                      {Object.entries(pssQuestions).slice(0, 2).map(([phase, questions]) => (
-                        <button
-                          key={phase}
-                          onClick={() => setMyCallFlow(prev => [...prev, { 
-                            id: Date.now() + Math.random(), 
-                            question: questions[0], 
-                            phase: callPhase,
-                            methodology: "PSS"
-                          }])}
-                          className="w-full text-left p-2 rounded border text-xs hover-elevate bg-background"
-                        >
-                          <Badge variant="outline" className="text-xs mb-1">{phase.charAt(0).toUpperCase() + phase.slice(1)}</Badge>
-                          <p className="line-clamp-2">{questions[0]}</p>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
               </CardContent>
             </Card>
-
             {/* Navigation */}
             <div className="flex justify-between">
               <Button variant="outline" onClick={() => setDiscoveryStep("intelligence")} data-testid="button-back-to-intelligence">

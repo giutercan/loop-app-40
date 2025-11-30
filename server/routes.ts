@@ -6548,6 +6548,77 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
     }
   });
 
+  // POST /api/projects/:projectId/ai/generate-narrative - Generate complete call narrative for Narrative Canvas
+  app.post("/api/projects/:projectId/ai/generate-narrative", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const project = await storage.getProject(projectId);
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const { companyName, theme, contactName, contactRole, insights } = req.body;
+      
+      // Fetch insights from database if not provided
+      let insightTitles = insights || [];
+      if (insightTitles.length === 0) {
+        const storedInsights = await storage.getInsights(projectId);
+        insightTitles = storedInsights.slice(0, 5).map(i => i.title);
+      }
+      
+      const roleContext = contactRole ? `They are a ${contactRole.replace('_', ' ')}` : '';
+      const insightContext = insightTitles.length > 0 ? `Key insights discovered: ${insightTitles.join(', ')}` : '';
+      
+      const prompt = `You are a senior sales consultant helping prepare for a client meeting.
+
+Company: ${companyName || project.companyName}
+Theme: ${theme || 'General business consulting'}
+Contact: ${contactName || 'Unknown'} ${roleContext}
+${insightContext}
+
+Generate a complete call narrative with these 5 elements. Be specific to this company and context:
+
+1. OPENER: A compelling opening statement or question (2-3 sentences) that shows you've done your homework and creates curiosity.
+
+2. KEY_MESSAGE: The single most important idea you want them to remember (1-2 sentences). Make it provocative but relevant.
+
+3. PROOF_POINT: A specific evidence point, data, or success story reference that supports your message (1-2 sentences).
+
+4. KEY_QUESTIONS: Three strategic questions to explore during the conversation. Focus on uncovering needs and building value.
+
+5. CALL_TO_ACTION: A clear, specific next step to propose at the end of the call (1-2 sentences).
+
+Respond in JSON format:
+{
+  "opener": "...",
+  "keyMessage": "...",
+  "proofPoint": "...",
+  "keyQuestions": ["...", "...", "..."],
+  "callToAction": "..."
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.8,
+        max_tokens: 800,
+        response_format: { type: "json_object" }
+      });
+      
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error("No response from AI");
+      }
+      
+      const result = JSON.parse(content);
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Generate Narrative API] Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // POST /api/projects/:projectId/ai/story-suggestion - Generate AI story suggestions
   app.post("/api/projects/:projectId/ai/story-suggestion", async (req, res) => {
     try {
