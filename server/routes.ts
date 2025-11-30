@@ -6942,70 +6942,46 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
         discoveryFinalized: true,
       });
 
-      // Create discovery insights
-      const insightsData = [
+      // Create job themes (which contain discovery insights)
+      const jobThemesData = [
         {
-          title: "Critical Leadership Succession Gap",
+          theme: "Leadership Succession & Pipeline",
           description: "Only 23% of boutique director roles have identified successors. With 35% of current directors retiring within 5 years, Chanel faces a significant leadership vacuum that threatens boutique performance and brand consistency.",
-          category: "leadership",
-          source: "ai_research" as const,
-          confidence: 92,
-          priority: "critical" as const,
-          kornFerryPillar: "succession-planning",
-          solutionArea: "ASSESS",
-          isFollowUpNeeded: false,
+          evidenceCount: 5,
+          compositeScore: 92,
+          status: "active" as const,
+          priorityRanking: 1,
         },
         {
-          title: "Extended New Director Onboarding",
+          theme: "New Director Productivity",
           description: "New boutique directors take 14-18 months to reach full productivity vs. industry average of 9 months. This extended ramp-up period costs an estimated €2.3M annually in lost revenue opportunity.",
-          category: "talent",
-          source: "ai_research" as const,
-          confidence: 88,
-          priority: "high" as const,
-          kornFerryPillar: "talent-acquisition",
-          solutionArea: "DEVELOP",
-          isFollowUpNeeded: false,
+          evidenceCount: 4,
+          compositeScore: 88,
+          status: "active" as const,
+          priorityRanking: 2,
         },
         {
-          title: "Cultural Alignment Variance Across Regions",
+          theme: "Cultural Alignment Across Regions",
           description: "Employee engagement surveys reveal 22-point variance in 'brand culture alignment' scores between European and Asia-Pacific boutiques. APAC region shows declining scores over past 3 years.",
-          category: "culture",
-          source: "ai_research" as const,
-          confidence: 85,
-          priority: "high" as const,
-          kornFerryPillar: "culture-transformation",
-          solutionArea: "TRANSFORM",
-          isFollowUpNeeded: true,
+          evidenceCount: 3,
+          compositeScore: 85,
+          status: "active" as const,
+          priorityRanking: 3,
         },
         {
-          title: "High Performer Retention Risk",
+          theme: "High-Potential Talent Retention",
           description: "Voluntary turnover among high-potential talent (top 15%) is 18% vs. 8% industry benchmark for luxury retail. Exit interviews cite limited career visibility and development opportunities.",
-          category: "talent",
-          source: "ai_research" as const,
-          confidence: 90,
-          priority: "critical" as const,
-          kornFerryPillar: "leadership-development",
-          solutionArea: "DEVELOP",
-          isFollowUpNeeded: false,
-        },
-        {
-          title: "Digital Skills Gap in Leadership",
-          description: "Only 34% of current boutique directors rate themselves as 'confident' in digital client engagement tools. This limits omnichannel client experience delivery and threatens competitive position.",
-          category: "capability",
-          source: "ai_research" as const,
-          confidence: 82,
-          priority: "medium" as const,
-          kornFerryPillar: "leadership-development",
-          solutionArea: "DEVELOP",
-          isFollowUpNeeded: true,
+          evidenceCount: 4,
+          compositeScore: 90,
+          status: "active" as const,
+          priorityRanking: 4,
         },
       ];
 
-      for (const insight of insightsData) {
-        await storage.createDiscoveryInsight({
+      for (const theme of jobThemesData) {
+        await storage.createJobTheme({
           projectId: project.id,
-          ...insight,
-          provenance: { source: "ai_research", model: "gpt-4o", generatedAt: new Date().toISOString() },
+          ...theme,
         });
       }
 
