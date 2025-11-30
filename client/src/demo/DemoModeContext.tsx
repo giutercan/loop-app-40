@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import { useLocation } from "wouter";
 
+type DemoStage = "discover" | "build-value" | "align" | "handoff";
+
 interface DemoModeContextType {
   isDemoMode: boolean;
   demoAccount: string | null;
@@ -10,6 +12,8 @@ interface DemoModeContextType {
   setTourRunning: (running: boolean) => void;
   currentStep: number;
   setCurrentStep: (step: number) => void;
+  currentStage: DemoStage;
+  setCurrentStage: (stage: DemoStage) => void;
 }
 
 const DemoModeContext = createContext<DemoModeContextType | undefined>(undefined);
@@ -19,6 +23,7 @@ export function DemoModeProvider({ children }: { children: ReactNode }) {
   const [demoAccount, setDemoAccount] = useState<string | null>(null);
   const [tourRunning, setTourRunning] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  const [currentStage, setCurrentStage] = useState<DemoStage>("discover");
   const [location] = useLocation();
 
   useEffect(() => {
@@ -33,6 +38,7 @@ export function DemoModeProvider({ children }: { children: ReactNode }) {
     setIsDemoMode(true);
     setDemoAccount(accountName);
     setCurrentStep(0);
+    setCurrentStage("discover");
     setTourRunning(true);
   }, []);
 
@@ -41,6 +47,7 @@ export function DemoModeProvider({ children }: { children: ReactNode }) {
     setDemoAccount(null);
     setTourRunning(false);
     setCurrentStep(0);
+    setCurrentStage("discover");
   }, []);
 
   return (
@@ -53,6 +60,8 @@ export function DemoModeProvider({ children }: { children: ReactNode }) {
       setTourRunning,
       currentStep,
       setCurrentStep,
+      currentStage,
+      setCurrentStage,
     }}>
       {children}
     </DemoModeContext.Provider>

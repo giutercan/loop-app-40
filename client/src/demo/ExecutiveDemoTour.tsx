@@ -1,8 +1,9 @@
 import Joyride, { CallBackProps, STATUS, Step, EVENTS, ACTIONS } from "react-joyride";
 import { useDemoMode } from "./DemoModeContext";
 import { useCallback } from "react";
+import { useLocation } from "wouter";
 
-const TOUR_STEPS: Step[] = [
+const SALES_DISCOVER_STEPS: Step[] = [
   {
     target: '[data-demo-step="account-header"]',
     title: "Welcome to the Client Value Hub",
@@ -15,7 +16,7 @@ const TOUR_STEPS: Step[] = [
     target: '[data-demo-step="workflow-progress"]',
     title: "Visual Sales Journey",
     content: "The 4-stage workflow guides Sales through a proven methodology: Discover → Build Value → Align → Handoff. Green checkmarks show completion at a glance.",
-    placement: "bottom",
+    placement: "right",
     disableBeacon: true,
     spotlightPadding: 8,
   },
@@ -28,13 +29,16 @@ const TOUR_STEPS: Step[] = [
     spotlightPadding: 8,
   },
   {
-    target: '[data-demo-step="insight-card"]',
-    title: "Actionable, Prioritized Insights",
-    content: "Each insight is automatically prioritized by business impact and mapped to Korn Ferry capabilities. See how the 'Leadership Succession Gap' directly connects to our Succession Planning solutions.",
-    placement: "bottom",
+    target: '[data-demo-step="value-summary"]',
+    title: "Executive Value Dashboard",
+    content: "Real-time view of promised value and realized outcomes. This is the ROI story that wins renewals and expands accounts. Every number traces back to the original discovery.",
+    placement: "left",
     disableBeacon: true,
     spotlightPadding: 8,
   },
+];
+
+const SALES_BUILDVALUE_STEPS: Step[] = [
   {
     target: '[data-demo-step="kpi-suggestions"]',
     title: "AI-Suggested KPIs - The Game Changer",
@@ -59,6 +63,9 @@ const TOUR_STEPS: Step[] = [
     disableBeacon: true,
     spotlightPadding: 8,
   },
+];
+
+const SALES_ALIGN_STEPS: Step[] = [
   {
     target: '[data-demo-step="kpi-pipeline"]',
     title: "Visual KPI Pipeline",
@@ -67,43 +74,14 @@ const TOUR_STEPS: Step[] = [
     disableBeacon: true,
     spotlightPadding: 8,
   },
+];
+
+const SALES_HANDOFF_STEPS: Step[] = [
   {
     target: '[data-demo-step="handoff-section"]',
     title: "Seamless Sales-to-Delivery Handoff",
     content: "One click bundles confirmed KPIs into a handoff package with executive summary. Delivery team receives complete context - targets, rationale, and provenance. No information lost in transition.",
     placement: "left",
-    disableBeacon: true,
-    spotlightPadding: 8,
-  },
-  {
-    target: '[data-demo-step="value-summary"]',
-    title: "Executive Value Dashboard",
-    content: "Real-time view of €12.5M in promised value with €4.8M already realized. This is the ROI story that wins renewals and expands accounts. Every number traces back to the original discovery.",
-    placement: "bottom",
-    disableBeacon: true,
-    spotlightPadding: 8,
-  },
-  {
-    target: '[data-demo-step="delivery-dashboard"]',
-    title: "Delivery Health Dashboard",
-    content: "CSMs see real-time engagement health at a glance. KPIs are color-coded by status: green for on-track, amber for at-risk, red for off-track. This early warning system prevents surprises at QBRs.",
-    placement: "top",
-    disableBeacon: true,
-    spotlightPadding: 8,
-  },
-  {
-    target: '[data-demo-step="incoming-handoffs"]',
-    title: "Incoming Handoffs from Sales",
-    content: "Delivery teams receive complete handoff packages with all context preserved. They can accept immediately or request clarification - ensuring nothing falls through the cracks during transition.",
-    placement: "top",
-    disableBeacon: true,
-    spotlightPadding: 8,
-  },
-  {
-    target: '[data-demo-step="kpi-tracking"]',
-    title: "Live KPI Tracking",
-    content: "Log actual measurements against commitments with one click. Progress bars show trajectory, and AI trend analysis flags when intervention is needed before targets are missed.",
-    placement: "top",
     disableBeacon: true,
     spotlightPadding: 8,
   },
@@ -157,45 +135,113 @@ const tourStyles = {
 };
 
 export function ExecutiveDemoTour() {
-  const { tourRunning, setTourRunning, currentStep, setCurrentStep } = useDemoMode();
+  const { tourRunning, setTourRunning, currentStep, setCurrentStep, currentStage, setCurrentStage } = useDemoMode();
+  const [, setLocation] = useLocation();
+
+  const getStepsForStage = useCallback(() => {
+    switch (currentStage) {
+      case "discover":
+        return SALES_DISCOVER_STEPS;
+      case "build-value":
+        return SALES_BUILDVALUE_STEPS;
+      case "align":
+        return SALES_ALIGN_STEPS;
+      case "handoff":
+        return SALES_HANDOFF_STEPS;
+      default:
+        return SALES_DISCOVER_STEPS;
+    }
+  }, [currentStage]);
 
   const handleJoyrideCallback = useCallback((data: CallBackProps) => {
     const { status, type, index, action } = data;
+    const currentSteps = getStepsForStage();
+    const stages: Array<"discover" | "build-value" | "align" | "handoff"> = ["discover", "build-value", "align", "handoff"];
 
-    if (type === EVENTS.STEP_AFTER || type === EVENTS.TARGET_NOT_FOUND) {
-      setCurrentStep(index + (action === ACTIONS.PREV ? -1 : 1));
+    if (type === EVENTS.STEP_AFTER) {
+      const nextIndex = index + (action === ACTIONS.PREV ? -1 : 1);
+      
+      if (nextIndex >= currentSteps.length) {
+        const currentIdx = stages.indexOf(currentStage);
+        
+        if (currentIdx < stages.length - 1) {
+          const nextStage = stages[currentIdx + 1];
+          setCurrentStage(nextStage);
+          setCurrentStep(0);
+        } else {
+          setTourRunning(false);
+          setCurrentStep(0);
+          setCurrentStage("discover");
+        }
+      } else {
+        setCurrentStep(nextIndex);
+      }
+    }
+
+    if (type === EVENTS.TARGET_NOT_FOUND) {
+      setCurrentStep(index + 1);
     }
 
     if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
       setTourRunning(false);
       setCurrentStep(0);
+      setCurrentStage("discover");
     }
-  }, [setTourRunning, setCurrentStep]);
+  }, [setTourRunning, setCurrentStep, currentStage, setCurrentStage, getStepsForStage]);
 
   if (!tourRunning) return null;
 
+  const steps = getStepsForStage();
+  const stages = ["discover", "build-value", "align", "handoff"];
+  const stageIndex = stages.indexOf(currentStage);
+  const totalStages = stages.length;
+
   return (
-    <Joyride
-      callback={handleJoyrideCallback}
-      continuous
-      hideCloseButton
-      run={tourRunning}
-      scrollToFirstStep
-      showProgress
-      showSkipButton
-      stepIndex={currentStep}
-      steps={TOUR_STEPS}
-      styles={tourStyles}
-      locale={{
-        back: "Back",
-        close: "Close",
-        last: "Finish Tour",
-        next: "Next",
-        skip: "Skip Demo",
-      }}
-      floaterProps={{
-        disableAnimation: false,
-      }}
-    />
+    <>
+      <div className="fixed bottom-4 left-4 z-[10001] bg-white rounded-lg shadow-lg p-3 border border-purple-200">
+        <div className="text-xs text-muted-foreground mb-1">Demo Stage</div>
+        <div className="flex gap-1">
+          {stages.map((stage, idx) => (
+            <div
+              key={stage}
+              className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                idx === stageIndex 
+                  ? "bg-purple-600 text-white" 
+                  : idx < stageIndex 
+                    ? "bg-purple-100 text-purple-700"
+                    : "bg-gray-100 text-gray-500"
+              }`}
+            >
+              {idx + 1}. {stage.charAt(0).toUpperCase() + stage.slice(1).replace("-", " ")}
+            </div>
+          ))}
+        </div>
+        <div className="mt-2 text-xs text-muted-foreground">
+          Click the stage tabs above to navigate, then click "Next" to continue tour
+        </div>
+      </div>
+      <Joyride
+        callback={handleJoyrideCallback}
+        continuous
+        hideCloseButton
+        run={tourRunning}
+        scrollToFirstStep
+        showProgress
+        showSkipButton
+        stepIndex={currentStep}
+        steps={steps}
+        styles={tourStyles}
+        locale={{
+          back: "Back",
+          close: "Close",
+          last: currentStage === "handoff" ? "Finish Tour" : "Next Stage",
+          next: "Next",
+          skip: "Skip Demo",
+        }}
+        floaterProps={{
+          disableAnimation: false,
+        }}
+      />
+    </>
   );
 }
