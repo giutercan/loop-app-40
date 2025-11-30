@@ -44,6 +44,12 @@ The system is built on a robust architecture leveraging AI and a structured work
   - BEFORE (Craft): Single provocative message, emotional reaction selection, story structure templates (Situation-Struggle-Insight-Outcome, Problem-Agitate-Solve, etc.), starting hook, hero character, and evidence to reference.
   - DURING (Tell): Opening line, turning point, key data points, with coaching tips for pacing and delivery.
   - AFTER (Land): Moment of meaning, explicit takeaway, and call to action. Includes story test functionality to validate if stories are compelling (stranger care test, simplicity test, leadership values test) with visual readiness scoring.
+- **Executive Demo Mode**: Guided tour showcasing the complete Sales → Delivery journey using Chanel as a fictitious luxury retail customer.
+  - **Demo Activation**: Purple "Executive Demo" button in header triggers demo mode with dialog explaining what users will see.
+  - **Demo Data Seeding**: POST `/api/demo/seed-chanel` endpoint creates complete Chanel account, project, job themes, KPI commitments, and handoff packets.
+  - **Guided Tour**: React Joyride-powered tour with 10 steps highlighting key features with executive-focused messaging (AI time savings, decision quality, seamless workflows).
+  - **Tour Anchors**: `data-demo-step` attributes on key UI elements: account-overview, workflow-progress, ai-research, discovery-insights, ai-kpi-suggestions, multi-select, benchmarks, kpi-pipeline, handoff-builder, delivery-dashboard, value-summary.
+  - **Demo Files**: `client/src/demo/` contains ExecutiveDemoTour.tsx, DemoModeContext.tsx, DemoModeButton.tsx, and chanel-demo-data.ts.
 
 ### System Design Choices
 - **AI Strategy**: Focuses on strategic and actionable insights.
