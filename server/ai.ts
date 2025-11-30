@@ -1537,10 +1537,21 @@ const discoveryKpiSuggestionSchema = z.object({
   valuePillar: z.enum(["Grow", "Optimise", "De-risk", "Strengthen Capability"]),
   baselineEstimate: z.string(),
   targetEstimate: z.string(),
+  baselineReasoning: z.string().min(20),
+  industryBenchmark: z.object({
+    low: z.string(),
+    median: z.string(),
+    high: z.string(),
+    source: z.string(),
+  }),
+  kornFerryBenchmark: z.object({
+    topQuartile: z.string(),
+    typical: z.string(),
+    context: z.string(),
+  }),
   achievabilityScore: z.number().int().min(1).max(10),
   valueImpactScore: z.number().int().min(1).max(10),
   sourceInsightTitle: z.string(),
-  kornFerryBenchmark: z.string().optional(),
 });
 
 const discoveryKpiSuggestionsOutputSchema = z.object({
@@ -1575,7 +1586,7 @@ export async function generateDiscoveryKpiSuggestions(
     `[#${i.id}] ${i.title}: ${i.value}${i.category ? ` (Category: ${i.category})` : ''}${i.priority ? ` [Priority: ${i.priority}]` : ''}${i.relatedKPIs?.length ? ` Related KPIs: ${i.relatedKPIs.join(', ')}` : ''}`
   ).join('\n');
 
-  const prompt = `You are a Korn Ferry sales consultant helping identify the most strategic KPIs to propose to a client based on discovery research.
+  const prompt = `You are a Korn Ferry sales consultant helping identify the most strategic KPIs to propose to a client based on discovery research. Your recommendations should include detailed industry and Korn Ferry benchmarks.
 
 CLIENT CONTEXT:
 Company: ${companyName}${industry ? `\nIndustry: ${industry}` : ''}
@@ -1598,16 +1609,19 @@ YOUR MISSION:
 Based on the discovery insights above, recommend 4-6 strategic KPIs that:
 1. DIRECTLY address the issues/opportunities identified in the insights
 2. Map to one of the 4 Value Pillars (Grow, Optimise, De-risk, Strengthen Capability)
-3. Include realistic baseline and target estimates based on industry benchmarks
-4. Are ACHIEVABLE within a 6-12 month engagement timeframe
-5. Reference the specific insight that supports each recommendation
+3. Include DETAILED baseline reasoning explaining why this baseline is recommended
+4. Provide INDUSTRY BENCHMARKS with low/median/high ranges and data source
+5. Provide KORN FERRY BENCHMARKS showing top quartile vs typical performance
+6. Are ACHIEVABLE within a 6-12 month engagement timeframe
+7. Reference the specific insight that supports each recommendation
 
 IMPORTANT:
 - Each KPI must tie back to a specific discovery insight by title
-- Provide realistic baseline and target estimates (use industry benchmarks)
+- Provide detailed reasoning for baseline recommendations based on industry/company context
+- Include specific industry benchmark ranges (low, median, high) with sources
+- Include Korn Ferry benchmark data showing top quartile vs typical client performance
 - Focus on metrics the client can actually measure and improve
 - Balance across value pillars based on what the insights reveal
-- Prioritize KPIs with high value impact that are achievable
 
 Return JSON format:
 {
@@ -1619,12 +1633,23 @@ Return JSON format:
       "definition": "Clear definition of what this KPI measures",
       "strategicRationale": "Why this KPI matters for THIS client based on their discovery insights",
       "valuePillar": "Grow" | "Optimise" | "De-risk" | "Strengthen Capability",
-      "baselineEstimate": "Current industry average or estimated baseline (e.g., '45%', '$2.5M', '90 days')",
-      "targetEstimate": "Achievable target (e.g., '65%', '$3.2M', '60 days')",
+      "baselineEstimate": "45%",
+      "targetEstimate": "65%",
+      "baselineReasoning": "Based on discovery insights about current turnover challenges and typical ${industry || 'enterprise'} performance, we recommend starting at 45% as this aligns with where most organizations in their transformation stage begin.",
+      "industryBenchmark": {
+        "low": "35%",
+        "median": "52%",
+        "high": "75%",
+        "source": "2024 ${industry || 'Industry'} Benchmark Report"
+      },
+      "kornFerryBenchmark": {
+        "topQuartile": "70-80%",
+        "typical": "50-60%",
+        "context": "Korn Ferry clients typically achieve 15-20% improvement in first 12 months"
+      },
       "achievabilityScore": 8,
       "valueImpactScore": 9,
-      "sourceInsightTitle": "Exact title of the insight that supports this KPI",
-      "kornFerryBenchmark": "Korn Ferry benchmark or industry reference if available"
+      "sourceInsightTitle": "Exact title of the insight that supports this KPI"
     }
   ]
 }`;

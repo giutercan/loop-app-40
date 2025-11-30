@@ -1117,7 +1117,7 @@ export default function ProjectRoleView() {
     enabled: projectId > 0
   });
 
-  // AI-suggested KPIs from discovery insights
+  // AI-suggested KPIs from discovery insights with enhanced benchmarks
   type DiscoveryKpiSuggestion = {
     kpiName: string;
     kpiType: "primary" | "supporting";
@@ -1127,16 +1127,28 @@ export default function ProjectRoleView() {
     valuePillar: "Grow" | "Optimise" | "De-risk" | "Strengthen Capability";
     baselineEstimate: string;
     targetEstimate: string;
+    baselineReasoning?: string;
+    industryBenchmark?: {
+      low: string;
+      median: string;
+      high: string;
+      source: string;
+    };
+    kornFerryBenchmark?: {
+      topQuartile: string;
+      typical: string;
+      context: string;
+    };
     achievabilityScore: number;
     valueImpactScore: number;
     sourceInsightTitle: string;
-    kornFerryBenchmark?: string;
   };
 
   const [aiKpiSuggestions, setAiKpiSuggestions] = useState<DiscoveryKpiSuggestion[]>([]);
   const [aiKpiLoading, setAiKpiLoading] = useState(false);
   const [aiKpiError, setAiKpiError] = useState<string | null>(null);
   const [prefillSuggestion, setPrefillSuggestion] = useState<DiscoveryKpiSuggestion | null>(null);
+  const [selectedKpiSuggestions, setSelectedKpiSuggestions] = useState<Set<number>>(new Set());
 
   // Function to generate AI KPI suggestions from discovery
   const generateAiKpiSuggestions = async () => {
@@ -1168,14 +1180,35 @@ export default function ProjectRoleView() {
     }
   };
 
-  // Handler to add an AI suggestion as a commitment (pre-fills form)
+  // Handler to add an AI suggestion as a KPI selection (pre-fills form)
   const handleAddSuggestionAsCommitment = (suggestion: DiscoveryKpiSuggestion) => {
     setPrefillSuggestion(suggestion);
     setBuildValueSection("commitments");
     toast({
-      title: "Ready to Create Commitment",
+      title: "Ready to Create KPI",
       description: `Form pre-filled with "${suggestion.kpiName}" - review and confirm`
     });
+  };
+
+  // Multi-select handlers for batch KPI addition
+  const toggleKpiSelection = (idx: number) => {
+    setSelectedKpiSuggestions(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(idx)) {
+        newSet.delete(idx);
+      } else {
+        newSet.add(idx);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllKpis = () => {
+    setSelectedKpiSuggestions(new Set(aiKpiSuggestions.map((_, idx) => idx)));
+  };
+
+  const deselectAllKpis = () => {
+    setSelectedKpiSuggestions(new Set());
   };
 
   const { data: jobThemes = [] } = useQuery<JobTheme[]>({
@@ -1480,7 +1513,7 @@ export default function ProjectRoleView() {
         queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "commitments"] });
         setIsAddCommitmentOpen(false);
         resetNewCommitment();
-        toast({ title: "Commitment created", description: "KPI commitment has been added." });
+        toast({ title: "KPI Added", description: "KPI has been added to your selection." });
       },
       onError: () => {
         toast({ variant: "destructive", title: "Error", description: "Failed to create commitment." });
@@ -1689,22 +1722,22 @@ export default function ProjectRoleView() {
                   <Handshake className="w-6 h-6 text-violet-600" />
                 </div>
                 <div>
-                  <CardTitle>Value Agreement</CardTitle>
+                  <CardTitle>KPI Selection</CardTitle>
                   <CardDescription>
-                    Define KPI commitments with your client that link to their strategic objectives
+                    Select and track KPIs with your client that link to their strategic objectives
                   </CardDescription>
                 </div>
               </div>
               <Button onClick={() => setIsAddCommitmentOpen(true)} data-testid="button-add-commitment">
                 <Plus className="w-4 h-4 mr-2" />
-                Add Commitment
+                Add KPI
               </Button>
             </div>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-4">
               <div className="p-4 rounded-lg bg-background border">
-                <p className="text-sm text-muted-foreground">Total Commitments</p>
+                <p className="text-sm text-muted-foreground">Total KPIs</p>
                 <p className="text-2xl font-bold">{(commitments as any[]).length}</p>
               </div>
               <div className="p-4 rounded-lg bg-background border">
@@ -1716,7 +1749,7 @@ export default function ProjectRoleView() {
                 <p className="text-2xl font-bold text-blue-600">{proposedCommitments.length}</p>
               </div>
               <div className="p-4 rounded-lg bg-background border">
-                <p className="text-sm text-muted-foreground">Total Committed Value</p>
+                <p className="text-sm text-muted-foreground">Total KPI Value</p>
                 <p className="text-2xl font-bold text-violet-600">
                   ${(confirmedValue / 1000000).toFixed(1)}M
                 </p>
@@ -1937,13 +1970,13 @@ export default function ProjectRoleView() {
           </Card>
         )}
 
-        {/* Add Commitment Dialog */}
+        {/* Add KPI Dialog */}
         <Dialog open={isAddCommitmentOpen} onOpenChange={setIsAddCommitmentOpen}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Add KPI Commitment</DialogTitle>
+              <DialogTitle>Add KPI</DialogTitle>
               <DialogDescription>
-                Define a measurable outcome you'll deliver for the client
+                Define a measurable KPI with benchmarks to track with the client
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -2224,22 +2257,22 @@ export default function ProjectRoleView() {
                 ) : (
                   <Plus className="w-4 h-4 mr-2" />
                 )}
-                Create Commitment
+                Add KPI
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Edit Commitment Dialog */}
+        {/* Edit KPI Dialog */}
         <Dialog open={!!editingCommitment} onOpenChange={() => setEditingCommitment(null)}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Edit Commitment</DialogTitle>
+              <DialogTitle>Edit KPI</DialogTitle>
             </DialogHeader>
             {editingCommitment && (
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-commitment-name">Commitment Name *</Label>
+                  <Label htmlFor="edit-commitment-name">KPI Name *</Label>
                   <Input
                     id="edit-commitment-name"
                     value={editingCommitment.name}
@@ -2503,8 +2536,8 @@ export default function ProjectRoleView() {
                 onClick={() => setBuildValueSection("commitments")}
                 data-testid="btn-build-commitments"
               >
-                <Handshake className="w-4 h-4 mr-2" />
-                Commitments
+                <Target className="w-4 h-4 mr-2" />
+                KPI Selection
                 {commitments.length > 0 && (
                   <Badge variant="secondary" className="ml-2 text-xs">{commitments.length}</Badge>
                 )}
@@ -2537,7 +2570,7 @@ export default function ProjectRoleView() {
                       </div>
                       <Button onClick={() => setBuildValueSection("commitments")} data-testid="btn-add-commitment-cta">
                         <Plus className="w-4 h-4 mr-2" />
-                        Add Commitment
+                        Select KPIs
                       </Button>
                     </div>
                   </CardHeader>
@@ -2698,7 +2731,7 @@ export default function ProjectRoleView() {
           </CardContent>
         </Card>
 
-        {/* AI-Suggested KPIs from Discovery */}
+        {/* AI-Recommended KPI Selection */}
         {insights.length > 0 && (
           <Card className="bg-gradient-to-r from-purple-500/5 via-blue-500/5 to-emerald-500/5 border-purple-500/20">
             <CardHeader>
@@ -2708,16 +2741,16 @@ export default function ProjectRoleView() {
                     <Sparkles className="w-5 h-5 text-purple-600" />
                   </div>
                   <div>
-                    <CardTitle className="text-base">AI-Suggested KPIs from Discovery</CardTitle>
+                    <CardTitle className="text-base">AI-Recommended KPI Selection</CardTitle>
                     <CardDescription>
                       {aiKpiSuggestions.length > 0 
-                        ? `${aiKpiSuggestions.length} recommendations based on ${insights.length} insights`
+                        ? `${aiKpiSuggestions.length} recommendations with industry & Korn Ferry benchmarks`
                         : `Generate strategic KPIs based on ${insights.length} discovery insights`
                       }
                     </CardDescription>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Badge className="bg-purple-500/10 text-purple-600">
                     {insights.length} Insight(s)
                   </Badge>
@@ -2736,7 +2769,7 @@ export default function ProjectRoleView() {
                       ) : (
                         <>
                           <Sparkles className="w-3 h-3 mr-1" />
-                          Generate KPIs
+                          Recommend KPIs
                         </>
                       )}
                     </Button>
@@ -2772,6 +2805,7 @@ export default function ProjectRoleView() {
                         <div className="flex-1 space-y-2">
                           <div className="h-4 bg-muted rounded w-3/4" />
                           <div className="h-3 bg-muted rounded w-1/2" />
+                          <div className="h-3 bg-muted rounded w-2/3" />
                         </div>
                       </div>
                     </div>
@@ -2783,80 +2817,214 @@ export default function ProjectRoleView() {
                 <div className="text-center py-6">
                   <Sparkles className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
                   <p className="text-sm text-muted-foreground mb-2">
-                    Click "Generate KPIs" to get AI recommendations based on your discovery insights
+                    Click "Recommend KPIs" to get AI recommendations based on your discovery insights
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    KPIs will be mapped to value pillars and include baseline/target estimates
+                    KPIs include industry benchmarks, Korn Ferry benchmarks, and baseline recommendations
                   </p>
                 </div>
               )}
               
               {!aiKpiLoading && aiKpiSuggestions.length > 0 && (
-                <div className="space-y-3">
-                  {aiKpiSuggestions.map((suggestion, idx) => {
-                    const pillarColors: Record<string, string> = {
-                      "Grow": "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
-                      "Optimise": "bg-blue-500/10 text-blue-600 border-blue-500/20",
-                      "De-risk": "bg-amber-500/10 text-amber-600 border-amber-500/20",
-                      "Strengthen Capability": "bg-purple-500/10 text-purple-600 border-purple-500/20"
-                    };
-                    return (
-                      <div key={idx} className="p-4 rounded-lg bg-background border hover-elevate">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center flex-shrink-0">
-                            <Target className="w-5 h-5 text-purple-600" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2 mb-2">
-                              <div>
-                                <p className="font-medium">{suggestion.kpiName}</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">{suggestion.definition}</p>
+                <div className="space-y-4">
+                  {/* Selection Controls */}
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium">
+                        {selectedKpiSuggestions.size} of {aiKpiSuggestions.length} selected
+                      </span>
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={selectAllKpis}
+                          data-testid="btn-select-all-kpis"
+                        >
+                          Select All
+                        </Button>
+                        {selectedKpiSuggestions.size > 0 && (
+                          <Button 
+                            size="sm" 
+                            variant="ghost"
+                            onClick={deselectAllKpis}
+                            data-testid="btn-deselect-all-kpis"
+                          >
+                            Clear
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    {selectedKpiSuggestions.size > 0 && (
+                      <Button 
+                        size="sm"
+                        onClick={() => {
+                          const selected = Array.from(selectedKpiSuggestions).map(idx => aiKpiSuggestions[idx]);
+                          selected.forEach((suggestion, i) => {
+                            setTimeout(() => handleAddSuggestionAsCommitment(suggestion), i * 100);
+                          });
+                          setSelectedKpiSuggestions(new Set());
+                          toast({
+                            title: "KPIs Added",
+                            description: `${selected.length} KPI(s) added to your selection`
+                          });
+                        }}
+                        data-testid="btn-add-selected-kpis"
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        Add {selectedKpiSuggestions.size} Selected
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* KPI Cards */}
+                  <div className="space-y-3">
+                    {aiKpiSuggestions.map((suggestion, idx) => {
+                      const pillarColors: Record<string, string> = {
+                        "Grow": "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+                        "Optimise": "bg-blue-500/10 text-blue-600 border-blue-500/20",
+                        "De-risk": "bg-amber-500/10 text-amber-600 border-amber-500/20",
+                        "Strengthen Capability": "bg-purple-500/10 text-purple-600 border-purple-500/20"
+                      };
+                      const isSelected = selectedKpiSuggestions.has(idx);
+                      return (
+                        <div 
+                          key={idx} 
+                          className={`p-4 rounded-lg bg-background border hover-elevate cursor-pointer transition-all ${isSelected ? 'ring-2 ring-primary border-primary' : ''}`}
+                          onClick={() => toggleKpiSelection(idx)}
+                          data-testid={`kpi-suggestion-card-${idx}`}
+                        >
+                          <div className="flex items-start gap-3">
+                            {/* Checkbox */}
+                            <div className="flex items-center pt-1">
+                              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/30'}`}>
+                                {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
                               </div>
-                              <Button 
-                                size="sm"
-                                onClick={() => handleAddSuggestionAsCommitment(suggestion)}
-                                data-testid={`btn-add-suggested-kpi-${idx}`}
-                              >
-                                <Plus className="w-3 h-3 mr-1" />
-                                Add as Commitment
-                              </Button>
                             </div>
-                            <div className="flex flex-wrap items-center gap-2 mb-2">
-                              <Badge className={`text-xs ${pillarColors[suggestion.valuePillar] || 'bg-muted'}`}>
-                                {suggestion.valuePillar}
-                              </Badge>
-                              <Badge variant="outline" className="text-xs">
-                                {suggestion.kpiType === "primary" ? "Primary" : "Supporting"}
-                              </Badge>
-                              <span className="text-xs text-muted-foreground">
-                                {suggestion.baselineEstimate} → {suggestion.targetEstimate} {suggestion.unit}
-                              </span>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              <span className="font-medium">Rationale:</span> {suggestion.strategicRationale}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              <span className="font-medium">Based on:</span> {suggestion.sourceInsightTitle}
-                            </p>
-                            <div className="flex gap-4 mt-2">
-                              <span className="text-xs">
-                                <span className="text-muted-foreground">Achievability:</span>{" "}
-                                <span className={suggestion.achievabilityScore >= 7 ? "text-emerald-600" : suggestion.achievabilityScore >= 5 ? "text-amber-600" : "text-red-600"}>
-                                  {suggestion.achievabilityScore}/10
+                            
+                            <div className="flex-1 min-w-0">
+                              {/* Header */}
+                              <div className="flex items-start justify-between gap-2 mb-2">
+                                <div>
+                                  <p className="font-medium">{suggestion.kpiName}</p>
+                                  <p className="text-xs text-muted-foreground mt-0.5">{suggestion.definition}</p>
+                                </div>
+                                <Button 
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAddSuggestionAsCommitment(suggestion);
+                                  }}
+                                  data-testid={`btn-add-suggested-kpi-${idx}`}
+                                >
+                                  <Plus className="w-3 h-3 mr-1" />
+                                  Add KPI
+                                </Button>
+                              </div>
+                              
+                              {/* Badges */}
+                              <div className="flex flex-wrap items-center gap-2 mb-3">
+                                <Badge className={`text-xs ${pillarColors[suggestion.valuePillar] || 'bg-muted'}`}>
+                                  {suggestion.valuePillar}
+                                </Badge>
+                                <Badge variant="outline" className="text-xs">
+                                  {suggestion.kpiType === "primary" ? "Primary" : "Supporting"}
+                                </Badge>
+                              </div>
+
+                              {/* Baseline & Target with Reasoning */}
+                              <div className="p-3 rounded-lg bg-muted/30 mb-3 space-y-2">
+                                <div className="flex items-center gap-4">
+                                  <div className="flex-1">
+                                    <span className="text-xs text-muted-foreground block">Recommended Baseline</span>
+                                    <span className="font-semibold text-lg">{suggestion.baselineEstimate}</span>
+                                    <span className="text-xs text-muted-foreground ml-1">{suggestion.unit}</span>
+                                  </div>
+                                  <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                                  <div className="flex-1">
+                                    <span className="text-xs text-muted-foreground block">Target</span>
+                                    <span className="font-semibold text-lg text-emerald-600">{suggestion.targetEstimate}</span>
+                                    <span className="text-xs text-muted-foreground ml-1">{suggestion.unit}</span>
+                                  </div>
+                                </div>
+                                {suggestion.baselineReasoning && (
+                                  <p className="text-xs text-muted-foreground border-t pt-2">
+                                    <span className="font-medium">Why this baseline:</span> {suggestion.baselineReasoning}
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Benchmarks Grid */}
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                                {/* Industry Benchmark */}
+                                {suggestion.industryBenchmark && (
+                                  <div className="p-2 rounded-lg bg-blue-500/5 border border-blue-500/20">
+                                    <div className="flex items-center gap-1 mb-1">
+                                      <BarChart3 className="w-3 h-3 text-blue-600" />
+                                      <span className="text-xs font-medium text-blue-600">Industry Benchmark</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-xs">
+                                      <span className="text-muted-foreground">Low:</span>
+                                      <span>{suggestion.industryBenchmark.low}</span>
+                                      <span className="text-muted-foreground">|</span>
+                                      <span className="text-muted-foreground">Median:</span>
+                                      <span className="font-medium">{suggestion.industryBenchmark.median}</span>
+                                      <span className="text-muted-foreground">|</span>
+                                      <span className="text-muted-foreground">High:</span>
+                                      <span>{suggestion.industryBenchmark.high}</span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-1">{suggestion.industryBenchmark.source}</p>
+                                  </div>
+                                )}
+                                
+                                {/* Korn Ferry Benchmark */}
+                                {suggestion.kornFerryBenchmark && (
+                                  <div className="p-2 rounded-lg bg-purple-500/5 border border-purple-500/20">
+                                    <div className="flex items-center gap-1 mb-1">
+                                      <Award className="w-3 h-3 text-purple-600" />
+                                      <span className="text-xs font-medium text-purple-600">Korn Ferry Benchmark</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-xs">
+                                      <span className="text-muted-foreground">Top Quartile:</span>
+                                      <span className="font-medium text-emerald-600">{suggestion.kornFerryBenchmark.topQuartile}</span>
+                                      <span className="text-muted-foreground">|</span>
+                                      <span className="text-muted-foreground">Typical:</span>
+                                      <span>{suggestion.kornFerryBenchmark.typical}</span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-1">{suggestion.kornFerryBenchmark.context}</p>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Rationale & Source */}
+                              <p className="text-xs text-muted-foreground">
+                                <span className="font-medium">Rationale:</span> {suggestion.strategicRationale}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                <span className="font-medium">Based on:</span> {suggestion.sourceInsightTitle}
+                              </p>
+                              
+                              {/* Scores */}
+                              <div className="flex gap-4 mt-2 pt-2 border-t">
+                                <span className="text-xs">
+                                  <span className="text-muted-foreground">Achievability:</span>{" "}
+                                  <span className={suggestion.achievabilityScore >= 7 ? "text-emerald-600 font-medium" : suggestion.achievabilityScore >= 5 ? "text-amber-600" : "text-red-600"}>
+                                    {suggestion.achievabilityScore}/10
+                                  </span>
                                 </span>
-                              </span>
-                              <span className="text-xs">
-                                <span className="text-muted-foreground">Value Impact:</span>{" "}
-                                <span className={suggestion.valueImpactScore >= 7 ? "text-emerald-600" : suggestion.valueImpactScore >= 5 ? "text-amber-600" : "text-red-600"}>
-                                  {suggestion.valueImpactScore}/10
+                                <span className="text-xs">
+                                  <span className="text-muted-foreground">Value Impact:</span>{" "}
+                                  <span className={suggestion.valueImpactScore >= 7 ? "text-emerald-600 font-medium" : suggestion.valueImpactScore >= 5 ? "text-amber-600" : "text-red-600"}>
+                                    {suggestion.valueImpactScore}/10
+                                  </span>
                                 </span>
-                              </span>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </CardContent>
