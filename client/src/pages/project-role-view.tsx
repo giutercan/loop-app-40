@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useRoute } from "wouter";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -792,6 +792,48 @@ export default function ProjectRoleView() {
     callToAction: ""
   });
   const [isGeneratingNarrative, setIsGeneratingNarrative] = useState(false);
+  const [narrativeCanvasInitialized, setNarrativeCanvasInitialized] = useState(false);
+  const [lastSavedNarrative, setLastSavedNarrative] = useState<string | null>(null);
+  
+  // Mutation to save narrative canvas
+  const saveNarrativeCanvasMutation = useMutation({
+    mutationFn: async (data: typeof narrativeCanvas) => {
+      return await apiRequest("PATCH", `/api/projects/${projectId}/narrative-canvas`, data);
+    },
+    onSuccess: () => {
+      setLastSavedNarrative(new Date().toLocaleTimeString());
+    },
+    onError: () => {
+      setLastSavedNarrative(null); // Reset save indicator on error
+      toast({ title: "Failed to save", description: "Your changes may not be saved. Please try again.", variant: "destructive" });
+    }
+  });
+  
+  // Store stable mutate reference in ref
+  const mutateRef = useRef(saveNarrativeCanvasMutation.mutate);
+  useEffect(() => {
+    mutateRef.current = saveNarrativeCanvasMutation.mutate;
+  }, [saveNarrativeCanvasMutation.mutate]);
+  
+  // Debounced auto-save for narrative canvas using useRef
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const saveNarrativeCanvasDebounced = useCallback((data: typeof narrativeCanvas) => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    saveTimeoutRef.current = setTimeout(() => {
+      mutateRef.current(data);
+    }, 1500);
+  }, []);
+  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
   
   // Enhanced Green Sheet state - Meeting Contact Context
   type BuyingRole = "economic_buyer" | "user_buyer" | "technical_buyer" | "coach" | "champion";
@@ -1317,6 +1359,39 @@ export default function ProjectRoleView() {
       setDiscoveryProgressInitialized(true);
     }
   }, [project, discoveryProgressInitialized]);
+  
+  // Initialize narrative canvas from project data
+  useEffect(() => {
+    if (project && !narrativeCanvasInitialized) {
+      const savedCanvas = (project as any).narrativeCanvas;
+      if (savedCanvas) {
+        setNarrativeCanvas({
+          opener: savedCanvas.opener || "",
+          keyMessage: savedCanvas.keyMessage || "",
+          proofPoint: savedCanvas.proofPoint || "",
+          keyQuestions: savedCanvas.keyQuestions || [],
+          callToAction: savedCanvas.callToAction || ""
+        });
+        if (savedCanvas.lastUpdated) {
+          setLastSavedNarrative(new Date(savedCanvas.lastUpdated).toLocaleTimeString());
+        }
+      }
+      setNarrativeCanvasInitialized(true);
+    }
+  }, [project, narrativeCanvasInitialized]);
+  
+  // Auto-save narrative canvas when content changes (after initial load)
+  useEffect(() => {
+    if (narrativeCanvasInitialized && (
+      narrativeCanvas.opener || 
+      narrativeCanvas.keyMessage || 
+      narrativeCanvas.proofPoint || 
+      narrativeCanvas.keyQuestions.length > 0 || 
+      narrativeCanvas.callToAction
+    )) {
+      saveNarrativeCanvasDebounced(narrativeCanvas);
+    }
+  }, [narrativeCanvas, narrativeCanvasInitialized, saveNarrativeCanvasDebounced]);
 
   const [expandedMethodologies, setExpandedMethodologies] = useState<Record<string, boolean>>({
     SPIN: true,
@@ -4722,7 +4797,21 @@ export default function ProjectRoleView() {
                         Narrative Canvas
                         <Badge className="bg-primary/10 text-primary border-primary/30 text-xs">Visual Storyboard</Badge>
                       </CardTitle>
-                      <CardDescription>Your complete call narrative for {project?.companyName} - one visual flow</CardDescription>
+                      <CardDescription className="flex items-center gap-2">
+                        Your complete call narrative for {project?.companyName} - one visual flow
+                        {lastSavedNarrative && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-green-500/10 text-green-700 border-green-500/30">
+                            <CheckCircle2 className="w-2.5 h-2.5 mr-1" />
+                            Saved {lastSavedNarrative}
+                          </Badge>
+                        )}
+                        {saveNarrativeCanvasMutation.isPending && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-yellow-500/10 text-yellow-700 border-yellow-500/30">
+                            <Loader2 className="w-2.5 h-2.5 mr-1 animate-spin" />
+                            Saving...
+                          </Badge>
+                        )}
+                      </CardDescription>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
