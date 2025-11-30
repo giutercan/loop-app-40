@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Play, X, Sparkles } from "lucide-react";
+import { Play, X, Sparkles, Loader2 } from "lucide-react";
 import { useDemoMode } from "./DemoModeContext";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -11,10 +11,48 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useState } from "react";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
+import { useLocation } from "wouter";
 
 export function DemoModeButton() {
   const { isDemoMode, startDemo, endDemo, tourRunning, setTourRunning } = useDemoMode();
   const [showStartDialog, setShowStartDialog] = useState(false);
+  const [isSeeding, setIsSeeding] = useState(false);
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+
+  const seedAndStartDemo = async () => {
+    setIsSeeding(true);
+    try {
+      const res = await apiRequest("POST", "/api/demo/seed-chanel", {});
+      const data = await res.json();
+      
+      await queryClient.invalidateQueries({ queryKey: ["/api/accounts"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      
+      setShowStartDialog(false);
+      startDemo("Chanel");
+      
+      if (data.projectId) {
+        setLocation(`/projects/${data.projectId}?role=sales`);
+      }
+      
+      toast({
+        title: "Demo Ready",
+        description: "Chanel demo data loaded. Starting guided tour...",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Demo Setup Failed",
+        description: error.message || "Failed to load demo data",
+      });
+    } finally {
+      setIsSeeding(false);
+    }
+  };
 
   if (isDemoMode) {
     return (
@@ -106,19 +144,26 @@ export function DemoModeButton() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowStartDialog(false)}>
+            <Button variant="outline" onClick={() => setShowStartDialog(false)} disabled={isSeeding}>
               Cancel
             </Button>
             <Button 
-              onClick={() => {
-                setShowStartDialog(false);
-                startDemo("Chanel");
-              }}
+              onClick={seedAndStartDemo}
               className="bg-purple-600 hover:bg-purple-700"
               data-testid="button-confirm-start-demo"
+              disabled={isSeeding}
             >
-              <Play className="w-4 h-4 mr-2" />
-              Start Demo Tour
+              {isSeeding ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Setting Up Demo...
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 mr-2" />
+                  Start Demo Tour
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

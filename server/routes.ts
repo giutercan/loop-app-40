@@ -6886,4 +6886,222 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
     if (progress >= 0.5) return 'at-risk';
     return 'off-track';
   }
+
+  // POST /api/demo/seed-chanel - Seed Chanel demo data for executive demo
+  app.post("/api/demo/seed-chanel", async (req, res) => {
+    try {
+      // Check if demo account already exists
+      const existingAccounts = await storage.getAccounts();
+      const chanelExists = existingAccounts.find(a => a.name === "Chanel" && a.industry === "Luxury Retail & Fashion");
+      
+      if (chanelExists) {
+        return res.json({ 
+          success: true, 
+          message: "Chanel demo data already exists", 
+          accountId: chanelExists.id,
+          projectId: chanelExists.id 
+        });
+      }
+
+      // Create Chanel account
+      const account = await storage.createAccount({
+        name: "Chanel",
+        industry: "Luxury Retail & Fashion",
+        sector: "Haute Couture & Accessories",
+        tier: "enterprise",
+        companyLogoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Chanel_logo.svg/200px-Chanel_logo.svg.png",
+        website: "https://www.chanel.com",
+        strategyNotes: "Global expansion into emerging markets while maintaining brand exclusivity. Focus on digital transformation, next-gen leadership pipeline, and sustainable luxury practices.",
+        okrSummary: "O1: Accelerate leadership succession globally. O2: Reduce time-to-productivity for new boutique directors. O3: Strengthen cultural alignment across 400+ boutiques.",
+        fiscalYearStart: "January",
+        accountOwner: "Sarah Mitchell",
+        clientSponsor: "Philippe Lefort, CHRO",
+        annualContractValue: "$4.2M",
+        primaryContactName: "Isabelle Renaud",
+        primaryContactEmail: "i.renaud@chanel.com",
+        healthScore: 85,
+        totalValuePromised: 12500000,
+        totalValueRealized: 4800000,
+        status: "active",
+      });
+
+      // Create Chanel project
+      const project = await storage.createProject({
+        accountId: account.id,
+        name: "Chanel Leadership Transformation",
+        companyName: "Chanel S.A.",
+        industry: "Luxury Retail & Fashion",
+        phase: "alignment",
+        status: "active",
+        projectGoal: "Transform Chanel's leadership pipeline and talent development to support global expansion while preserving the maison's unique heritage and culture.",
+        stakeholderName: "Philippe Lefort",
+        stakeholderRole: "Chief Human Resources Officer",
+        stakeholderEmail: "p.lefort@chanel.com",
+        idealCustomerProfile: "Global luxury brand facing succession challenges, committed to cultural preservation, budget for transformation initiatives",
+        aiResearchStatus: "completed",
+        discoveryFinalized: true,
+      });
+
+      // Create discovery insights
+      const insightsData = [
+        {
+          title: "Critical Leadership Succession Gap",
+          description: "Only 23% of boutique director roles have identified successors. With 35% of current directors retiring within 5 years, Chanel faces a significant leadership vacuum that threatens boutique performance and brand consistency.",
+          category: "leadership",
+          source: "ai_research" as const,
+          confidence: 92,
+          priority: "critical" as const,
+          kornFerryPillar: "succession-planning",
+          solutionArea: "ASSESS",
+          isFollowUpNeeded: false,
+        },
+        {
+          title: "Extended New Director Onboarding",
+          description: "New boutique directors take 14-18 months to reach full productivity vs. industry average of 9 months. This extended ramp-up period costs an estimated €2.3M annually in lost revenue opportunity.",
+          category: "talent",
+          source: "ai_research" as const,
+          confidence: 88,
+          priority: "high" as const,
+          kornFerryPillar: "talent-acquisition",
+          solutionArea: "DEVELOP",
+          isFollowUpNeeded: false,
+        },
+        {
+          title: "Cultural Alignment Variance Across Regions",
+          description: "Employee engagement surveys reveal 22-point variance in 'brand culture alignment' scores between European and Asia-Pacific boutiques. APAC region shows declining scores over past 3 years.",
+          category: "culture",
+          source: "ai_research" as const,
+          confidence: 85,
+          priority: "high" as const,
+          kornFerryPillar: "culture-transformation",
+          solutionArea: "TRANSFORM",
+          isFollowUpNeeded: true,
+        },
+        {
+          title: "High Performer Retention Risk",
+          description: "Voluntary turnover among high-potential talent (top 15%) is 18% vs. 8% industry benchmark for luxury retail. Exit interviews cite limited career visibility and development opportunities.",
+          category: "talent",
+          source: "ai_research" as const,
+          confidence: 90,
+          priority: "critical" as const,
+          kornFerryPillar: "leadership-development",
+          solutionArea: "DEVELOP",
+          isFollowUpNeeded: false,
+        },
+        {
+          title: "Digital Skills Gap in Leadership",
+          description: "Only 34% of current boutique directors rate themselves as 'confident' in digital client engagement tools. This limits omnichannel client experience delivery and threatens competitive position.",
+          category: "capability",
+          source: "ai_research" as const,
+          confidence: 82,
+          priority: "medium" as const,
+          kornFerryPillar: "leadership-development",
+          solutionArea: "DEVELOP",
+          isFollowUpNeeded: true,
+        },
+      ];
+
+      for (const insight of insightsData) {
+        await storage.createDiscoveryInsight({
+          projectId: project.id,
+          ...insight,
+          provenance: { source: "ai_research", model: "gpt-4o", generatedAt: new Date().toISOString() },
+        });
+      }
+
+      // Create KPI commitments
+      const commitments = [
+        {
+          name: "Leadership Bench Strength Index",
+          description: "Percentage of critical leadership roles with at least one ready-now successor identified and validated",
+          kpiUnit: "%",
+          baselineValue: 23,
+          targetValue: 75,
+          targetDate: new Date("2025-12-31"),
+          estimatedAnnualValue: 3200000,
+          valuePillar: "de-risk",
+          solutionPattern: "succession-planning",
+          status: "client_confirmed",
+        },
+        {
+          name: "Time-to-Productivity (New Directors)",
+          description: "Months required for new boutique directors to achieve 90% of target boutique performance metrics",
+          kpiUnit: "months",
+          baselineValue: 16,
+          targetValue: 9,
+          targetDate: new Date("2025-12-31"),
+          estimatedAnnualValue: 2300000,
+          valuePillar: "optimise",
+          solutionPattern: "leadership-development",
+          status: "client_confirmed",
+        },
+        {
+          name: "High-Potential Retention Rate",
+          description: "Annual retention rate of employees identified as high-potential (top 15% performers)",
+          kpiUnit: "%",
+          baselineValue: 82,
+          targetValue: 92,
+          targetDate: new Date("2025-12-31"),
+          estimatedAnnualValue: 2800000,
+          valuePillar: "de-risk",
+          solutionPattern: "talent-acquisition",
+          status: "client_confirmed",
+        },
+      ];
+
+      const createdCommitments = [];
+      for (const commitment of commitments) {
+        const created = await storage.createKpiCommitment({
+          projectId: project.id,
+          ...commitment,
+          provenance: { source: "ai_generated", generatedAt: new Date().toISOString() },
+        });
+        createdCommitments.push(created);
+      }
+
+      // Create handoff packet
+      await storage.createHandoffPacket({
+        projectId: project.id,
+        commitmentIds: createdCommitments.map(c => c.id),
+        executiveSummary: "Strategic talent transformation initiative for Chanel focusing on leadership succession, director development, and high-potential retention. Total annual value of €8.3M across three confirmed KPIs. Client sponsor Philippe Lefort (CHRO) has approved targets and timeline. Q1 2025 kickoff with monthly progress reviews.",
+        createdBy: "Sarah Mitchell",
+        acceptanceState: "accepted",
+        acceptedAt: new Date(),
+        acceptedBy: "Marie Dubois",
+        csmOwnerName: "Marie Dubois",
+        acceptanceNotes: "Confirmed alignment with Chanel leadership. Establishing measurement framework in partnership with HR Analytics team. First progress review scheduled for January 2025.",
+      });
+
+      res.json({ 
+        success: true, 
+        message: "Chanel demo data seeded successfully",
+        accountId: account.id,
+        projectId: project.id
+      });
+    } catch (error: any) {
+      console.error("Error seeding Chanel demo data:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/demo/chanel-status - Check if Chanel demo exists
+  app.get("/api/demo/chanel-status", async (req, res) => {
+    try {
+      const accounts = await storage.getAccounts();
+      const chanel = accounts.find(a => a.name === "Chanel" && a.industry === "Luxury Retail & Fashion");
+      
+      if (chanel) {
+        const projects = await storage.getProjectsByAccount(chanel.id);
+        res.json({ 
+          exists: true, 
+          accountId: chanel.id,
+          projectId: projects[0]?.id || null
+        });
+      } else {
+        res.json({ exists: false });
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 }
