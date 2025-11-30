@@ -213,6 +213,16 @@ export const projects = pgTable("projects", {
   }).default("theme-select"),
   discoveryCompleted: boolean("discovery_completed").default(false).notNull(),
   
+  // Narrative Canvas content (OPEN/STORY/ASK/CLOSE lanes for call preparation)
+  narrativeCanvas: jsonb("narrative_canvas").$type<{
+    opener: string;
+    keyMessage: string;
+    proofPoint: string;
+    keyQuestions: string[];
+    callToAction: string;
+    lastUpdated?: string;
+  }>(),
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
