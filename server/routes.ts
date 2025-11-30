@@ -6518,6 +6518,31 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
     }
   });
   
+  // PATCH /api/projects/:id/narrative-canvas - Save Narrative Canvas content
+  app.patch("/api/projects/:id/narrative-canvas", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { opener, keyMessage, proofPoint, keyQuestions, callToAction } = req.body;
+      
+      const narrativeCanvas = {
+        opener: opener || "",
+        keyMessage: keyMessage || "",
+        proofPoint: proofPoint || "",
+        keyQuestions: keyQuestions || [],
+        callToAction: callToAction || "",
+        lastUpdated: new Date().toISOString(),
+      };
+      
+      const updated = await storage.updateProject(id, { narrativeCanvas } as any);
+      if (!updated) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
   // POST /api/projects/:projectId/ai/enrich-contact - AI-powered contact research for Green Sheet
   app.post("/api/projects/:projectId/ai/enrich-contact", async (req, res) => {
     try {
