@@ -1516,7 +1516,7 @@ export default function ProjectRoleView() {
         toast({ title: "KPI Added", description: "KPI has been added to your selection." });
       },
       onError: () => {
-        toast({ variant: "destructive", title: "Error", description: "Failed to create commitment." });
+        toast({ variant: "destructive", title: "Error", description: "Failed to add KPI." });
       }
     });
 
@@ -1529,10 +1529,10 @@ export default function ProjectRoleView() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "commitments"] });
         setEditingCommitment(null);
-        toast({ title: "Commitment updated", description: "Changes have been saved." });
+        toast({ title: "KPI Updated", description: "Changes have been saved." });
       },
       onError: () => {
-        toast({ variant: "destructive", title: "Error", description: "Failed to update commitment." });
+        toast({ variant: "destructive", title: "Error", description: "Failed to update KPI." });
       }
     });
 
@@ -1546,7 +1546,7 @@ export default function ProjectRoleView() {
       },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "commitments"] });
-        toast({ title: "Submitted for review", description: "Client can now review this commitment." });
+        toast({ title: "Submitted for review", description: "Client can now review this KPI." });
       }
     });
 
@@ -1558,7 +1558,7 @@ export default function ProjectRoleView() {
       },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "commitments"] });
-        toast({ title: "Commitment confirmed", description: "Client has confirmed this commitment." });
+        toast({ title: "KPI Confirmed", description: "Client has confirmed this KPI." });
       }
     });
 
@@ -1569,7 +1569,7 @@ export default function ProjectRoleView() {
       },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "commitments"] });
-        toast({ title: "Commitment deleted", description: "The commitment has been removed." });
+        toast({ title: "KPI Removed", description: "The KPI has been removed." });
       }
     });
 
@@ -1758,20 +1758,20 @@ export default function ProjectRoleView() {
           </CardContent>
         </Card>
 
-        {/* Commitment Pipeline */}
+        {/* KPI Pipeline */}
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Draft */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <FileText className="w-4 h-4 text-muted-foreground" />
-                Draft
+                Draft KPIs
                 <Badge variant="secondary" className="ml-auto">{draftCommitments.length}</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {draftCommitments.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No draft commitments</p>
+                <p className="text-sm text-muted-foreground text-center py-4">No draft KPIs</p>
               ) : (
                 draftCommitments.map((c: any) => (
                   <div key={c.id} className="p-3 rounded-lg border hover-elevate" data-testid={`commitment-draft-${c.id}`}>
@@ -1838,7 +1838,7 @@ export default function ProjectRoleView() {
             </CardHeader>
             <CardContent className="space-y-3">
               {proposedCommitments.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No commitments pending review</p>
+                <p className="text-sm text-muted-foreground text-center py-4">No KPIs pending review</p>
               ) : (
                 proposedCommitments.map((c: any) => (
                   <div key={c.id} className="p-3 rounded-lg border border-blue-500/20 bg-blue-500/5" data-testid={`commitment-review-${c.id}`}>
@@ -1889,13 +1889,13 @@ export default function ProjectRoleView() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                Confirmed
+                Confirmed KPIs
                 <Badge className="ml-auto bg-emerald-500/10 text-emerald-600">{confirmedCommitments.length}</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {confirmedCommitments.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No confirmed commitments yet</p>
+                <p className="text-sm text-muted-foreground text-center py-4">No confirmed KPIs yet</p>
               ) : (
                 confirmedCommitments.map((c: any) => (
                   <div key={c.id} className="p-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5" data-testid={`commitment-confirmed-${c.id}`}>
@@ -1947,13 +1947,13 @@ export default function ProjectRoleView() {
                 Ready for CSM Handoff
               </CardTitle>
               <CardDescription>
-                {confirmedCommitments.length} commitment(s) confirmed and ready to be handed off to delivery
+                {confirmedCommitments.length} KPI(s) confirmed and ready to be handed off to delivery
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Value Committed</p>
+                  <p className="text-sm text-muted-foreground">Total KPI Value</p>
                   <p className="text-2xl font-bold text-emerald-600">
                     ${(confirmedValue / 1000000).toFixed(2)}M
                   </p>
@@ -6767,7 +6767,7 @@ export default function ProjectRoleView() {
                 <div>
                   <CardTitle>Handoff to Delivery</CardTitle>
                   <CardDescription>
-                    Bundle confirmed commitments and send to CSM for delivery tracking
+                    Bundle confirmed KPIs and send to CSM for delivery tracking
                   </CardDescription>
                 </div>
               </div>
@@ -6781,7 +6781,7 @@ export default function ProjectRoleView() {
           <CardContent>
             <div className="grid gap-4 md:grid-cols-4">
               <div className="p-4 rounded-lg bg-background border">
-                <p className="text-sm text-muted-foreground">Confirmed Commitments</p>
+                <p className="text-sm text-muted-foreground">Confirmed KPIs</p>
                 <p className="text-2xl font-bold text-emerald-600">{confirmedCommitments.length}</p>
               </div>
               <div className="p-4 rounded-lg bg-background border">
@@ -6809,10 +6809,10 @@ export default function ProjectRoleView() {
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                  Client-Confirmed Commitments
+                  Client-Confirmed KPIs
                 </CardTitle>
                 <CardDescription>
-                  Select commitments to include in handoff package
+                  Select KPIs to include in handoff package
                 </CardDescription>
               </div>
               <div className="flex gap-2">
@@ -6888,17 +6888,17 @@ export default function ProjectRoleView() {
           </Card>
         )}
 
-        {/* No Confirmed Commitments */}
+        {/* No Confirmed KPIs */}
         {confirmedCommitments.length === 0 && (
           <Card>
             <CardContent className="py-12 text-center">
               <Handshake className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="font-semibold mb-2">No Commitments Ready</h3>
+              <h3 className="font-semibold mb-2">No KPIs Ready</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Confirm commitments with clients in the Value Agreement tab before handing off.
+                Confirm KPIs with clients in the KPI Selection tab before handing off.
               </p>
               <Button variant="outline" onClick={() => setActiveTab("value-agreement")}>
-                Go to Value Agreement
+                Go to KPI Selection
               </Button>
             </CardContent>
           </Card>
@@ -6930,7 +6930,7 @@ export default function ProjectRoleView() {
                       <p className="text-sm text-muted-foreground mb-2">{packet.executiveSummary}</p>
                     )}
                     <div className="flex items-center gap-4 text-sm">
-                      <span>{packet.commitmentIds?.length || 0} commitments</span>
+                      <span>{packet.commitmentIds?.length || 0} KPIs</span>
                       {packet.totalCommittedValue && (
                         <span className="text-emerald-600 font-medium">
                           ${(packet.totalCommittedValue / 1000000).toFixed(2)}M
@@ -6971,13 +6971,13 @@ export default function ProjectRoleView() {
             <DialogHeader>
               <DialogTitle>Create Handoff Package</DialogTitle>
               <DialogDescription>
-                Bundle {selectedCommitmentIds.length} commitment(s) and send to the delivery team.
+                Bundle {selectedCommitmentIds.length} KPI(s) and send to the delivery team.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="p-4 rounded-lg bg-muted/50">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium">Selected Commitments</span>
+                  <span className="font-medium">Selected KPIs</span>
                   <Badge variant="secondary">{selectedCommitmentIds.length}</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
@@ -7021,7 +7021,7 @@ export default function ProjectRoleView() {
     );
   };
 
-  // Incoming Handoffs Tab Component (CSM receives commitments from Sales)
+  // Incoming Handoffs Tab Component (CSM receives KPIs from Sales)
   const IncomingHandoffsTab = ({ 
     projectId, 
     project 
@@ -7057,7 +7057,7 @@ export default function ProjectRoleView() {
         setIsAcceptDialogOpen(false);
         setSelectedHandoff(null);
         setAcceptanceNotes("");
-        toast({ title: "Handoff accepted", description: "Commitments are now ready for delivery tracking." });
+        toast({ title: "Handoff accepted", description: "KPIs are now ready for delivery tracking." });
       },
       onError: () => {
         toast({ variant: "destructive", title: "Error", description: "Failed to accept handoff." });
@@ -7124,7 +7124,7 @@ export default function ProjectRoleView() {
               <div>
                 <CardTitle>Incoming Handoffs</CardTitle>
                 <CardDescription>
-                  Review and accept commitment packages from Sales
+                  Review and accept KPI packages from Sales
                 </CardDescription>
               </div>
             </div>
@@ -7140,7 +7140,7 @@ export default function ProjectRoleView() {
                 <p className="text-2xl font-bold text-blue-600">{clarificationPackets.length}</p>
               </div>
               <div className="p-4 rounded-lg bg-background border">
-                <p className="text-sm text-muted-foreground">Active Commitments</p>
+                <p className="text-sm text-muted-foreground">Active KPIs</p>
                 <p className="text-2xl font-bold text-emerald-600">{activeCommitments.length}</p>
               </div>
               <div className="p-4 rounded-lg bg-background border">
@@ -7191,7 +7191,7 @@ export default function ProjectRoleView() {
                     )}
 
                     <div className="grid gap-2 mb-4">
-                      <p className="text-sm font-medium">Included Commitments ({packetCommitments.length}):</p>
+                      <p className="text-sm font-medium">Included KPIs ({packetCommitments.length}):</p>
                       {packetCommitments.map((c: any) => (
                         <div key={c.id} className="p-2 rounded bg-background/50 flex items-center justify-between">
                           <div>
@@ -7249,16 +7249,16 @@ export default function ProjectRoleView() {
           </Card>
         )}
 
-        {/* Active Commitments in Delivery */}
+        {/* Active KPIs in Delivery */}
         {activeCommitments.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                Active Commitments in Delivery
+                Active KPIs in Delivery
               </CardTitle>
               <CardDescription>
-                Commitments you've accepted and are now tracking
+                KPIs you've accepted and are now tracking
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -7314,7 +7314,7 @@ export default function ProjectRoleView() {
               <Handshake className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="font-semibold mb-2">No Handoffs Yet</h3>
               <p className="text-sm text-muted-foreground">
-                When Sales sends commitments, they'll appear here for your review.
+                When Sales sends KPIs, they'll appear here for your review.
               </p>
             </CardContent>
           </Card>
@@ -7588,7 +7588,7 @@ export default function ProjectRoleView() {
         </div>
       </TabsContent>
 
-      {/* Incoming Handoffs - CSM receives commitments from Sales */}
+      {/* Incoming Handoffs - CSM receives KPIs from Sales */}
       <TabsContent value="incoming-handoffs" className="space-y-6">
         <IncomingHandoffsTab 
           projectId={projectId} 
