@@ -4429,25 +4429,6 @@ export default function ProjectRoleView() {
                       <CardDescription>Your complete call preparation for {project?.companyName} - {currentTheme?.name}</CardDescription>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button 
-                      onClick={handleStartDiscovery}
-                      disabled={generateQuestionsMutation.isPending}
-                      data-testid="button-generate-questions"
-                    >
-                      {generateQuestionsMutation.isPending ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-4 h-4 mr-2" />
-                          Generate AI Questions
-                        </>
-                      )}
-                    </Button>
-                  </div>
                 </div>
               </CardHeader>
             </Card>
