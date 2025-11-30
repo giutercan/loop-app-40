@@ -46,9 +46,10 @@ The system is built on a robust architecture leveraging AI and a structured work
   - AFTER (Land): Moment of meaning, explicit takeaway, and call to action. Includes story test functionality to validate if stories are compelling (stranger care test, simplicity test, leadership values test) with visual readiness scoring.
 - **Executive Demo Mode**: Guided tour showcasing the complete Sales → Delivery journey using Chanel as a fictitious luxury retail customer.
   - **Demo Activation**: Purple "Executive Demo" button in header triggers demo mode with dialog explaining what users will see.
-  - **Demo Data Seeding**: POST `/api/demo/seed-chanel` endpoint creates complete Chanel account, project, job themes, KPI commitments, and handoff packets.
-  - **Guided Tour**: React Joyride-powered tour with 10 steps highlighting key features with executive-focused messaging (AI time savings, decision quality, seamless workflows).
-  - **Tour Anchors**: `data-demo-step` attributes on key UI elements: account-overview, workflow-progress, ai-research, discovery-insights, ai-kpi-suggestions, multi-select, benchmarks, kpi-pipeline, handoff-builder, delivery-dashboard, value-summary.
+  - **Demo Data Seeding**: POST `/api/demo/seed-chanel` endpoint creates complete Chanel account, project, job themes, KPI commitments, and handoff packets. Use `?force=true` query param to reseed fresh data.
+  - **Guided Tour**: React Joyride-powered tour with 13 steps highlighting key features with executive-focused messaging (AI time savings, decision quality, seamless workflows).
+  - **Tour Anchors**: `data-demo-step` attributes on key UI elements: account-header, workflow-progress, discovery-research, insight-card, kpi-suggestions, benchmark-display, multi-select, kpi-pipeline, handoff-section, value-summary, delivery-dashboard, incoming-handoffs, kpi-tracking.
+  - **Demo Data Structure**: Creates Chanel account with €12.5M promised value, 3 KPI commitments (Leadership Succession, Director Productivity, HiPo Retention), 2 handoff packets (1 accepted, 1 pending for demo), 4 job themes with Korn Ferry solution mappings.
   - **Demo Files**: `client/src/demo/` contains ExecutiveDemoTour.tsx, DemoModeContext.tsx, DemoModeButton.tsx, and chanel-demo-data.ts.
 
 ### System Design Choices

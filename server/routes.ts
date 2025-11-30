@@ -6890,17 +6890,31 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
   // POST /api/demo/seed-chanel - Seed Chanel demo data for executive demo
   app.post("/api/demo/seed-chanel", async (req, res) => {
     try {
+      const forceReseed = req.query.force === "true";
+      
       // Check if demo account already exists
       const existingAccounts = await storage.getAccounts();
-      const chanelExists = existingAccounts.find(a => a.name === "Chanel" && a.industry === "Luxury Retail & Fashion");
+      const chanelExists = existingAccounts.find(a => a.name === "Chanel");
       
-      if (chanelExists) {
+      if (chanelExists && !forceReseed) {
+        const allProjects = await storage.getProjects();
+        const chanelProjects = allProjects.filter(p => p.accountId === chanelExists.id);
         return res.json({ 
           success: true, 
           message: "Chanel demo data already exists", 
           accountId: chanelExists.id,
-          projectId: chanelExists.id 
+          projectId: chanelProjects[0]?.id || null
         });
+      }
+      
+      // If force reseed, delete existing Chanel account first
+      if (chanelExists && forceReseed) {
+        const allProjects = await storage.getProjects();
+        const chanelProjects = allProjects.filter(p => p.accountId === chanelExists.id);
+        for (const project of chanelProjects) {
+          await storage.deleteProject(project.id);
+        }
+        await storage.deleteAccount(chanelExists.id);
       }
 
       // Create Chanel account
@@ -6930,7 +6944,7 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
         accountId: account.id,
         name: "Chanel Leadership Transformation",
         companyName: "Chanel S.A.",
-        industry: "Luxury Retail & Fashion",
+        sector: "Luxury Retail & Fashion",
         phase: "alignment",
         status: "active",
         projectGoal: "Transform Chanel's leadership pipeline and talent development to support global expansion while preserving the maison's unique heritage and culture.",
@@ -6945,36 +6959,40 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
       // Create job themes (which contain discovery insights)
       const jobThemesData = [
         {
-          theme: "Leadership Succession & Pipeline",
-          description: "Only 23% of boutique director roles have identified successors. With 35% of current directors retiring within 5 years, Chanel faces a significant leadership vacuum that threatens boutique performance and brand consistency.",
+          jobName: "Leadership Succession & Pipeline",
+          capabilityName: "Succession Planning & Leadership Assessment",
+          aggregationSummary: "Only 23% of boutique director roles have identified successors. With 35% of current directors retiring within 5 years, Chanel faces a significant leadership vacuum that threatens boutique performance and brand consistency.",
+          solutionArea: "ASSESS" as const,
           evidenceCount: 5,
           compositeScore: 92,
-          status: "active" as const,
-          priorityRanking: 1,
+          priorityRank: 1,
         },
         {
-          theme: "New Director Productivity",
-          description: "New boutique directors take 14-18 months to reach full productivity vs. industry average of 9 months. This extended ramp-up period costs an estimated €2.3M annually in lost revenue opportunity.",
+          jobName: "New Director Productivity",
+          capabilityName: "Leadership Development & Onboarding",
+          aggregationSummary: "New boutique directors take 14-18 months to reach full productivity vs. industry average of 9 months. This extended ramp-up period costs an estimated €2.3M annually in lost revenue opportunity.",
+          solutionArea: "DEVELOP" as const,
           evidenceCount: 4,
           compositeScore: 88,
-          status: "active" as const,
-          priorityRanking: 2,
+          priorityRank: 2,
         },
         {
-          theme: "Cultural Alignment Across Regions",
-          description: "Employee engagement surveys reveal 22-point variance in 'brand culture alignment' scores between European and Asia-Pacific boutiques. APAC region shows declining scores over past 3 years.",
+          jobName: "Cultural Alignment Across Regions",
+          capabilityName: "Culture Transformation & Engagement",
+          aggregationSummary: "Employee engagement surveys reveal 22-point variance in 'brand culture alignment' scores between European and Asia-Pacific boutiques. APAC region shows declining scores over past 3 years.",
+          solutionArea: "TRANSFORM" as const,
           evidenceCount: 3,
           compositeScore: 85,
-          status: "active" as const,
-          priorityRanking: 3,
+          priorityRank: 3,
         },
         {
-          theme: "High-Potential Talent Retention",
-          description: "Voluntary turnover among high-potential talent (top 15%) is 18% vs. 8% industry benchmark for luxury retail. Exit interviews cite limited career visibility and development opportunities.",
+          jobName: "High-Potential Talent Retention",
+          capabilityName: "Talent Management & Development",
+          aggregationSummary: "Voluntary turnover among high-potential talent (top 15%) is 18% vs. 8% industry benchmark for luxury retail. Exit interviews cite limited career visibility and development opportunities.",
+          solutionArea: "DEVELOP" as const,
           evidenceCount: 4,
           compositeScore: 90,
-          status: "active" as const,
-          priorityRanking: 4,
+          priorityRank: 4,
         },
       ];
 
@@ -6988,40 +7006,43 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
       // Create KPI commitments
       const commitments = [
         {
-          name: "Leadership Bench Strength Index",
-          description: "Percentage of critical leadership roles with at least one ready-now successor identified and validated",
-          kpiUnit: "%",
-          baselineValue: 23,
-          targetValue: 75,
+          commitmentTitle: "Leadership Bench Strength Index",
+          commitmentDescription: "Percentage of critical leadership roles with at least one ready-now successor identified and validated",
+          metricUnit: "%",
+          baselineValue: "23",
+          targetValue: "75",
           targetDate: new Date("2025-12-31"),
           estimatedAnnualValue: 3200000,
-          valuePillar: "de-risk",
-          solutionPattern: "succession-planning",
-          status: "client_confirmed",
+          valuePillar: "derisk" as const,
+          solutionPattern: "leadership_development" as const,
+          status: "client_confirmed" as const,
+          healthStatus: "on_track" as const,
         },
         {
-          name: "Time-to-Productivity (New Directors)",
-          description: "Months required for new boutique directors to achieve 90% of target boutique performance metrics",
-          kpiUnit: "months",
-          baselineValue: 16,
-          targetValue: 9,
+          commitmentTitle: "Time-to-Productivity (New Directors)",
+          commitmentDescription: "Months required for new boutique directors to achieve 90% of target boutique performance metrics",
+          metricUnit: "months",
+          baselineValue: "16",
+          targetValue: "9",
           targetDate: new Date("2025-12-31"),
           estimatedAnnualValue: 2300000,
-          valuePillar: "optimise",
-          solutionPattern: "leadership-development",
-          status: "client_confirmed",
+          valuePillar: "optimise" as const,
+          solutionPattern: "leadership_development" as const,
+          status: "client_confirmed" as const,
+          healthStatus: "at_risk" as const,
         },
         {
-          name: "High-Potential Retention Rate",
-          description: "Annual retention rate of employees identified as high-potential (top 15% performers)",
-          kpiUnit: "%",
-          baselineValue: 82,
-          targetValue: 92,
+          commitmentTitle: "High-Potential Retention Rate",
+          commitmentDescription: "Annual retention rate of employees identified as high-potential (top 15% performers)",
+          metricUnit: "%",
+          baselineValue: "82",
+          targetValue: "92",
           targetDate: new Date("2025-12-31"),
           estimatedAnnualValue: 2800000,
-          valuePillar: "de-risk",
-          solutionPattern: "talent-acquisition",
-          status: "client_confirmed",
+          valuePillar: "derisk" as const,
+          solutionPattern: "talent_acquisition" as const,
+          status: "client_confirmed" as const,
+          healthStatus: "needs_data" as const,
         },
       ];
 
@@ -7035,17 +7056,31 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
         createdCommitments.push(created);
       }
 
-      // Create handoff packet
+      // Create handoff packet 1 - Accepted (shows completed handoff)
       await storage.createHandoffPacket({
         projectId: project.id,
-        commitmentIds: createdCommitments.map(c => c.id),
-        executiveSummary: "Strategic talent transformation initiative for Chanel focusing on leadership succession, director development, and high-potential retention. Total annual value of €8.3M across three confirmed KPIs. Client sponsor Philippe Lefort (CHRO) has approved targets and timeline. Q1 2025 kickoff with monthly progress reviews.",
-        createdBy: "Sarah Mitchell",
-        acceptanceState: "accepted",
+        packetName: "Phase 1: Leadership & Director Development",
+        commitmentIds: [createdCommitments[0].id, createdCommitments[1].id],
+        generatedByRole: "sales" as const,
+        generatedByName: "Sarah Mitchell",
+        executiveSummary: "Phase 1: Leadership succession and director development. Total value €5.5M covering succession pipeline and onboarding acceleration. Client sponsor Philippe Lefort (CHRO) has approved targets.",
+        totalCommittedValue: 5500000,
+        acceptanceState: "accepted" as const,
         acceptedAt: new Date(),
-        acceptedBy: "Marie Dubois",
         csmOwnerName: "Marie Dubois",
-        acceptanceNotes: "Confirmed alignment with Chanel leadership. Establishing measurement framework in partnership with HR Analytics team. First progress review scheduled for January 2025.",
+        acceptanceNotes: "Confirmed alignment with Chanel leadership. Measurement framework established with HR Analytics. Monthly progress reviews scheduled.",
+      });
+
+      // Create handoff packet 2 - Pending (for demo of acceptance workflow)
+      await storage.createHandoffPacket({
+        projectId: project.id,
+        packetName: "Phase 2: High-Potential Retention Initiative",
+        commitmentIds: [createdCommitments[2].id],
+        generatedByRole: "sales" as const,
+        generatedByName: "Sarah Mitchell",
+        executiveSummary: "Phase 2: High-Potential Talent Retention Initiative. Annual value €2.8M targeting 92% retention of top performers. Requires CSM review and acceptance before delivery kickoff.",
+        totalCommittedValue: 2800000,
+        acceptanceState: "pending" as const,
       });
 
       res.json({ 
@@ -7064,14 +7099,15 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
   app.get("/api/demo/chanel-status", async (req, res) => {
     try {
       const accounts = await storage.getAccounts();
-      const chanel = accounts.find(a => a.name === "Chanel" && a.industry === "Luxury Retail & Fashion");
+      const chanel = accounts.find(a => a.name === "Chanel" && a.sector === "Haute Couture & Accessories");
       
       if (chanel) {
-        const projects = await storage.getProjectsByAccount(chanel.id);
+        const allProjects = await storage.getProjects();
+        const chanelProjects = allProjects.filter(p => p.accountId === chanel.id);
         res.json({ 
           exists: true, 
           accountId: chanel.id,
-          projectId: projects[0]?.id || null
+          projectId: chanelProjects[0]?.id || null
         });
       } else {
         res.json({ exists: false });

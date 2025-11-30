@@ -7591,16 +7591,16 @@ export default function ProjectRoleView() {
       </TabsContent>
 
       {/* Incoming Handoffs - CSM receives KPIs from Sales */}
-      <TabsContent value="incoming-handoffs" className="space-y-6">
+      <TabsContent value="incoming-handoffs" className="space-y-6" data-demo-step="incoming-handoffs">
         <IncomingHandoffsTab 
           projectId={projectId} 
           project={project}
         />
       </TabsContent>
 
-      <TabsContent value="kpis" className="space-y-6">
+      <TabsContent value="kpis" className="space-y-6" data-demo-step="kpi-tracking">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
             <div>
               <CardTitle>KPI Tracking</CardTitle>
               <CardDescription>Monitor and log KPI measurements</CardDescription>

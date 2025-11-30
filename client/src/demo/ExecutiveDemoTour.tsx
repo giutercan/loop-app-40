@@ -83,6 +83,30 @@ const TOUR_STEPS: Step[] = [
     disableBeacon: true,
     spotlightPadding: 8,
   },
+  {
+    target: '[data-demo-step="delivery-dashboard"]',
+    title: "Delivery Health Dashboard",
+    content: "CSMs see real-time engagement health at a glance. KPIs are color-coded by status: green for on-track, amber for at-risk, red for off-track. This early warning system prevents surprises at QBRs.",
+    placement: "top",
+    disableBeacon: true,
+    spotlightPadding: 8,
+  },
+  {
+    target: '[data-demo-step="incoming-handoffs"]',
+    title: "Incoming Handoffs from Sales",
+    content: "Delivery teams receive complete handoff packages with all context preserved. They can accept immediately or request clarification - ensuring nothing falls through the cracks during transition.",
+    placement: "top",
+    disableBeacon: true,
+    spotlightPadding: 8,
+  },
+  {
+    target: '[data-demo-step="kpi-tracking"]',
+    title: "Live KPI Tracking",
+    content: "Log actual measurements against commitments with one click. Progress bars show trajectory, and AI trend analysis flags when intervention is needed before targets are missed.",
+    placement: "top",
+    disableBeacon: true,
+    spotlightPadding: 8,
+  },
 ];
 
 const tourStyles = {
