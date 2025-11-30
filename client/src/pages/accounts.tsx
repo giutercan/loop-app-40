@@ -47,8 +47,28 @@ import {
   RefreshCw,
   GraduationCap,
   FolderOpen,
-  Layers
+  Layers,
+  Trash2,
+  MoreVertical,
+  ExternalLink
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Collapsible,
   CollapsibleContent,
@@ -58,36 +78,6 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 
-const lifecyclePhases = [
-  { id: "discover_qualify", label: "Discover", icon: Search, color: "text-blue-600", bgColor: "bg-blue-100 dark:bg-blue-900/30" },
-  { id: "shape_sell", label: "Shape", icon: Lightbulb, color: "text-purple-600", bgColor: "bg-purple-100 dark:bg-purple-900/30" },
-  { id: "deliver_realise", label: "Deliver", icon: Rocket, color: "text-emerald-600", bgColor: "bg-emerald-100 dark:bg-emerald-900/30" },
-  { id: "review_renew", label: "Review", icon: RefreshCw, color: "text-amber-600", bgColor: "bg-amber-100 dark:bg-amber-900/30" },
-  { id: "learn_scale", label: "Scale", icon: GraduationCap, color: "text-rose-600", bgColor: "bg-rose-100 dark:bg-rose-900/30" },
-];
-
-const rolePortals = [
-  {
-    id: "sales",
-    label: "Sales Portal",
-    description: "Pipeline visibility, opportunity tracking, and presales activities",
-    icon: TrendingUp,
-    color: "text-blue-600",
-    bgColor: "bg-blue-100 dark:bg-blue-900/30",
-    phases: ["discover_qualify", "shape_sell"],
-    focus: "Discover & Shape"
-  },
-  {
-    id: "delivery",
-    label: "Delivery Portal", 
-    description: "Implementation tracking, KPI logging, and value realization",
-    icon: Users,
-    color: "text-emerald-600",
-    bgColor: "bg-emerald-100 dark:bg-emerald-900/30",
-    phases: ["deliver_realise", "review_renew", "learn_scale"],
-    focus: "Deliver, Review & Scale"
-  }
-];
 
 const phaseLabels: Record<string, { label: string; color: string }> = {
   discovery: { label: "Discovery", color: "text-blue-600" },
@@ -221,6 +211,28 @@ export default function AccountsDashboard() {
     },
   });
 
+  const deleteAccountMutation = useMutation({
+    mutationFn: async (accountId: number) => {
+      const response = await apiRequest("DELETE", `/api/accounts/${accountId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      toast({
+        title: "Account deleted",
+        description: "The account and all its data have been removed.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to delete account.",
+      });
+    },
+  });
+
   const handleCreateAccount = () => {
     if (!newAccountName.trim()) {
       toast({
@@ -337,29 +349,7 @@ export default function AccountsDashboard() {
 
       <div className="bg-gradient-to-b from-primary/5 to-background py-8 lg:py-12">
         <div className="container mx-auto max-w-7xl px-4 lg:px-8">
-          {/* Lifecycle Flow Visual */}
-          <div className="mb-8 hidden lg:block">
-            <div className="flex items-center justify-between bg-card rounded-xl p-4 border">
-              {lifecyclePhases.map((phase, index) => {
-                const Icon = phase.icon;
-                return (
-                  <div key={phase.id} className="flex items-center">
-                    <div className="flex flex-col items-center gap-2">
-                      <div className={`w-10 h-10 rounded-lg ${phase.bgColor} flex items-center justify-center`}>
-                        <Icon className={`w-5 h-5 ${phase.color}`} />
-                      </div>
-                      <span className="text-xs font-medium text-muted-foreground">{phase.label}</span>
-                    </div>
-                    {index < lifecyclePhases.length - 1 && (
-                      <ArrowRight className="w-5 h-5 text-muted-foreground/40 mx-4" />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Accounts Section with Role Access */}
+          {/* Accounts Section */}
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-6">
             <div>
               <h2 className="text-2xl font-bold tracking-tight mb-1">Your Accounts</h2>
@@ -401,6 +391,8 @@ export default function AccountsDashboard() {
                   projects={getProjectsForAccount(account.id)}
                   expandedAccounts={expandedAccounts}
                   toggleAccountExpanded={toggleAccountExpanded}
+                  onDelete={(id) => deleteAccountMutation.mutate(id)}
+                  isDeleting={deleteAccountMutation.isPending}
                 />
               ))}
             </div>
@@ -416,171 +408,224 @@ function AccountCard({
   logo, 
   projects, 
   expandedAccounts, 
-  toggleAccountExpanded 
+  toggleAccountExpanded,
+  onDelete,
+  isDeleting
 }: { 
   account: Account; 
   logo: string | null;
   projects: Project[];
   expandedAccounts: Record<number, boolean>;
   toggleAccountExpanded: (id: number) => void;
+  onDelete: (id: number) => void;
+  isDeleting: boolean;
 }) {
   const [imageError, setImageError] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const health = getHealthStatus(account.healthScore);
   const isExpanded = expandedAccounts[account.id];
 
+  const handleDelete = () => {
+    onDelete(account.id);
+    setShowDeleteDialog(false);
+  };
+
   return (
-    <Card 
-      className="transition-all duration-200 h-full"
-      data-testid={`card-account-${account.id}`}
-    >
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-3">
-            {logo && !imageError ? (
-              <div className="w-12 h-12 rounded-xl bg-white border overflow-hidden flex items-center justify-center">
-                <img 
-                  src={logo} 
-                  alt={`${account.name} logo`}
-                  className="w-10 h-10 object-contain"
-                  onError={() => setImageError(true)}
-                />
+    <>
+      <Card 
+        className="transition-all duration-200 h-full hover-elevate"
+        data-testid={`card-account-${account.id}`}
+      >
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              {logo && !imageError ? (
+                <div className="w-12 h-12 rounded-xl bg-white border overflow-hidden flex items-center justify-center shrink-0">
+                  <img 
+                    src={logo} 
+                    alt={`${account.name} logo`}
+                    className="w-10 h-10 object-contain"
+                    onError={() => setImageError(true)}
+                  />
+                </div>
+              ) : (
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shrink-0">
+                  <span className="text-lg font-bold text-primary">
+                    {account.name.substring(0, 2).toUpperCase()}
+                  </span>
+                </div>
+              )}
+              <div className="min-w-0">
+                <CardTitle className="text-lg truncate">
+                  {account.name}
+                </CardTitle>
+                {account.industry && (
+                  <CardDescription className="truncate">{account.industry}</CardDescription>
+                )}
               </div>
-            ) : (
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                <Building2 className="w-6 h-6 text-primary" />
-              </div>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" data-testid={`button-account-menu-${account.id}`}>
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link href={`/accounts/${account.id}`} className="flex items-center gap-2 cursor-pointer">
+                    <ExternalLink className="w-4 h-4" />
+                    View Details
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  className="text-destructive focus:text-destructive cursor-pointer"
+                  onClick={() => setShowDeleteDialog(true)}
+                  data-testid={`button-delete-account-${account.id}`}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Account
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            {account.tier && (
+              <Badge className={tierColors[account.tier] || "bg-muted"}>
+                {account.tier.charAt(0).toUpperCase() + account.tier.slice(1)}
+              </Badge>
             )}
-            <div>
-              <CardTitle className="text-lg">
-                {account.name}
-              </CardTitle>
-              {account.industry && (
-                <CardDescription>{account.industry}</CardDescription>
+            <div className="flex items-center gap-2">
+              <span className={`text-sm font-medium ${health.color}`}>
+                {health.label}
+              </span>
+              {account.healthScore !== null && (
+                <span className="text-xs text-muted-foreground">
+                  ({account.healthScore}%)
+                </span>
               )}
             </div>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          {account.tier && (
-            <Badge className={tierColors[account.tier] || "bg-muted"}>
-              {account.tier.charAt(0).toUpperCase() + account.tier.slice(1)}
-            </Badge>
+          
+          {account.healthScore !== null && (
+            <Progress 
+              value={account.healthScore} 
+              className="h-2"
+            />
           )}
-          <div className="flex items-center gap-2">
-            <span className={`text-sm font-medium ${health.color}`}>
-              {health.label}
-            </span>
-            {account.healthScore !== null && (
-              <span className="text-xs text-muted-foreground">
-                ({account.healthScore}%)
-              </span>
-            )}
-          </div>
-        </div>
-        
-        {account.healthScore !== null && (
-          <Progress 
-            value={account.healthScore} 
-            className="h-2"
-          />
-        )}
 
-        {/* Projects Dropdown */}
-        {projects.length > 0 ? (
-          <Collapsible open={isExpanded} onOpenChange={() => toggleAccountExpanded(account.id)}>
-            <CollapsibleTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="w-full justify-between px-2 h-auto py-2"
-                data-testid={`button-toggle-projects-${account.id}`}
-              >
-                <div className="flex items-center gap-2">
-                  <FolderOpen className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">{projects.length} Project{projects.length > 1 ? 's' : ''}</span>
-                </div>
-                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-2 space-y-1">
-              {projects.map((project) => {
-                const phase = phaseLabels[project.currentPhase] || { label: project.currentPhase, color: "text-muted-foreground" };
-                return (
-                  <div 
-                    key={project.id} 
-                    className="rounded-lg border bg-muted/30 p-2 space-y-2"
-                    data-testid={`project-row-${project.id}`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Layers className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                        <span className="text-sm font-medium truncate">{project.name}</span>
-                      </div>
-                      <Badge variant="secondary" className={`text-xs shrink-0 ${phase.color}`}>
-                        {phase.label}
-                      </Badge>
-                    </div>
-                    <div className="flex gap-1.5">
-                      <Link href={`/projects/${project.id}/sales`} className="flex-1">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="w-full h-7 text-xs gap-1"
-                          data-testid={`button-project-sales-${project.id}`}
-                        >
-                          <TrendingUp className="w-3 h-3 text-blue-600" />
-                          Sales
-                        </Button>
-                      </Link>
-                      <Link href={`/projects/${project.id}/delivery`} className="flex-1">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="w-full h-7 text-xs gap-1"
-                          data-testid={`button-project-delivery-${project.id}`}
-                        >
-                          <Users className="w-3 h-3 text-emerald-600" />
-                          Delivery
-                        </Button>
-                      </Link>
-                    </div>
+          {/* Projects List */}
+          {projects.length > 0 ? (
+            <Collapsible open={isExpanded} onOpenChange={() => toggleAccountExpanded(account.id)}>
+              <CollapsibleTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full justify-between px-2 h-auto py-2"
+                  data-testid={`button-toggle-projects-${account.id}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <FolderOpen className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">{projects.length} Initiative{projects.length > 1 ? 's' : ''}</span>
                   </div>
-                );
-              })}
-            </CollapsibleContent>
-          </Collapsible>
-        ) : (
-          <div className="text-center py-2 text-xs text-muted-foreground">
-            No projects yet
-          </div>
-        )}
+                  <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-2 space-y-1">
+                {projects.map((project) => {
+                  const phase = phaseLabels[project.currentPhase] || { label: project.currentPhase, color: "text-muted-foreground" };
+                  return (
+                    <div 
+                      key={project.id} 
+                      className="rounded-lg border bg-muted/30 p-2 space-y-2"
+                      data-testid={`project-row-${project.id}`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Layers className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                          <span className="text-sm font-medium truncate">{project.name}</span>
+                        </div>
+                        <Badge variant="secondary" className={`text-xs shrink-0 ${phase.color}`}>
+                          {phase.label}
+                        </Badge>
+                      </div>
+                      <div className="flex gap-1.5">
+                        <Link href={`/projects/${project.id}/sales`} className="flex-1">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full h-7 text-xs gap-1"
+                            data-testid={`button-project-sales-${project.id}`}
+                          >
+                            <TrendingUp className="w-3 h-3 text-blue-600" />
+                            Sales
+                          </Button>
+                        </Link>
+                        <Link href={`/projects/${project.id}/delivery`} className="flex-1">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full h-7 text-xs gap-1"
+                            data-testid={`button-project-delivery-${project.id}`}
+                          >
+                            <Users className="w-3 h-3 text-emerald-600" />
+                            Delivery
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
+              </CollapsibleContent>
+            </Collapsible>
+          ) : (
+            <div className="text-center py-3 text-sm text-muted-foreground border rounded-lg bg-muted/20">
+              <FolderOpen className="w-5 h-5 mx-auto mb-1 opacity-50" />
+              No initiatives yet
+            </div>
+          )}
 
-        {/* Role Access Buttons */}
-        <div className="pt-2 border-t space-y-2">
-          <p className="text-xs text-muted-foreground font-medium">Open account as:</p>
-          <div className="grid grid-cols-2 gap-2">
-            {rolePortals.map((portal) => {
-              const Icon = portal.icon;
-              return (
-                <Link key={portal.id} href={`/accounts/${account.id}/${portal.id}`}>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full justify-start gap-2 group"
-                    data-testid={`button-${portal.id}-${account.id}`}
-                  >
-                    <Icon className={`w-4 h-4 ${portal.color}`} />
-                    <span className="truncate">{portal.label.replace(' Portal', '')}</span>
-                    <ArrowRight className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </Button>
-                </Link>
-              );
-            })}
+          {/* Quick Actions */}
+          <div className="pt-2 border-t">
+            <Link href={`/accounts/${account.id}`}>
+              <Button 
+                variant="default" 
+                size="sm" 
+                className="w-full gap-2"
+                data-testid={`button-view-account-${account.id}`}
+              >
+                <Building2 className="w-4 h-4" />
+                Open Account Hub
+                <ArrowRight className="w-3 h-3 ml-auto" />
+              </Button>
+            </Link>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete "{account.name}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this account and all associated initiatives, KPI commitments, and handoffs. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete} 
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete"
+            >
+              {isDeleting ? "Deleting..." : "Delete Account"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

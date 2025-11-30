@@ -6060,6 +6060,39 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
   app.post("/api/accounts", async (req, res) => {
     try {
       const validated = insertAccountSchema.parse(req.body);
+      
+      // Auto-fetch company logo if not provided
+      if (!validated.companyLogoUrl && validated.name) {
+        try {
+          // Use Clearout API to find company info
+          const searchResponse = await fetch(
+            `https://api.clearout.io/public/companies/autocomplete?query=${encodeURIComponent(validated.name)}`
+          );
+          
+          if (searchResponse.ok) {
+            const companies = await searchResponse.json();
+            if (companies && companies.length > 0) {
+              // Use logo from first match or generate from Clearbit using domain
+              const company = companies[0];
+              if (company.logo) {
+                validated.companyLogoUrl = company.logo;
+              } else if (company.domain) {
+                validated.companyLogoUrl = `https://logo.clearbit.com/${company.domain}`;
+              }
+            }
+          }
+          
+          // Fallback: generate Clearbit URL from company name
+          if (!validated.companyLogoUrl) {
+            const domainGuess = validated.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+            validated.companyLogoUrl = `https://logo.clearbit.com/${domainGuess}.com`;
+          }
+        } catch (logoError) {
+          console.error("Error fetching company logo:", logoError);
+          // Continue without logo - not critical
+        }
+      }
+      
       const account = await storage.createAccount(validated);
       res.json(account);
     } catch (error: any) {
