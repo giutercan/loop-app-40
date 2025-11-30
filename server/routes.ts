@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "./storage";
-import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale, generateStrategicPillars, generateStorySuggestion, generateDiscoveryKpiSuggestions } from "./ai";
+import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale, generateStrategicPillars, generateStorySuggestion, generateDiscoveryKpiSuggestions, enrichContactWithAI } from "./ai";
 import { z } from "zod";
 import crypto from "crypto";
 
@@ -6518,6 +6518,36 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
     }
   });
   
+  // POST /api/projects/:projectId/ai/enrich-contact - AI-powered contact research for Green Sheet
+  app.post("/api/projects/:projectId/ai/enrich-contact", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const project = await storage.getProject(projectId);
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const { contactName, title, linkedInUrl } = req.body;
+      
+      if (!contactName) {
+        return res.status(400).json({ error: "contactName is required" });
+      }
+      
+      const enrichmentResult = await enrichContactWithAI({
+        contactName,
+        companyName: project.companyName,
+        title: title || undefined,
+        linkedInUrl: linkedInUrl || undefined
+      });
+      
+      res.json(enrichmentResult);
+    } catch (error: any) {
+      console.error("[Contact Enrichment API] Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // POST /api/projects/:projectId/ai/story-suggestion - Generate AI story suggestions
   app.post("/api/projects/:projectId/ai/story-suggestion", async (req, res) => {
     try {

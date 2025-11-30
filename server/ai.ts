@@ -2855,3 +2855,107 @@ Return your response in JSON format:
     throw error;
   }
 }
+
+// ============================================================================
+// CONTACT ENRICHMENT - AI-powered research for Green Sheet contacts
+// ============================================================================
+
+export interface ContactEnrichmentInput {
+  contactName: string;
+  companyName: string;
+  title?: string;
+  linkedInUrl?: string;
+}
+
+export interface ContactEnrichmentResult {
+  suggestedTitle: string | null;
+  suggestedRole: string | null;
+  suggestedInfluence: string | null;
+  background: string;
+  likelyPriorities: string[];
+  potentialConcerns: string[];
+  rapportBuilders: string[];
+  communicationStyle: string;
+  decisionMakingStyle: string;
+  recommendedApproach: string;
+}
+
+const contactEnrichmentSchema = z.object({
+  suggestedTitle: z.string().nullable(),
+  suggestedRole: z.enum(["economic_buyer", "user_buyer", "technical_buyer", "coach", "champion"]).nullable(),
+  suggestedInfluence: z.enum(["high", "medium", "low"]).nullable(),
+  background: z.string(),
+  likelyPriorities: z.array(z.string()),
+  potentialConcerns: z.array(z.string()),
+  rapportBuilders: z.array(z.string()),
+  communicationStyle: z.string(),
+  decisionMakingStyle: z.string(),
+  recommendedApproach: z.string()
+});
+
+export async function enrichContactWithAI(input: ContactEnrichmentInput): Promise<ContactEnrichmentResult> {
+  const prompt = `You are a strategic sales consultant helping prepare for an important meeting. Research and provide insights about this executive contact.
+
+CONTACT INFORMATION:
+- Name: ${input.contactName}
+- Company: ${input.companyName}
+${input.title ? `- Known Title: ${input.title}` : ""}
+${input.linkedInUrl ? `- LinkedIn: ${input.linkedInUrl}` : ""}
+
+Based on the contact's name, title, and company context, provide strategic intelligence to help prepare for the meeting. Even without direct access to their profile, use your knowledge of:
+1. Typical responsibilities for this role/title
+2. Common priorities for executives at companies like ${input.companyName}
+3. Industry-specific challenges and trends
+4. Communication preferences typical of this role level
+
+INSTRUCTIONS:
+- If the title is provided, use it to infer their buying role and influence level
+- Generate realistic and useful insights based on role patterns
+- Focus on actionable intelligence for a sales meeting
+- Be specific to the industry/company context when possible
+
+Return your analysis in JSON format:
+{
+  "suggestedTitle": "Title if not provided, null if already known",
+  "suggestedRole": "One of: economic_buyer, user_buyer, technical_buyer, coach, champion - based on their likely decision authority",
+  "suggestedInfluence": "One of: high, medium, low - based on title seniority",
+  "background": "2-3 sentence professional background based on typical career paths for this role",
+  "likelyPriorities": ["Priority 1", "Priority 2", "Priority 3"] - what they likely care about most,
+  "potentialConcerns": ["Concern 1", "Concern 2", "Concern 3"] - what might worry them about a consulting engagement,
+  "rapportBuilders": ["Topic 1", "Topic 2"] - conversation starters or shared interests,
+  "communicationStyle": "Brief description of how they likely prefer to communicate (data-driven, story-oriented, etc.)",
+  "decisionMakingStyle": "How they likely make decisions (consensus, data-driven, intuitive, etc.)",
+  "recommendedApproach": "Specific tactical advice for the first meeting with this person"
+}`;
+
+  try {
+    console.log(`[AI Contact Enrichment] Researching ${input.contactName} at ${input.companyName}`);
+    
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 1500,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    
+    if (!content) {
+      throw new Error("AI returned empty response");
+    }
+    
+    const parsedContent = JSON.parse(content);
+    
+    const validationResult = contactEnrichmentSchema.safeParse(parsedContent);
+    if (!validationResult.success) {
+      console.error("[AI Contact Enrichment] Validation failed:", validationResult.error);
+      throw new Error(`AI contact enrichment validation failed: ${validationResult.error.message}`);
+    }
+    
+    console.log(`[AI Contact Enrichment] Success! Generated insights for ${input.contactName}`);
+    return validationResult.data;
+  } catch (error) {
+    console.error("[AI Contact Enrichment] Error:", error);
+    throw error;
+  }
+}

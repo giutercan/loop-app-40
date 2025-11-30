@@ -812,6 +812,69 @@ export default function ProjectRoleView() {
   });
   const [isGreenSheetExpanded, setIsGreenSheetExpanded] = useState(true);
   
+  // Contact Enrichment state
+  const [showEnrichmentDialog, setShowEnrichmentDialog] = useState(false);
+  const [enrichmentMethod, setEnrichmentMethod] = useState<"ai" | "linkedin" | "data">("ai");
+  const [linkedInUrl, setLinkedInUrl] = useState("");
+  const [enrichmentResult, setEnrichmentResult] = useState<{
+    suggestedTitle: string | null;
+    suggestedRole: string | null;
+    suggestedInfluence: string | null;
+    background: string;
+    likelyPriorities: string[];
+    potentialConcerns: string[];
+    rapportBuilders: string[];
+    communicationStyle: string;
+    decisionMakingStyle: string;
+    recommendedApproach: string;
+  } | null>(null);
+
+  // Contact enrichment mutation
+  const enrichContactMutation = useMutation({
+    mutationFn: async (data: { contactName: string; title?: string; linkedInUrl?: string }) => {
+      const response = await apiRequest("POST", `/api/projects/${projectId}/ai/enrich-contact`, data);
+      return response.json();
+    },
+    onSuccess: (result) => {
+      setEnrichmentResult(result);
+      toast({
+        title: "Contact researched",
+        description: "AI has generated insights about this contact."
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Research failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Apply enrichment results to meeting contact
+  const applyEnrichment = () => {
+    if (!enrichmentResult) return;
+    
+    setMeetingContact(prev => ({
+      ...prev,
+      title: enrichmentResult.suggestedTitle && !prev.title ? enrichmentResult.suggestedTitle : prev.title,
+      role: (enrichmentResult.suggestedRole as BuyingRole) || prev.role,
+      influence: (enrichmentResult.suggestedInfluence as InfluenceLevel) || prev.influence,
+      knownConcerns: enrichmentResult.potentialConcerns.length > 0 
+        ? (prev.knownConcerns ? prev.knownConcerns + "\n" : "") + enrichmentResult.potentialConcerns.join("; ")
+        : prev.knownConcerns,
+      personalRapport: enrichmentResult.rapportBuilders.length > 0
+        ? (prev.personalRapport ? prev.personalRapport + "\n" : "") + enrichmentResult.rapportBuilders.join("; ")
+        : prev.personalRapport
+    }));
+    
+    setShowEnrichmentDialog(false);
+    toast({
+      title: "Insights applied",
+      description: "Contact fields have been updated with AI research."
+    });
+  };
+  
   // Role-based coaching guidance
   const roleCoaching: Record<BuyingRole, string> = {
     economic_buyer: "Focus on ROI, business impact, and strategic alignment. This person controls the budget—speak to outcomes and value, not features.",
@@ -4423,11 +4486,27 @@ export default function ProjectRoleView() {
                   <CardContent className="pt-6 space-y-6">
                     {/* Meeting Contact Context - Key Green Sheet Element */}
                     <div className="p-4 rounded-xl border-2 border-emerald-500/20 bg-white/50">
-                      <h4 className="font-semibold text-sm mb-4 flex items-center gap-2 text-emerald-800">
-                        <UserCircle className="w-5 h-5" />
-                        Who Are You Meeting? 
-                        <span className="text-xs font-normal text-muted-foreground">(Influences your approach)</span>
-                      </h4>
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="font-semibold text-sm flex items-center gap-2 text-emerald-800">
+                          <UserCircle className="w-5 h-5" />
+                          Who Are You Meeting? 
+                          <span className="text-xs font-normal text-muted-foreground">(Influences your approach)</span>
+                        </h4>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5 text-blue-600 border-blue-500/30 hover:bg-blue-500/10"
+                          onClick={() => {
+                            setEnrichmentResult(null);
+                            setShowEnrichmentDialog(true);
+                          }}
+                          disabled={!meetingContact.name}
+                          data-testid="button-enrich-contact"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          Research Contact
+                        </Button>
+                      </div>
                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                         <div className="space-y-2">
                           <Label className="text-xs text-muted-foreground">Contact Name</Label>
@@ -8250,6 +8329,236 @@ export default function ProjectRoleView() {
                 </>
               )}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Contact Enrichment Dialog */}
+      <Dialog open={showEnrichmentDialog} onOpenChange={setShowEnrichmentDialog}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserCircle className="w-5 h-5 text-blue-600" />
+              Research Contact: {meetingContact.name || "Contact"}
+            </DialogTitle>
+            <DialogDescription>
+              Get AI-powered insights to prepare for your meeting
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Tabs value={enrichmentMethod} onValueChange={(v) => setEnrichmentMethod(v as "ai" | "linkedin" | "data")} className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="ai" className="gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" />
+                AI Research
+              </TabsTrigger>
+              <TabsTrigger value="linkedin" className="gap-1.5">
+                <ExternalLink className="w-3.5 h-3.5" />
+                LinkedIn
+              </TabsTrigger>
+              <TabsTrigger value="data" className="gap-1.5">
+                <Database className="w-3.5 h-3.5" />
+                Data Enrich
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="ai" className="mt-4 space-y-4">
+              <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                <div className="flex items-start gap-3">
+                  <Sparkles className="w-5 h-5 text-blue-600 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-blue-900">AI-Powered Research</p>
+                    <p className="text-sm text-blue-700 mt-1">
+                      Based on <span className="font-semibold">{meetingContact.name}</span>'s role at <span className="font-semibold">{project?.companyName}</span>, 
+                      AI will generate insights about their likely priorities, concerns, and communication style.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {!enrichmentResult && (
+                <div className="flex justify-center py-4">
+                  <Button
+                    onClick={() => enrichContactMutation.mutate({
+                      contactName: meetingContact.name,
+                      title: meetingContact.title || undefined,
+                      linkedInUrl: linkedInUrl || undefined
+                    })}
+                    disabled={enrichContactMutation.isPending || !meetingContact.name}
+                    className="gap-2"
+                    data-testid="button-run-ai-research"
+                  >
+                    {enrichContactMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Researching...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4" />
+                        Research {meetingContact.name}
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+
+              {enrichmentResult && (
+                <div className="space-y-4">
+                  {/* Background */}
+                  <div className="p-3 rounded-lg border bg-muted/30">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1 mb-2">
+                      <Users className="w-3 h-3" />
+                      Professional Background
+                    </Label>
+                    <p className="text-sm">{enrichmentResult.background}</p>
+                  </div>
+
+                  {/* Suggested Role & Influence */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {enrichmentResult.suggestedRole && (
+                      <div className="p-3 rounded-lg border bg-purple-500/10 border-purple-500/20">
+                        <Label className="text-xs text-purple-700">Likely Buying Role</Label>
+                        <p className="text-sm font-medium mt-1 capitalize">
+                          {enrichmentResult.suggestedRole.replace("_", " ")}
+                        </p>
+                      </div>
+                    )}
+                    {enrichmentResult.suggestedInfluence && (
+                      <div className="p-3 rounded-lg border bg-amber-500/10 border-amber-500/20">
+                        <Label className="text-xs text-amber-700">Influence Level</Label>
+                        <p className="text-sm font-medium mt-1 capitalize">{enrichmentResult.suggestedInfluence}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Priorities & Concerns */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-lg border">
+                      <Label className="text-xs text-muted-foreground flex items-center gap-1 mb-2">
+                        <Target className="w-3 h-3 text-green-600" />
+                        Likely Priorities
+                      </Label>
+                      <ul className="space-y-1">
+                        {enrichmentResult.likelyPriorities.map((p, i) => (
+                          <li key={i} className="text-sm flex items-start gap-1.5">
+                            <span className="text-green-600 mt-0.5">•</span>
+                            {p}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="p-3 rounded-lg border">
+                      <Label className="text-xs text-muted-foreground flex items-center gap-1 mb-2">
+                        <AlertCircle className="w-3 h-3 text-orange-600" />
+                        Potential Concerns
+                      </Label>
+                      <ul className="space-y-1">
+                        {enrichmentResult.potentialConcerns.map((c, i) => (
+                          <li key={i} className="text-sm flex items-start gap-1.5">
+                            <span className="text-orange-600 mt-0.5">•</span>
+                            {c}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Communication & Decision Style */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-lg border bg-indigo-500/10 border-indigo-500/20">
+                      <Label className="text-xs text-indigo-700">Communication Style</Label>
+                      <p className="text-sm mt-1">{enrichmentResult.communicationStyle}</p>
+                    </div>
+                    <div className="p-3 rounded-lg border bg-teal-500/10 border-teal-500/20">
+                      <Label className="text-xs text-teal-700">Decision-Making Style</Label>
+                      <p className="text-sm mt-1">{enrichmentResult.decisionMakingStyle}</p>
+                    </div>
+                  </div>
+
+                  {/* Rapport Builders */}
+                  {enrichmentResult.rapportBuilders.length > 0 && (
+                    <div className="p-3 rounded-lg border bg-pink-500/10 border-pink-500/20">
+                      <Label className="text-xs text-pink-700 mb-2 block">Rapport Builders</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {enrichmentResult.rapportBuilders.map((r, i) => (
+                          <Badge key={i} variant="secondary" className="bg-pink-100 text-pink-800">
+                            {r}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Recommended Approach */}
+                  <div className="p-3 rounded-lg border-2 border-green-500/30 bg-green-500/10">
+                    <Label className="text-xs text-green-700 flex items-center gap-1 mb-2">
+                      <GraduationCap className="w-3 h-3" />
+                      Recommended Approach
+                    </Label>
+                    <p className="text-sm text-green-900">{enrichmentResult.recommendedApproach}</p>
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="linkedin" className="mt-4 space-y-4">
+              <div className="p-4 rounded-lg bg-blue-600/10 border border-blue-600/20">
+                <div className="flex items-start gap-3">
+                  <ExternalLink className="w-5 h-5 text-blue-600 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-blue-900">LinkedIn Profile Reference</p>
+                    <p className="text-sm text-blue-700 mt-1">
+                      Paste the contact's LinkedIn URL to keep as a reference. This will be saved with the contact for future reference.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>LinkedIn Profile URL</Label>
+                <Input
+                  placeholder="https://linkedin.com/in/..."
+                  value={linkedInUrl}
+                  onChange={(e) => setLinkedInUrl(e.target.value)}
+                  data-testid="input-linkedin-url"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Note: Due to LinkedIn API restrictions, we cannot automatically fetch profile data. The URL will be stored as a reference.
+              </p>
+            </TabsContent>
+
+            <TabsContent value="data" className="mt-4 space-y-4">
+              <div className="p-4 rounded-lg bg-gray-500/10 border border-gray-500/20">
+                <div className="flex items-start gap-3">
+                  <Database className="w-5 h-5 text-gray-600 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-gray-900">Data Enrichment Services</p>
+                    <p className="text-sm text-gray-700 mt-1">
+                      Professional data enrichment services like Clearbit, Apollo, or ZoomInfo can provide verified contact information.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="text-center py-6">
+                <Badge variant="outline" className="text-muted-foreground">Coming Soon</Badge>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Data enrichment integrations are on our roadmap.
+                </p>
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          <DialogFooter className="gap-2 mt-4">
+            <Button variant="outline" onClick={() => setShowEnrichmentDialog(false)}>
+              Close
+            </Button>
+            {enrichmentResult && enrichmentMethod === "ai" && (
+              <Button onClick={applyEnrichment} className="gap-2" data-testid="button-apply-enrichment">
+                <CheckCircle className="w-4 h-4" />
+                Apply Insights to Green Sheet
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
