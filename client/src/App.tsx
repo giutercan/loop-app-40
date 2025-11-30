@@ -20,6 +20,8 @@ import AccountRoleView from "@/pages/account-role-view";
 import ProjectRoleView from "@/pages/project-role-view";
 import ProjectLayout from "@/components/ProjectLayout";
 import { CommandPalette } from "@/components/CommandPalette";
+import { DemoModeProvider } from "@/demo/DemoModeContext";
+import { ExecutiveDemoTour } from "@/demo/ExecutiveDemoTour";
 
 function DiscoveryWithLayout() {
   const [, params] = useRoute("/projects/:id/discovery");
@@ -101,9 +103,12 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <CommandPalette />
-        <Toaster />
-        <Router />
+        <DemoModeProvider>
+          <CommandPalette />
+          <ExecutiveDemoTour />
+          <Toaster />
+          <Router />
+        </DemoModeProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

@@ -100,6 +100,8 @@ import {
   type ValuePillarId,
   type SolutionPatternId
 } from "@shared/value-frameworks";
+import { DemoModeButton } from "@/demo/DemoModeButton";
+import { useDemoMode } from "@/demo/DemoModeContext";
 
 type Role = "sales" | "consultant" | "delivery" | "csm" | "client_sponsor";
 
@@ -1759,7 +1761,7 @@ export default function ProjectRoleView() {
         </Card>
 
         {/* KPI Pipeline */}
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-6 lg:grid-cols-3" data-demo-step="kpi-pipeline">
           {/* Draft */}
           <Card>
             <CardHeader className="pb-3">
@@ -2425,7 +2427,7 @@ export default function ProjectRoleView() {
   const renderSalesWorkspace = () => (
     <div className="flex gap-6">
       {/* Workflow Progress Sidebar */}
-      <div className="hidden lg:block w-56 shrink-0">
+      <div className="hidden lg:block w-56 shrink-0" data-demo-step="workflow-progress">
         <div className="sticky top-4 space-y-2">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Sales Journey</p>
           {[
@@ -2556,7 +2558,7 @@ export default function ProjectRoleView() {
             {/* Overview Section */}
             {buildValueSection === "overview" && (
               <>
-                <Card className="bg-gradient-to-r from-primary/5 to-emerald-500/5 border-primary/20">
+                <Card className="bg-gradient-to-r from-primary/5 to-emerald-500/5 border-primary/20" data-demo-step="value-summary">
                   <CardHeader>
                     <div className="flex items-center justify-between flex-wrap gap-4">
                       <div className="flex items-center gap-3">
@@ -2733,7 +2735,7 @@ export default function ProjectRoleView() {
 
         {/* AI-Recommended KPI Selection */}
         {insights.length > 0 && (
-          <Card className="bg-gradient-to-r from-purple-500/5 via-blue-500/5 to-emerald-500/5 border-purple-500/20">
+          <Card className="bg-gradient-to-r from-purple-500/5 via-blue-500/5 to-emerald-500/5 border-purple-500/20" data-demo-step="kpi-suggestions">
             <CardHeader>
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-3">
@@ -2828,7 +2830,7 @@ export default function ProjectRoleView() {
               {!aiKpiLoading && aiKpiSuggestions.length > 0 && (
                 <div className="space-y-4">
                   {/* Selection Controls */}
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border" data-demo-step="multi-select">
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-medium">
                         {selectedKpiSuggestions.size} of {aiKpiSuggestions.length} selected
@@ -2955,7 +2957,7 @@ export default function ProjectRoleView() {
                               </div>
 
                               {/* Benchmarks Grid */}
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3" data-demo-step="benchmark-display">
                                 {/* Industry Benchmark */}
                                 {suggestion.industryBenchmark && (
                                   <div className="p-2 rounded-lg bg-blue-500/5 border border-blue-500/20">
@@ -3220,7 +3222,7 @@ export default function ProjectRoleView() {
           {/* STAGE 1: DISCOVER - Research & Questions */}
           <TabsContent value="discover" className="space-y-6">
         {/* Discovery Workflow Progress */}
-        <Card className="bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-amber-500/5 border-blue-500/20">
+        <Card className="bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-amber-500/5 border-blue-500/20" data-demo-step="discovery-research">
           <CardHeader>
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-3">
@@ -6804,7 +6806,7 @@ export default function ProjectRoleView() {
 
         {/* Ready for Handoff */}
         {confirmedCommitments.length > 0 && (
-          <Card>
+          <Card data-demo-step="handoff-section">
             <CardHeader className="flex flex-row items-center justify-between gap-2">
               <div>
                 <CardTitle className="flex items-center gap-2">
@@ -7453,7 +7455,7 @@ export default function ProjectRoleView() {
 
       {/* Health Dashboard - CS-style health scores (Trend #4: CS playbooks in value governance) */}
       <TabsContent value="health" className="space-y-6">
-        <Card className="bg-gradient-to-r from-emerald-500/5 to-blue-500/5 border-emerald-500/20">
+        <Card className="bg-gradient-to-r from-emerald-500/5 to-blue-500/5 border-emerald-500/20" data-demo-step="delivery-dashboard">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -7954,6 +7956,8 @@ export default function ProjectRoleView() {
             </div>
 
             <div className="flex items-center gap-3">
+              <DemoModeButton />
+              
               <Badge variant="outline" className="hidden sm:flex">
                 {project.lifecyclePhase ? phaseLabels[project.lifecyclePhase] || project.lifecyclePhase : "Active"}
               </Badge>
@@ -7981,7 +7985,7 @@ export default function ProjectRoleView() {
       </header>
 
       <main className="container mx-auto max-w-7xl px-4 lg:px-8 py-8">
-        <div className="mb-8">
+        <div className="mb-8" data-demo-step="account-header">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-12 h-12 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
               <RoleIcon className="w-6 h-6 text-primary-foreground" />
