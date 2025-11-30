@@ -36,7 +36,7 @@ export function DemoModeButton() {
       startDemo("Chanel");
       
       if (data.projectId) {
-        setLocation(`/projects/${data.projectId}?role=sales`);
+        setLocation(`/projects/${data.projectId}/sales`);
       }
       
       toast({
