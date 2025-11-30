@@ -305,7 +305,7 @@ function KPICard({ kpi, index = 0 }: { kpi: DashboardData['kpiDetails'][0]; inde
               {configAlert?.message || 'Missing value-per-unit configuration'}
             </p>
             <p className="text-xs text-muted-foreground mt-2">
-              This KPI is excluded from health scoring until configured.
+              This outcome is excluded from health scoring until configured.
             </p>
           </div>
         ) : hasMeasurementIssue ? (
@@ -318,7 +318,7 @@ function KPICard({ kpi, index = 0 }: { kpi: DashboardData['kpiDetails'][0]; inde
               {invalidDataAlert?.message || 'No valid measurements recorded yet'}
             </p>
             <p className="text-xs text-muted-foreground mt-2">
-              This KPI is excluded from health scoring until valid data is available.
+              This outcome is excluded from health scoring until valid data is available.
             </p>
           </div>
         ) : (
@@ -524,7 +524,7 @@ export function RealizationDashboard({ projectId }: RealizationDashboardProps) {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <Target className="w-4 h-4 text-primary" />
-                KPI Status
+                Outcome Status
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -651,7 +651,7 @@ export function RealizationDashboard({ projectId }: RealizationDashboardProps) {
               Active Alerts
               <Badge variant="secondary" className="ml-2">{alerts.length}</Badge>
             </CardTitle>
-            <CardDescription>KPIs requiring attention</CardDescription>
+            <CardDescription>Outcomes requiring attention</CardDescription>
           </CardHeader>
           <CardContent>
             <AlertsPanel alerts={alerts} />
@@ -662,8 +662,8 @@ export function RealizationDashboard({ projectId }: RealizationDashboardProps) {
       {/* KPI Progress Cards */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">KPI Progress</h3>
-          <Badge variant="outline">{kpiDetails.length} KPIs</Badge>
+          <h3 className="text-lg font-semibold">Outcome Progress</h3>
+          <Badge variant="outline">{kpiDetails.length} Outcomes</Badge>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {kpiDetails

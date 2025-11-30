@@ -119,7 +119,7 @@ export function DemoModeButton() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-purple-600 mt-0.5">2.</span>
-                  <span><strong>Smart KPI Suggestions</strong> - Industry & Korn Ferry benchmarks</span>
+                  <span><strong>Smart Outcome Suggestions</strong> - Industry & Korn Ferry benchmarks</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-purple-600 mt-0.5">3.</span>

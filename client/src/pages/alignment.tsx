@@ -149,14 +149,14 @@ export default function AlignmentPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/alignment/finalized-jobs`] });
       toast({
-        title: "KPI updated",
+        title: "Outcome updated",
         description: "Baseline or target value has been updated successfully.",
       });
     },
     onError: (error: any) => {
       toast({
         title: "Update failed",
-        description: error.message || "Failed to update KPI value.",
+        description: error.message || "Failed to update outcome value.",
         variant: "destructive",
       });
     },
@@ -172,7 +172,7 @@ export default function AlignmentPage() {
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}`] });
       toast({
         title: "Value Realization Started",
-        description: "You can now track KPI progress and measure value delivered.",
+        description: "You can now track outcome progress and measure value delivered.",
       });
       setLocation(`/projects/${projectId}/realisation`);
     },
@@ -331,7 +331,7 @@ export default function AlignmentPage() {
               <ScrollArea className="h-full">
                 <div className="px-3 pb-4">
                   <p className="text-xs text-muted-foreground mb-3 px-1">
-                    Key initiatives from Discovery. Set baseline and target KPIs.
+                    Key initiatives from Discovery. Set baseline and target outcomes.
                   </p>
                   <div className="space-y-1">
                   {isLoadingJobs ? (
@@ -378,7 +378,7 @@ export default function AlignmentPage() {
                                 {job.jobName}
                               </p>
                               <p className={`text-xs mt-1 ${isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-                                {completion.completed}/{completion.total} KPIs ready
+                                {completion.completed}/{completion.total} Outcomes ready
                               </p>
                             </div>
                           </div>
@@ -636,7 +636,7 @@ function JobDetailView({ job, projectId, updateKPIMutation, onShowRecommendation
             {completedKPIs.length}<span className="text-muted-foreground font-normal">/{selectedKPIs.length}</span>
           </div>
           <div className="text-sm text-muted-foreground">
-            KPIs<br />ready
+            Outcomes<br />ready
           </div>
         </div>
         <div className="flex-1">
@@ -657,19 +657,19 @@ function JobDetailView({ job, projectId, updateKPIMutation, onShowRecommendation
           data-testid={`button-recommend-kpis-${job.id}`}
         >
           <Sparkles className="h-4 w-4" />
-          Suggest KPIs
+          Suggest Outcomes
         </Button>
       </div>
 
-      {/* KPI List */}
+      {/* Outcome List */}
       {selectedKPIs.length > 0 ? (
         <div className="space-y-4">
-          {/* Primary KPIs */}
+          {/* Primary Outcomes */}
           {primaryKPIs.length > 0 && (
             <Collapsible open={primaryOpen} onOpenChange={setPrimaryOpen}>
               <CollapsibleTrigger className="flex items-center gap-2 w-full text-left group mb-3">
                 <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${primaryOpen ? '' : '-rotate-90'}`} />
-                <span className="text-sm font-medium text-muted-foreground">Primary KPIs</span>
+                <span className="text-sm font-medium text-muted-foreground">Primary Outcomes</span>
                 <span className="text-xs text-muted-foreground/60">{primaryKPIs.length}</span>
               </CollapsibleTrigger>
               <CollapsibleContent>
@@ -687,12 +687,12 @@ function JobDetailView({ job, projectId, updateKPIMutation, onShowRecommendation
             </Collapsible>
           )}
 
-          {/* Supporting KPIs */}
+          {/* Supporting Outcomes */}
           {supportingKPIs.length > 0 && (
             <Collapsible open={supportingOpen} onOpenChange={setSupportingOpen}>
               <CollapsibleTrigger className="flex items-center gap-2 w-full text-left group mb-3">
                 <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${supportingOpen ? '' : '-rotate-90'}`} />
-                <span className="text-sm font-medium text-muted-foreground">Supporting KPIs</span>
+                <span className="text-sm font-medium text-muted-foreground">Supporting Outcomes</span>
                 <span className="text-xs text-muted-foreground/60">{supportingKPIs.length}</span>
               </CollapsibleTrigger>
               <CollapsibleContent>
@@ -715,8 +715,8 @@ function JobDetailView({ job, projectId, updateKPIMutation, onShowRecommendation
           <div className="w-12 h-12 rounded-xl bg-muted/50 flex items-center justify-center mx-auto mb-4">
             <TargetIcon className="w-6 h-6 text-muted-foreground/50" />
           </div>
-          <p className="font-medium mb-1">No KPIs selected</p>
-          <p className="text-sm text-muted-foreground mb-4">Add KPIs to track progress</p>
+          <p className="font-medium mb-1">No outcomes selected</p>
+          <p className="text-sm text-muted-foreground mb-4">Add outcomes to track progress</p>
           <Button
             variant="outline"
             size="sm"

@@ -3719,12 +3719,14 @@ export function registerRoutes(app: Express) {
           aiAchievabilityScore: rec.achievabilityScore,
           aiValueImpactScore: rec.valueImpactScore,
           aiKornFerryBenchmark: rec.kornFerryBenchmark,
+          aiIndustryBenchmark: rec.industryBenchmark || null,
+          aiTargetRecommendation: rec.targetRecommendation || null,
           isSelected: false, // Not selected by default - consultant chooses
         });
         createdKPIs.push(newKPI);
       }
       
-      console.log(`[AI KPI Recommendations] Created ${createdKPIs.length} recommendations for job theme ${jobTheme.id}`);
+      console.log(`[AI Outcome Recommendations] Created ${createdKPIs.length} recommendations for job theme ${jobTheme.id}`);
       res.json(createdKPIs);
     } catch (error: any) {
       console.error("Error generating KPI recommendations:", error);

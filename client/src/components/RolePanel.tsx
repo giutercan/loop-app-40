@@ -230,7 +230,7 @@ export function RolePanel({
                 <BarChart3 className="w-5 h-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">KPIs Tracked</p>
+                <p className="text-sm text-muted-foreground">Outcomes Tracked</p>
                 <p className="text-xl font-bold">{kpis.length}</p>
               </div>
             </div>

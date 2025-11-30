@@ -110,12 +110,12 @@ export const CHANEL_DISCOVERY_INSIGHTS = [
   },
 ];
 
-export const CHANEL_AI_KPI_SUGGESTIONS = [
+export const CHANEL_AI_OUTCOME_SUGGESTIONS = [
   {
-    id: "kpi-suggestion-1",
-    kpiName: "Leadership Bench Strength Index",
+    id: "outcome-suggestion-1",
+    outcomeName: "Leadership Bench Strength Index",
     description: "Percentage of critical leadership roles with at least one ready-now successor identified and validated through assessment",
-    kpiType: "leading" as const,
+    outcomeType: "leading" as const,
     sourceInsightTitle: "Critical Leadership Succession Gap",
     sourceInsightId: 9001,
     valuePillar: "de-risk",
@@ -125,9 +125,20 @@ export const CHANEL_AI_KPI_SUGGESTIONS = [
     baselineReasoning: "Current internal assessment shows only 23% of 142 boutique director positions have identified successors. This baseline was derived from Chanel's Q3 talent review data and represents a significant gap compared to industry standards.",
     industryBenchmark: {
       low: "40%",
-      mid: "60%", 
+      median: "60%", 
       high: "80%",
       source: "Luxury Retail Talent Benchmark 2024"
+    },
+    targetRecommendation: {
+      suggestedTarget: "75%",
+      achievementRationale: "Based on Chanel's existing talent review infrastructure and executive commitment, achieving 75% bench strength is realistic. Korn Ferry has helped similar luxury brands increase their succession coverage by 40-50 percentage points within 12 months through structured assessment and accelerated development programs.",
+      timeframeMonths: 12,
+      successFactors: [
+        "Executive sponsor commitment from CHRO Philippe Lefort",
+        "Existing talent review data provides accurate baseline",
+        "142 director roles are well-defined with clear competency models",
+        "Proven Korn Ferry succession methodology for luxury retail"
+      ]
     },
     kornFerryBenchmark: "Top-quartile luxury brands achieve 75-85% bench strength for critical roles",
     estimatedAnnualValue: 3200000,
@@ -140,22 +151,33 @@ export const CHANEL_AI_KPI_SUGGESTIONS = [
     }
   },
   {
-    id: "kpi-suggestion-2",
-    kpiName: "Time-to-Productivity (New Directors)",
+    id: "outcome-suggestion-2",
+    outcomeName: "Time-to-Productivity (New Directors)",
     description: "Months required for new boutique directors to achieve 90% of target boutique performance metrics",
-    kpiType: "lagging" as const,
+    outcomeType: "lagging" as const,
     sourceInsightTitle: "Extended New Director Onboarding",
     sourceInsightId: 9002,
     valuePillar: "optimise",
     solutionPattern: "leadership-development",
     suggestedBaseline: "16 months",
     suggestedTarget: "9 months",
-    baselineReasoning: "Analysis of 47 director appointments over past 3 years shows median time to reach 90% boutique KPI achievement is 16 months. This significantly exceeds the 9-month luxury retail benchmark.",
+    baselineReasoning: "Analysis of 47 director appointments over past 3 years shows median time to reach 90% boutique performance is 16 months. This significantly exceeds the 9-month luxury retail benchmark.",
     industryBenchmark: {
       low: "12 months",
-      mid: "9 months",
+      median: "9 months",
       high: "6 months",
       source: "Korn Ferry Luxury Retail Leadership Study"
+    },
+    targetRecommendation: {
+      suggestedTarget: "9 months",
+      achievementRationale: "Chanel's structured onboarding program provides a foundation to accelerate. By implementing Korn Ferry's leadership transition methodology with 90-day milestones, similar luxury brands have reduced time-to-productivity by 40-45%. The existing mentorship culture at Chanel will support rapid adoption.",
+      timeframeMonths: 9,
+      successFactors: [
+        "Existing structured onboarding provides acceleration foundation",
+        "Strong boutique mentor culture enables peer learning",
+        "Clear performance metrics already defined for directors",
+        "Regional training infrastructure is in place"
+      ]
     },
     kornFerryBenchmark: "Best-in-class luxury retailers achieve 6-8 month director productivity ramp",
     estimatedAnnualValue: 2300000,
@@ -168,10 +190,10 @@ export const CHANEL_AI_KPI_SUGGESTIONS = [
     }
   },
   {
-    id: "kpi-suggestion-3",
-    kpiName: "Cultural Alignment Score",
+    id: "outcome-suggestion-3",
+    outcomeName: "Cultural Alignment Score",
     description: "Average employee score on 'I understand and embody the Chanel brand values' (1-10 scale)",
-    kpiType: "leading" as const,
+    outcomeType: "leading" as const,
     sourceInsightTitle: "Cultural Alignment Variance Across Regions",
     sourceInsightId: 9003,
     valuePillar: "strengthen-capability",
@@ -181,9 +203,20 @@ export const CHANEL_AI_KPI_SUGGESTIONS = [
     baselineReasoning: "Global average from annual engagement survey is 6.8/10, with Europe at 7.9 and APAC at 5.7. The regional variance indicates inconsistent culture transmission and development.",
     industryBenchmark: {
       low: "6.5",
-      mid: "7.5",
+      median: "7.5",
       high: "8.5+",
       source: "Luxury Brand Culture Index"
+    },
+    targetRecommendation: {
+      suggestedTarget: "8.5",
+      achievementRationale: "Chanel's strong heritage culture provides the foundation for alignment. Focused cultural immersion programs for APAC combined with Europe-APAC mentorship pairings can close the gap. Korn Ferry has achieved similar 1.5+ point improvements for luxury brands within 12-18 months.",
+      timeframeMonths: 15,
+      successFactors: [
+        "Strong European culture scores provide best-practice examples",
+        "Heritage brand values are well-documented and revered",
+        "APAC leadership receptive to cultural development programs",
+        "Existing engagement survey infrastructure enables tracking"
+      ]
     },
     kornFerryBenchmark: "Top luxury brands maintain 8.2+ cultural alignment with <10% regional variance",
     estimatedAnnualValue: 1800000,
@@ -196,10 +229,10 @@ export const CHANEL_AI_KPI_SUGGESTIONS = [
     }
   },
   {
-    id: "kpi-suggestion-4",
-    kpiName: "High-Potential Retention Rate",
+    id: "outcome-suggestion-4",
+    outcomeName: "High-Potential Retention Rate",
     description: "Annual retention rate of employees identified as high-potential (top 15% performers)",
-    kpiType: "lagging" as const,
+    outcomeType: "lagging" as const,
     sourceInsightTitle: "High Performer Retention Risk",
     sourceInsightId: 9004,
     valuePillar: "de-risk",
@@ -209,9 +242,20 @@ export const CHANEL_AI_KPI_SUGGESTIONS = [
     baselineReasoning: "Current high-potential turnover is 18% (82% retention). Exit data shows primary drivers are limited career visibility and development investment. Industry benchmark for luxury retail is 92%.",
     industryBenchmark: {
       low: "85%",
-      mid: "90%",
+      median: "90%",
       high: "95%",
       source: "Global Luxury Talent Report 2024"
+    },
+    targetRecommendation: {
+      suggestedTarget: "92%",
+      achievementRationale: "Exit interview data reveals clear, addressable root causes: career visibility and development. By implementing structured career pathing with visible succession maps and personalized development plans, similar luxury brands have achieved 8-12 point retention improvements. Chanel's strong brand loyalty provides additional retention leverage.",
+      timeframeMonths: 12,
+      successFactors: [
+        "Exit data clearly identifies addressable root causes",
+        "Strong brand loyalty creates retention advantage",
+        "Budget allocated for development investments",
+        "HR systems support career path visibility"
+      ]
     },
     kornFerryBenchmark: "Top employers in luxury achieve 93%+ high-potential retention through structured development",
     estimatedAnnualValue: 2800000,
@@ -224,10 +268,10 @@ export const CHANEL_AI_KPI_SUGGESTIONS = [
     }
   },
   {
-    id: "kpi-suggestion-5",
-    kpiName: "Digital Leadership Capability Score",
+    id: "outcome-suggestion-5",
+    outcomeName: "Digital Leadership Capability Score",
     description: "Percentage of boutique directors certified as 'digitally proficient' through assessment",
-    kpiType: "leading" as const,
+    outcomeType: "leading" as const,
     sourceInsightTitle: "Digital Skills Gap in Leadership",
     sourceInsightId: 9005,
     valuePillar: "strengthen-capability",
@@ -237,9 +281,20 @@ export const CHANEL_AI_KPI_SUGGESTIONS = [
     baselineReasoning: "Self-assessment data shows only 34% of directors rate themselves confident in digital tools. Validated assessment would likely show even lower actual capability levels.",
     industryBenchmark: {
       low: "45%",
-      mid: "65%",
+      median: "65%",
       high: "85%",
       source: "Luxury Digital Transformation Index"
+    },
+    targetRecommendation: {
+      suggestedTarget: "80%",
+      achievementRationale: "Digital proficiency is a learnable skill with the right program design. Chanel's investment in omnichannel infrastructure means directors have motivation to develop. Cohort-based certification programs with peer support typically achieve 70-80% certification rates within 6 months.",
+      timeframeMonths: 8,
+      successFactors: [
+        "Directors motivated by omnichannel client demands",
+        "Digital tools already deployed across boutiques",
+        "Peer learning culture supports cohort approach",
+        "Certification provides clear development milestone"
+      ]
     },
     kornFerryBenchmark: "Leading omnichannel retailers achieve 80%+ digital proficiency in customer-facing leadership",
     estimatedAnnualValue: 1500000,
@@ -252,10 +307,10 @@ export const CHANEL_AI_KPI_SUGGESTIONS = [
     }
   },
   {
-    id: "kpi-suggestion-6",
-    kpiName: "Succession Pipeline Velocity",
+    id: "outcome-suggestion-6",
+    outcomeName: "Succession Pipeline Velocity",
     description: "Average time (months) for high-potential employees to be ready for next-level role",
-    kpiType: "lagging" as const,
+    outcomeType: "lagging" as const,
     sourceInsightTitle: "Critical Leadership Succession Gap",
     sourceInsightId: 9001,
     valuePillar: "optimise",
@@ -265,9 +320,20 @@ export const CHANEL_AI_KPI_SUGGESTIONS = [
     baselineReasoning: "Current talent pipeline analysis shows average 36-month development cycle for director-ready candidates. This is too slow given retirement timeline and growth plans.",
     industryBenchmark: {
       low: "30 months",
-      mid: "24 months",
+      median: "24 months",
       high: "18 months",
       source: "Executive Succession Benchmark"
+    },
+    targetRecommendation: {
+      suggestedTarget: "24 months",
+      achievementRationale: "Accelerated development programs with stretch assignments, executive mentoring, and targeted capability building can compress the 36-month timeline. Chanel's commitment to internal promotion provides motivation for high-potentials to engage with accelerated tracks. Korn Ferry's proven methodology achieves 25-35% timeline compression.",
+      timeframeMonths: 18,
+      successFactors: [
+        "Strong internal promotion culture motivates participation",
+        "Executive mentorship capacity is available",
+        "Clear director competency model guides development",
+        "Stretch assignment opportunities exist across regions"
+      ]
     },
     kornFerryBenchmark: "Accelerated development programs achieve 18-24 month readiness cycles",
     estimatedAnnualValue: 900000,
@@ -281,13 +347,13 @@ export const CHANEL_AI_KPI_SUGGESTIONS = [
   }
 ];
 
-export const CHANEL_CONFIRMED_KPIS = [
+export const CHANEL_CONFIRMED_OUTCOMES = [
   {
     id: 8001,
     projectId: 9999,
     name: "Leadership Bench Strength Index",
     description: "Percentage of critical leadership roles with at least one ready-now successor identified and validated",
-    kpiUnit: "%",
+    unit: "%",
     baselineValue: 23,
     targetValue: 75,
     targetDate: new Date("2025-12-31"),
@@ -298,7 +364,7 @@ export const CHANEL_CONFIRMED_KPIS = [
     provenance: {
       source: "ai_generated",
       sourceInsightTitle: "Critical Leadership Succession Gap",
-      kpiType: "leading",
+      outcomeType: "leading",
       generatedAt: new Date().toISOString()
     }
   },
@@ -307,7 +373,7 @@ export const CHANEL_CONFIRMED_KPIS = [
     projectId: 9999,
     name: "Time-to-Productivity (New Directors)",
     description: "Months required for new boutique directors to achieve 90% of target boutique performance metrics",
-    kpiUnit: "months",
+    unit: "months",
     baselineValue: 16,
     targetValue: 9,
     targetDate: new Date("2025-12-31"),
@@ -318,7 +384,7 @@ export const CHANEL_CONFIRMED_KPIS = [
     provenance: {
       source: "ai_generated",
       sourceInsightTitle: "Extended New Director Onboarding",
-      kpiType: "lagging",
+      outcomeType: "lagging",
       generatedAt: new Date().toISOString()
     }
   },
@@ -327,7 +393,7 @@ export const CHANEL_CONFIRMED_KPIS = [
     projectId: 9999,
     name: "High-Potential Retention Rate",
     description: "Annual retention rate of employees identified as high-potential (top 15% performers)",
-    kpiUnit: "%",
+    unit: "%",
     baselineValue: 82,
     targetValue: 92,
     targetDate: new Date("2025-12-31"),
@@ -338,7 +404,7 @@ export const CHANEL_CONFIRMED_KPIS = [
     provenance: {
       source: "ai_generated",
       sourceInsightTitle: "High Performer Retention Risk",
-      kpiType: "lagging",
+      outcomeType: "lagging",
       generatedAt: new Date().toISOString()
     }
   },
@@ -348,7 +414,7 @@ export const CHANEL_HANDOFF_PACKET = {
   id: 7001,
   projectId: 9999,
   commitmentIds: [8001, 8002, 8003],
-  executiveSummary: "Strategic talent transformation initiative for Chanel focusing on leadership succession, director development, and high-potential retention. Total annual value of €8.3M across three confirmed KPIs. Client sponsor Philippe Lefort (CHRO) has approved targets and timeline. Q1 2025 kickoff with monthly progress reviews.",
+  executiveSummary: "Strategic talent transformation initiative for Chanel focusing on leadership succession, director development, and high-potential retention. Total annual value of €8.3M across three confirmed outcomes. Client sponsor Philippe Lefort (CHRO) has approved targets and timeline. Q1 2025 kickoff with monthly progress reviews.",
   createdAt: new Date(),
   createdBy: "Sarah Mitchell",
   acceptanceState: "accepted",
@@ -358,13 +424,13 @@ export const CHANEL_HANDOFF_PACKET = {
   acceptanceNotes: "Confirmed alignment with Chanel leadership. Establishing measurement framework in partnership with HR Analytics team. First progress review scheduled for January 2025.",
 };
 
-export const CHANEL_DELIVERY_KPIS = [
+export const CHANEL_DELIVERY_OUTCOMES = [
   {
     id: 8001,
     projectId: 9999,
     name: "Leadership Bench Strength Index",
     description: "Percentage of critical leadership roles with at least one ready-now successor identified and validated",
-    kpiUnit: "%",
+    unit: "%",
     baselineValue: 23,
     targetValue: 75,
     currentValue: 38,
@@ -383,7 +449,7 @@ export const CHANEL_DELIVERY_KPIS = [
     projectId: 9999,
     name: "Time-to-Productivity (New Directors)",
     description: "Months required for new boutique directors to achieve 90% of target boutique performance metrics",
-    kpiUnit: "months",
+    unit: "months",
     baselineValue: 16,
     targetValue: 9,
     currentValue: 13,
@@ -401,7 +467,7 @@ export const CHANEL_DELIVERY_KPIS = [
     projectId: 9999,
     name: "High-Potential Retention Rate",
     description: "Annual retention rate of employees identified as high-potential (top 15% performers)",
-    kpiUnit: "%",
+    unit: "%",
     baselineValue: 82,
     targetValue: 92,
     currentValue: 87,
@@ -421,7 +487,7 @@ export const DEMO_TOUR_STEPS = [
   {
     target: '[data-demo-step="account-header"]',
     title: "Welcome to the Client Value Hub",
-    content: "This is your single source of truth for client engagement. Every insight, KPI, and value commitment lives here - from first discovery to realized business impact.",
+    content: "This is your single source of truth for client engagement. Every insight, outcome, and value commitment lives here - from first discovery to realized business impact.",
     placement: "bottom" as const,
     spotlightPadding: 10,
   },
@@ -441,36 +507,36 @@ export const DEMO_TOUR_STEPS = [
   },
   {
     target: '[data-demo-step="kpi-suggestions"]',
-    title: "AI-Suggested KPIs with Benchmarks",
-    content: "The magic: AI transforms insights into measurable KPIs with Industry Benchmarks and Korn Ferry data. No manual re-entry - the connection is automatic and fully traceable.",
+    title: "AI-Suggested Outcomes with Benchmarks",
+    content: "The magic: AI transforms insights into measurable outcomes with Industry Benchmarks and Korn Ferry data. No manual re-entry - the connection is automatic and fully traceable.",
     placement: "left" as const,
     spotlightPadding: 10,
   },
   {
     target: '[data-demo-step="benchmark-display"]',
     title: "Data-Driven Recommendations",
-    content: "Every KPI shows Industry Benchmarks (low/mid/high ranges) and Korn Ferry best practice data. Clients see exactly where they stand and what 'good' looks like.",
+    content: "Every outcome shows Industry Benchmarks (low/mid/high ranges) and Korn Ferry best practice data. Clients see exactly where they stand and what 'good' looks like.",
     placement: "bottom" as const,
     spotlightPadding: 10,
   },
   {
     target: '[data-demo-step="multi-select"]',
     title: "Batch Operations",
-    content: "Select multiple KPIs at once and add them in a single action. Time saved: consultants report 70% faster KPI setup compared to manual entry.",
+    content: "Select multiple outcomes at once and add them in a single action. Time saved: consultants report 70% faster outcome setup compared to manual entry.",
     placement: "right" as const,
     spotlightPadding: 10,
   },
   {
     target: '[data-demo-step="kpi-pipeline"]',
-    title: "Visual KPI Pipeline",
-    content: "Track KPIs from draft to client confirmation to delivery. The purple 'AI Generated' badges show full provenance - executives love the audit trail.",
+    title: "Visual Outcome Pipeline",
+    content: "Track outcomes from draft to client confirmation to delivery. The purple 'AI Generated' badges show full provenance - executives love the audit trail.",
     placement: "bottom" as const,
     spotlightPadding: 10,
   },
   {
     target: '[data-demo-step="handoff-section"]',
     title: "Seamless Sales-to-Delivery Handoff",
-    content: "One click bundles confirmed KPIs into a handoff package. The delivery team receives complete context - no information lost in transition.",
+    content: "One click bundles confirmed outcomes into a handoff package. The delivery team receives complete context - no information lost in transition.",
     placement: "left" as const,
     spotlightPadding: 10,
   },

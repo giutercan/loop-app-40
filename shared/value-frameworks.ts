@@ -55,7 +55,7 @@ export const HEALTH_SCORES = {
   on_track: {
     id: "on_track",
     label: "On Track",
-    description: "KPI progressing as expected toward target",
+    description: "Outcome progressing as expected toward target",
     color: "emerald",
     threshold: 0.8, // 80%+ of expected progress
     action: "Continue current approach"
@@ -63,7 +63,7 @@ export const HEALTH_SCORES = {
   at_risk: {
     id: "at_risk", 
     label: "At Risk",
-    description: "KPI showing signs of underperformance",
+    description: "Outcome showing signs of underperformance",
     color: "amber",
     threshold: 0.5, // 50-79% of expected progress
     action: "Investigate and adjust"
@@ -71,7 +71,7 @@ export const HEALTH_SCORES = {
   off_track: {
     id: "off_track",
     label: "Off Track", 
-    description: "KPI significantly behind target",
+    description: "Outcome significantly behind target",
     color: "red",
     threshold: 0, // <50% of expected progress
     action: "Urgent intervention required"
@@ -87,7 +87,7 @@ export const HEALTH_SCORES = {
 } as const;
 
 // ============================================
-// KPI LIBRARY - LEADING INDICATORS
+// OUTCOME LIBRARY - LEADING INDICATORS
 // Behavioral and process metrics (early signals)
 // ============================================
 export const LEADING_INDICATORS = {
@@ -218,7 +218,7 @@ export const LEADING_INDICATORS = {
 } as const;
 
 // ============================================
-// KPI LIBRARY - LAGGING INDICATORS
+// OUTCOME LIBRARY - LAGGING INDICATORS
 // Hard business results (outcomes)
 // ============================================
 export const LAGGING_INDICATORS = {

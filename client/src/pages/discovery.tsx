@@ -555,7 +555,7 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
                                 Industry Benchmark Not Available
                               </div>
                               <p className="text-xs text-muted-foreground">
-                                Let AI generate an industry baseline value for this KPI
+                                Let AI generate an industry baseline value for this outcome
                               </p>
                             </div>
                             <Button
@@ -783,7 +783,7 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
             data-testid={`button-recommend-kpis-${theme.id}`}
           >
             <Sparkles className="h-4 w-4" />
-            Suggest KPIs
+            Suggest Outcomes
           </Button>
         )}
       </div>
@@ -804,7 +804,7 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
               <div className="h-px flex-1 bg-gradient-to-r from-purple-500/50 to-transparent" />
               <Badge variant="outline" className="font-semibold bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-500/30">
                 <Target className="h-3.5 w-3.5 mr-1.5" />
-                Primary KPIs
+                Primary Outcomes
               </Badge>
               <div className="h-px flex-1 bg-gradient-to-l from-purple-500/50 to-transparent" />
             </div>
@@ -821,7 +821,7 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
               <div className="h-px flex-1 bg-gradient-to-r from-cyan-500/50 to-transparent" />
               <Badge variant="outline" className="font-semibold bg-gradient-to-r from-cyan-500/10 to-teal-500/10 border-cyan-500/30">
                 <Activity className="h-3.5 w-3.5 mr-1.5" />
-                Supporting KPIs
+                Supporting Outcomes
               </Badge>
               <div className="h-px flex-1 bg-gradient-to-l from-cyan-500/50 to-transparent" />
             </div>
@@ -831,10 +831,10 @@ function JobThemeCard({ theme, rank, projectId, updateKPIMutation, isFinalized, 
           </div>
         )}
         
-        {/* Empty state if no KPIs */}
+        {/* Empty state if no Outcomes */}
         {primaryKPIs.length === 0 && supportingKPIs.length === 0 && (
           <div className="text-center text-sm text-muted-foreground py-8">
-            No KPIs selected yet. Click "Suggest KPIs" to get AI recommendations.
+            No outcomes selected yet. Click "Suggest Outcomes" to get AI recommendations.
           </div>
         )}
       </CollapsibleContent>
@@ -1637,18 +1637,18 @@ export default function Discovery() {
       if (wasSelecting && previousSelectedCount === 0 && !firstKPICelebrationShownRef.current) {
         firstKPICelebrationShownRef.current = true;
         toast({
-          title: "First KPI Selected!",
-          description: "Great start! Keep selecting KPIs to build your value case and track meaningful business outcomes.",
+          title: "First Outcome Selected!",
+          description: "Great start! Keep selecting outcomes to build your value case and track meaningful business results.",
         });
       } else if (wasSelecting) {
         toast({
-          title: "KPI Added",
-          description: "KPI has been added to your tracking list.",
+          title: "Outcome Added",
+          description: "Outcome has been added to your tracking list.",
         });
       } else {
         toast({
-          title: "KPI Removed",
-          description: "KPI has been removed from tracking.",
+          title: "Outcome Removed",
+          description: "Outcome has been removed from tracking.",
         });
       }
     },
@@ -3194,7 +3194,7 @@ export default function Discovery() {
                         <div>
                           <h3 className="font-semibold text-lg">Generate Job Recommendations</h3>
                           <p className="text-sm text-muted-foreground mt-1">
-                            Based on your {strategicPillars.length} Strategic Pillars, AI will recommend targeted jobs with KPIs.
+                            Based on your {strategicPillars.length} Strategic Pillars, AI will recommend targeted jobs with outcomes.
                           </p>
                         </div>
                         <Button
@@ -3274,7 +3274,7 @@ export default function Discovery() {
                             {prioritizedThemes.length}/3 Selected
                           </Badge>
                           <Badge variant="secondary" className="text-sm py-1">
-                            {totalKPIsSelected} KPIs
+                            {totalKPIsSelected} Outcomes
                           </Badge>
                         </div>
                       </div>
@@ -3358,7 +3358,7 @@ export default function Discovery() {
                           data-testid="button-toggle-kpi-edit-mode"
                         >
                           {kpiEditMode ? <Lock className="w-3 h-3 mr-1" /> : <Edit className="w-3 h-3 mr-1" />}
-                          {kpiEditMode ? "Lock" : "Edit KPIs"}
+                          {kpiEditMode ? "Lock" : "Edit Outcomes"}
                         </Button>
                         <Link href={`/projects/${projectId}/alignment`}>
                           <Button size="sm" data-testid="button-go-to-alignment">
@@ -3484,7 +3484,7 @@ export default function Discovery() {
                                 <div className="flex items-center justify-between text-xs">
                                   <span className="flex items-center gap-1 text-muted-foreground">
                                     <CheckCircle className="w-3 h-3 text-green-600" />
-                                    {theme.kpis?.filter(k => k.isSelected).length || 0} KPIs
+                                    {theme.kpis?.filter(k => k.isSelected).length || 0} Outcomes
                                   </span>
                                 </div>
                               </CardContent>
@@ -3578,7 +3578,7 @@ export default function Discovery() {
                                     </span>
                                     <span className="flex items-center gap-1">
                                       <Target className="w-3 h-3" />
-                                      {kpiCount} KPIs
+                                      {kpiCount} Outcomes
                                     </span>
                                   </div>
                                   {prioritizedCount > 0 && (
@@ -3822,11 +3822,11 @@ export default function Discovery() {
                                           </div>
                                         </div>
                                         
-                                        {/* KPI & Info Row */}
+                                        {/* Outcomes & Info Row */}
                                         <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                                           <span className="flex items-center gap-1">
                                             <Target className="w-3 h-3" />
-                                            {theme.kpis?.filter(k => k.isSelected).length || 0} KPIs
+                                            {theme.kpis?.filter(k => k.isSelected).length || 0} Outcomes
                                           </span>
                                           <span className="flex items-center gap-1">
                                             <Lightbulb className="w-3 h-3" />

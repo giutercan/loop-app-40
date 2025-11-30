@@ -142,7 +142,7 @@ export default function ValueJustificationStudio({
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/priorities/${priorityId}/value-justification`] });
       toast({
         title: "Value justification generated",
-        description: "AI has created a draft based on your Discovery insights and KPIs.",
+        description: "AI has created a draft based on your Discovery insights and outcomes.",
       });
     },
     onError: (error: Error) => {

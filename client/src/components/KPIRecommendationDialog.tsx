@@ -1,13 +1,28 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Sparkles, TrendingUp, Target, Award, Check, Zap } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Sparkles, TrendingUp, Target, Award, Check, Zap, BarChart3, Clock, CheckCircle2, Lightbulb, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { JobThemeKPI } from "@shared/schema";
+
+interface IndustryBenchmark {
+  low: string;
+  median: string;
+  high: string;
+  source: string;
+}
+
+interface TargetRecommendation {
+  suggestedTarget: string;
+  achievementRationale: string;
+  timeframeMonths: number;
+  successFactors: string[];
+}
 
 interface KPIRecommendationDialogProps {
   jobThemeId: number;
@@ -20,6 +35,15 @@ interface KPIRecommendationDialogProps {
 export default function KPIRecommendationDialog({ jobThemeId, jobName, projectId, open, onOpenChange }: KPIRecommendationDialogProps) {
   const { toast } = useToast();
   const [selectedKPIs, setSelectedKPIs] = useState<Set<number>>(new Set());
+  const [editingTargetId, setEditingTargetId] = useState<number | null>(null);
+  const [editedTargets, setEditedTargets] = useState<Record<number, string>>({});
+
+  // Reset editing state when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setEditingTargetId(null);
+    }
+  }, [open]);
 
   // Fetch AI recommendations
   const { data: recommendations = [], isLoading, error } = useQuery<JobThemeKPI[]>({
@@ -38,40 +62,43 @@ export default function KPIRecommendationDialog({ jobThemeId, jobName, projectId
       queryClient.invalidateQueries({ queryKey: [`/api/job-themes/${jobThemeId}/kpis`] });
       toast({
         title: "AI Recommendations Generated",
-        description: "Strategic KPIs have been suggested based on Korn Ferry's knowledge base",
+        description: "Strategic outcomes have been suggested based on Korn Ferry's knowledge base",
       });
     },
     onError: (error: any) => {
       toast({
         title: "Generation Failed",
-        description: error.message || "Failed to generate KPI recommendations",
+        description: error.message || "Failed to generate outcome recommendations",
         variant: "destructive",
       });
     },
   });
 
-  // Select a recommended KPI mutation
+  // Select a recommended KPI mutation with optional target value
   const selectMutation = useMutation({
-    mutationFn: async (kpiId: number) => {
-      const res = await apiRequest("PATCH", `/api/job-theme-kpis/${kpiId}`, { isSelected: true });
+    mutationFn: async ({ kpiId, targetValue }: { kpiId: number; targetValue?: string }) => {
+      const payload: { isSelected: boolean; targetValue?: string } = { isSelected: true };
+      if (targetValue) {
+        payload.targetValue = targetValue;
+      }
+      const res = await apiRequest("PATCH", `/api/job-theme-kpis/${kpiId}`, payload);
       return res.json();
     },
     onSuccess: () => {
       // Invalidate both the KPIs list and the finalized jobs data
       queryClient.invalidateQueries({ queryKey: [`/api/job-themes/${jobThemeId}/kpis`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/job-themes/${jobThemeId}/recommend-kpis`] });
       
       // Invalidate finalized jobs query to refresh the Alignment page
-      // Use refetchType: "all" to force refetch even if query is inactive
       const finalizedJobsKey = `/api/projects/${projectId}/alignment/finalized-jobs`;
-      console.log(`[KPI Selection] Invalidating finalized jobs with key: ${finalizedJobsKey}, projectId:`, projectId);
       queryClient.invalidateQueries({ 
         queryKey: [finalizedJobsKey],
         refetchType: "all"
       });
       
       toast({
-        title: "KPI Selected",
-        description: "Added to your tracking list",
+        title: "Outcome Selected",
+        description: "Added to your tracking list with your target value",
       });
     },
   });
@@ -80,8 +107,15 @@ export default function KPIRecommendationDialog({ jobThemeId, jobName, projectId
     // Optimistically update UI
     setSelectedKPIs(prev => new Set(prev).add(kpiId));
     
+    // Get the edited target value if any, or the AI suggested target
+    const kpi = recommendations.find(k => k.id === kpiId);
+    const targetRec = kpi?.aiTargetRecommendation as TargetRecommendation | null;
+    const targetValue = editedTargets[kpiId] || targetRec?.suggestedTarget;
+    
     try {
-      await selectMutation.mutateAsync(kpiId);
+      await selectMutation.mutateAsync({ kpiId, targetValue });
+      // Clear the editing state
+      setEditingTargetId(null);
     } catch (error) {
       // Revert optimistic update on failure
       setSelectedKPIs(prev => {
@@ -90,6 +124,17 @@ export default function KPIRecommendationDialog({ jobThemeId, jobName, projectId
         return updated;
       });
     }
+  };
+
+  // Handle target value edit
+  const handleTargetEdit = (kpiId: number, value: string) => {
+    setEditedTargets(prev => ({ ...prev, [kpiId]: value }));
+  };
+
+  // Get the display target (edited or AI suggested)
+  const getDisplayTarget = (kpi: JobThemeKPI): string => {
+    const targetRec = kpi.aiTargetRecommendation as TargetRecommendation | null;
+    return editedTargets[kpi.id] || targetRec?.suggestedTarget || '';
   };
 
   const handleGenerateRecommendations = async () => {
@@ -117,7 +162,7 @@ export default function KPIRecommendationDialog({ jobThemeId, jobName, projectId
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <div>
-              <DialogTitle className="text-2xl">AI-Powered KPI Recommendations</DialogTitle>
+              <DialogTitle className="text-2xl">AI-Powered Outcome Recommendations</DialogTitle>
               <DialogDescription className="text-base mt-1">
                 Strategic metrics for <span className="font-medium text-foreground">"{jobName}"</span> curated by Korn Ferry AI
               </DialogDescription>
@@ -150,7 +195,7 @@ export default function KPIRecommendationDialog({ jobThemeId, jobName, projectId
               <div className="text-center space-y-2">
                 <p className="text-lg font-medium">No recommendations yet</p>
                 <p className="text-sm text-muted-foreground max-w-sm">
-                  Generate AI-powered KPI suggestions tailored to this job theme
+                  Generate AI-powered outcome suggestions tailored to this job theme
                 </p>
               </div>
               <Button 
@@ -305,6 +350,146 @@ export default function KPIRecommendationDialog({ jobThemeId, jobName, projectId
                           </div>
                         </div>
 
+                        {/* Industry Benchmark Range - Visual display */}
+                        {(() => {
+                          const benchmark = kpi.aiIndustryBenchmark as IndustryBenchmark | null;
+                          if (!benchmark) return null;
+                          return (
+                            <div className="rounded-lg bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-950/40 dark:to-gray-950/40 border border-slate-200/50 dark:border-slate-700/50 p-4 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2 text-xs font-medium text-slate-700 dark:text-slate-300">
+                                  <BarChart3 className="h-3.5 w-3.5" />
+                                  Industry Benchmark Range
+                                </div>
+                                <span className="text-[10px] text-muted-foreground italic">{benchmark.source}</span>
+                              </div>
+                              
+                              {/* Visual benchmark bar */}
+                              <div className="relative pt-1">
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex flex-col items-center">
+                                    <span className="text-lg font-bold text-orange-600 dark:text-orange-400">{benchmark.low}</span>
+                                    <span className="text-[10px] text-muted-foreground">Bottom 25%</span>
+                                  </div>
+                                  <div className="flex flex-col items-center">
+                                    <span className="text-lg font-bold text-amber-600 dark:text-amber-400">{benchmark.median}</span>
+                                    <span className="text-[10px] text-muted-foreground">Median</span>
+                                  </div>
+                                  <div className="flex flex-col items-center">
+                                    <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{benchmark.high}</span>
+                                    <span className="text-[10px] text-muted-foreground">Top 25%</span>
+                                  </div>
+                                </div>
+                                <div className="h-2 rounded-full bg-gradient-to-r from-orange-200 via-amber-200 to-emerald-200 dark:from-orange-900/50 dark:via-amber-900/50 dark:to-emerald-900/50" />
+                              </div>
+                            </div>
+                          );
+                        })()}
+
+                        {/* Target Achievement Recommendation - Editable */}
+                        {(() => {
+                          const target = kpi.aiTargetRecommendation as TargetRecommendation | null;
+                          if (!target) return null;
+                          const isEditingThis = editingTargetId === kpi.id;
+                          const displayTarget = getDisplayTarget(kpi);
+                          const hasEditedTarget = editedTargets[kpi.id] !== undefined;
+                          
+                          return (
+                            <div className="rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 border border-emerald-200/50 dark:border-emerald-800/50 p-4 space-y-3">
+                              {/* Target header with editable value */}
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="p-1.5 rounded-md bg-emerald-100 dark:bg-emerald-900/50">
+                                    <Target className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-medium text-emerald-800 dark:text-emerald-200">
+                                        {hasEditedTarget ? 'Your Target' : 'Recommended Target'}
+                                      </span>
+                                      {hasEditedTarget && (
+                                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-emerald-400 text-emerald-700 dark:text-emerald-300">
+                                          Edited
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    {isEditingThis ? (
+                                      <div className="flex items-center gap-2 mt-1">
+                                        <Input
+                                          value={editedTargets[kpi.id] ?? target.suggestedTarget}
+                                          onChange={(e) => handleTargetEdit(kpi.id, e.target.value)}
+                                          className="h-9 text-lg font-bold w-32 bg-white dark:bg-emerald-950"
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                              setEditingTargetId(null);
+                                            }
+                                            if (e.key === 'Escape') {
+                                              setEditingTargetId(null);
+                                              setEditedTargets(prev => {
+                                                const updated = { ...prev };
+                                                delete updated[kpi.id];
+                                                return updated;
+                                              });
+                                            }
+                                          }}
+                                          autoFocus
+                                          data-testid={`input-edit-target-${kpi.id}`}
+                                        />
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => setEditingTargetId(null)}
+                                          className="h-8 px-2 text-emerald-700"
+                                        >
+                                          Done
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{displayTarget}</span>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          onClick={() => setEditingTargetId(kpi.id)}
+                                          className="h-7 w-7 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-100"
+                                          data-testid={`button-edit-target-${kpi.id}`}
+                                        >
+                                          <Pencil className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200 border-0 shrink-0">
+                                  <Clock className="mr-1 h-3 w-3" />
+                                  {target.timeframeMonths} months
+                                </Badge>
+                              </div>
+
+                              {/* Achievement rationale */}
+                              <div className="flex gap-2 bg-white/60 dark:bg-black/20 rounded-md p-3">
+                                <Lightbulb className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                                <p className="text-sm text-emerald-800 dark:text-emerald-200 leading-relaxed">
+                                  {target.achievementRationale}
+                                </p>
+                              </div>
+
+                              {/* Success factors */}
+                              <div className="space-y-1.5">
+                                <div className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Why This Is Achievable:</div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                                  {target.successFactors.map((factor, idx) => (
+                                    <div key={idx} className="flex items-start gap-1.5 text-sm text-emerald-700 dark:text-emerald-300">
+                                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 mt-0.5 text-emerald-500" />
+                                      <span>{factor}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+
                         {/* Strategic Rationale */}
                         <div className="rounded-lg bg-muted/50 p-3 space-y-1">
                           <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
@@ -316,8 +501,8 @@ export default function KPIRecommendationDialog({ jobThemeId, jobName, projectId
                           </p>
                         </div>
 
-                        {/* Korn Ferry Benchmark */}
-                        {kpi.aiKornFerryBenchmark && (
+                        {/* Korn Ferry Benchmark (legacy/fallback) */}
+                        {kpi.aiKornFerryBenchmark && !kpi.aiIndustryBenchmark && (
                           <div className="rounded-lg bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 border border-blue-200/50 dark:border-blue-800/50 p-3 space-y-1">
                             <div className="flex items-center gap-2 text-xs font-medium text-blue-900 dark:text-blue-100">
                               <Award className="h-3 w-3" />
@@ -330,7 +515,7 @@ export default function KPIRecommendationDialog({ jobThemeId, jobName, projectId
                         )}
 
                         {/* Measurement Details */}
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 border-t">
+                        <div className="flex items-center gap-4 flex-wrap text-xs text-muted-foreground pt-2 border-t">
                           <div className="flex items-center gap-1.5">
                             <span className="font-medium">Unit:</span>
                             <Badge variant="secondary" className="text-xs">{kpi.unit}</Badge>

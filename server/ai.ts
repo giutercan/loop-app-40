@@ -1514,9 +1514,9 @@ IMPORTANT:
   }
 }
 
-// KPI Recommendation Schema
+// KPI Recommendation Schema - Enhanced with industry benchmarks and achievement explanations
 const kpiRecommendationSchema = z.object({
-  kpiName: z.string().min(5, "KPI name must be at least 5 characters"),
+  kpiName: z.string().min(5, "Outcome name must be at least 5 characters"),
   kpiType: z.enum(["primary", "supporting"]),
   unit: z.string().min(1, "Unit is required"),
   definition: z.string().min(20, "Definition must be at least 20 characters"),
@@ -1525,6 +1525,18 @@ const kpiRecommendationSchema = z.object({
   valueImpactScore: z.number().int().min(1).max(10),
   kornFerryBenchmark: z.string().min(10, "Benchmark must be at least 10 characters"),
   measurementFrequency: z.string().min(3, "Measurement frequency required"),
+  industryBenchmark: z.object({
+    low: z.string().describe("Bottom quartile performance"),
+    median: z.string().describe("Industry median/average"),
+    high: z.string().describe("Top quartile/best-in-class performance"),
+    source: z.string().describe("Credible data source"),
+  }).optional(),
+  targetRecommendation: z.object({
+    suggestedTarget: z.string().describe("Recommended target value"),
+    achievementRationale: z.string().describe("2-3 sentence explanation of WHY this target is achievable"),
+    timeframeMonths: z.number().int().min(3).max(24).describe("Expected months to achieve"),
+    successFactors: z.array(z.string()).min(2).max(4).describe("Key factors that make this achievable"),
+  }).optional(),
 });
 
 // Discovery-based KPI suggestion schema (includes pillar and insight linkage)
@@ -1586,7 +1598,7 @@ export async function generateDiscoveryKpiSuggestions(
     `[#${i.id}] ${i.title}: ${i.value}${i.category ? ` (Category: ${i.category})` : ''}${i.priority ? ` [Priority: ${i.priority}]` : ''}${i.relatedKPIs?.length ? ` Related KPIs: ${i.relatedKPIs.join(', ')}` : ''}`
   ).join('\n');
 
-  const prompt = `You are a Korn Ferry sales consultant helping identify the most strategic KPIs to propose to a client based on discovery research. Your recommendations should include detailed industry and Korn Ferry benchmarks.
+  const prompt = `You are a Korn Ferry sales consultant helping identify the most strategic OUTCOMES to propose to a client based on discovery research. Your recommendations should include detailed industry and Korn Ferry benchmarks with clear explanations of WHY these targets are achievable.
 
 CLIENT CONTEXT:
 Company: ${companyName}${industry ? `\nIndustry: ${industry}` : ''}
@@ -1606,20 +1618,22 @@ KORN FERRY KNOWLEDGE BASE:
 ${knowledgeBase}
 
 YOUR MISSION:
-Based on the discovery insights above, recommend 4-6 strategic KPIs that:
+Based on the discovery insights above, recommend 4-6 strategic OUTCOMES that:
 1. DIRECTLY address the issues/opportunities identified in the insights
 2. Map to one of the 4 Value Pillars (Grow, Optimise, De-risk, Strengthen Capability)
 3. Include DETAILED baseline reasoning explaining why this baseline is recommended
-4. Provide INDUSTRY BENCHMARKS with low/median/high ranges and data source
-5. Provide KORN FERRY BENCHMARKS showing top quartile vs typical performance
-6. Are ACHIEVABLE within a 6-12 month engagement timeframe
-7. Reference the specific insight that supports each recommendation
+4. Provide INDUSTRY BENCHMARKS with low/median/high ranges showing where this client sits and what's achievable
+5. Provide KORN FERRY BENCHMARKS showing top quartile vs typical performance with context on what drives achievement
+6. Explain WHY the target is ACHIEVABLE - specific factors that support success
+7. Are ACHIEVABLE within a 6-12 month engagement timeframe
+8. Reference the specific insight that supports each recommendation
 
 IMPORTANT:
-- Each KPI must tie back to a specific discovery insight by title
+- Each outcome must tie back to a specific discovery insight by title
 - Provide detailed reasoning for baseline recommendations based on industry/company context
 - Include specific industry benchmark ranges (low, median, high) with sources
 - Include Korn Ferry benchmark data showing top quartile vs typical client performance
+- For EACH outcome, explain WHY the target is achievable citing specific evidence: similar client results, company readiness indicators from discovery, industry trajectory, etc.
 - Focus on metrics the client can actually measure and improve
 - Balance across value pillars based on what the insights reveal
 
@@ -1627,11 +1641,11 @@ Return JSON format:
 {
   "suggestions": [
     {
-      "kpiName": "Specific, measurable KPI name",
+      "kpiName": "Specific, measurable outcome name",
       "kpiType": "primary" or "supporting",
       "unit": "Percentage (%)", "Days", "Score 1-100", "Dollars ($)", etc.,
-      "definition": "Clear definition of what this KPI measures",
-      "strategicRationale": "Why this KPI matters for THIS client based on their discovery insights",
+      "definition": "Clear definition of what this outcome measures",
+      "strategicRationale": "Why this outcome matters for THIS client based on their discovery insights",
       "valuePillar": "Grow" | "Optimise" | "De-risk" | "Strengthen Capability",
       "baselineEstimate": "45%",
       "targetEstimate": "65%",
@@ -1645,11 +1659,11 @@ Return JSON format:
       "kornFerryBenchmark": {
         "topQuartile": "70-80%",
         "typical": "50-60%",
-        "context": "Korn Ferry clients typically achieve 15-20% improvement in first 12 months"
+        "context": "Korn Ferry clients typically achieve 15-20% improvement in first 12 months. The target is ACHIEVABLE because: 1) Discovery shows leadership commitment, 2) Similar clients in ${industry || 'this sector'} have achieved comparable results, 3) Current gaps indicate significant room for quick wins."
       },
       "achievabilityScore": 8,
       "valueImpactScore": 9,
-      "sourceInsightTitle": "Exact title of the insight that supports this KPI"
+      "sourceInsightTitle": "Exact title of the insight that supports this outcome"
     }
   ]
 }`;
@@ -1709,7 +1723,7 @@ export async function generateKPIRecommendations(
   
   const knowledgeBase = getSolutionSummary();
 
-  const prompt = `You are a Korn Ferry strategic consultant helping identify the most valuable and achievable KPIs for measuring value realization with a client.
+  const prompt = `You are a Korn Ferry strategic consultant helping identify the most valuable and achievable OUTCOMES for measuring value realization with a client.
 
 CLIENT CONTEXT:
 Company: ${companyName}${industry ? `\nIndustry: ${industry}` : ''}
@@ -1724,7 +1738,7 @@ KORN FERRY KNOWLEDGE BASE:
 ${knowledgeBase}
 
 YOUR MISSION:
-Recommend 3-5 strategic KPIs that:
+Recommend 3-5 strategic OUTCOMES that:
 1. DIFFERENTIATE Korn Ferry's approach - focus on leading indicators and behavioral metrics, not just lagging business outcomes
 2. Are ACHIEVABLE within a 6-12 month engagement timeframe
 3. Have HIGH VALUE IMPACT on client business outcomes
@@ -1738,49 +1752,76 @@ KORN FERRY STRATEGIC DIFFERENTIATION:
 - Focus on transformation enablers, not just end results
 
 SCORING GUIDANCE:
-- achievabilityScore (1-10): How realistic is it to measure and improve this KPI in 6-12 months?
+- achievabilityScore (1-10): How realistic is it to measure and improve this outcome in 6-12 months?
   * 8-10: Client likely has data already, easy to measure
   * 5-7: May require some data setup or process changes
   * 1-4: Requires significant infrastructure or cultural change
 
-- valueImpactScore (1-10): How much business value will improving this KPI deliver?
+- valueImpactScore (1-10): How much business value will improving this outcome deliver?
   * 8-10: Direct impact on revenue, cost, or critical business outcomes
   * 5-7: Meaningful impact on operational efficiency or employee experience
   * 1-4: Supporting metric with indirect impact
+
+INDUSTRY BENCHMARKING:
+For each outcome, provide realistic industry benchmark ranges based on ${industry || 'typical enterprise'} data:
+- low: Bottom quartile performance (25th percentile)
+- median: Industry average (50th percentile)
+- high: Top quartile/best-in-class (75th+ percentile)
+- source: Cite a credible source (Gartner, McKinsey, Korn Ferry research, industry report)
+
+TARGET ACHIEVEMENT EXPLANATION:
+For each outcome, explain WHY the suggested target is achievable. Include:
+- A specific recommended target value
+- 2-3 sentence rationale explaining why this is realistic for this client
+- Expected timeframe in months
+- 2-4 key success factors that make achievement likely
 
 Provide your recommendations in JSON format:
 {
   "recommendations": [
     {
-      "kpiName": "Specific, measurable KPI name (e.g., 'Quality of Hire Index (0-100)')",
+      "kpiName": "Specific, measurable outcome name (e.g., 'Quality of Hire Index (0-100)')",
       "kpiType": "primary" or "supporting",
       "unit": "Index 0-100", "Percent (%)", "Days", "Score", etc.,
-      "definition": "Clear definition of what this KPI measures and how it's calculated",
-      "strategicRationale": "Why this KPI is strategically valuable for this client - connect to business outcomes and Korn Ferry differentiation (50-100 words)",
+      "definition": "Clear definition of what this outcome measures and how it's calculated",
+      "strategicRationale": "Why this outcome is strategically valuable for this client - connect to business outcomes and Korn Ferry differentiation (50-100 words)",
       "achievabilityScore": 8,
       "valueImpactScore": 9,
       "kornFerryBenchmark": "Typical Korn Ferry client range or target (e.g., 'Top quartile: 75-85, Industry average: 55-65')",
-      "measurementFrequency": "6 months", "Quarterly", "Monthly", etc.
+      "measurementFrequency": "6 months", "Quarterly", "Monthly", etc.,
+      "industryBenchmark": {
+        "low": "42%",
+        "median": "58%",
+        "high": "75%",
+        "source": "2024 ${industry || 'Industry'} Talent Metrics Report, Korn Ferry Research"
+      },
+      "targetRecommendation": {
+        "suggestedTarget": "68%",
+        "achievementRationale": "Based on current performance and Korn Ferry's proven methodology, a 68% target represents meaningful improvement while remaining realistic. Similar ${industry || 'enterprise'} clients have achieved comparable results within 9 months using Korn Ferry's structured approach.",
+        "timeframeMonths": 9,
+        "successFactors": ["Leadership commitment demonstrated in discovery", "Existing data infrastructure supports measurement", "Clear alignment with strategic priorities", "Proven Korn Ferry methodology for this capability"]
+      }
     }
   ]
 }
 
 IMPORTANT:
-- Recommend exactly 3-5 KPIs total
-- At least 2 must be "primary" KPIs (high impact, direct business outcome)
+- Recommend exactly 3-5 outcomes total
+- At least 2 must be "primary" outcomes (high impact, direct business outcome)
 - Include at least 1 behavioral/capability metric that differentiates Korn Ferry
-- Each KPI must have a clear Korn Ferry benchmark or typical range
-- Strategic rationale must explain WHY this KPI matters for THIS client
-- Prioritize KPIs with achievabilityScore >= 6 AND valueImpactScore >= 7`;
+- Each outcome must have industry benchmarks AND target achievement explanation
+- Strategic rationale must explain WHY this outcome matters for THIS client
+- Prioritize outcomes with achievabilityScore >= 6 AND valueImpactScore >= 7
+- Target recommendations must be realistic and backed by clear reasoning`;
 
   try {
-    console.log(`[AI KPI Recommendations] Generating for job: ${jobName}`);
+    console.log(`[AI Outcome Recommendations] Generating for job: ${jobName}`);
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
-      max_completion_tokens: 2000,
+      max_completion_tokens: 4000,
     });
 
     const content = response.choices[0]?.message?.content;
@@ -1794,15 +1835,15 @@ IMPORTANT:
     // Strict Zod validation
     const validationResult = kpiRecommendationsOutputSchema.safeParse(parsedContent);
     if (!validationResult.success) {
-      console.error("[AI KPI Recommendations] Validation failed:", validationResult.error);
-      console.error("[AI KPI Recommendations] Received data:", parsedContent);
-      throw new Error(`AI KPI recommendation validation failed: ${validationResult.error.message}`);
+      console.error("[AI Outcome Recommendations] Validation failed:", validationResult.error);
+      console.error("[AI Outcome Recommendations] Received data:", parsedContent);
+      throw new Error(`AI outcome recommendation validation failed: ${validationResult.error.message}`);
     }
 
-    console.log(`[AI KPI Recommendations] Success! Generated ${validationResult.data.recommendations.length} KPIs`);
+    console.log(`[AI Outcome Recommendations] Success! Generated ${validationResult.data.recommendations.length} outcomes`);
     return validationResult.data.recommendations;
   } catch (error) {
-    console.error("[AI KPI Recommendations] Error:", error);
+    console.error("[AI Outcome Recommendations] Error:", error);
     throw error;
   }
 }

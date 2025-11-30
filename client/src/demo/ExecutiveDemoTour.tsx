@@ -7,7 +7,7 @@ const SALES_DISCOVER_STEPS: Step[] = [
   {
     target: '[data-demo-step="account-header"]',
     title: "Welcome to the Client Value Hub",
-    content: "This is your single source of truth for client engagement. Every insight, KPI, and value commitment lives here - from first discovery to realized business impact.",
+    content: "This is your single source of truth for client engagement. Every insight, outcome, and value commitment lives here - from first discovery to realized business impact.",
     placement: "bottom",
     disableBeacon: true,
     spotlightPadding: 8,
@@ -41,8 +41,8 @@ const SALES_DISCOVER_STEPS: Step[] = [
 const SALES_BUILDVALUE_STEPS: Step[] = [
   {
     target: '[data-demo-step="kpi-suggestions"]',
-    title: "AI-Suggested KPIs - The Game Changer",
-    content: "This is where the magic happens: AI transforms discovery insights into measurable KPIs - complete with Industry Benchmarks and Korn Ferry research. Zero manual re-entry. Full traceability.",
+    title: "AI-Suggested Outcomes - The Game Changer",
+    content: "This is where the magic happens: AI transforms discovery insights into measurable outcomes - complete with Industry Benchmarks and Korn Ferry research. Zero manual re-entry. Full traceability.",
     placement: "left",
     disableBeacon: true,
     spotlightPadding: 8,
@@ -50,15 +50,15 @@ const SALES_BUILDVALUE_STEPS: Step[] = [
   {
     target: '[data-demo-step="benchmark-display"]',
     title: "Data-Driven Baseline Recommendations",
-    content: "Every KPI includes Industry Benchmarks (low/mid/high ranges), Korn Ferry best-practice data, and AI-generated baseline reasoning. Clients see exactly where they stand vs. industry leaders.",
+    content: "Every outcome includes Industry Benchmarks (low/mid/high ranges), Korn Ferry best-practice data, and AI-generated baseline reasoning. Clients see exactly where they stand vs. industry leaders.",
     placement: "bottom",
     disableBeacon: true,
     spotlightPadding: 8,
   },
   {
     target: '[data-demo-step="multi-select"]',
-    title: "Batch KPI Selection",
-    content: "Select multiple KPIs at once using checkboxes, then add them all in one action. Consultants report 70% faster KPI setup compared to manual entry in spreadsheets.",
+    title: "Batch Outcome Selection",
+    content: "Select multiple outcomes at once using checkboxes, then add them all in one action. Consultants report 70% faster outcome setup compared to manual entry in spreadsheets.",
     placement: "right",
     disableBeacon: true,
     spotlightPadding: 8,
@@ -68,8 +68,8 @@ const SALES_BUILDVALUE_STEPS: Step[] = [
 const SALES_ALIGN_STEPS: Step[] = [
   {
     target: '[data-demo-step="kpi-pipeline"]',
-    title: "Visual KPI Pipeline",
-    content: "Track every KPI from draft to client confirmation. The purple 'AI Generated' badges show full provenance - executives love the audit trail that links outcomes back to discovery insights.",
+    title: "Visual Outcome Pipeline",
+    content: "Track every outcome from draft to client confirmation. The purple 'AI Generated' badges show full provenance - executives love the audit trail that links outcomes back to discovery insights.",
     placement: "bottom",
     disableBeacon: true,
     spotlightPadding: 8,
@@ -80,7 +80,7 @@ const SALES_HANDOFF_STEPS: Step[] = [
   {
     target: '[data-demo-step="handoff-section"]',
     title: "Seamless Sales-to-Delivery Handoff",
-    content: "One click bundles confirmed KPIs into a handoff package with executive summary. Delivery team receives complete context - targets, rationale, and provenance. No information lost in transition.",
+    content: "One click bundles confirmed outcomes into a handoff package with executive summary. Delivery team receives complete context - targets, rationale, and provenance. No information lost in transition.",
     placement: "left",
     disableBeacon: true,
     spotlightPadding: 8,

@@ -464,7 +464,7 @@ export default function AccountHub() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">KPIs On Track</p>
+                  <p className="text-sm text-muted-foreground">Outcomes On Track</p>
                   <p className="text-2xl font-bold" data-testid="text-kpis-ontrack">
                     {headlineValue.kpisOnTrack}/{headlineValue.kpisTotal}
                   </p>

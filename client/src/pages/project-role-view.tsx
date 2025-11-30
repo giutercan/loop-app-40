@@ -1281,11 +1281,11 @@ export default function ProjectRoleView() {
         setAiKpiSuggestions(data.suggestions);
         toast({
           title: "AI Suggestions Ready",
-          description: `Generated ${data.suggestions.length} KPI recommendations based on ${data.insightsCount} discovery insights`
+          description: `Generated ${data.suggestions.length} outcome recommendations based on ${data.insightsCount} discovery insights`
         });
       }
     } catch (error: any) {
-      console.error("Failed to generate AI KPI suggestions:", error);
+      console.error("Failed to generate AI outcome suggestions:", error);
       setAiKpiError(error.message || "Failed to generate suggestions");
       toast({
         variant: "destructive",
@@ -1297,12 +1297,12 @@ export default function ProjectRoleView() {
     }
   };
 
-  // Handler to add an AI suggestion as a KPI selection (pre-fills form)
+  // Handler to add an AI suggestion as an Outcome commitment (pre-fills form)
   const handleAddSuggestionAsCommitment = (suggestion: DiscoveryKpiSuggestion) => {
     setPrefillSuggestion(suggestion);
     setBuildValueSection("commitments");
     toast({
-      title: "Ready to Create KPI",
+      title: "Ready to Create Outcome",
       description: `Form pre-filled with "${suggestion.kpiName}" - review and confirm`
     });
   };
@@ -1478,10 +1478,10 @@ export default function ProjectRoleView() {
       setSelectedKPI(null);
       setKpiActualValue("");
       setKpiNote("");
-      toast({ title: "KPI logged", description: "Measurement recorded successfully." });
+      toast({ title: "Outcome logged", description: "Measurement recorded successfully." });
     },
     onError: () => {
-      toast({ variant: "destructive", title: "Error", description: "Failed to log KPI." });
+      toast({ variant: "destructive", title: "Error", description: "Failed to log outcome." });
     }
   });
 
@@ -1663,10 +1663,10 @@ export default function ProjectRoleView() {
         queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "commitments"] });
         setIsAddCommitmentOpen(false);
         resetNewCommitment();
-        toast({ title: "KPI Added", description: "KPI has been added to your selection." });
+        toast({ title: "Outcome Added", description: "Outcome has been added to your selection." });
       },
       onError: () => {
-        toast({ variant: "destructive", title: "Error", description: "Failed to add KPI." });
+        toast({ variant: "destructive", title: "Error", description: "Failed to add outcome." });
       }
     });
 
@@ -1679,10 +1679,10 @@ export default function ProjectRoleView() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "commitments"] });
         setEditingCommitment(null);
-        toast({ title: "KPI Updated", description: "Changes have been saved." });
+        toast({ title: "Outcome Updated", description: "Changes have been saved." });
       },
       onError: () => {
-        toast({ variant: "destructive", title: "Error", description: "Failed to update KPI." });
+        toast({ variant: "destructive", title: "Error", description: "Failed to update outcome." });
       }
     });
 
@@ -1696,7 +1696,7 @@ export default function ProjectRoleView() {
       },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "commitments"] });
-        toast({ title: "Submitted for review", description: "Client can now review this KPI." });
+        toast({ title: "Submitted for review", description: "Client can now review this outcome." });
       }
     });
 
@@ -1708,7 +1708,7 @@ export default function ProjectRoleView() {
       },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "commitments"] });
-        toast({ title: "KPI Confirmed", description: "Client has confirmed this KPI." });
+        toast({ title: "Outcome Confirmed", description: "Client has confirmed this outcome." });
       }
     });
 
@@ -1719,7 +1719,7 @@ export default function ProjectRoleView() {
       },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "commitments"] });
-        toast({ title: "KPI Removed", description: "The KPI has been removed." });
+        toast({ title: "Outcome Removed", description: "The outcome has been removed." });
       }
     });
 
@@ -1872,22 +1872,22 @@ export default function ProjectRoleView() {
                   <Handshake className="w-6 h-6 text-violet-600" />
                 </div>
                 <div>
-                  <CardTitle>KPI Selection</CardTitle>
+                  <CardTitle>Outcome Selection</CardTitle>
                   <CardDescription>
-                    Select and track KPIs with your client that link to their strategic objectives
+                    Select and track outcomes with your client that link to their strategic objectives
                   </CardDescription>
                 </div>
               </div>
               <Button onClick={() => setIsAddCommitmentOpen(true)} data-testid="button-add-commitment">
                 <Plus className="w-4 h-4 mr-2" />
-                Add KPI
+                Add Outcome
               </Button>
             </div>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-4">
               <div className="p-4 rounded-lg bg-background border">
-                <p className="text-sm text-muted-foreground">Total KPIs</p>
+                <p className="text-sm text-muted-foreground">Total Outcomes</p>
                 <p className="text-2xl font-bold">{(commitments as any[]).length}</p>
               </div>
               <div className="p-4 rounded-lg bg-background border">
@@ -1899,7 +1899,7 @@ export default function ProjectRoleView() {
                 <p className="text-2xl font-bold text-blue-600">{proposedCommitments.length}</p>
               </div>
               <div className="p-4 rounded-lg bg-background border">
-                <p className="text-sm text-muted-foreground">Total KPI Value</p>
+                <p className="text-sm text-muted-foreground">Total Outcome Value</p>
                 <p className="text-2xl font-bold text-violet-600">
                   ${(confirmedValue / 1000000).toFixed(1)}M
                 </p>
@@ -1908,20 +1908,20 @@ export default function ProjectRoleView() {
           </CardContent>
         </Card>
 
-        {/* KPI Pipeline */}
+        {/* Outcome Pipeline */}
         <div className="grid gap-6 lg:grid-cols-3" data-demo-step="kpi-pipeline">
           {/* Draft */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <FileText className="w-4 h-4 text-muted-foreground" />
-                Draft KPIs
+                Draft Outcomes
                 <Badge variant="secondary" className="ml-auto">{draftCommitments.length}</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {draftCommitments.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No draft KPIs</p>
+                <p className="text-sm text-muted-foreground text-center py-4">No draft outcomes</p>
               ) : (
                 draftCommitments.map((c: any) => (
                   <div key={c.id} className="p-3 rounded-lg border hover-elevate" data-testid={`commitment-draft-${c.id}`}>
@@ -1988,7 +1988,7 @@ export default function ProjectRoleView() {
             </CardHeader>
             <CardContent className="space-y-3">
               {proposedCommitments.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No KPIs pending review</p>
+                <p className="text-sm text-muted-foreground text-center py-4">No outcomes pending review</p>
               ) : (
                 proposedCommitments.map((c: any) => (
                   <div key={c.id} className="p-3 rounded-lg border border-blue-500/20 bg-blue-500/5" data-testid={`commitment-review-${c.id}`}>
@@ -2039,13 +2039,13 @@ export default function ProjectRoleView() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                Confirmed KPIs
+                Confirmed Outcomes
                 <Badge className="ml-auto bg-emerald-500/10 text-emerald-600">{confirmedCommitments.length}</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {confirmedCommitments.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No confirmed KPIs yet</p>
+                <p className="text-sm text-muted-foreground text-center py-4">No confirmed outcomes yet</p>
               ) : (
                 confirmedCommitments.map((c: any) => (
                   <div key={c.id} className="p-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5" data-testid={`commitment-confirmed-${c.id}`}>
@@ -2097,13 +2097,13 @@ export default function ProjectRoleView() {
                 Ready for CSM Handoff
               </CardTitle>
               <CardDescription>
-                {confirmedCommitments.length} KPI(s) confirmed and ready to be handed off to delivery
+                {confirmedCommitments.length} outcome(s) confirmed and ready to be handed off to delivery
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Total KPI Value</p>
+                  <p className="text-sm text-muted-foreground">Total Outcome Value</p>
                   <p className="text-2xl font-bold text-emerald-600">
                     ${(confirmedValue / 1000000).toFixed(2)}M
                   </p>
@@ -2120,13 +2120,13 @@ export default function ProjectRoleView() {
           </Card>
         )}
 
-        {/* Add KPI Dialog */}
+        {/* Add Outcome Dialog */}
         <Dialog open={isAddCommitmentOpen} onOpenChange={setIsAddCommitmentOpen}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Add KPI</DialogTitle>
+              <DialogTitle>Add Outcome</DialogTitle>
               <DialogDescription>
-                Define a measurable KPI with benchmarks to track with the client
+                Define a measurable outcome with benchmarks to track with the client
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -2171,7 +2171,7 @@ export default function ProjectRoleView() {
                     })}
                   >
                     <SelectTrigger data-testid="select-solution-pattern">
-                      <SelectValue placeholder="Select a solution pattern for KPI suggestions" />
+                      <SelectValue placeholder="Select a solution pattern for outcome suggestions" />
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(SOLUTION_VALUE_PATTERNS).map(([id, pattern]) => (
@@ -2191,7 +2191,7 @@ export default function ProjectRoleView() {
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
                       <Lightbulb className="w-4 h-4 text-amber-500" />
-                      Suggested KPIs
+                      Suggested Outcomes
                     </Label>
                     <div className="grid gap-2">
                       <div className="text-xs font-medium text-muted-foreground">Leading Indicators</div>
@@ -2407,22 +2407,22 @@ export default function ProjectRoleView() {
                 ) : (
                   <Plus className="w-4 h-4 mr-2" />
                 )}
-                Add KPI
+                Add Outcome
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Edit KPI Dialog */}
+        {/* Edit Outcome Dialog */}
         <Dialog open={!!editingCommitment} onOpenChange={() => setEditingCommitment(null)}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Edit KPI</DialogTitle>
+              <DialogTitle>Edit Outcome</DialogTitle>
             </DialogHeader>
             {editingCommitment && (
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-commitment-name">KPI Name *</Label>
+                  <Label htmlFor="edit-commitment-name">Outcome Name *</Label>
                   <Input
                     id="edit-commitment-name"
                     value={editingCommitment.name}
@@ -2580,7 +2580,7 @@ export default function ProjectRoleView() {
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Sales Journey</p>
           {[
             { id: "discover", label: "Discover", icon: Sparkles, progress: workflowProgress.discover, description: "Research & Questions" },
-            { id: "build-value", label: "Build Value", icon: Target, progress: workflowProgress.buildValue, description: "KPIs & Commitments" },
+            { id: "build-value", label: "Build Value", icon: Target, progress: workflowProgress.buildValue, description: "Outcomes & Commitments" },
             { id: "align", label: "Align", icon: Handshake, progress: workflowProgress.align, description: "Client Collaboration" },
             { id: "handoff", label: "Handoff", icon: ArrowUpRight, progress: workflowProgress.handoff, description: "Transition to Delivery" },
           ].map((stage, idx) => {
@@ -2687,7 +2687,7 @@ export default function ProjectRoleView() {
                 data-testid="btn-build-commitments"
               >
                 <Target className="w-4 h-4 mr-2" />
-                KPI Selection
+                Outcome Selection
                 {commitments.length > 0 && (
                   <Badge variant="secondary" className="ml-2 text-xs">{commitments.length}</Badge>
                 )}
@@ -2715,12 +2715,12 @@ export default function ProjectRoleView() {
                         </div>
                         <div>
                           <CardTitle>Value Overview</CardTitle>
-                          <CardDescription>Track shared KPIs, value progress, and next steps</CardDescription>
+                          <CardDescription>Track shared outcomes, value progress, and next steps</CardDescription>
                         </div>
                       </div>
                       <Button onClick={() => setBuildValueSection("commitments")} data-testid="btn-add-commitment-cta">
                         <Plus className="w-4 h-4 mr-2" />
-                        Select KPIs
+                        Select Outcomes
                       </Button>
                     </div>
                   </CardHeader>
@@ -2794,12 +2794,12 @@ export default function ProjectRoleView() {
           </Card>
         </div>
 
-        {/* Shared KPIs Grid */}
+        {/* Shared Outcomes Grid */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="w-5 h-5" />
-              Shared Outcome KPIs
+              Shared Outcomes
             </CardTitle>
             <CardDescription>
               Define baseline, target, and benefit owner for each key outcome
@@ -2868,11 +2868,11 @@ export default function ProjectRoleView() {
               {kpis.length === 0 && (
                 <div className="text-center py-8">
                   <Target className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground mb-4">No KPIs defined yet</p>
+                  <p className="text-muted-foreground mb-4">No outcomes defined yet</p>
                   <Link href={`/projects/${projectId}/discovery`}>
                     <Button data-testid="button-define-kpis">
                       <Plus className="w-4 h-4 mr-2" />
-                      Define KPIs in Discovery
+                      Define Outcomes in Discovery
                     </Button>
                   </Link>
                 </div>
@@ -2881,7 +2881,7 @@ export default function ProjectRoleView() {
           </CardContent>
         </Card>
 
-        {/* AI-Recommended KPI Selection */}
+        {/* AI-Recommended Outcome Selection */}
         {insights.length > 0 && (
           <Card className="bg-gradient-to-r from-purple-500/5 via-blue-500/5 to-emerald-500/5 border-purple-500/20" data-demo-step="kpi-suggestions">
             <CardHeader>
@@ -2891,11 +2891,11 @@ export default function ProjectRoleView() {
                     <Sparkles className="w-5 h-5 text-purple-600" />
                   </div>
                   <div>
-                    <CardTitle className="text-base">AI-Recommended KPI Selection</CardTitle>
+                    <CardTitle className="text-base">AI-Recommended Outcome Selection</CardTitle>
                     <CardDescription>
                       {aiKpiSuggestions.length > 0 
                         ? `${aiKpiSuggestions.length} recommendations with industry & Korn Ferry benchmarks`
-                        : `Generate strategic KPIs based on ${insights.length} discovery insights`
+                        : `Generate strategic outcomes based on ${insights.length} discovery insights`
                       }
                     </CardDescription>
                   </div>
@@ -2919,7 +2919,7 @@ export default function ProjectRoleView() {
                       ) : (
                         <>
                           <Sparkles className="w-3 h-3 mr-1" />
-                          Recommend KPIs
+                          Recommend Outcomes
                         </>
                       )}
                     </Button>
@@ -2967,10 +2967,10 @@ export default function ProjectRoleView() {
                 <div className="text-center py-6">
                   <Sparkles className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
                   <p className="text-sm text-muted-foreground mb-2">
-                    Click "Recommend KPIs" to get AI recommendations based on your discovery insights
+                    Click "Recommend Outcomes" to get AI recommendations based on your discovery insights
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    KPIs include industry benchmarks, Korn Ferry benchmarks, and baseline recommendations
+                    Outcomes include industry benchmarks, Korn Ferry benchmarks, and baseline recommendations
                   </p>
                 </div>
               )}
@@ -3014,8 +3014,8 @@ export default function ProjectRoleView() {
                           });
                           setSelectedKpiSuggestions(new Set());
                           toast({
-                            title: "KPIs Added",
-                            description: `${selected.length} KPI(s) added to your selection`
+                            title: "Outcomes Added",
+                            description: `${selected.length} outcome(s) added to your selection`
                           });
                         }}
                         data-testid="btn-add-selected-kpis"
@@ -3026,7 +3026,7 @@ export default function ProjectRoleView() {
                     )}
                   </div>
 
-                  {/* KPI Cards */}
+                  {/* Outcome Cards */}
                   <div className="space-y-3">
                     {aiKpiSuggestions.map((suggestion, idx) => {
                       const pillarColors: Record<string, string> = {
@@ -3068,7 +3068,7 @@ export default function ProjectRoleView() {
                                   data-testid={`btn-add-suggested-kpi-${idx}`}
                                 >
                                   <Plus className="w-3 h-3 mr-1" />
-                                  Add KPI
+                                  Add Outcome
                                 </Button>
                               </div>
                               
@@ -3198,9 +3198,9 @@ export default function ProjectRoleView() {
                     <HelpCircle className="w-4 h-4 text-primary" />
                   </div>
                   <div>
-                    <p className="font-medium text-sm">Gather baseline data for KPIs</p>
+                    <p className="font-medium text-sm">Gather baseline data for outcomes</p>
                     <p className="text-xs text-muted-foreground">
-                      {kpis.filter(k => k.status === "no-data").length} KPI(s) need baseline values defined to track progress
+                      {kpis.filter(k => k.status === "no-data").length} outcome(s) need baseline values defined to track progress
                     </p>
                   </div>
                 </div>
@@ -3211,9 +3211,9 @@ export default function ProjectRoleView() {
                     <AlertTriangle className="w-4 h-4 text-amber-600" />
                   </div>
                   <div>
-                    <p className="font-medium text-sm">Review at-risk KPIs</p>
+                    <p className="font-medium text-sm">Review at-risk outcomes</p>
                     <p className="text-xs text-muted-foreground">
-                      {kpis.filter(k => k.status === "at-risk").length} KPI(s) are trending behind target - schedule a review
+                      {kpis.filter(k => k.status === "at-risk").length} outcome(s) are trending behind target - schedule a review
                     </p>
                   </div>
                 </div>
@@ -3226,7 +3226,7 @@ export default function ProjectRoleView() {
                   <div>
                     <p className="font-medium text-sm">Take corrective action</p>
                     <p className="text-xs text-muted-foreground">
-                      {kpis.filter(k => k.status === "off-track").length} KPI(s) are significantly behind - immediate intervention recommended
+                      {kpis.filter(k => k.status === "off-track").length} outcome(s) are significantly behind - immediate intervention recommended
                     </p>
                   </div>
                 </div>
@@ -3250,7 +3250,7 @@ export default function ProjectRoleView() {
                     <CheckCircle className="w-4 h-4 text-emerald-600" />
                   </div>
                   <div>
-                    <p className="font-medium text-sm">All KPIs on track</p>
+                    <p className="font-medium text-sm">All outcomes on track</p>
                     <p className="text-xs text-muted-foreground">
                       Consider documenting wins as success stories for future opportunities
                     </p>
@@ -3259,7 +3259,7 @@ export default function ProjectRoleView() {
               )}
               {kpis.length === 0 && insights.length === 0 && (
                 <div className="text-center py-4 text-muted-foreground text-sm">
-                  Complete discovery and define KPIs to see recommended actions
+                  Complete discovery and define outcomes to see recommended actions
                 </div>
               )}
             </div>
@@ -5111,7 +5111,7 @@ ${narrativeCanvas.callToAction || "(Not set)"}
                 lines.push(`${i + 1}. ${q.question}`);
                 lines.push(`   Methodology: ${q.methodology || "General"}`);
                 if (q.followUpHint) lines.push(`   Follow-up: ${q.followUpHint}`);
-                if (q.relatedKPI) lines.push(`   KPI: ${q.relatedKPI}`);
+                if (q.relatedKPI) lines.push(`   Outcome: ${q.relatedKPI}`);
                 lines.push("");
               });
             }
@@ -5303,7 +5303,7 @@ ${narrativeCanvas.callToAction || "(Not set)"}
                                     <Badge className={`${meta?.color || ""} border text-xs`}>{meta?.label || q.methodology}</Badge>
                                     <Badge variant="outline" className="text-xs">{q.capabilityName}</Badge>
                                     {q.relatedKPI && (
-                                      <Badge variant="secondary" className="text-xs">KPI: {q.relatedKPI}</Badge>
+                                      <Badge variant="secondary" className="text-xs">Outcome: {q.relatedKPI}</Badge>
                                     )}
                                   </div>
                                   {q.followUpHint && (
@@ -5580,7 +5580,7 @@ ${narrativeCanvas.callToAction || "(Not set)"}
                     <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="font-medium text-sm">Success Metrics Need Definition</p>
-                      <p className="text-xs text-muted-foreground">Work with stakeholders to establish specific KPIs and targets for measuring {themeName} impact.</p>
+                      <p className="text-xs text-muted-foreground">Work with stakeholders to establish specific outcomes and targets for measuring {themeName} impact.</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3 p-3 rounded-lg border border-amber-500/20 bg-amber-500/5">
@@ -5794,7 +5794,7 @@ ${narrativeCanvas.callToAction || "(Not set)"}
                 <div>
                   <CardTitle>Handoff to Delivery</CardTitle>
                   <CardDescription>
-                    Bundle confirmed KPIs and send to CSM for delivery tracking
+                    Bundle confirmed outcomes and send to CSM for delivery tracking
                   </CardDescription>
                 </div>
               </div>
@@ -5808,7 +5808,7 @@ ${narrativeCanvas.callToAction || "(Not set)"}
           <CardContent>
             <div className="grid gap-4 md:grid-cols-4">
               <div className="p-4 rounded-lg bg-background border">
-                <p className="text-sm text-muted-foreground">Confirmed KPIs</p>
+                <p className="text-sm text-muted-foreground">Confirmed Outcomes</p>
                 <p className="text-2xl font-bold text-emerald-600">{confirmedCommitments.length}</p>
               </div>
               <div className="p-4 rounded-lg bg-background border">
@@ -5836,10 +5836,10 @@ ${narrativeCanvas.callToAction || "(Not set)"}
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                  Client-Confirmed KPIs
+                  Client-Confirmed Outcomes
                 </CardTitle>
                 <CardDescription>
-                  Select KPIs to include in handoff package
+                  Select outcomes to include in handoff package
                 </CardDescription>
               </div>
               <div className="flex gap-2">
@@ -5915,17 +5915,17 @@ ${narrativeCanvas.callToAction || "(Not set)"}
           </Card>
         )}
 
-        {/* No Confirmed KPIs */}
+        {/* No Confirmed Outcomes */}
         {confirmedCommitments.length === 0 && (
           <Card>
             <CardContent className="py-12 text-center">
               <Handshake className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="font-semibold mb-2">No KPIs Ready</h3>
+              <h3 className="font-semibold mb-2">No Outcomes Ready</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Confirm KPIs with clients in the KPI Selection tab before handing off.
+                Confirm outcomes with clients in the Outcome Selection tab before handing off.
               </p>
               <Button variant="outline" onClick={() => setActiveTab("value-agreement")}>
-                Go to KPI Selection
+                Go to Outcome Selection
               </Button>
             </CardContent>
           </Card>
@@ -5957,7 +5957,7 @@ ${narrativeCanvas.callToAction || "(Not set)"}
                       <p className="text-sm text-muted-foreground mb-2">{packet.executiveSummary}</p>
                     )}
                     <div className="flex items-center gap-4 text-sm">
-                      <span>{packet.commitmentIds?.length || 0} KPIs</span>
+                      <span>{packet.commitmentIds?.length || 0} Outcomes</span>
                       {packet.totalCommittedValue && (
                         <span className="text-emerald-600 font-medium">
                           ${(packet.totalCommittedValue / 1000000).toFixed(2)}M
@@ -5998,13 +5998,13 @@ ${narrativeCanvas.callToAction || "(Not set)"}
             <DialogHeader>
               <DialogTitle>Create Handoff Package</DialogTitle>
               <DialogDescription>
-                Bundle {selectedCommitmentIds.length} KPI(s) and send to the delivery team.
+                Bundle {selectedCommitmentIds.length} outcome(s) and send to the delivery team.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="p-4 rounded-lg bg-muted/50">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium">Selected KPIs</span>
+                  <span className="font-medium">Selected Outcomes</span>
                   <Badge variant="secondary">{selectedCommitmentIds.length}</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
@@ -6084,7 +6084,7 @@ ${narrativeCanvas.callToAction || "(Not set)"}
         setIsAcceptDialogOpen(false);
         setSelectedHandoff(null);
         setAcceptanceNotes("");
-        toast({ title: "Handoff accepted", description: "KPIs are now ready for delivery tracking." });
+        toast({ title: "Handoff accepted", description: "Outcomes are now ready for delivery tracking." });
       },
       onError: () => {
         toast({ variant: "destructive", title: "Error", description: "Failed to accept handoff." });
@@ -6151,7 +6151,7 @@ ${narrativeCanvas.callToAction || "(Not set)"}
               <div>
                 <CardTitle>Incoming Handoffs</CardTitle>
                 <CardDescription>
-                  Review and accept KPI packages from Sales
+                  Review and accept outcome packages from Sales
                 </CardDescription>
               </div>
             </div>
@@ -6167,7 +6167,7 @@ ${narrativeCanvas.callToAction || "(Not set)"}
                 <p className="text-2xl font-bold text-blue-600">{clarificationPackets.length}</p>
               </div>
               <div className="p-4 rounded-lg bg-background border">
-                <p className="text-sm text-muted-foreground">Active KPIs</p>
+                <p className="text-sm text-muted-foreground">Active Outcomes</p>
                 <p className="text-2xl font-bold text-emerald-600">{activeCommitments.length}</p>
               </div>
               <div className="p-4 rounded-lg bg-background border">
@@ -6218,7 +6218,7 @@ ${narrativeCanvas.callToAction || "(Not set)"}
                     )}
 
                     <div className="grid gap-2 mb-4">
-                      <p className="text-sm font-medium">Included KPIs ({packetCommitments.length}):</p>
+                      <p className="text-sm font-medium">Included Outcomes ({packetCommitments.length}):</p>
                       {packetCommitments.map((c: any) => (
                         <div key={c.id} className="p-2 rounded bg-background/50 flex items-center justify-between">
                           <div>
@@ -6276,16 +6276,16 @@ ${narrativeCanvas.callToAction || "(Not set)"}
           </Card>
         )}
 
-        {/* Active KPIs in Delivery */}
+        {/* Active Outcomes in Delivery */}
         {activeCommitments.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                Active KPIs in Delivery
+                Active Outcomes in Delivery
               </CardTitle>
               <CardDescription>
-                KPIs you've accepted and are now tracking
+                Outcomes you've accepted and are now tracking
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -6341,7 +6341,7 @@ ${narrativeCanvas.callToAction || "(Not set)"}
               <Handshake className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="font-semibold mb-2">No Handoffs Yet</h3>
               <p className="text-sm text-muted-foreground">
-                When Sales sends KPIs, they'll appear here for your review.
+                When Sales sends outcomes, they'll appear here for your review.
               </p>
             </CardContent>
           </Card>
@@ -6353,7 +6353,7 @@ ${narrativeCanvas.callToAction || "(Not set)"}
             <DialogHeader>
               <DialogTitle>Accept Handoff Package</DialogTitle>
               <DialogDescription>
-                By accepting, you're committing to track and deliver on these KPIs.
+                By accepting, you're committing to track and deliver on these outcomes.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -6462,7 +6462,7 @@ ${narrativeCanvas.callToAction || "(Not set)"}
         </TabsTrigger>
         <TabsTrigger value="kpis" data-testid="tab-kpis">
           <BarChart3 className="w-4 h-4 mr-2" />
-          KPI Tracking
+          Outcome Tracking
         </TabsTrigger>
         <TabsTrigger value="qbr" data-testid="tab-qbr">
           <Calendar className="w-4 h-4 mr-2" />
@@ -6522,7 +6522,7 @@ ${narrativeCanvas.callToAction || "(Not set)"}
               <div className="p-4 rounded-lg bg-background border">
                 <div className="flex items-center gap-2 mb-2">
                   <Target className="w-4 h-4 text-blue-600" />
-                  <span className="font-medium text-sm">Total KPIs</span>
+                  <span className="font-medium text-sm">Total Outcomes</span>
                 </div>
                 <p className="text-2xl font-bold text-blue-600">{kpis.length}</p>
               </div>
@@ -6542,7 +6542,7 @@ ${narrativeCanvas.callToAction || "(Not set)"}
             <CardHeader className="flex flex-row items-center justify-between gap-2">
               <CardTitle className="flex items-center gap-2">
                 <BarChart3 className="w-5 h-5" />
-                KPI Health Summary
+                Outcome Health Summary
               </CardTitle>
               <Button size="sm" onClick={() => setIsLogKPIOpen(true)} data-testid="button-log-kpi">
                 <Plus className="w-4 h-4 mr-1" />
@@ -6580,7 +6580,7 @@ ${narrativeCanvas.callToAction || "(Not set)"}
                   </div>
                 ))}
                 {kpis.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">No KPIs tracked yet</p>
+                  <p className="text-sm text-muted-foreground text-center py-4">No outcomes tracked yet</p>
                 )}
               </div>
             </CardContent>
@@ -6615,7 +6615,7 @@ ${narrativeCanvas.callToAction || "(Not set)"}
         </div>
       </TabsContent>
 
-      {/* Incoming Handoffs - CSM receives KPIs from Sales */}
+      {/* Incoming Handoffs - CSM receives outcomes from Sales */}
       <TabsContent value="incoming-handoffs" className="space-y-6" data-demo-step="incoming-handoffs">
         <IncomingHandoffsTab 
           projectId={projectId} 
@@ -6627,8 +6627,8 @@ ${narrativeCanvas.callToAction || "(Not set)"}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2">
             <div>
-              <CardTitle>KPI Tracking</CardTitle>
-              <CardDescription>Monitor and log KPI measurements</CardDescription>
+              <CardTitle>Outcome Tracking</CardTitle>
+              <CardDescription>Monitor and log outcome measurements</CardDescription>
             </div>
             <Button onClick={() => setIsLogKPIOpen(true)} data-testid="button-log-kpi-main">
               <Plus className="w-4 h-4 mr-2" />
@@ -6677,7 +6677,7 @@ ${narrativeCanvas.callToAction || "(Not set)"}
               {kpis.length === 0 && (
                 <div className="text-center py-8">
                   <BarChart3 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No KPIs to track</p>
+                  <p className="text-muted-foreground">No outcomes to track</p>
                 </div>
               )}
             </div>
@@ -6726,7 +6726,7 @@ ${narrativeCanvas.callToAction || "(Not set)"}
               <div className="p-4 rounded-lg bg-background border">
                 <div className="flex items-center gap-2 mb-2">
                   <TrendingUp className="w-4 h-4 text-blue-600" />
-                  <span className="font-medium text-sm">KPIs Tracked</span>
+                  <span className="font-medium text-sm">Outcomes Tracked</span>
                 </div>
                 <p className="text-2xl font-bold">{kpis.length}</p>
                 <p className="text-xs text-muted-foreground">With baseline & target</p>
@@ -6780,7 +6780,7 @@ ${narrativeCanvas.callToAction || "(Not set)"}
                   <span className="font-medium text-sm">Benefit Owner Assigned</span>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Each KPI has a designated client owner accountable for measurement
+                  Each outcome has a designated client owner accountable for measurement
                 </p>
               </div>
               <div className="p-4 rounded-lg bg-background border">
@@ -6808,13 +6808,13 @@ ${narrativeCanvas.callToAction || "(Not set)"}
               <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                 <CheckCircle2 className={`w-5 h-5 ${kpis.length >= 3 ? "text-emerald-600" : "text-muted-foreground"}`} />
                 <span className={kpis.length >= 3 ? "" : "text-muted-foreground"}>
-                  3-5 shared KPIs defined with benefit owners
+                  3-5 shared outcomes defined with benefit owners
                 </span>
               </div>
               <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                 <CheckCircle2 className="w-5 h-5 text-muted-foreground" />
                 <span className="text-muted-foreground">
-                  Monthly KPI review cadence established
+                  Monthly outcome review cadence established
                 </span>
               </div>
               <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
@@ -7036,18 +7036,18 @@ ${narrativeCanvas.callToAction || "(Not set)"}
       <Dialog open={isLogKPIOpen} onOpenChange={setIsLogKPIOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Log KPI Measurement</DialogTitle>
-            <DialogDescription>Record an actual value for a KPI</DialogDescription>
+            <DialogTitle>Log Outcome Measurement</DialogTitle>
+            <DialogDescription>Record an actual value for an outcome</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Select KPI</Label>
+              <Label>Select Outcome</Label>
               <Select
                 value={selectedKPI?.id.toString() || ""}
                 onValueChange={(v) => setSelectedKPI(kpis.find(k => k.id.toString() === v) || null)}
               >
                 <SelectTrigger data-testid="select-kpi">
-                  <SelectValue placeholder="Choose a KPI" />
+                  <SelectValue placeholder="Choose an outcome" />
                 </SelectTrigger>
                 <SelectContent>
                   {kpis.map(kpi => (

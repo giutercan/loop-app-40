@@ -687,10 +687,12 @@ export const jobThemeKPIs = pgTable("job_theme_kpis", {
   customerCommentedAt: timestamp("customer_commented_at"), // When customer commented
   // AI Recommendation fields - Korn Ferry strategic differentiation
   isAIRecommended: boolean("is_ai_recommended").notNull().default(false), // True if suggested by AI
-  aiStrategicRationale: text("ai_strategic_rationale"), // Why this KPI is strategically valuable
+  aiStrategicRationale: text("ai_strategic_rationale"), // Why this outcome is strategically valuable
   aiAchievabilityScore: integer("ai_achievability_score"), // 1-10 score for how achievable this is
   aiValueImpactScore: integer("ai_value_impact_score"), // 1-10 score for business value impact
   aiKornFerryBenchmark: text("ai_korn_ferry_benchmark"), // Korn Ferry typical range or target
+  aiIndustryBenchmark: jsonb("ai_industry_benchmark"), // { low, median, high, source } - industry benchmark ranges
+  aiTargetRecommendation: jsonb("ai_target_recommendation"), // { suggestedTarget, achievementRationale, timeframeMonths, successFactors }
   // Value realization tracking
   estimatedValuePerUnit: integer("estimated_value_per_unit"), // Dollar value per unit improvement (for calculating promised/realized value)
   createdAt: timestamp("created_at").defaultNow().notNull(),

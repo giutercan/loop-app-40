@@ -228,8 +228,8 @@ export default function KPIProgressTracker({ projectId }: KPIProgressTrackerProp
     return (
       <Card data-testid="card-loading">
         <CardHeader>
-          <CardTitle>KPI Progress Tracking</CardTitle>
-          <CardDescription>Loading KPI data...</CardDescription>
+          <CardTitle>Outcome Progress Tracking</CardTitle>
+          <CardDescription>Loading outcome data...</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -246,14 +246,14 @@ export default function KPIProgressTracker({ projectId }: KPIProgressTrackerProp
     return (
       <Card data-testid="card-no-kpis">
         <CardHeader>
-          <CardTitle>KPI Progress Tracking</CardTitle>
-          <CardDescription>No KPIs configured for tracking</CardDescription>
+          <CardTitle>Outcome Progress Tracking</CardTitle>
+          <CardDescription>No outcomes configured for tracking</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center py-12">
             <AlertCircle className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
             <p className="text-muted-foreground mb-4">
-              No KPIs have been selected for tracking in the Alignment phase.
+              No outcomes have been selected for tracking in the Alignment phase.
             </p>
             <p className="text-sm text-muted-foreground">
               Complete the Jobs & Priorities workflow and set baseline/target values to begin tracking.
@@ -270,7 +270,7 @@ export default function KPIProgressTracker({ projectId }: KPIProgressTrackerProp
         <CardHeader>
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div>
-              <CardTitle className="text-2xl">KPI Progress Tracking</CardTitle>
+              <CardTitle className="text-2xl">Outcome Progress Tracking</CardTitle>
               <CardDescription>
                 Track actual measurements against baselines and targets over time
               </CardDescription>

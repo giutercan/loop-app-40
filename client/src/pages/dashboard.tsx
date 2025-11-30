@@ -66,7 +66,7 @@ interface JobTheme {
 
 const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: "value-summary", type: "value-summary", title: "Value Summary", visible: true },
-  { id: "kpi-status-chart", type: "kpi-status-chart", title: "KPI Status", visible: true },
+  { id: "kpi-status-chart", type: "kpi-status-chart", title: "Outcome Status", visible: true },
   { id: "confidence-gauge", type: "confidence-gauge", title: "Confidence Level", visible: true },
   { id: "client-sentiment", type: "client-sentiment", title: "Client Sentiment", visible: true },
   { id: "upcoming-reviews", type: "upcoming-reviews", title: "Upcoming Reviews", visible: true },
@@ -183,7 +183,7 @@ function KPIStatusChartWidget({ metrics, isEditMode }: WidgetProps) {
       <CardHeader className="pb-2">
         <CardTitle className="text-lg flex items-center gap-2">
           <BarChart3 className="w-5 h-5 text-primary" />
-          KPI Status Distribution
+          Outcome Status Distribution
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-1">
@@ -211,7 +211,7 @@ function KPIStatusChartWidget({ metrics, isEditMode }: WidgetProps) {
           </div>
         ) : (
           <div className="h-[180px] flex items-center justify-center text-muted-foreground text-sm">
-            No KPI data available
+            No outcome data available
           </div>
         )}
       </CardContent>
@@ -238,7 +238,7 @@ function ConfidenceGaugeWidget({ metrics, isEditMode }: WidgetProps) {
         <div className="space-y-4">
           <div className="space-y-2">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">KPI Progress</span>
+              <span className="text-sm text-muted-foreground">Outcome Progress</span>
               <span className="text-2xl font-bold text-primary">{overallProgressPercent}%</span>
             </div>
             <Progress value={overallProgressPercent} className="h-2" />
@@ -319,7 +319,7 @@ function RiskAlertsWidget({ metrics, isEditMode }: WidgetProps) {
           {totalAtRisk > 0 ? (
             <>
               <div className="flex items-center justify-between p-2 rounded bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
-                <span className="text-sm">KPIs Needing Attention</span>
+                <span className="text-sm">Outcomes Needing Attention</span>
                 <Badge variant="outline" className="bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300">
                   {totalAtRisk}
                 </Badge>
@@ -338,13 +338,13 @@ function RiskAlertsWidget({ metrics, isEditMode }: WidgetProps) {
           ) : (
             <div className="flex items-center gap-2 p-3 rounded bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
               <CheckCircle2 className="w-5 h-5 text-green-600" />
-              <span className="text-sm text-green-700 dark:text-green-300">All KPIs on track</span>
+              <span className="text-sm text-green-700 dark:text-green-300">All outcomes on track</span>
             </div>
           )}
           {kpisNoData > 0 && (
             <div className="flex items-center justify-between p-2 rounded bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
               <span className="text-sm text-muted-foreground">Missing data</span>
-              <Badge variant="outline">{kpisNoData} KPIs</Badge>
+              <Badge variant="outline">{kpisNoData} Outcomes</Badge>
             </div>
           )}
         </div>

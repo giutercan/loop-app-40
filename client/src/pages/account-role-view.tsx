@@ -191,7 +191,7 @@ export default function AccountRoleView() {
       setKpiActualValue("");
       setKpiNote("");
       toast({
-        title: "KPI measurement logged",
+        title: "Outcome measurement logged",
         description: "The actual value has been recorded successfully.",
       });
     },
@@ -199,7 +199,7 @@ export default function AccountRoleView() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "Failed to log KPI measurement.",
+        description: error.message || "Failed to log outcome measurement.",
       });
     }
   });
@@ -279,7 +279,7 @@ export default function AccountRoleView() {
       toast({
         variant: "destructive",
         title: "Missing value",
-        description: "Please enter an actual value for the KPI.",
+        description: "Please enter an actual value for the outcome.",
       });
       return;
     }
@@ -499,7 +499,7 @@ export default function AccountRoleView() {
                 <BarChart3 className="w-6 h-6 text-purple-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">KPIs Tracked</p>
+                <p className="text-sm text-muted-foreground">Outcomes Tracked</p>
                 <p className="text-2xl font-bold">{filteredKpis.length}</p>
               </div>
             </div>
@@ -551,7 +551,7 @@ export default function AccountRoleView() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Target className="w-5 h-5" />
-              KPI Performance
+              Outcome Performance
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -612,7 +612,7 @@ export default function AccountRoleView() {
             </Button>
             <Button variant="outline" className="w-full justify-start gap-2" data-testid="button-define-kpis-consultant-full">
               <Target className="w-4 h-4" />
-              Define KPI Targets
+              Define Outcome Targets
             </Button>
             <Button variant="outline" className="w-full justify-start gap-2" data-testid="button-view-alignment-consultant-full">
               <Eye className="w-4 h-4" />
@@ -752,9 +752,9 @@ export default function AccountRoleView() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="w-5 h-5" />
-              KPIs Across Projects
+              Outcomes Across Projects
             </CardTitle>
-            <CardDescription>Aggregate KPI status across all delivery projects</CardDescription>
+            <CardDescription>Aggregate outcome status across all delivery projects</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -777,7 +777,7 @@ export default function AccountRoleView() {
                 </div>
               ))}
               {filteredKpis.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">No KPIs tracked</p>
+                <p className="text-sm text-muted-foreground text-center py-4">No outcomes tracked</p>
               )}
             </div>
           </CardContent>
@@ -798,7 +798,7 @@ export default function AccountRoleView() {
               data-testid="button-log-measurement-delivery-full"
             >
               <BarChart3 className="w-4 h-4" />
-              Log KPI Measurement
+              Log Outcome Measurement
             </Button>
             <Button variant="outline" className="w-full justify-start gap-2" data-testid="button-flag-risk-delivery-full">
               <AlertTriangle className="w-4 h-4" />
@@ -931,7 +931,7 @@ export default function AccountRoleView() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Target className="w-5 h-5" />
-              KPI Health Summary
+              Outcome Health Summary
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -1024,13 +1024,13 @@ export default function AccountRoleView() {
         <Card className="hover-elevate">
           <CardContent className="pt-6 text-center">
             <p className="text-3xl font-bold text-green-600">{kpisOnTrack}</p>
-            <p className="text-sm text-muted-foreground">KPIs On Track</p>
+            <p className="text-sm text-muted-foreground">Outcomes On Track</p>
           </CardContent>
         </Card>
         <Card className="hover-elevate">
           <CardContent className="pt-6 text-center">
             <p className="text-3xl font-bold text-red-600">{kpisOffTrack}</p>
-            <p className="text-sm text-muted-foreground">KPIs Behind</p>
+            <p className="text-sm text-muted-foreground">Outcomes Behind</p>
           </CardContent>
         </Card>
       </div>
@@ -1040,7 +1040,7 @@ export default function AccountRoleView() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="w-5 h-5" />
-              KPI Performance Overview
+              Outcome Performance Overview
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -1211,14 +1211,14 @@ export default function AccountRoleView() {
         }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Log KPI Measurement</DialogTitle>
+            <DialogTitle>Log Outcome Measurement</DialogTitle>
             <DialogDescription>
-              {selectedKPI ? `Record actual value for ${selectedKPI.name}` : "Select a KPI and enter its measurement"}
+              {selectedKPI ? `Record actual value for ${selectedKPI.name}` : "Select an outcome and enter its measurement"}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="kpiSelect">Select KPI</Label>
+              <Label htmlFor="kpiSelect">Select Outcome</Label>
               <Select 
                 value={selectedKPI?.id.toString() || ""} 
                 onValueChange={(value) => {
@@ -1227,7 +1227,7 @@ export default function AccountRoleView() {
                 }}
               >
                 <SelectTrigger data-testid="select-kpi-for-logging">
-                  <SelectValue placeholder="Choose a KPI to log" />
+                  <SelectValue placeholder="Choose an outcome to log" />
                 </SelectTrigger>
                 <SelectContent>
                   {filteredKpis.map(kpi => (

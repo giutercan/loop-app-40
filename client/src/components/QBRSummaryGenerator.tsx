@@ -150,11 +150,11 @@ ${project.name} is ${dashboard.overallHealthScore >= 80 ? 'performing well' : da
 - **Value Realized:** ${formatCurrency(valueMetrics.realized)}
 - **Realization Rate:** ${valueMetrics.realizationPercent}%
 
-### KPI Performance
-- **On Track:** ${healthBreakdown.onTrack} of ${totalKPIs} KPIs (${Math.round((healthBreakdown.onTrack / totalKPIs) * 100)}%)
-- **At Risk:** ${healthBreakdown.atRisk} KPIs
-- **Off Track:** ${healthBreakdown.offTrack} KPIs
-${healthBreakdown.noData > 0 ? `- **Awaiting Data:** ${healthBreakdown.noData} KPIs` : ''}
+### Outcome Performance
+- **On Track:** ${healthBreakdown.onTrack} of ${totalKPIs} Outcomes (${Math.round((healthBreakdown.onTrack / totalKPIs) * 100)}%)
+- **At Risk:** ${healthBreakdown.atRisk} Outcomes
+- **Off Track:** ${healthBreakdown.offTrack} Outcomes
+${healthBreakdown.noData > 0 ? `- **Awaiting Data:** ${healthBreakdown.noData} Outcomes` : ''}
 
 ### Milestones
 - **Achieved:** ${milestonesSummary.achieved} of ${milestonesSummary.total}
@@ -179,7 +179,7 @@ ${alerts.slice(0, 3).map(a => `- ${a.kpiName}: ${a.message}`).join('\n')}` : ''}
 
 ### Immediate Priorities
 ${needsAttention.map((kpi, i) => `${i + 1}. Review and develop intervention plan for **${kpi}**`).join('\n')}
-${healthBreakdown.noData > 0 ? `${needsAttention.length + 1}. Collect baseline data for ${healthBreakdown.noData} KPI(s) missing measurements` : ''}
+${healthBreakdown.noData > 0 ? `${needsAttention.length + 1}. Collect baseline data for ${healthBreakdown.noData} outcome(s) missing measurements` : ''}
 
 ### This Quarter
 - Review progress on ${milestonesSummary.planned} planned milestones
@@ -187,10 +187,10 @@ ${healthBreakdown.noData > 0 ? `${needsAttention.length + 1}. Collect baseline d
 - Schedule follow-up with key stakeholders
 
 ### Recommendations
-${dashboard.overallHealthScore < 50 ? '- **Urgent:** Conduct diagnostic review of off-track KPIs' : ''}
+${dashboard.overallHealthScore < 50 ? '- **Urgent:** Conduct diagnostic review of off-track outcomes' : ''}
 ${valueMetrics.realizationPercent < 50 ? '- Accelerate value realization activities' : ''}
-- Continue monitoring ${healthBreakdown.atRisk} at-risk KPIs
-- Celebrate and communicate wins from ${healthBreakdown.onTrack} on-track KPIs
+- Continue monitoring ${healthBreakdown.atRisk} at-risk outcomes
+- Celebrate and communicate wins from ${healthBreakdown.onTrack} on-track outcomes
 
 ---
 *Next Review: ${dashboard.nextReviewDate ? format(new Date(dashboard.nextReviewDate), 'PPP') : 'TBD'}*`;
@@ -208,7 +208,7 @@ ${valueMetrics.realizationPercent < 50 ? '- Accelerate value realization activit
 
 ### Health Score: ${dashboard.overallHealthScore}/100
 
-The overall health score reflects the weighted performance across all tracked KPIs.
+The overall health score reflects the weighted performance across all tracked outcomes.
 
 ### Value Metrics
 | Metric | Value |
@@ -217,7 +217,7 @@ The overall health score reflects the weighted performance across all tracked KP
 | Value Realized | ${formatCurrency(valueMetrics.realized)} |
 | Realization % | ${valueMetrics.realizationPercent}% |
 
-### KPI Breakdown
+### Outcome Breakdown
 
 #### On Track (${healthBreakdown.onTrack})
 ${kpiDetails.filter(k => k.status === 'on-track').map(k => `- ${k.name}: ${k.progressPercent}% progress`).join('\n') || 'None'}
