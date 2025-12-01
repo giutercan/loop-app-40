@@ -87,7 +87,10 @@ import {
   Handshake,
   ClipboardCheck,
   Copy,
-  BookOpen
+  BookOpen,
+  Pencil,
+  PlayCircle,
+  Film
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -1148,21 +1151,46 @@ export default function ProjectRoleView() {
   const lastSavedStoryBuilderDataRef = useRef<string>("");
   const [storyBuilderLastSaved, setStoryBuilderLastSaved] = useState<string | null>(null);
   
+  const pendingSaveDataRef = useRef<string | null>(null);
+  const saveVersionRef = useRef<number>(0);
+  
   const saveStoryBuilderMutation = useMutation({
-    mutationFn: async (data: typeof storyBuilderData) => {
+    mutationFn: async (data: typeof storyBuilderData & { _version?: number }) => {
+      const version = ++saveVersionRef.current;
       const response = await apiRequest("PATCH", `/api/projects/${projectId}/story-builder`, data);
-      return response.json();
+      const result = await response.json();
+      return { ...result, _version: version };
     },
-    onSuccess: () => {
+    onSuccess: (data: { _version?: number }) => {
+      // Ignore stale responses from superseded saves
+      if (data._version !== undefined && data._version < saveVersionRef.current) {
+        return;
+      }
       const now = new Date();
       setStoryBuilderLastSaved(`Saved at ${now.toLocaleTimeString()}`);
-      lastSavedStoryBuilderDataRef.current = JSON.stringify(storyBuilderData);
-    }
+      // Only update ref on success - this ensures retries happen on failure
+      if (pendingSaveDataRef.current) {
+        lastSavedStoryBuilderDataRef.current = pendingSaveDataRef.current;
+        pendingSaveDataRef.current = null;
+      }
+    },
+    onError: (error: any) => {
+      console.error("Failed to save Story Coach data:", error);
+      toast({
+        title: "Failed to save",
+        description: "Your changes couldn't be saved. Please try again.",
+        variant: "destructive"
+      });
+      // Clear pending so next change triggers a new save
+      pendingSaveDataRef.current = null;
+    },
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000)
   });
   
   const saveStoryBuilderDebounced = useCallback((data: typeof storyBuilderData) => {
     const dataString = JSON.stringify(data);
-    lastSavedStoryBuilderDataRef.current = dataString;
+    pendingSaveDataRef.current = dataString;
     
     if (saveStoryBuilderTimeoutRef.current) {
       clearTimeout(saveStoryBuilderTimeoutRef.current);
@@ -1214,12 +1242,17 @@ export default function ProjectRoleView() {
         discoveryTheme: selectedDiscoveryTheme || "General business consulting",
         successStories: stories || [],
         currentDraft: {
-          singleMessage: storyDraft.singleMessage,
-          emotionalReaction: storyDraft.emotionalReaction,
-          startingHook: storyDraft.startingHook,
-          structure: storyDraft.structure,
-          heroCharacter: storyDraft.heroCharacter,
-          evidence: storyDraft.evidence
+          singleMessage: storyBuilderData.before.singleMessage,
+          emotionalReaction: storyBuilderData.before.emotionalReaction,
+          startingHook: storyBuilderData.before.startingHook,
+          structure: storyBuilderData.before.storyStructure,
+          heroCharacter: storyBuilderData.before.heroCharacter,
+          evidence: storyBuilderData.before.evidenceToReference,
+          openingLine: storyBuilderData.during.openingLine,
+          turningPoint: storyBuilderData.during.turningPoint,
+          momentOfMeaning: storyBuilderData.after.momentOfMeaning,
+          explicitTakeaway: storyBuilderData.after.explicitTakeaway,
+          callToAction: storyBuilderData.after.callToAction
         },
         fieldToSuggest,
         phase
@@ -1228,10 +1261,25 @@ export default function ProjectRoleView() {
     },
     onSuccess: (data: any) => {
       if (data.suggestions) {
-        setStoryDraft(prev => ({
-          ...prev,
-          ...data.suggestions
-        }));
+        const suggestions = data.suggestions;
+        setStoryBuilderData(prev => {
+          const updated = { ...prev };
+          // Update BEFORE phase fields
+          if (suggestions.singleMessage) updated.before = { ...updated.before, singleMessage: suggestions.singleMessage };
+          if (suggestions.emotionalReaction) updated.before = { ...updated.before, emotionalReaction: suggestions.emotionalReaction };
+          if (suggestions.startingHook) updated.before = { ...updated.before, startingHook: suggestions.startingHook };
+          if (suggestions.heroCharacter) updated.before = { ...updated.before, heroCharacter: suggestions.heroCharacter };
+          if (suggestions.evidence || suggestions.evidenceToReference) updated.before = { ...updated.before, evidenceToReference: suggestions.evidence || suggestions.evidenceToReference };
+          if (suggestions.tensionQuestion) updated.before = { ...updated.before, tensionQuestion: suggestions.tensionQuestion };
+          // Update DURING phase fields
+          if (suggestions.openingLine) updated.during = { ...updated.during, openingLine: suggestions.openingLine };
+          if (suggestions.turningPoint) updated.during = { ...updated.during, turningPoint: suggestions.turningPoint };
+          // Update AFTER phase fields
+          if (suggestions.momentOfMeaning) updated.after = { ...updated.after, momentOfMeaning: suggestions.momentOfMeaning };
+          if (suggestions.explicitTakeaway) updated.after = { ...updated.after, explicitTakeaway: suggestions.explicitTakeaway };
+          if (suggestions.callToAction) updated.after = { ...updated.after, callToAction: suggestions.callToAction };
+          return updated;
+        });
         setAiSuggestionReasoning(data.reasoning || "");
       }
       setAiSuggestionLoading(null);
@@ -1643,18 +1691,8 @@ export default function ProjectRoleView() {
     }
   }, [project, storyBuilderInitialized]);
   
-  // Auto-save narrative canvas when content changes (after initial load)
-  useEffect(() => {
-    if (narrativeCanvasInitialized && (
-      narrativeCanvas.opener || 
-      narrativeCanvas.keyMessage || 
-      narrativeCanvas.proofPoint || 
-      narrativeCanvas.keyQuestions.length > 0 || 
-      narrativeCanvas.callToAction
-    )) {
-      saveNarrativeCanvasDebounced(narrativeCanvas);
-    }
-  }, [narrativeCanvas, narrativeCanvasInitialized, saveNarrativeCanvasDebounced]);
+  // Legacy narrative canvas auto-save - DISABLED (replaced by Story Coach)
+  // Story Coach uses storyBuilderData which auto-saves via saveStoryBuilderMutation
   
   // Initialize Green Sheet data from project
   useEffect(() => {
@@ -5106,28 +5144,28 @@ export default function ProjectRoleView() {
               </Collapsible>
             </Card>
 
-            {/* Unified Narrative Canvas - Combines Story + Questions + Call Flow */}
+            {/* Story Coach - 3-Phase Storytelling Framework */}
             <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 via-purple-500/5 to-blue-500/5">
               <CardHeader>
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center">
-                      <FileText className="w-6 h-6 text-white" />
+                      <BookOpen className="w-6 h-6 text-white" />
                     </div>
                     <div>
                       <CardTitle className="flex items-center gap-2">
-                        Narrative Canvas
-                        <Badge className="bg-primary/10 text-primary border-primary/30 text-xs">Visual Storyboard</Badge>
+                        Story Coach
+                        <Badge className="bg-primary/10 text-primary border-primary/30 text-xs">3-Phase Framework</Badge>
                       </CardTitle>
                       <CardDescription className="flex items-center gap-2">
-                        Your complete call narrative for {project?.companyName} - one visual flow
-                        {lastSavedNarrative && (
+                        Craft compelling stories for {project?.companyName} with guided coaching
+                        {storyBuilderLastSaved && (
                           <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-green-500/10 text-green-700 border-green-500/30">
                             <CheckCircle2 className="w-2.5 h-2.5 mr-1" />
-                            Saved {lastSavedNarrative}
+                            {storyBuilderLastSaved}
                           </Badge>
                         )}
-                        {saveNarrativeCanvasMutation.isPending && (
+                        {saveStoryBuilderMutation.isPending && (
                           <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-yellow-500/10 text-yellow-700 border-yellow-500/30">
                             <Loader2 className="w-2.5 h-2.5 mr-1 animate-spin" />
                             Saving...
@@ -5137,74 +5175,43 @@ export default function ProjectRoleView() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button 
-                      onClick={async () => {
-                        setIsGeneratingNarrative(true);
-                        try {
-                          const response = await apiRequest("POST", `/api/projects/${projectId}/ai/generate-narrative`, {
-                            companyName: project?.companyName,
-                            theme: selectedDiscoveryTheme,
-                            contactName: meetingContact.name,
-                            contactRole: meetingContact.role,
-                            insights: insights?.slice(0, 3).map((i: any) => i.title) || []
-                          });
-                          const data = await response.json();
-                          setNarrativeCanvas({
-                            opener: data.opener || "",
-                            keyMessage: data.keyMessage || "",
-                            proofPoint: data.proofPoint || "",
-                            keyQuestions: data.keyQuestions || [],
-                            callToAction: data.callToAction || ""
-                          });
-                          toast({ title: "Narrative generated", description: "Your call storyboard is ready!" });
-                        } catch (error) {
-                          toast({ title: "Generation failed", description: "Please try again", variant: "destructive" });
-                        }
-                        setIsGeneratingNarrative(false);
-                      }}
-                      disabled={isGeneratingNarrative}
-                      className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-700"
-                      data-testid="button-generate-narrative"
-                    >
-                      {isGeneratingNarrative ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-4 h-4 mr-2" />
-                          AI Generate All
-                        </>
-                      )}
-                    </Button>
                     <Button
                       variant="outline"
                       onClick={() => {
                         const content = `
-CALL NARRATIVE - ${project?.companyName}
+STORY FRAMEWORK - ${project?.companyName}
 ${new Date().toLocaleDateString()}
-${"=".repeat(40)}
+${"=".repeat(50)}
 
-OPENING
-${narrativeCanvas.opener || "(Not set)"}
+=== BEFORE: CRAFTING THE STORY ===
+Single Message: ${storyBuilderData.before.singleMessage || "(Not set)"}
+Emotional Reaction: ${storyBuilderData.before.emotionalReaction || "(Not set)"}
+Starting Hook: ${storyBuilderData.before.startingHook || "(Not set)"}
+Story Structure: ${storyBuilderData.before.storyStructure || "(Not set)"}
+Hero/Characters: ${storyBuilderData.before.heroCharacter || "(Not set)"}
+Evidence: ${storyBuilderData.before.evidenceToReference || "(Not set)"}
+Tension Question: ${storyBuilderData.before.tensionQuestion || "(Not set)"}
 
-KEY MESSAGE
-${narrativeCanvas.keyMessage || "(Not set)"}
+=== DURING: TELLING THE STORY ===
+Opening Line: ${storyBuilderData.during.openingLine || "(Not set)"}
+Turning Point: ${storyBuilderData.during.turningPoint || "(Not set)"}
+Key Data Points: ${storyBuilderData.during.keyDataPoints || "(Not set)"}
+Pacing Notes: ${storyBuilderData.during.pacingNotes || "(Not set)"}
 
-PROOF POINT
-${narrativeCanvas.proofPoint || "(Not set)"}
+=== AFTER: LANDING THE STORY ===
+Moment of Meaning: ${storyBuilderData.after.momentOfMeaning || "(Not set)"}
+Explicit Takeaway: ${storyBuilderData.after.explicitTakeaway || "(Not set)"}
+Call to Action: ${storyBuilderData.after.callToAction || "(Not set)"}
 
-KEY QUESTIONS
-${narrativeCanvas.keyQuestions.length > 0 ? narrativeCanvas.keyQuestions.map((q, i) => `${i + 1}. ${q}`).join("\n") : "(Not set)"}
-
-CALL TO ACTION
-${narrativeCanvas.callToAction || "(Not set)"}
+=== STORY TEST ===
+Stranger Care Score: ${storyBuilderData.storyTest.strangerCareScore ?? "Not rated"}/5
+Simplicity Score: ${storyBuilderData.storyTest.simplicityScore ?? "Not rated"}/5
+Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "Not rated"}/5
                         `.trim();
                         navigator.clipboard.writeText(content);
-                        toast({ title: "Copied to clipboard", description: "Paste into your notes or export" });
+                        toast({ title: "Copied to clipboard", description: "Story framework exported" });
                       }}
-                      data-testid="button-export-narrative"
+                      data-testid="button-export-story"
                     >
                       <FileText className="w-4 h-4 mr-2" />
                       Export
@@ -5213,417 +5220,838 @@ ${narrativeCanvas.callToAction || "(Not set)"}
                 </div>
               </CardHeader>
               <CardContent className="pt-6">
-                {/* Visual Storyboard - 4 Connected Lanes */}
-                <div className="relative">
-                  {/* Connection line */}
-                  <div className="absolute left-6 top-12 bottom-12 w-0.5 bg-gradient-to-b from-emerald-500 via-blue-500 via-purple-500 to-amber-500 hidden md:block" />
-                  
-                  <div className="space-y-4">
-                    {/* OPEN Lane */}
-                    <div className="relative pl-0 md:pl-14">
-                      <div className="absolute left-0 top-3 w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center text-sm font-bold hidden md:flex z-10">
-                        1
+                {/* Story Coach Tabs - BEFORE / DURING / AFTER / TEST */}
+                <Tabs value={activeStoryPhase} onValueChange={(v) => setActiveStoryPhase(v as "before" | "during" | "after" | "test")} className="w-full">
+                  <TabsList className="w-full grid grid-cols-4 mb-6">
+                    <TabsTrigger value="before" className="flex items-center gap-2">
+                      <Pencil className="w-4 h-4" />
+                      <span className="hidden sm:inline">BEFORE</span>
+                      <span className="sm:hidden">1</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="during" className="flex items-center gap-2">
+                      <PlayCircle className="w-4 h-4" />
+                      <span className="hidden sm:inline">DURING</span>
+                      <span className="sm:hidden">2</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="after" className="flex items-center gap-2">
+                      <Target className="w-4 h-4" />
+                      <span className="hidden sm:inline">AFTER</span>
+                      <span className="sm:hidden">3</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="test" className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span className="hidden sm:inline">TEST</span>
+                      <span className="sm:hidden">!</span>
+                    </TabsTrigger>
+                  </TabsList>
+
+                  {/* BEFORE Tab - Crafting the Story */}
+                  <TabsContent value="before" className="space-y-4">
+                    <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Pencil className="w-5 h-5 text-emerald-600" />
+                        <h4 className="font-bold text-emerald-700">BEFORE: Crafting the Story</h4>
                       </div>
-                      <div className="p-4 rounded-xl border-2 border-emerald-500/30 bg-emerald-500/5">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Play className="w-5 h-5 text-emerald-600" />
-                          <h4 className="font-bold text-emerald-700">OPEN</h4>
-                          <span className="text-xs text-muted-foreground">How to start the conversation</span>
+                      <p className="text-sm text-muted-foreground">
+                        Design your story before you tell it. Answer these 7 questions to create a compelling narrative.
+                      </p>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* 1. Single Message */}
+                      <div className="p-4 rounded-lg border bg-card">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">1</span>
+                            <Label className="font-medium">What's the single (provocative) message?</Label>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleAiSuggestWithStories("singleMessage", [])}
+                            disabled={aiSuggestionLoading === "singleMessage"}
+                            className="text-primary h-7"
+                            data-testid="button-ai-single-message"
+                          >
+                            {aiSuggestionLoading === "singleMessage" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                            <span className="ml-1 text-xs">Coach</span>
+                          </Button>
                         </div>
-                        <Textarea 
-                          placeholder="E.g., 'I noticed your recent acquisition and was curious about how you're approaching leadership integration...'"
-                          value={narrativeCanvas.opener}
-                          onChange={(e) => setNarrativeCanvas(prev => ({ ...prev, opener: e.target.value }))}
-                          className="min-h-[60px] text-sm bg-white/50"
-                          data-testid="input-narrative-opener"
+                        <p className="text-xs text-muted-foreground mb-2 italic">
+                          What is the one idea you need them to remember? Can you express it in one sentence?
+                        </p>
+                        <Textarea
+                          placeholder="The single idea they MUST remember from your story..."
+                          value={storyBuilderData.before.singleMessage}
+                          onChange={(e) => setStoryBuilderData(prev => ({ ...prev, before: { ...prev.before, singleMessage: e.target.value }}))}
+                          className="min-h-[60px] text-sm"
+                          data-testid="input-single-message"
+                        />
+                      </div>
+
+                      {/* 2. Emotional Reaction */}
+                      <div className="p-4 rounded-lg border bg-card">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">2</span>
+                            <Label className="font-medium">What emotional reaction do I seek?</Label>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleAiSuggestWithStories("emotionalReaction", [])}
+                            disabled={aiSuggestionLoading === "emotionalReaction"}
+                            className="text-primary h-7"
+                            data-testid="button-ai-emotional"
+                          >
+                            {aiSuggestionLoading === "emotionalReaction" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                            <span className="ml-1 text-xs">Coach</span>
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-2 italic">
+                          What should they feel? (Momentum? Urgency? Hope? Resolve?) What is at stake in this story?
+                        </p>
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {["Momentum", "Urgency", "Hope", "Resolve", "Curiosity", "Concern"].map(emotion => (
+                            <Badge
+                              key={emotion}
+                              variant={storyBuilderData.before.emotionalReaction === emotion ? "default" : "outline"}
+                              className="cursor-pointer hover-elevate"
+                              onClick={() => setStoryBuilderData(prev => ({ ...prev, before: { ...prev.before, emotionalReaction: emotion }}))}
+                            >
+                              {emotion}
+                            </Badge>
+                          ))}
+                        </div>
+                        <Textarea
+                          placeholder="Describe the emotional response you want to create..."
+                          value={storyBuilderData.before.emotionalReaction}
+                          onChange={(e) => setStoryBuilderData(prev => ({ ...prev, before: { ...prev.before, emotionalReaction: e.target.value }}))}
+                          className="min-h-[40px] text-sm"
+                          data-testid="input-emotional-reaction"
+                        />
+                      </div>
+
+                      {/* 3. Starting Hook */}
+                      <div className="p-4 rounded-lg border bg-card">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">3</span>
+                            <Label className="font-medium">What's the right starting hook?</Label>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleAiSuggestWithStories("startingHook", [])}
+                            disabled={aiSuggestionLoading === "startingHook"}
+                            className="text-primary h-7"
+                            data-testid="button-ai-hook"
+                          >
+                            {aiSuggestionLoading === "startingHook" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                            <span className="ml-1 text-xs">Coach</span>
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-2 italic">
+                          A moment of high tension. A provocative question. A vivid scene ("Picture this…"). A surprising fact or reversal…
+                        </p>
+                        <Textarea
+                          placeholder="Your attention-grabbing opening..."
+                          value={storyBuilderData.before.startingHook}
+                          onChange={(e) => setStoryBuilderData(prev => ({ ...prev, before: { ...prev.before, startingHook: e.target.value }}))}
+                          className="min-h-[60px] text-sm"
+                          data-testid="input-starting-hook"
+                        />
+                      </div>
+
+                      {/* 4. Story Structure */}
+                      <div className="p-4 rounded-lg border bg-card">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">4</span>
+                          <Label className="font-medium">What's the structure for the story?</Label>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-2 italic">
+                          Choose a narrative structure that guides your story flow
+                        </p>
+                        <Select
+                          value={storyBuilderData.before.storyStructure}
+                          onValueChange={(v) => setStoryBuilderData(prev => ({ ...prev, before: { ...prev.before, storyStructure: v }}))}
+                        >
+                          <SelectTrigger data-testid="select-story-structure">
+                            <SelectValue placeholder="Select a story structure" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="situation-struggle-insight-outcome">Situation → Struggle → Insight → Outcome</SelectItem>
+                            <SelectItem value="problem-agitate-solve">Problem → Agitate → Solve</SelectItem>
+                            <SelectItem value="before-after-bridge">Before → After → Bridge</SelectItem>
+                            <SelectItem value="context-action-result">Context → Action → Result</SelectItem>
+                            <SelectItem value="hero-journey">Hero's Journey (Challenge → Transformation)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* 5. Hero/Characters */}
+                      <div className="p-4 rounded-lg border bg-card">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">5</span>
+                            <Label className="font-medium">Who's my hero? Identify the characters</Label>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleAiSuggestWithStories("heroCharacter", [])}
+                            disabled={aiSuggestionLoading === "heroCharacter"}
+                            className="text-primary h-7"
+                            data-testid="button-ai-hero"
+                          >
+                            {aiSuggestionLoading === "heroCharacter" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                            <span className="ml-1 text-xs">Coach</span>
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-2 italic">
+                          How are they involved? What were their motivations or concerns? How did they change?
+                        </p>
+                        <Textarea
+                          placeholder="Describe your hero and key characters..."
+                          value={storyBuilderData.before.heroCharacter}
+                          onChange={(e) => setStoryBuilderData(prev => ({ ...prev, before: { ...prev.before, heroCharacter: e.target.value }}))}
+                          className="min-h-[60px] text-sm"
+                          data-testid="input-hero-character"
+                        />
+                      </div>
+
+                      {/* 6. Evidence */}
+                      <div className="p-4 rounded-lg border bg-card">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">6</span>
+                            <Label className="font-medium">What evidence will I reference to build trust?</Label>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              setIsGeneratingStories(true);
+                              try {
+                                const response = await apiRequest("POST", `/api/projects/${projectId}/ai/suggest-success-stories`, {
+                                  companyName: project?.companyName,
+                                  industry: project?.sector,
+                                  theme: selectedDiscoveryTheme ? discoveryThemes.find(t => t.id === selectedDiscoveryTheme)?.name : "Leadership Development",
+                                  keyMessage: storyBuilderData.before.singleMessage,
+                                  insights: insights?.slice(0, 3).map((i: any) => i.label) || []
+                                });
+                                const data = await response.json();
+                                if (data.stories && data.stories.length > 0) {
+                                  setSuggestedStories(data.stories);
+                                  toast({ title: "Stories found", description: `${data.stories.length} relevant success stories` });
+                                }
+                              } catch (error) {
+                                toast({ title: "Could not find stories", variant: "destructive" });
+                              }
+                              setIsGeneratingStories(false);
+                            }}
+                            disabled={isGeneratingStories}
+                            className="h-7 text-xs"
+                            data-testid="button-find-evidence"
+                          >
+                            {isGeneratingStories ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Trophy className="w-3 h-3 mr-1" />}
+                            Find Stories
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-2 italic">
+                          Data points, success stories, case studies, or testimonials that support your message
+                        </p>
+                        <Textarea
+                          placeholder="Evidence, data, or success stories you'll reference..."
+                          value={storyBuilderData.before.evidenceToReference}
+                          onChange={(e) => setStoryBuilderData(prev => ({ ...prev, before: { ...prev.before, evidenceToReference: e.target.value }}))}
+                          className="min-h-[60px] text-sm"
+                          data-testid="input-evidence"
+                        />
+                        {suggestedStories.length > 0 && (
+                          <div className="mt-3 space-y-2 p-3 rounded-lg bg-blue-50/50 border border-blue-200/50">
+                            <p className="text-xs font-medium text-blue-700 flex items-center gap-1">
+                              <Trophy className="w-3 h-3" /> Relevant Success Stories
+                            </p>
+                            {suggestedStories.map((story, idx) => (
+                              <div 
+                                key={idx} 
+                                className="p-2 rounded bg-white/80 text-xs cursor-pointer hover:bg-blue-100/50"
+                                onClick={() => {
+                                  setStoryBuilderData(prev => ({ 
+                                    ...prev, 
+                                    before: { 
+                                      ...prev.before, 
+                                      evidenceToReference: `${story.title}: ${story.outcome}` 
+                                    }
+                                  }));
+                                  toast({ title: "Story added" });
+                                }}
+                              >
+                                <p className="font-medium">{story.title}</p>
+                                <p className="text-muted-foreground">{story.outcome}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 7. Tension Question */}
+                      <div className="p-4 rounded-lg border bg-card">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">7</span>
+                            <Label className="font-medium">What question keeps the story moving?</Label>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleAiSuggestWithStories("tensionQuestion", [])}
+                            disabled={aiSuggestionLoading === "tensionQuestion"}
+                            className="text-primary h-7"
+                            data-testid="button-ai-tension"
+                          >
+                            {aiSuggestionLoading === "tensionQuestion" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                            <span className="ml-1 text-xs">Coach</span>
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-2 italic">
+                          Dilemma, pressure point, uncertainty… what keeps them engaged?
+                        </p>
+                        <Textarea
+                          placeholder="The question that creates tension and keeps your audience engaged..."
+                          value={storyBuilderData.before.tensionQuestion}
+                          onChange={(e) => setStoryBuilderData(prev => ({ ...prev, before: { ...prev.before, tensionQuestion: e.target.value }}))}
+                          className="min-h-[60px] text-sm"
+                          data-testid="input-tension-question"
                         />
                       </div>
                     </div>
-                    
-                    {/* STORY Lane */}
-                    <div className="relative pl-0 md:pl-14">
-                      <div className="absolute left-0 top-3 w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-bold hidden md:flex z-10">
-                        2
+
+                    {/* Coach Review for BEFORE */}
+                    <div className="p-4 rounded-lg bg-gradient-to-r from-emerald-500/10 to-emerald-500/5 border border-emerald-500/30">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Lightbulb className="w-5 h-5 text-emerald-600" />
+                        <h4 className="font-semibold text-emerald-700">Coach Review</h4>
                       </div>
-                      <div className="p-4 rounded-xl border-2 border-blue-500/30 bg-blue-500/5">
-                        <div className="flex items-center gap-2 mb-3">
-                          <MessageCircle className="w-5 h-5 text-blue-600" />
-                          <h4 className="font-bold text-blue-700">STORY</h4>
-                          <span className="text-xs text-muted-foreground">Your key message + proof</span>
-                        </div>
-                        <div className="space-y-3">
-                          <div>
-                            <Label className="text-xs text-muted-foreground mb-1 block">Key Message</Label>
-                            <Textarea 
-                              placeholder="The single idea they MUST remember..."
-                              value={narrativeCanvas.keyMessage}
-                              onChange={(e) => setNarrativeCanvas(prev => ({ ...prev, keyMessage: e.target.value }))}
-                              className="min-h-[60px] text-sm bg-white/50"
-                              data-testid="input-narrative-message"
-                            />
-                          </div>
-                          <div>
-                            <div className="flex items-center justify-between mb-1">
-                              <Label className="text-xs text-muted-foreground">Proof Point</Label>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={async () => {
-                                  setIsGeneratingStories(true);
-                                  try {
-                                    const response = await apiRequest("POST", `/api/projects/${projectId}/ai/suggest-success-stories`, {
-                                      companyName: project?.companyName,
-                                      industry: project?.sector,
-                                      theme: selectedDiscoveryTheme ? discoveryThemes.find(t => t.id === selectedDiscoveryTheme)?.name : "Leadership Development",
-                                      keyMessage: narrativeCanvas.keyMessage,
-                                      insights: insights?.slice(0, 3).map((i: any) => i.label) || []
-                                    });
-                                    const data = await response.json();
-                                    if (data.stories && data.stories.length > 0) {
-                                      setSuggestedStories(data.stories);
-                                      toast({ title: "Stories found", description: `${data.stories.length} relevant Korn Ferry success stories` });
-                                    }
-                                  } catch (error) {
-                                    toast({ title: "Could not find stories", description: "Please try again", variant: "destructive" });
-                                  }
-                                  setIsGeneratingStories(false);
-                                }}
-                                disabled={isGeneratingStories}
-                                className="h-7 text-xs text-blue-700 border-blue-300"
-                                data-testid="button-suggest-stories"
-                              >
-                                {isGeneratingStories ? (
-                                  <Loader2 className="w-3 h-3 animate-spin mr-1" />
-                                ) : (
-                                  <Trophy className="w-3 h-3 mr-1" />
-                                )}
-                                Find KF Stories
-                              </Button>
-                            </div>
-                            <Textarea 
-                              placeholder="Evidence, data, or success story..."
-                              value={narrativeCanvas.proofPoint}
-                              onChange={(e) => setNarrativeCanvas(prev => ({ ...prev, proofPoint: e.target.value }))}
-                              className="min-h-[60px] text-sm bg-white/50"
-                              data-testid="input-narrative-proof"
-                            />
-                            
-                            {/* Suggested Success Stories */}
-                            {suggestedStories.length > 0 && (
-                              <div className="mt-3 space-y-2">
-                                <p className="text-xs font-medium text-blue-700 flex items-center gap-1">
-                                  <Trophy className="w-3 h-3" />
-                                  Relevant Korn Ferry Success Stories
-                                </p>
-                                {suggestedStories.map((story, idx) => (
-                                  <div 
-                                    key={idx} 
-                                    className="p-2 rounded-lg bg-blue-50/50 border border-blue-200/50 text-xs space-y-1 cursor-pointer hover:bg-blue-100/50 transition-colors"
-                                    onClick={() => {
-                                      const proofText = `${story.title}: ${story.outcome}`;
-                                      setNarrativeCanvas(prev => ({ ...prev, proofPoint: proofText }));
-                                      toast({ title: "Story added", description: "Added as your proof point" });
-                                    }}
-                                    data-testid={`story-suggestion-${idx}`}
-                                  >
-                                    <div className="flex items-start justify-between gap-2">
-                                      <div className="flex-1">
-                                        <p className="font-medium text-blue-800">{story.title}</p>
-                                        <p className="text-muted-foreground">{story.client} • {story.industry}</p>
-                                      </div>
-                                      <a 
-                                        href={story.url} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="text-blue-600 hover:text-blue-800"
-                                      >
-                                        <ExternalLink className="w-3 h-3" />
-                                      </a>
-                                    </div>
-                                    <p className="text-blue-700">{story.outcome}</p>
-                                    <p className="text-emerald-600 italic">Why relevant: {story.relevance}</p>
-                                  </div>
-                                ))}
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => setSuggestedStories([])}
-                                  className="w-full h-6 text-xs text-muted-foreground"
-                                >
-                                  <X className="w-3 h-3 mr-1" /> Dismiss
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
+                      <div className="space-y-2 text-sm">
+                        {!storyBuilderData.before.singleMessage && (
+                          <p className="text-amber-600 flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4" />
+                            Start with your single message - the one idea they must remember
+                          </p>
+                        )}
+                        {storyBuilderData.before.singleMessage && storyBuilderData.before.singleMessage.split(' ').length > 25 && (
+                          <p className="text-amber-600 flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4" />
+                            Your message is too long. Can you say it in one sentence?
+                          </p>
+                        )}
+                        {!storyBuilderData.before.startingHook && storyBuilderData.before.singleMessage && (
+                          <p className="text-blue-600 flex items-center gap-2">
+                            <ArrowRight className="w-4 h-4" />
+                            Now add a hook to grab attention immediately
+                          </p>
+                        )}
+                        {storyBuilderData.before.singleMessage && storyBuilderData.before.startingHook && !storyBuilderData.before.heroCharacter && (
+                          <p className="text-blue-600 flex items-center gap-2">
+                            <ArrowRight className="w-4 h-4" />
+                            Who is your hero? Every story needs a protagonist
+                          </p>
+                        )}
+                        {Object.values(storyBuilderData.before).filter(v => v && v.length > 0).length >= 5 && (
+                          <p className="text-emerald-600 flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4" />
+                            Your story foundation is solid! Move to DURING to plan the delivery
+                          </p>
+                        )}
                       </div>
                     </div>
-                    
-                    {/* ASK Lane - Enhanced with Methodology */}
-                    <div className="relative pl-0 md:pl-14">
-                      <div className="absolute left-0 top-3 w-12 h-12 rounded-full bg-purple-500 text-white flex items-center justify-center text-sm font-bold hidden md:flex z-10">
-                        3
+                  </TabsContent>
+
+                  {/* DURING Tab - Telling the Story */}
+                  <TabsContent value="during" className="space-y-4">
+                    <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+                      <div className="flex items-center gap-2 mb-2">
+                        <PlayCircle className="w-5 h-5 text-blue-600" />
+                        <h4 className="font-bold text-blue-700">DURING: Telling the Story</h4>
                       </div>
-                      <div className="p-4 rounded-xl border-2 border-purple-500/30 bg-purple-500/5">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <HelpCircle className="w-5 h-5 text-purple-600" />
-                            <h4 className="font-bold text-purple-700">ASK</h4>
-                            <span className="text-xs text-muted-foreground">Outcome-focused questions</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Select 
-                              value={selectedQuestionMethodology} 
-                              onValueChange={(v: "all" | "spin" | "miller_heiman" | "pss") => setSelectedQuestionMethodology(v)}
-                            >
-                              <SelectTrigger className="h-8 w-[140px] text-xs" data-testid="select-methodology">
-                                <SelectValue placeholder="Methodology" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="all">All Methods</SelectItem>
-                                <SelectItem value="spin">SPIN Selling</SelectItem>
-                                <SelectItem value="miller_heiman">Miller Heiman</SelectItem>
-                                <SelectItem value="pss">PSS</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={async () => {
-                                setIsGeneratingQuestions(true);
-                                try {
-                                  const response = await apiRequest("POST", `/api/projects/${projectId}/ai/generate-methodology-questions`, {
-                                    companyName: project?.companyName,
-                                    theme: selectedDiscoveryTheme ? discoveryThemes.find(t => t.id === selectedDiscoveryTheme)?.name : "Leadership Development",
-                                    contactRole: meetingContact?.role,
-                                    methodology: selectedQuestionMethodology,
-                                    insights: insights?.slice(0, 3).map((i: any) => i.label) || []
-                                  });
-                                  const data = await response.json();
-                                  if (data.questions && data.questions.length > 0) {
-                                    setMethodologyQuestions(data.questions);
-                                    // Also populate the basic keyQuestions with the generated ones
-                                    setNarrativeCanvas(prev => ({ 
-                                      ...prev, 
-                                      keyQuestions: data.questions.slice(0, 3).map((q: any) => q.question) 
-                                    }));
-                                    toast({ title: "Questions generated", description: `${data.questions.length} outcome-focused questions ready` });
-                                  }
-                                } catch (error) {
-                                  toast({ title: "Generation failed", description: "Please try again", variant: "destructive" });
-                                }
-                                setIsGeneratingQuestions(false);
-                              }}
-                              disabled={isGeneratingQuestions}
-                              className="text-purple-700 border-purple-300"
-                              data-testid="button-generate-questions"
-                            >
-                              {isGeneratingQuestions ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <>
-                                  <Sparkles className="w-4 h-4 mr-1" />
-                                  Generate
-                                </>
-                              )}
-                            </Button>
+                      <p className="text-sm text-muted-foreground">
+                        Deliver your story with impact. Focus on pacing, turning points, and keeping it conversational.
+                      </p>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Coaching Tips */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="p-3 rounded-lg bg-blue-50/50 border border-blue-200/50 flex items-start gap-2">
+                          <Zap className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium text-blue-800">Start fast — no preamble</p>
+                            <p className="text-xs text-muted-foreground">Enter the story at the moment of action</p>
                           </div>
                         </div>
-                        
-                        {/* Methodology Questions Display */}
-                        {methodologyQuestions.length > 0 ? (
-                          <div className="space-y-3">
-                            {methodologyQuestions.map((q, idx) => (
-                              <div key={idx} className="p-3 rounded-lg bg-white/60 border border-purple-200/50 space-y-2">
-                                <div className="flex items-start gap-2">
-                                  <span className="w-6 h-6 rounded-full bg-purple-500/20 text-purple-700 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
-                                    {idx + 1}
-                                  </span>
-                                  <div className="flex-1">
-                                    <p className="text-sm font-medium">{q.question}</p>
-                                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                                      <Badge 
-                                        variant="outline" 
-                                        className={`text-xs ${
-                                          q.methodology === "SPIN" ? "bg-blue-50 text-blue-700 border-blue-300" :
-                                          q.methodology === "Miller Heiman" ? "bg-emerald-50 text-emerald-700 border-emerald-300" :
-                                          "bg-amber-50 text-amber-700 border-amber-300"
-                                        }`}
-                                      >
-                                        {q.methodology}
-                                      </Badge>
-                                      <span className="text-xs text-muted-foreground">{q.stage}</span>
-                                      {q.outcome && (
-                                        <span className="text-xs text-purple-600 flex items-center gap-1">
-                                          <Target className="w-3 h-3" />
-                                          {q.outcome}
-                                        </span>
-                                      )}
-                                    </div>
-                                    {q.followUp && (
-                                      <p className="text-xs text-muted-foreground mt-1 italic">
-                                        Follow-up: {q.followUp}
-                                      </p>
-                                    )}
-                                  </div>
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7"
-                                    onClick={() => {
-                                      navigator.clipboard.writeText(q.question);
-                                      toast({ title: "Copied", description: "Question copied to clipboard" });
-                                    }}
-                                    data-testid={`button-copy-question-${idx}`}
-                                  >
-                                    <Copy className="w-3 h-3" />
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
-                            {/* Generate More Button */}
-                            <div className="flex items-center justify-center gap-3 pt-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={async () => {
-                                  setIsGeneratingQuestions(true);
-                                  try {
-                                    const response = await apiRequest("POST", `/api/projects/${projectId}/ai/generate-methodology-questions`, {
-                                      companyName: project?.companyName,
-                                      theme: selectedDiscoveryTheme ? discoveryThemes.find(t => t.id === selectedDiscoveryTheme)?.name : "Leadership Development",
-                                      contactRole: meetingContact?.role,
-                                      methodology: selectedQuestionMethodology,
-                                      insights: insights?.slice(0, 3).map((i: any) => i.label) || []
-                                    });
-                                    const data = await response.json();
-                                    if (data.questions && data.questions.length > 0) {
-                                      // Append new questions to existing ones
-                                      setMethodologyQuestions(prev => [...prev, ...data.questions]);
-                                      toast({ title: "More questions added", description: `${data.questions.length} new questions generated` });
-                                    }
-                                  } catch (error) {
-                                    toast({ title: "Generation failed", description: "Please try again", variant: "destructive" });
-                                  }
-                                  setIsGeneratingQuestions(false);
-                                }}
-                                disabled={isGeneratingQuestions}
-                                className="text-purple-700 border-purple-300"
-                                data-testid="button-generate-more-questions"
-                              >
-                                {isGeneratingQuestions ? (
-                                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                                ) : (
-                                  <Plus className="w-4 h-4 mr-1" />
-                                )}
-                                Generate More
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => {
-                                  setMethodologyQuestions([]);
-                                  setNarrativeCanvas(prev => ({ ...prev, keyQuestions: [] }));
-                                }}
-                                className="text-muted-foreground"
-                                data-testid="button-clear-questions"
-                              >
-                                <X className="w-4 h-4 mr-1" />
-                                Clear All
-                              </Button>
-                            </div>
-                            <p className="text-xs text-muted-foreground text-center">
-                              {methodologyQuestions.length} questions generated
-                            </p>
+                        <div className="p-3 rounded-lg bg-blue-50/50 border border-blue-200/50 flex items-start gap-2">
+                          <Film className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium text-blue-800">Pace like a movie</p>
+                            <p className="text-xs text-muted-foreground">Short sentences in tension, longer in reflection</p>
                           </div>
-                        ) : (
-                          <div className="space-y-2">
-                            {[0, 1, 2].map((idx) => (
-                              <div key={idx} className="flex items-center gap-2">
-                                <span className="w-6 h-6 rounded-full bg-purple-500/20 text-purple-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
-                                  {idx + 1}
-                                </span>
-                                <Input 
-                                  placeholder={idx === 0 ? "What's your biggest priority right now?" : idx === 1 ? "How is that impacting your team?" : "What would success look like?"}
-                                  value={narrativeCanvas.keyQuestions[idx] || ""}
-                                  onChange={(e) => {
-                                    const newQuestions = [...narrativeCanvas.keyQuestions];
-                                    newQuestions[idx] = e.target.value;
-                                    setNarrativeCanvas(prev => ({ ...prev, keyQuestions: newQuestions }));
-                                  }}
-                                  className="text-sm bg-white/50"
-                                  data-testid={`input-narrative-question-${idx}`}
-                                />
-                              </div>
-                            ))}
-                            <p className="text-xs text-muted-foreground text-center mt-2">
-                              Use "Generate" to create methodology-based, outcome-focused questions
+                        </div>
+                        <div className="p-3 rounded-lg bg-blue-50/50 border border-blue-200/50 flex items-start gap-2">
+                          <MessageCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium text-blue-800">Keep it conversational</p>
+                            <p className="text-xs text-muted-foreground">Speak like a human, not a presentation script</p>
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-lg bg-blue-50/50 border border-blue-200/50 flex items-start gap-2">
+                          <BarChart3 className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium text-blue-800">Don't over-explain data</p>
+                            <p className="text-xs text-muted-foreground">Data supports the story, not replaces it</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Opening Line */}
+                      <div className="p-4 rounded-lg border bg-card">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">1</span>
+                            <Label className="font-medium">Your Opening Line</Label>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleAiSuggestWithStories("openingLine", [])}
+                            disabled={aiSuggestionLoading === "openingLine"}
+                            className="text-primary h-7"
+                            data-testid="button-ai-opening"
+                          >
+                            {aiSuggestionLoading === "openingLine" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                            <span className="ml-1 text-xs">Coach</span>
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-2 italic">
+                          Enter the story at the moment of action - no warm-up needed
+                        </p>
+                        <Textarea
+                          placeholder="Your first line that drops them right into the action..."
+                          value={storyBuilderData.during.openingLine}
+                          onChange={(e) => setStoryBuilderData(prev => ({ ...prev, during: { ...prev.during, openingLine: e.target.value }}))}
+                          className="min-h-[60px] text-sm"
+                          data-testid="input-opening-line"
+                        />
+                      </div>
+
+                      {/* Turning Point */}
+                      <div className="p-4 rounded-lg border bg-card">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">2</span>
+                            <Label className="font-medium">The Turning Point</Label>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleAiSuggestWithStories("turningPoint", [])}
+                            disabled={aiSuggestionLoading === "turningPoint"}
+                            className="text-primary h-7"
+                            data-testid="button-ai-turning"
+                          >
+                            {aiSuggestionLoading === "turningPoint" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                            <span className="ml-1 text-xs">Coach</span>
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-2 italic">
+                          What realisation changed the course? Why did that moment matter?
+                        </p>
+                        <Textarea
+                          placeholder="The pivotal moment when everything changed..."
+                          value={storyBuilderData.during.turningPoint}
+                          onChange={(e) => setStoryBuilderData(prev => ({ ...prev, during: { ...prev.during, turningPoint: e.target.value }}))}
+                          className="min-h-[60px] text-sm"
+                          data-testid="input-turning-point"
+                        />
+                      </div>
+
+                      {/* Key Data Points */}
+                      <div className="p-4 rounded-lg border bg-card">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">3</span>
+                          <Label className="font-medium">Key Data Points (supporting evidence)</Label>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-2 italic">
+                          Data becomes supporting evidence after the story - don't lead with it
+                        </p>
+                        <Textarea
+                          placeholder="The 2-3 data points that support your story..."
+                          value={storyBuilderData.during.keyDataPoints}
+                          onChange={(e) => setStoryBuilderData(prev => ({ ...prev, during: { ...prev.during, keyDataPoints: e.target.value }}))}
+                          className="min-h-[60px] text-sm"
+                          data-testid="input-data-points"
+                        />
+                      </div>
+
+                      {/* Pacing Notes */}
+                      <div className="p-4 rounded-lg border bg-card">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">4</span>
+                          <Label className="font-medium">Pacing Notes & Pause Points</Label>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-2 italic">
+                          Where will you pause for effect? Where will you speed up for tension?
+                        </p>
+                        <Textarea
+                          placeholder="Notes on where to pause, speed up, slow down..."
+                          value={storyBuilderData.during.pacingNotes}
+                          onChange={(e) => setStoryBuilderData(prev => ({ ...prev, during: { ...prev.during, pacingNotes: e.target.value }}))}
+                          className="min-h-[60px] text-sm"
+                          data-testid="input-pacing-notes"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Coach Review for DURING */}
+                    <div className="p-4 rounded-lg bg-gradient-to-r from-blue-500/10 to-blue-500/5 border border-blue-500/30">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Lightbulb className="w-5 h-5 text-blue-600" />
+                        <h4 className="font-semibold text-blue-700">Coach Review</h4>
+                      </div>
+                      <div className="space-y-2 text-sm">
+                        {!storyBuilderData.during.openingLine && (
+                          <p className="text-amber-600 flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4" />
+                            Craft your opening line - enter the story at the moment of action
+                          </p>
+                        )}
+                        {storyBuilderData.during.openingLine && storyBuilderData.during.openingLine.toLowerCase().startsWith("i want to") && (
+                          <p className="text-amber-600 flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4" />
+                            Skip the preamble! Start with action, not "I want to tell you..."
+                          </p>
+                        )}
+                        {!storyBuilderData.during.turningPoint && storyBuilderData.during.openingLine && (
+                          <p className="text-blue-600 flex items-center gap-2">
+                            <ArrowRight className="w-4 h-4" />
+                            Every great story has a turning point - what changed everything?
+                          </p>
+                        )}
+                        {storyBuilderData.during.openingLine && storyBuilderData.during.turningPoint && (
+                          <p className="text-emerald-600 flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4" />
+                            Great! You have the core of your delivery. Move to AFTER to land it
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  {/* AFTER Tab - Landing the Story */}
+                  <TabsContent value="after" className="space-y-4">
+                    <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Target className="w-5 h-5 text-amber-600" />
+                        <h4 className="font-bold text-amber-700">AFTER: Landing the Story</h4>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Finish strong with meaning, a clear takeaway, and a call to action.
+                      </p>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Moment of Meaning */}
+                      <div className="p-4 rounded-lg border bg-card">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold">1</span>
+                            <Label className="font-medium">Finish with a "moment of meaning"</Label>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleAiSuggestWithStories("momentOfMeaning", [])}
+                            disabled={aiSuggestionLoading === "momentOfMeaning"}
+                            className="text-primary h-7"
+                            data-testid="button-ai-meaning"
+                          >
+                            {aiSuggestionLoading === "momentOfMeaning" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                            <span className="ml-1 text-xs">Coach</span>
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-2 italic">
+                          A crisp insight. A forward-looking question. A short reflective conclusion.
+                        </p>
+                        <Textarea
+                          placeholder="The meaningful conclusion that resonates..."
+                          value={storyBuilderData.after.momentOfMeaning}
+                          onChange={(e) => setStoryBuilderData(prev => ({ ...prev, after: { ...prev.after, momentOfMeaning: e.target.value }}))}
+                          className="min-h-[60px] text-sm"
+                          data-testid="input-moment-meaning"
+                        />
+                      </div>
+
+                      {/* Explicit Takeaway */}
+                      <div className="p-4 rounded-lg border bg-card">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold">2</span>
+                            <Label className="font-medium">Make the takeaway explicit — but not obvious</Label>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleAiSuggestWithStories("explicitTakeaway", [])}
+                            disabled={aiSuggestionLoading === "explicitTakeaway"}
+                            className="text-primary h-7"
+                            data-testid="button-ai-takeaway"
+                          >
+                            {aiSuggestionLoading === "explicitTakeaway" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                            <span className="ml-1 text-xs">Coach</span>
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-2 italic">
+                          Connect story → action. What should they do with what they've learned?
+                        </p>
+                        <Textarea
+                          placeholder="The clear takeaway that connects to action..."
+                          value={storyBuilderData.after.explicitTakeaway}
+                          onChange={(e) => setStoryBuilderData(prev => ({ ...prev, after: { ...prev.after, explicitTakeaway: e.target.value }}))}
+                          className="min-h-[60px] text-sm"
+                          data-testid="input-explicit-takeaway"
+                        />
+                      </div>
+
+                      {/* Call to Action */}
+                      <div className="p-4 rounded-lg border bg-card">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold">3</span>
+                            <Label className="font-medium">Call to Action</Label>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleAiSuggestWithStories("callToAction", [])}
+                            disabled={aiSuggestionLoading === "callToAction"}
+                            className="text-primary h-7"
+                            data-testid="button-ai-cta"
+                          >
+                            {aiSuggestionLoading === "callToAction" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                            <span className="ml-1 text-xs">Coach</span>
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-2 italic">
+                          What's the next step you want them to take?
+                        </p>
+                        <Textarea
+                          placeholder="Based on what we've discussed, I'd love to..."
+                          value={storyBuilderData.after.callToAction}
+                          onChange={(e) => setStoryBuilderData(prev => ({ ...prev, after: { ...prev.after, callToAction: e.target.value }}))}
+                          className="min-h-[60px] text-sm"
+                          data-testid="input-call-to-action"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Coach Review for AFTER */}
+                    <div className="p-4 rounded-lg bg-gradient-to-r from-amber-500/10 to-amber-500/5 border border-amber-500/30">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Lightbulb className="w-5 h-5 text-amber-600" />
+                        <h4 className="font-semibold text-amber-700">Coach Review</h4>
+                      </div>
+                      <div className="space-y-2 text-sm">
+                        {!storyBuilderData.after.momentOfMeaning && (
+                          <p className="text-amber-600 flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4" />
+                            End with meaning - what's the insight they should remember?
+                          </p>
+                        )}
+                        {!storyBuilderData.after.callToAction && storyBuilderData.after.momentOfMeaning && (
+                          <p className="text-blue-600 flex items-center gap-2">
+                            <ArrowRight className="w-4 h-4" />
+                            Add a call to action - what should they do next?
+                          </p>
+                        )}
+                        {storyBuilderData.after.momentOfMeaning && storyBuilderData.after.callToAction && (
+                          <p className="text-emerald-600 flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4" />
+                            Excellent! Your story is ready. Now TEST it to make sure it lands
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  {/* TEST Tab - Story Validation */}
+                  <TabsContent value="test" className="space-y-4">
+                    <div className="p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
+                      <div className="flex items-center gap-2 mb-2">
+                        <CheckCircle2 className="w-5 h-5 text-purple-600" />
+                        <h4 className="font-bold text-purple-700">TEST YOUR STORY!</h4>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Answer these 3 questions to validate your story is ready to tell.
+                      </p>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Test 1: Stranger Care */}
+                      <div className="p-4 rounded-lg border bg-card">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="w-6 h-6 rounded-full bg-purple-500 text-white flex items-center justify-center text-xs font-bold">1</span>
+                          <Label className="font-medium">Would a stranger care?</Label>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          If not, sharpen the tension or emotional core.
+                        </p>
+                        <div className="flex items-center gap-2 mb-2">
+                          {[1, 2, 3, 4, 5].map(score => (
+                            <Button
+                              key={score}
+                              size="sm"
+                              variant={storyBuilderData.storyTest.strangerCareScore === score ? "default" : "outline"}
+                              onClick={() => setStoryBuilderData(prev => ({ ...prev, storyTest: { ...prev.storyTest, strangerCareScore: score }}))}
+                              className={`w-10 h-10 ${storyBuilderData.storyTest.strangerCareScore === score ? (score >= 4 ? 'bg-emerald-500' : score >= 3 ? 'bg-amber-500' : 'bg-red-500') : ''}`}
+                              data-testid={`button-stranger-score-${score}`}
+                            >
+                              {score}
+                            </Button>
+                          ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground">1 = Not at all → 5 = Absolutely</p>
+                        {storyBuilderData.storyTest.strangerCareScore && storyBuilderData.storyTest.strangerCareScore < 4 && (
+                          <div className="mt-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                            <p className="text-sm text-amber-800 flex items-center gap-2">
+                              <Lightbulb className="w-4 h-4" />
+                              <span><strong>Coach tip:</strong> Your story needs more tension or emotional stakes. What's at risk? What makes this matter?</span>
                             </p>
                           </div>
                         )}
                       </div>
-                    </div>
-                    
-                    {/* CLOSE Lane */}
-                    <div className="relative pl-0 md:pl-14">
-                      <div className="absolute left-0 top-3 w-12 h-12 rounded-full bg-amber-500 text-white flex items-center justify-center text-sm font-bold hidden md:flex z-10">
-                        4
-                      </div>
-                      <div className="p-4 rounded-xl border-2 border-amber-500/30 bg-amber-500/5">
+
+                      {/* Test 2: Simple Enough */}
+                      <div className="p-4 rounded-lg border bg-card">
                         <div className="flex items-center gap-2 mb-3">
-                          <Target className="w-5 h-5 text-amber-600" />
-                          <h4 className="font-bold text-amber-700">CLOSE</h4>
-                          <span className="text-xs text-muted-foreground">Your call to action</span>
+                          <span className="w-6 h-6 rounded-full bg-purple-500 text-white flex items-center justify-center text-xs font-bold">2</span>
+                          <Label className="font-medium">Is the story simple enough to repeat?</Label>
                         </div>
-                        <Textarea 
-                          placeholder="E.g., 'Based on what we've discussed, I'd love to schedule a deeper dive with our leadership practice...'"
-                          value={narrativeCanvas.callToAction}
-                          onChange={(e) => setNarrativeCanvas(prev => ({ ...prev, callToAction: e.target.value }))}
-                          className="min-h-[60px] text-sm bg-white/50"
-                          data-testid="input-narrative-cta"
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Others should be able to retell it without losing impact.
+                        </p>
+                        <div className="flex items-center gap-2 mb-2">
+                          {[1, 2, 3, 4, 5].map(score => (
+                            <Button
+                              key={score}
+                              size="sm"
+                              variant={storyBuilderData.storyTest.simplicityScore === score ? "default" : "outline"}
+                              onClick={() => setStoryBuilderData(prev => ({ ...prev, storyTest: { ...prev.storyTest, simplicityScore: score }}))}
+                              className={`w-10 h-10 ${storyBuilderData.storyTest.simplicityScore === score ? (score >= 4 ? 'bg-emerald-500' : score >= 3 ? 'bg-amber-500' : 'bg-red-500') : ''}`}
+                              data-testid={`button-simplicity-score-${score}`}
+                            >
+                              {score}
+                            </Button>
+                          ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground">1 = Too complex → 5 = Crystal clear</p>
+                        {storyBuilderData.storyTest.simplicityScore && storyBuilderData.storyTest.simplicityScore < 4 && (
+                          <div className="mt-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                            <p className="text-sm text-amber-800 flex items-center gap-2">
+                              <Lightbulb className="w-4 h-4" />
+                              <span><strong>Coach tip:</strong> Simplify! Cut unnecessary details. Focus on one hero, one challenge, one transformation.</span>
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Test 3: Leadership Values */}
+                      <div className="p-4 rounded-lg border bg-card">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="w-6 h-6 rounded-full bg-purple-500 text-white flex items-center justify-center text-xs font-bold">3</span>
+                          <Label className="font-medium">Does it reveal something meaningful about leadership, judgment, or values?</Label>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          If yes — it's a leader's story.
+                        </p>
+                        <div className="flex items-center gap-2 mb-2">
+                          {[1, 2, 3, 4, 5].map(score => (
+                            <Button
+                              key={score}
+                              size="sm"
+                              variant={storyBuilderData.storyTest.leadershipValuesScore === score ? "default" : "outline"}
+                              onClick={() => setStoryBuilderData(prev => ({ ...prev, storyTest: { ...prev.storyTest, leadershipValuesScore: score }}))}
+                              className={`w-10 h-10 ${storyBuilderData.storyTest.leadershipValuesScore === score ? (score >= 4 ? 'bg-emerald-500' : score >= 3 ? 'bg-amber-500' : 'bg-red-500') : ''}`}
+                              data-testid={`button-leadership-score-${score}`}
+                            >
+                              {score}
+                            </Button>
+                          ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground">1 = No insight → 5 = Powerful lesson</p>
+                        {storyBuilderData.storyTest.leadershipValuesScore && storyBuilderData.storyTest.leadershipValuesScore < 4 && (
+                          <div className="mt-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                            <p className="text-sm text-amber-800 flex items-center gap-2">
+                              <Lightbulb className="w-4 h-4" />
+                              <span><strong>Coach tip:</strong> Make the leadership insight explicit. What decision did they face? What value guided them?</span>
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Notes */}
+                      <div className="p-4 rounded-lg border bg-card">
+                        <Label className="font-medium mb-2 block">Test Notes</Label>
+                        <Textarea
+                          placeholder="Notes on how to improve your story based on the test results..."
+                          value={storyBuilderData.storyTest.testNotes}
+                          onChange={(e) => setStoryBuilderData(prev => ({ ...prev, storyTest: { ...prev.storyTest, testNotes: e.target.value }}))}
+                          className="min-h-[60px] text-sm"
+                          data-testid="input-test-notes"
                         />
                       </div>
                     </div>
-                  </div>
-                </div>
-                
-                {/* Visual Preview Card */}
-                {(narrativeCanvas.opener || narrativeCanvas.keyMessage || narrativeCanvas.keyQuestions.some(q => q)) && (
-                  <div className="mt-6 p-4 rounded-xl bg-gradient-to-r from-primary/10 via-purple-500/10 to-blue-500/10 border border-primary/20">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold text-sm flex items-center gap-2">
-                        <Eye className="w-4 h-4 text-primary" />
-                        Preview: Your Call Flow
-                      </h4>
-                      <Badge variant="outline" className="text-xs">
-                        {[narrativeCanvas.opener, narrativeCanvas.keyMessage, narrativeCanvas.proofPoint, ...narrativeCanvas.keyQuestions, narrativeCanvas.callToAction].filter(Boolean).length} / 7 complete
-                      </Badge>
+
+                    {/* Overall Score Summary */}
+                    <div className="p-4 rounded-lg bg-gradient-to-r from-purple-500/10 to-purple-500/5 border border-purple-500/30">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <Award className="w-5 h-5 text-purple-600" />
+                          <h4 className="font-semibold text-purple-700">Story Readiness</h4>
+                        </div>
+                        {(() => {
+                          const scores = [
+                            storyBuilderData.storyTest.strangerCareScore,
+                            storyBuilderData.storyTest.simplicityScore,
+                            storyBuilderData.storyTest.leadershipValuesScore
+                          ].filter(s => s !== null) as number[];
+                          if (scores.length === 0) return null;
+                          const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+                          const color = avg >= 4 ? "emerald" : avg >= 3 ? "amber" : "red";
+                          return (
+                            <Badge className={`bg-${color}-500 text-white`}>
+                              {avg >= 4 ? "Ready to Tell" : avg >= 3 ? "Almost There" : "Needs Work"}
+                            </Badge>
+                          );
+                        })()}
+                      </div>
+                      <div className="grid grid-cols-3 gap-3 text-center">
+                        <div className="p-3 rounded-lg bg-white/50">
+                          <p className="text-2xl font-bold text-purple-700">{storyBuilderData.storyTest.strangerCareScore ?? "—"}</p>
+                          <p className="text-xs text-muted-foreground">Stranger Care</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-white/50">
+                          <p className="text-2xl font-bold text-purple-700">{storyBuilderData.storyTest.simplicityScore ?? "—"}</p>
+                          <p className="text-xs text-muted-foreground">Simplicity</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-white/50">
+                          <p className="text-2xl font-bold text-purple-700">{storyBuilderData.storyTest.leadershipValuesScore ?? "—"}</p>
+                          <p className="text-xs text-muted-foreground">Leadership</p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-2 text-xs">
-                      {narrativeCanvas.opener && (
-                        <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-700">
-                          <Play className="w-3 h-3" /> Opening ready
-                        </div>
-                      )}
-                      {narrativeCanvas.keyMessage && (
-                        <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-blue-500/20 text-blue-700">
-                          <MessageCircle className="w-3 h-3" /> Message ready
-                        </div>
-                      )}
-                      {narrativeCanvas.keyQuestions.filter(q => q).length > 0 && (
-                        <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-purple-500/20 text-purple-700">
-                          <HelpCircle className="w-3 h-3" /> {narrativeCanvas.keyQuestions.filter(q => q).length} questions
-                        </div>
-                      )}
-                      {narrativeCanvas.callToAction && (
-                        <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/20 text-amber-700">
-                          <Target className="w-3 h-3" /> CTA ready
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
             {/* Navigation */}
