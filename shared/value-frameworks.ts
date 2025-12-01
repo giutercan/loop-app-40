@@ -1115,3 +1115,221 @@ export const getLoopForSolutionPattern = (patternId: SolutionPatternId): {
     }))
   };
 };
+
+// ============================================
+// UNIFIED JOURNEY PHASES (3-Phase Model)
+// Customer-friendly phased approach
+// ============================================
+
+export interface UnifiedPhase {
+  id: 'near_term' | 'build_momentum' | 'realize_value';
+  name: string;
+  shortName: string;
+  description: string;
+  customerMessage: string;
+  color: 'blue' | 'violet' | 'emerald';
+  icon: string;
+  typicalDuration: string;
+  startMonth: number;
+  endMonth: number;
+}
+
+export const UNIFIED_JOURNEY_PHASES: UnifiedPhase[] = [
+  {
+    id: 'near_term',
+    name: 'Near-Term Wins',
+    shortName: 'Quick Wins',
+    description: 'Establish foundation and deliver early value',
+    customerMessage: 'We start by building a strong foundation while delivering quick wins to demonstrate immediate value and build confidence.',
+    color: 'blue',
+    icon: 'Zap',
+    typicalDuration: '1-3 months',
+    startMonth: 0,
+    endMonth: 3
+  },
+  {
+    id: 'build_momentum',
+    name: 'Build Momentum',
+    shortName: 'Momentum',
+    description: 'Scale initiatives and develop capabilities',
+    customerMessage: 'With early wins secured, we build on success—expanding programs and developing deeper organizational capability.',
+    color: 'violet',
+    icon: 'TrendingUp',
+    typicalDuration: '4-9 months',
+    startMonth: 3,
+    endMonth: 9
+  },
+  {
+    id: 'realize_value',
+    name: 'Realize Value',
+    shortName: 'Impact',
+    description: 'Measure impact and embed sustainable change',
+    customerMessage: 'We validate ROI, embed lasting changes, and prepare your organization for continued success beyond our engagement.',
+    color: 'emerald',
+    icon: 'Trophy',
+    typicalDuration: '10-18+ months',
+    startMonth: 9,
+    endMonth: 18
+  }
+];
+
+export interface OutcomeLane {
+  outcomeId: string;
+  outcomeName: string;
+  solutionPattern: SolutionPatternId;
+  pillar: ValuePillarId;
+  pillarColor: string;
+  phases: {
+    phaseId: UnifiedPhase['id'];
+    activities: string[];
+    milestones: string[];
+    startWeek: number;
+    endWeek: number;
+  }[];
+  totalDuration: string;
+  expectedValue?: string;
+}
+
+export interface UnifiedJourneyData {
+  phases: UnifiedPhase[];
+  lanes: OutcomeLane[];
+  totalOutcomes: number;
+  totalMonths: number;
+  sharedMilestones: {
+    week: number;
+    title: string;
+    outcomes: string[];
+  }[];
+}
+
+// Map outcome journey templates to unified phases with normalized week spans
+const mapTemplateToPhases = (template: typeof OUTCOME_JOURNEY_TEMPLATES[SolutionPatternId]): {
+  phaseId: UnifiedPhase['id'];
+  activities: string[];
+  milestones: string[];
+  startWeek: number;
+  endWeek: number;
+}[] => {
+  // Default total months for the entire journey
+  const TOTAL_MONTHS = 18;
+  const TOTAL_WEEKS = TOTAL_MONTHS * 4;
+  
+  if (!template || !template.phases || template.phases.length === 0) {
+    // Return default 3-phase structure
+    return [
+      { phaseId: 'near_term', activities: ['Foundation setup', 'Initial assessment'], milestones: ['Kickoff complete'], startWeek: 0, endWeek: 12 },
+      { phaseId: 'build_momentum', activities: ['Implementation', 'Training'], milestones: ['Rollout complete'], startWeek: 12, endWeek: 48 },
+      { phaseId: 'realize_value', activities: ['Measurement', 'Optimization'], milestones: ['ROI validated'], startWeek: 48, endWeek: 72 }
+    ];
+  }
+  
+  const phases = template.phases;
+  const totalPhases = phases.length;
+  
+  // Calculate even distribution as fallback
+  const weeksPerPhase = Math.floor(TOTAL_WEEKS / totalPhases);
+  
+  // First pass: try to parse durations from template
+  const parsedPhases = phases.map((phase, index) => {
+    const durationMatch = phase.duration ? phase.duration.match(/(\d+)/g) : null;
+    return {
+      phase,
+      index,
+      startMonth: durationMatch && durationMatch[0] ? parseInt(durationMatch[0]) : null,
+      endMonth: durationMatch && durationMatch[1] ? parseInt(durationMatch[1]) : null
+    };
+  });
+  
+  // Second pass: normalize to sequential, non-overlapping week spans
+  return parsedPhases.map((p, index) => {
+    // Map original phases to unified phases based on position
+    let phaseId: UnifiedPhase['id'];
+    if (index === 0) {
+      phaseId = 'near_term';
+    } else if (index < totalPhases - 1) {
+      phaseId = 'build_momentum';
+    } else {
+      phaseId = 'realize_value';
+    }
+    
+    // Calculate sequential weeks to ensure no overlap
+    const startWeek = index * weeksPerPhase;
+    const endWeek = index === totalPhases - 1 ? TOTAL_WEEKS : (index + 1) * weeksPerPhase;
+    
+    return {
+      phaseId,
+      activities: p.phase.activities || [],
+      milestones: p.phase.milestones || [],
+      startWeek,
+      endWeek
+    };
+  });
+};
+
+// Create unified journey from selected outcomes
+export const createUnifiedJourney = (
+  selectedOutcomes: {
+    id: string;
+    name: string;
+    solutionPattern: SolutionPatternId;
+    pillar: ValuePillarId;
+    expectedValue?: string;
+  }[]
+): UnifiedJourneyData => {
+  const lanes: OutcomeLane[] = selectedOutcomes.map(outcome => {
+    const template = OUTCOME_JOURNEY_TEMPLATES[outcome.solutionPattern];
+    const pillar = VALUE_PILLARS[outcome.pillar];
+    const mappedPhases = mapTemplateToPhases(template);
+    
+    return {
+      outcomeId: outcome.id,
+      outcomeName: outcome.name,
+      solutionPattern: outcome.solutionPattern,
+      pillar: outcome.pillar,
+      pillarColor: pillar?.color || 'slate',
+      phases: mappedPhases,
+      totalDuration: template?.typicalTimeline || '12-18 months',
+      expectedValue: outcome.expectedValue
+    };
+  });
+
+  // Find shared milestones (milestones that appear in the same week across outcomes)
+  const milestonesByWeek: Record<number, { title: string; outcomes: string[] }[]> = {};
+  lanes.forEach(lane => {
+    lane.phases.forEach(phase => {
+      phase.milestones.forEach((milestone, idx) => {
+        const week = phase.startWeek + Math.floor((phase.endWeek - phase.startWeek) * (idx / (phase.milestones.length || 1)));
+        if (!milestonesByWeek[week]) {
+          milestonesByWeek[week] = [];
+        }
+        const existing = milestonesByWeek[week].find(m => m.title.toLowerCase() === milestone.toLowerCase());
+        if (existing) {
+          existing.outcomes.push(lane.outcomeName);
+        } else {
+          milestonesByWeek[week].push({ title: milestone, outcomes: [lane.outcomeName] });
+        }
+      });
+    });
+  });
+
+  const sharedMilestones = Object.entries(milestonesByWeek)
+    .filter(([_, milestones]) => milestones.some(m => m.outcomes.length > 1))
+    .map(([week, milestones]) => ({
+      week: parseInt(week),
+      title: milestones.find(m => m.outcomes.length > 1)?.title || '',
+      outcomes: milestones.find(m => m.outcomes.length > 1)?.outcomes || []
+    }))
+    .sort((a, b) => a.week - b.week);
+
+  // Calculate max duration
+  const maxEndWeek = Math.max(...lanes.flatMap(l => l.phases.map(p => p.endWeek)), 52);
+  const totalMonths = Math.ceil(maxEndWeek / 4);
+
+  return {
+    phases: UNIFIED_JOURNEY_PHASES,
+    lanes,
+    totalOutcomes: selectedOutcomes.length,
+    totalMonths,
+    sharedMilestones
+  };
+};

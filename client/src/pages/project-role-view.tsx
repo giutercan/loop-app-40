@@ -119,7 +119,8 @@ import {
 import { DemoModeButton } from "@/demo/DemoModeButton";
 import { useDemoMode } from "@/demo/DemoModeContext";
 import { JourneyLoopVisualizer } from "@/components/JourneyLoopVisualizer";
-import { JOURNEY_LOOP_STAGES } from "@shared/value-frameworks";
+import { UnifiedJourneyTimeline } from "@/components/UnifiedJourneyTimeline";
+import { JOURNEY_LOOP_STAGES, UNIFIED_JOURNEY_PHASES, createUnifiedJourney } from "@shared/value-frameworks";
 
 type Role = "sales" | "consultant" | "delivery" | "csm" | "client_sponsor";
 
@@ -2999,6 +3000,9 @@ export default function ProjectRoleView() {
     // Journey panel state for each commitment
     const [expandedJourneys, setExpandedJourneys] = useState<Set<number>>(new Set());
     const [viewingJourneyId, setViewingJourneyId] = useState<number | null>(null);
+    
+    // Selection state for unified journey timeline
+    const [timelineSelectedOutcomes, setTimelineSelectedOutcomes] = useState<Set<string>>(new Set());
 
     const toggleJourneyExpanded = (id: number) => {
       setExpandedJourneys(prev => {
@@ -4003,6 +4007,127 @@ export default function ProjectRoleView() {
             </CardContent>
           </Card>
         )}
+
+        {/* Unified Implementation Journey */}
+        {(() => {
+          const allCommitmentsWithPattern = (commitments as any[]).filter(c => c.solutionPattern);
+          if (allCommitmentsWithPattern.length === 0) return null;
+          
+          const selectedOutcomesForTimeline = allCommitmentsWithPattern.map((c: any) => ({
+            id: c.id.toString(),
+            name: c.name,
+            solutionPattern: c.solutionPattern as SolutionPatternId,
+            pillar: (c.valuePillar || 'grow') as ValuePillarId,
+            expectedValue: c.estimatedAnnualValue ? `$${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr` : undefined,
+            selected: timelineSelectedOutcomes.size === 0 || timelineSelectedOutcomes.has(c.id.toString())
+          }));
+
+          const selectedCount = selectedOutcomesForTimeline.filter(o => o.selected).length;
+          const totalCount = selectedOutcomesForTimeline.length;
+          
+          return (
+            <Card data-testid="unified-journey-section">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Layers className="w-5 h-5 text-primary" />
+                    <CardTitle className="text-lg">Unified Implementation Journey</CardTitle>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <p className="text-sm text-muted-foreground">
+                      {selectedCount} of {totalCount} outcome{totalCount !== 1 ? 's' : ''} selected
+                    </p>
+                    {timelineSelectedOutcomes.size > 0 && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => setTimelineSelectedOutcomes(new Set())}
+                        data-testid="button-clear-selection"
+                      >
+                        Show All
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <CardDescription>
+                  Select outcomes below to see how they fit together in a unified timeline
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Outcome Selection Controls */}
+                <div className="flex flex-wrap gap-2 p-3 rounded-lg bg-muted/30">
+                  {allCommitmentsWithPattern.map((c: any) => {
+                    const isSelected = timelineSelectedOutcomes.size === 0 || timelineSelectedOutcomes.has(c.id.toString());
+                    const pillar = VALUE_PILLARS[c.valuePillar as ValuePillarId];
+                    
+                    return (
+                      <Badge
+                        key={c.id}
+                        variant={isSelected ? "default" : "outline"}
+                        className={`cursor-pointer transition-all ${isSelected ? '' : 'opacity-60'}`}
+                        onClick={() => {
+                          setTimelineSelectedOutcomes(prev => {
+                            const next = new Set(prev);
+                            if (prev.size === 0) {
+                              allCommitmentsWithPattern.forEach(commitment => {
+                                if (commitment.id !== c.id) {
+                                  next.add(commitment.id.toString());
+                                }
+                              });
+                            } else if (next.has(c.id.toString())) {
+                              next.delete(c.id.toString());
+                            } else {
+                              next.add(c.id.toString());
+                            }
+                            return next;
+                          });
+                        }}
+                        data-testid={`badge-outcome-toggle-${c.id}`}
+                      >
+                        <div className={`w-2 h-2 rounded-full mr-2 ${isSelected ? 'bg-white' : 'bg-current opacity-50'}`} />
+                        {c.name}
+                        {pillar && (
+                          <span className="ml-1 opacity-60 text-xs">({pillar.shortName})</span>
+                        )}
+                      </Badge>
+                    );
+                  })}
+                </div>
+                
+                {/* Timeline Visualization */}
+                <UnifiedJourneyTimeline
+                  selectedOutcomes={selectedOutcomesForTimeline}
+                  selectable={true}
+                  onOutcomeClick={(outcomeId) => {
+                    const commitment = (commitments as any[]).find(c => c.id.toString() === outcomeId);
+                    if (commitment) {
+                      setViewingJourneyId(commitment.id);
+                    }
+                  }}
+                  onOutcomeToggle={(outcomeId, selected) => {
+                    setTimelineSelectedOutcomes(prev => {
+                      const next = new Set(prev);
+                      if (prev.size === 0) {
+                        allCommitmentsWithPattern.forEach(commitment => {
+                          if (selected && commitment.id.toString() === outcomeId) {
+                            next.add(commitment.id.toString());
+                          } else if (!selected && commitment.id.toString() !== outcomeId) {
+                            next.add(commitment.id.toString());
+                          }
+                        });
+                      } else if (selected) {
+                        next.add(outcomeId);
+                      } else {
+                        next.delete(outcomeId);
+                      }
+                      return next;
+                    });
+                  }}
+                />
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         {/* Add Outcome Dialog */}
         <Dialog open={isAddCommitmentOpen} onOpenChange={setIsAddCommitmentOpen}>
