@@ -206,6 +206,15 @@ export const projects = pgTable("projects", {
   conditionsForSuccess: text("conditions_for_success"), // What defines success for this initiative
   ragStatus: text("rag_status", { enum: ["green", "amber", "red"] }).default("green"), // RAG status for delivery view
   
+  // Sales workflow stage tracking (4-stage Sales journey)
+  salesStage: text("sales_stage", { 
+    enum: ["discover", "build_value", "align", "handoff"] 
+  }).default("discover"),
+  // Delivery workflow stage tracking (4-stage Delivery journey)
+  deliveryStage: text("delivery_stage", { 
+    enum: ["health_dashboard", "kpi_tracking", "business_review", "success_stories"] 
+  }), // null means not yet in delivery
+  
   // Discovery progress tracking (Guided Discovery wizard state)
   discoveryTheme: text("discovery_theme"), // Selected theme ID (e.g., "leadership", "kf-full-search")
   discoveryStep: text("discovery_step", { 

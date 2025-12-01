@@ -79,6 +79,23 @@ import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 
 
+// Sales workflow stages (4-stage journey)
+const salesStages = [
+  { id: "discover", label: "Discover", shortLabel: "1", color: "text-blue-600", bgColor: "bg-blue-100 dark:bg-blue-900/30" },
+  { id: "build_value", label: "Build Value", shortLabel: "2", color: "text-purple-600", bgColor: "bg-purple-100 dark:bg-purple-900/30" },
+  { id: "align", label: "Align", shortLabel: "3", color: "text-amber-600", bgColor: "bg-amber-100 dark:bg-amber-900/30" },
+  { id: "handoff", label: "Handoff", shortLabel: "4", color: "text-emerald-600", bgColor: "bg-emerald-100 dark:bg-emerald-900/30" },
+];
+
+// Delivery workflow stages (4-stage Delivery journey)
+const deliveryStages = [
+  { id: "health_dashboard", label: "Health Dashboard", color: "text-blue-600", bgColor: "bg-blue-100 dark:bg-blue-900/30" },
+  { id: "kpi_tracking", label: "KPI Tracking", color: "text-purple-600", bgColor: "bg-purple-100 dark:bg-purple-900/30" },
+  { id: "business_review", label: "Business Review", color: "text-amber-600", bgColor: "bg-amber-100 dark:bg-amber-900/30" },
+  { id: "success_stories", label: "Success Stories", color: "text-emerald-600", bgColor: "bg-emerald-100 dark:bg-emerald-900/30" },
+];
+
+// Legacy phase labels (for backward compatibility)
 const phaseLabels: Record<string, { label: string; color: string }> = {
   discovery: { label: "Discovery", color: "text-blue-600" },
   alignment: { label: "Alignment", color: "text-purple-600" },
@@ -107,6 +124,8 @@ interface Project {
   companyName: string;
   companyLogoUrl: string | null;
   currentPhase: "discovery" | "alignment" | "realisation";
+  salesStage: "discover" | "build_value" | "align" | "handoff" | null;
+  deliveryStage: "health_dashboard" | "kpi_tracking" | "business_review" | "success_stories" | null;
   accountId: number | null;
 }
 
@@ -533,44 +552,152 @@ function AccountCard({
                   <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                 </Button>
               </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2 space-y-1">
+              <CollapsibleContent className="mt-2 space-y-2">
                 {projects.map((project) => {
-                  const phase = phaseLabels[project.currentPhase] || { label: project.currentPhase, color: "text-muted-foreground" };
+                  // Derive salesStage from currentPhase for backward compatibility with legacy data
+                  const deriveSalesStageFromPhase = (phase: string): "discover" | "build_value" | "align" | "handoff" => {
+                    if (phase === "realisation") return "handoff"; // Completed sales, moved to delivery
+                    if (phase === "alignment") return "align"; // In alignment phase
+                    return "discover"; // Default to discovery
+                  };
+                  
+                  const currentSalesStage = project.salesStage || deriveSalesStageFromPhase(project.currentPhase);
+                  const currentSalesIndex = salesStages.findIndex(s => s.id === currentSalesStage);
+                  const isInDelivery = project.deliveryStage !== null || project.currentPhase === "realisation";
+                  const currentStageInfo = salesStages.find(s => s.id === currentSalesStage);
+                  const currentDeliveryStage = project.deliveryStage || "health_dashboard";
+                  const currentDeliveryIndex = deliveryStages.findIndex(s => s.id === currentDeliveryStage);
+                  const currentDeliveryInfo = deliveryStages.find(s => s.id === currentDeliveryStage);
+                  
                   return (
                     <div 
                       key={project.id} 
-                      className="rounded-lg border bg-muted/30 p-2 space-y-2"
+                      className="rounded-lg border bg-muted/30 p-3 space-y-3"
                       data-testid={`project-row-${project.id}`}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Layers className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                          <span className="text-sm font-medium truncate">{project.name}</span>
-                        </div>
-                        <Badge variant="secondary" className={`text-xs shrink-0 ${phase.color}`}>
-                          {phase.label}
-                        </Badge>
+                      {/* Project Name */}
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Layers className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        <span className="text-sm font-medium truncate">{project.name}</span>
                       </div>
-                      <div className="flex gap-1.5">
+                      
+                      {/* Workflow Stage Stepper */}
+                      <div className="space-y-2">
+                        {/* Sales Workflow Header */}
+                        <div className="flex items-center gap-2">
+                          <TrendingUp className="w-3.5 h-3.5 text-blue-600" />
+                          <span className="text-xs font-medium text-muted-foreground">Sales</span>
+                          {!isInDelivery && currentStageInfo && (
+                            <Badge variant="secondary" className={`text-xs ml-auto ${currentStageInfo.bgColor} ${currentStageInfo.color}`}>
+                              {currentStageInfo.label}
+                            </Badge>
+                          )}
+                          {isInDelivery && (
+                            <Badge variant="outline" className="text-xs ml-auto text-emerald-600 border-emerald-300">
+                              <CheckCircle2 className="w-3 h-3 mr-1" />
+                              Complete
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        {/* Stage Progress Dots */}
+                        <div className="flex items-center gap-1">
+                          {salesStages.map((stage, idx) => {
+                            const isCompleted = idx < currentSalesIndex || isInDelivery;
+                            const isCurrent = idx === currentSalesIndex && !isInDelivery;
+                            
+                            return (
+                              <div key={stage.id} className="flex items-center flex-1">
+                                <div 
+                                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-medium transition-all ${
+                                    isCompleted 
+                                      ? "bg-emerald-500 text-white" 
+                                      : isCurrent 
+                                        ? `${stage.bgColor} ${stage.color} ring-2 ring-offset-1 ring-current`
+                                        : "bg-muted text-muted-foreground"
+                                  }`}
+                                  title={stage.label}
+                                >
+                                  {isCompleted ? <CheckCircle2 className="w-3 h-3" /> : idx + 1}
+                                </div>
+                                {idx < salesStages.length - 1 && (
+                                  <div className={`flex-1 h-0.5 mx-0.5 ${
+                                    idx < currentSalesIndex || isInDelivery ? "bg-emerald-500" : "bg-muted"
+                                  }`} />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        
+                        {/* Delivery Section (if applicable) */}
+                        {isInDelivery && (
+                          <div className="pt-2 mt-2 border-t space-y-2">
+                            {/* Delivery Workflow Header */}
+                            <div className="flex items-center gap-2">
+                              <Users className="w-3.5 h-3.5 text-emerald-600" />
+                              <span className="text-xs font-medium text-muted-foreground">Delivery</span>
+                              {currentDeliveryInfo && (
+                                <Badge variant="secondary" className={`text-xs ml-auto ${currentDeliveryInfo.bgColor} ${currentDeliveryInfo.color}`}>
+                                  {currentDeliveryInfo.label}
+                                </Badge>
+                              )}
+                            </div>
+                            
+                            {/* Delivery Stage Progress Dots */}
+                            <div className="flex items-center gap-1">
+                              {deliveryStages.map((stage, idx) => {
+                                const isCompleted = idx < currentDeliveryIndex;
+                                const isCurrent = idx === currentDeliveryIndex;
+                                
+                                return (
+                                  <div key={stage.id} className="flex items-center flex-1">
+                                    <div 
+                                      className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-medium transition-all ${
+                                        isCompleted 
+                                          ? "bg-emerald-500 text-white" 
+                                          : isCurrent 
+                                            ? `${stage.bgColor} ${stage.color} ring-2 ring-offset-1 ring-current`
+                                            : "bg-muted text-muted-foreground"
+                                      }`}
+                                      title={stage.label}
+                                    >
+                                      {isCompleted ? <CheckCircle2 className="w-3 h-3" /> : idx + 1}
+                                    </div>
+                                    {idx < deliveryStages.length - 1 && (
+                                      <div className={`flex-1 h-0.5 mx-0.5 ${
+                                        idx < currentDeliveryIndex ? "bg-emerald-500" : "bg-muted"
+                                      }`} />
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Action Buttons */}
+                      <div className="flex gap-1.5 pt-1">
                         <Link href={`/projects/${project.id}/sales`} className="flex-1">
                           <Button 
-                            variant="outline" 
+                            variant={!isInDelivery ? "default" : "outline"}
                             size="sm" 
                             className="w-full h-7 text-xs gap-1"
                             data-testid={`button-project-sales-${project.id}`}
                           >
-                            <TrendingUp className="w-3 h-3 text-blue-600" />
+                            <TrendingUp className="w-3 h-3" />
                             Sales
                           </Button>
                         </Link>
                         <Link href={`/projects/${project.id}/delivery`} className="flex-1">
                           <Button 
-                            variant="outline" 
+                            variant={isInDelivery ? "default" : "outline"}
                             size="sm" 
                             className="w-full h-7 text-xs gap-1"
                             data-testid={`button-project-delivery-${project.id}`}
                           >
-                            <Users className="w-3 h-3 text-emerald-600" />
+                            <Users className="w-3 h-3" />
                             Delivery
                           </Button>
                         </Link>
