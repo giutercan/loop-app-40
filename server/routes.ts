@@ -6530,7 +6530,7 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
       }
       
       // Get related data
-      const notes = await storage.getNotes(id);
+      const discoveryNotes = await storage.getDiscoveryNotes(id);
       const insights = await storage.getInsights(id);
       const account = project.accountId ? await storage.getAccount(project.accountId) : null;
       
@@ -6580,10 +6580,10 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
             callToAction: (project as any).storyBuilderData.after?.callToAction
           }
         } : undefined,
-        notes: notes.map(n => ({
-          content: n.content,
-          category: n.category || undefined
-        })),
+        notes: discoveryNotes ? [{
+          content: discoveryNotes.notes || "",
+          category: "discovery"
+        }] : [],
         callFlow: (project as any).callFlowData?.items?.map((item: any) => ({
           question: item.question,
           phase: item.phase
