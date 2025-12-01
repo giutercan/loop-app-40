@@ -109,8 +109,12 @@ import {
   LEADING_INDICATORS, 
   LAGGING_INDICATORS,
   HEALTH_SCORES,
+  OUTCOME_JOURNEY_TEMPLATES,
   type ValuePillarId,
-  type SolutionPatternId
+  type SolutionPatternId,
+  type JourneyPhase,
+  type QuickWin,
+  type KeyMilestone
 } from "@shared/value-frameworks";
 import { DemoModeButton } from "@/demo/DemoModeButton";
 import { useDemoMode } from "@/demo/DemoModeContext";
@@ -2940,6 +2944,72 @@ export default function ProjectRoleView() {
       );
     };
 
+    const getSolutionPatternBadge = (pattern: string | null) => {
+      if (!pattern) return null;
+      const patternData = SOLUTION_VALUE_PATTERNS[pattern as SolutionPatternId];
+      if (!patternData) return null;
+      
+      return (
+        <Badge variant="outline" className="text-xs border-dashed">
+          {patternData.name}
+        </Badge>
+      );
+    };
+
+    const getJourneyData = (commitment: any) => {
+      const storedPhases = commitment?.journeyPhases;
+      const storedQuickWins = commitment?.quickWins;
+      const storedMilestones = commitment?.keyMilestones;
+      
+      const hasStoredPhases = storedPhases && 
+        Array.isArray(storedPhases) && 
+        storedPhases.length > 0 &&
+        storedPhases[0]?.phase;
+      
+      const hasStoredQuickWins = storedQuickWins && 
+        Array.isArray(storedQuickWins) && 
+        storedQuickWins.length > 0;
+      
+      const hasStoredMilestones = storedMilestones && 
+        Array.isArray(storedMilestones) && 
+        storedMilestones.length > 0;
+      
+      if (hasStoredPhases) {
+        return {
+          phases: storedPhases,
+          quickWins: hasStoredQuickWins ? storedQuickWins : [],
+          milestones: hasStoredMilestones ? storedMilestones : [],
+          typicalTimeline: commitment.implementationTimeline || "TBD",
+          description: commitment.description || "",
+          focusAreas: [],
+        };
+      }
+      
+      if (!commitment?.solutionPattern) return null;
+      return OUTCOME_JOURNEY_TEMPLATES[commitment.solutionPattern as SolutionPatternId] || null;
+    };
+    
+    const getJourneyTemplate = (solutionPattern: string | null) => {
+      if (!solutionPattern) return null;
+      return OUTCOME_JOURNEY_TEMPLATES[solutionPattern as SolutionPatternId] || null;
+    };
+
+    // Journey panel state for each commitment
+    const [expandedJourneys, setExpandedJourneys] = useState<Set<number>>(new Set());
+    const [viewingJourneyId, setViewingJourneyId] = useState<number | null>(null);
+
+    const toggleJourneyExpanded = (id: number) => {
+      setExpandedJourneys(prev => {
+        const next = new Set(prev);
+        if (next.has(id)) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+        return next;
+      });
+    };
+
     const draftCommitments = (commitments as any[]).filter(c => c.status === "draft");
     const proposedCommitments = (commitments as any[]).filter(c => c.status === "proposed");
     const confirmedCommitments = (commitments as any[]).filter(c => c.status === "client_confirmed" || c.status === "handed_off");
@@ -3567,56 +3637,99 @@ export default function ProjectRoleView() {
               {draftCommitments.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">No draft outcomes</p>
               ) : (
-                draftCommitments.map((c: any) => (
-                  <div key={c.id} className="p-3 rounded-lg border hover-elevate" data-testid={`commitment-draft-${c.id}`}>
-                    <div className="flex items-start justify-between mb-2">
-                      <h4 className="font-medium text-sm">{c.name}</h4>
-                      <div className="flex flex-wrap gap-1 items-center">
-                        {c.provenance?.source === "ai_generated" && (
-                          <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/30 text-[10px] px-1.5">
-                            <Sparkles className="w-3 h-3 mr-0.5" />
-                            AI
-                          </Badge>
+                draftCommitments.map((c: any) => {
+                  const journeyTemplate = getJourneyData(c);
+                  return (
+                    <div key={c.id} className="p-3 rounded-lg border hover-elevate" data-testid={`commitment-draft-${c.id}`}>
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="font-medium text-sm">{c.name}</h4>
+                        <div className="flex flex-wrap gap-1 items-center">
+                          {c.provenance?.source === "ai_generated" && (
+                            <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/30 text-[10px] px-1.5">
+                              <Sparkles className="w-3 h-3 mr-0.5" />
+                              AI
+                            </Badge>
+                          )}
+                          {getValuePillarBadge(c.valuePillar)}
+                          {getStatusBadge(c.status)}
+                        </div>
+                      </div>
+                      
+                      {getSolutionPatternBadge(c.solutionPattern)}
+                      
+                      {c.description && (
+                        <p className="text-xs text-muted-foreground mt-2 mb-2 line-clamp-2">{c.description}</p>
+                      )}
+                      
+                      {c.outcomeStatement && (
+                        <div className="text-xs text-emerald-700 bg-emerald-50 p-2 rounded mb-2 border border-emerald-200">
+                          <strong>Success:</strong> {c.outcomeStatement}
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center flex-wrap gap-2 text-xs text-muted-foreground mb-3">
+                        {c.baselineValue !== null && c.targetValue !== null && (
+                          <span>{c.baselineValue} → {c.targetValue} {c.kpiUnit || ""}</span>
                         )}
-                        {getValuePillarBadge(c.valuePillar)}
-                        {getStatusBadge(c.status)}
+                        {c.estimatedAnnualValue && (
+                          <span className="text-violet-600 font-medium">
+                            ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr
+                          </span>
+                        )}
+                        {(c.implementationTimeline || journeyTemplate?.typicalTimeline) && (
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {c.implementationTimeline || journeyTemplate?.typicalTimeline}
+                          </span>
+                        )}
+                      </div>
+                      
+                      {journeyTemplate && (
+                        <div className="mb-3 p-2 bg-muted/30 rounded-lg border border-dashed">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[10px] uppercase font-medium text-muted-foreground">Delivery Journey</span>
+                            <span className="text-[10px] text-muted-foreground">{journeyTemplate.phases.length} phases</span>
+                          </div>
+                          <div className="flex gap-1">
+                            {journeyTemplate.phases.slice(0, 3).map((phase, idx) => (
+                              <div key={idx} className="flex-1 text-center">
+                                <div className="h-1 bg-muted rounded-full mb-1" />
+                                <span className="text-[9px] text-muted-foreground">{phase.phase}</span>
+                              </div>
+                            ))}
+                            {journeyTemplate.phases.length > 3 && (
+                              <div className="flex-1 text-center">
+                                <div className="h-1 bg-muted rounded-full mb-1" />
+                                <span className="text-[9px] text-muted-foreground">+{journeyTemplate.phases.length - 3}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="flex-1"
+                          onClick={() => setEditingCommitment(c)}
+                          data-testid={`button-edit-commitment-${c.id}`}
+                        >
+                          Edit
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          className="flex-1"
+                          onClick={() => submitForReviewMutation.mutate(c.id)}
+                          disabled={submitForReviewMutation.isPending}
+                          data-testid={`button-submit-review-${c.id}`}
+                        >
+                          Submit for Review
+                        </Button>
                       </div>
                     </div>
-                    {c.description && (
-                      <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{c.description}</p>
-                    )}
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
-                      {c.baselineValue !== null && c.targetValue !== null && (
-                        <span>{c.baselineValue} → {c.targetValue} {c.kpiUnit || ""}</span>
-                      )}
-                      {c.estimatedAnnualValue && (
-                        <span className="text-violet-600 font-medium">
-                          ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="flex-1"
-                        onClick={() => setEditingCommitment(c)}
-                        data-testid={`button-edit-commitment-${c.id}`}
-                      >
-                        Edit
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        className="flex-1"
-                        onClick={() => submitForReviewMutation.mutate(c.id)}
-                        disabled={submitForReviewMutation.isPending}
-                        data-testid={`button-submit-review-${c.id}`}
-                      >
-                        Submit for Review
-                      </Button>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </CardContent>
           </Card>
@@ -3634,46 +3747,116 @@ export default function ProjectRoleView() {
               {proposedCommitments.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">No outcomes pending review</p>
               ) : (
-                proposedCommitments.map((c: any) => (
-                  <div key={c.id} className="p-3 rounded-lg border border-blue-500/20 bg-blue-500/5" data-testid={`commitment-review-${c.id}`}>
-                    <div className="flex items-start justify-between mb-2">
-                      <h4 className="font-medium text-sm">{c.name}</h4>
-                      <div className="flex flex-wrap gap-1 items-center">
-                        {c.provenance?.source === "ai_generated" && (
-                          <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/30 text-[10px] px-1.5">
-                            <Sparkles className="w-3 h-3 mr-0.5" />
-                            AI
-                          </Badge>
-                        )}
-                        {getValuePillarBadge(c.valuePillar)}
-                        {getStatusBadge(c.status)}
+                proposedCommitments.map((c: any) => {
+                  const journeyTemplate = getJourneyData(c);
+                  return (
+                    <div key={c.id} className="p-3 rounded-lg border border-blue-500/20 bg-blue-500/5" data-testid={`commitment-review-${c.id}`}>
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="font-medium text-sm">{c.name}</h4>
+                        <div className="flex flex-wrap gap-1 items-center">
+                          {c.provenance?.source === "ai_generated" && (
+                            <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/30 text-[10px] px-1.5">
+                              <Sparkles className="w-3 h-3 mr-0.5" />
+                              AI
+                            </Badge>
+                          )}
+                          {getValuePillarBadge(c.valuePillar)}
+                          {getStatusBadge(c.status)}
+                        </div>
                       </div>
-                    </div>
-                    {c.description && (
-                      <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{c.description}</p>
-                    )}
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
-                      {c.baselineValue !== null && c.targetValue !== null && (
-                        <span>{c.baselineValue} → {c.targetValue} {c.kpiUnit || ""}</span>
+                      
+                      {getSolutionPatternBadge(c.solutionPattern)}
+                      
+                      {c.description && (
+                        <p className="text-xs text-muted-foreground mt-2 mb-2 line-clamp-2">{c.description}</p>
                       )}
-                      {c.estimatedAnnualValue && (
-                        <span className="text-violet-600 font-medium">
-                          ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr
-                        </span>
+                      
+                      {c.outcomeStatement && (
+                        <div className="text-xs text-emerald-700 bg-emerald-50 p-2 rounded mb-2 border border-emerald-200">
+                          <strong>Success:</strong> {c.outcomeStatement}
+                        </div>
                       )}
+                      
+                      <div className="flex items-center flex-wrap gap-2 text-xs text-muted-foreground mb-3">
+                        {c.baselineValue !== null && c.targetValue !== null && (
+                          <span>{c.baselineValue} → {c.targetValue} {c.kpiUnit || ""}</span>
+                        )}
+                        {c.estimatedAnnualValue && (
+                          <span className="text-violet-600 font-medium">
+                            ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr
+                          </span>
+                        )}
+                        {(c.implementationTimeline || journeyTemplate?.typicalTimeline) && (
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {c.implementationTimeline || journeyTemplate?.typicalTimeline}
+                          </span>
+                        )}
+                      </div>
+                      
+                      {journeyTemplate && (
+                        <Collapsible open={expandedJourneys.has(c.id)} onOpenChange={() => toggleJourneyExpanded(c.id)}>
+                          <CollapsibleTrigger asChild>
+                            <Button variant="ghost" size="sm" className="w-full justify-between mb-2 text-xs h-7">
+                              <span className="flex items-center gap-1">
+                                <Layers className="w-3 h-3" />
+                                Delivery Journey ({journeyTemplate.phases.length} phases)
+                              </span>
+                              {expandedJourneys.has(c.id) ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                            </Button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <div className="p-2 bg-muted/30 rounded-lg border border-dashed mb-2">
+                              <div className="space-y-2">
+                                {journeyTemplate.phases.slice(0, 2).map((phase, idx) => (
+                                  <div key={idx} className="flex items-start gap-2">
+                                    <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-medium text-blue-700 shrink-0">
+                                      {idx + 1}
+                                    </div>
+                                    <div>
+                                      <p className="text-xs font-medium">{phase.phase}</p>
+                                      <p className="text-[10px] text-muted-foreground">{phase.duration}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                                {journeyTemplate.phases.length > 2 && (
+                                  <p className="text-[10px] text-muted-foreground text-center">
+                                    +{journeyTemplate.phases.length - 2} more phases
+                                  </p>
+                                )}
+                              </div>
+                              {journeyTemplate.quickWins.length > 0 && (
+                                <div className="mt-2 pt-2 border-t border-dashed">
+                                  <p className="text-[10px] font-medium text-amber-700 mb-1 flex items-center gap-1">
+                                    <Zap className="w-3 h-3" /> Quick Wins
+                                  </p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {journeyTemplate.quickWins.slice(0, 2).map((qw, idx) => (
+                                      <Badge key={idx} variant="secondary" className="text-[9px] px-1.5 py-0">
+                                        {qw.title}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      )}
+                      
+                      <Button 
+                        size="sm" 
+                        className="w-full bg-emerald-600 hover:bg-emerald-700"
+                        onClick={() => confirmCommitmentMutation.mutate(c.id)}
+                        disabled={confirmCommitmentMutation.isPending}
+                        data-testid={`button-confirm-commitment-${c.id}`}
+                      >
+                        <Check className="w-4 h-4 mr-2" />
+                        Mark as Client Confirmed
+                      </Button>
                     </div>
-                    <Button 
-                      size="sm" 
-                      className="w-full bg-emerald-600 hover:bg-emerald-700"
-                      onClick={() => confirmCommitmentMutation.mutate(c.id)}
-                      disabled={confirmCommitmentMutation.isPending}
-                      data-testid={`button-confirm-commitment-${c.id}`}
-                    >
-                      <Check className="w-4 h-4 mr-2" />
-                      Mark as Client Confirmed
-                    </Button>
-                  </div>
-                ))
+                  );
+                })
               )}
             </CardContent>
           </Card>
@@ -3691,42 +3874,97 @@ export default function ProjectRoleView() {
               {confirmedCommitments.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">No confirmed outcomes yet</p>
               ) : (
-                confirmedCommitments.map((c: any) => (
-                  <div key={c.id} className="p-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5" data-testid={`commitment-confirmed-${c.id}`}>
-                    <div className="flex items-start justify-between mb-2">
-                      <h4 className="font-medium text-sm">{c.name}</h4>
-                      <div className="flex flex-wrap gap-1 items-center">
-                        {c.provenance?.source === "ai_generated" && (
-                          <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/30 text-[10px] px-1.5">
-                            <Sparkles className="w-3 h-3 mr-0.5" />
-                            AI
+                confirmedCommitments.map((c: any) => {
+                  const journeyTemplate = getJourneyData(c);
+                  return (
+                    <div key={c.id} className="p-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5" data-testid={`commitment-confirmed-${c.id}`}>
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="font-medium text-sm">{c.name}</h4>
+                        <div className="flex flex-wrap gap-1 items-center">
+                          {c.provenance?.source === "ai_generated" && (
+                            <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/30 text-[10px] px-1.5">
+                              <Sparkles className="w-3 h-3 mr-0.5" />
+                              AI
+                            </Badge>
+                          )}
+                          {getValuePillarBadge(c.valuePillar)}
+                          {getHealthStatusBadge(c.healthStatus)}
+                          {getStatusBadge(c.status)}
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-wrap items-center gap-1 mb-2">
+                        {getSolutionPatternBadge(c.solutionPattern)}
+                        {(c.implementationTimeline || journeyTemplate?.typicalTimeline) && (
+                          <Badge variant="outline" className="text-[10px] border-dashed">
+                            <Calendar className="w-3 h-3 mr-0.5" />
+                            {c.implementationTimeline || journeyTemplate?.typicalTimeline}
                           </Badge>
                         )}
-                        {getValuePillarBadge(c.valuePillar)}
-                        {getHealthStatusBadge(c.healthStatus)}
-                        {getStatusBadge(c.status)}
                       </div>
-                    </div>
-                    {c.description && (
-                      <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{c.description}</p>
-                    )}
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      {c.baselineValue !== null && c.targetValue !== null && (
-                        <span>{c.baselineValue} → {c.targetValue} {c.kpiUnit || ""}</span>
+                      
+                      {c.outcomeStatement && (
+                        <div className="text-xs text-emerald-700 bg-emerald-50 p-2 rounded mb-2 border border-emerald-200">
+                          <strong>Success:</strong> {c.outcomeStatement}
+                        </div>
                       )}
-                      {c.estimatedAnnualValue && (
-                        <span className="text-emerald-600 font-medium">
-                          ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr
-                        </span>
+                      
+                      {c.description && (
+                        <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{c.description}</p>
+                      )}
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                        {c.baselineValue !== null && c.targetValue !== null && (
+                          <span>{c.baselineValue} → {c.targetValue} {c.kpiUnit || ""}</span>
+                        )}
+                        {c.estimatedAnnualValue && (
+                          <span className="text-emerald-600 font-medium">
+                            ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr
+                          </span>
+                        )}
+                      </div>
+                      
+                      {journeyTemplate && (
+                        <div className="flex items-center justify-between mt-2 pt-2 border-t border-dashed">
+                          <div className="flex items-center gap-1">
+                            <div className="flex gap-0.5">
+                              {journeyTemplate.phases.slice(0, 4).map((phase, idx) => (
+                                <div key={idx} className="w-2 h-2 rounded-full bg-emerald-200" title={phase.phase} />
+                              ))}
+                            </div>
+                            <span className="text-[10px] text-muted-foreground">
+                              {journeyTemplate.phases.length} phases • {journeyTemplate.quickWins.length} quick wins
+                            </span>
+                          </div>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="h-6 text-xs"
+                            onClick={() => setViewingJourneyId(c.id)}
+                            data-testid={`button-view-journey-${c.id}`}
+                          >
+                            <Eye className="w-3 h-3 mr-1" />
+                            View Journey
+                          </Button>
+                        </div>
+                      )}
+                      
+                      {!journeyTemplate && c.solutionPattern === null && (
+                        <div className="mt-2 pt-2 border-t border-dashed">
+                          <div className="flex items-center gap-2 text-[10px] text-amber-600 bg-amber-50 p-1.5 rounded border border-amber-200 border-dashed">
+                            <AlertCircle className="w-3 h-3 shrink-0" />
+                            <span>Add solution pattern to enable journey roadmap</span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {c.clientConfirmedAt && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Confirmed: {new Date(c.clientConfirmedAt).toLocaleDateString()}
+                        </p>
                       )}
                     </div>
-                    {c.clientConfirmedAt && (
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Confirmed: {new Date(c.clientConfirmedAt).toLocaleDateString()}
-                      </p>
-                    )}
-                  </div>
-                ))
+                  );
+                })
               )}
             </CardContent>
           </Card>
@@ -4191,6 +4429,160 @@ export default function ProjectRoleView() {
                   Save Changes
                 </Button>
               </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* View Journey Dialog */}
+        <Dialog open={viewingJourneyId !== null} onOpenChange={() => setViewingJourneyId(null)}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Layers className="w-5 h-5 text-emerald-600" />
+                Outcome Journey Roadmap
+              </DialogTitle>
+              <DialogDescription>
+                Korn Ferry methodology-driven implementation path with phases, milestones, and quick wins
+              </DialogDescription>
+            </DialogHeader>
+            {(() => {
+              const commitment = (commitments as any[]).find(c => c.id === viewingJourneyId);
+              const journeyTemplate = commitment ? getJourneyData(commitment) : null;
+              
+              if (!commitment || !journeyTemplate) {
+                return (
+                  <div className="py-8 text-center text-muted-foreground">
+                    <p>No journey data available for this outcome.</p>
+                    <p className="text-sm mt-2">Add a solution pattern to enable journey tracking.</p>
+                  </div>
+                );
+              }
+              
+              return (
+                <div className="space-y-6 py-4">
+                  {/* Outcome Summary */}
+                  <div className="p-4 rounded-lg bg-emerald-50 border border-emerald-200">
+                    <h4 className="font-medium text-emerald-800 mb-1">{commitment.name}</h4>
+                    {commitment.outcomeStatement && (
+                      <p className="text-sm text-emerald-700 mb-2">
+                        <strong>Success:</strong> {commitment.outcomeStatement}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      {getSolutionPatternBadge(commitment.solutionPattern)}
+                      {getValuePillarBadge(commitment.valuePillar)}
+                      <Badge variant="outline" className="text-xs">
+                        <Calendar className="w-3 h-3 mr-1" />
+                        {commitment.implementationTimeline || journeyTemplate.typicalTimeline}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* Quick Wins Section */}
+                  {journeyTemplate.quickWins.length > 0 && (
+                    <div>
+                      <h4 className="flex items-center gap-2 font-medium mb-3">
+                        <Zap className="w-4 h-4 text-amber-500" />
+                        Quick Wins
+                        <span className="text-xs text-muted-foreground font-normal">(Early value indicators)</span>
+                      </h4>
+                      <div className="grid gap-3 md:grid-cols-3">
+                        {journeyTemplate.quickWins.map((qw, idx) => (
+                          <div key={idx} className="p-3 rounded-lg border bg-amber-50/50 border-amber-200">
+                            <h5 className="text-sm font-medium text-amber-800 mb-1">{qw.title}</h5>
+                            <p className="text-xs text-amber-700 mb-2">{qw.description}</p>
+                            <div className="flex items-center justify-between text-[10px]">
+                              <span className="text-amber-600">{qw.timeline}</span>
+                              <span className="text-amber-700 font-medium">{qw.expectedImpact}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Journey Phases */}
+                  <div>
+                    <h4 className="flex items-center gap-2 font-medium mb-3">
+                      <Layers className="w-4 h-4 text-blue-500" />
+                      Implementation Phases
+                    </h4>
+                    <div className="space-y-4">
+                      {journeyTemplate.phases.map((phase, idx) => (
+                        <div key={idx} className="relative pl-8">
+                          {/* Connector line */}
+                          {idx < journeyTemplate.phases.length - 1 && (
+                            <div className="absolute left-3 top-8 w-0.5 h-[calc(100%+0.5rem)] bg-blue-200" />
+                          )}
+                          {/* Phase number circle */}
+                          <div className="absolute left-0 top-0 w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-medium">
+                            {idx + 1}
+                          </div>
+                          <div className="p-4 rounded-lg border bg-card">
+                            <div className="flex items-center justify-between mb-2">
+                              <h5 className="font-medium">{phase.phase}</h5>
+                              <Badge variant="outline" className="text-xs">{phase.duration}</Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground mb-3">{phase.description}</p>
+                            
+                            <div className="grid gap-3 md:grid-cols-2">
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground mb-1">Activities</p>
+                                <ul className="space-y-1">
+                                  {phase.activities.map((activity, actIdx) => (
+                                    <li key={actIdx} className="text-xs flex items-start gap-1">
+                                      <Check className="w-3 h-3 text-emerald-500 mt-0.5 shrink-0" />
+                                      {activity}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground mb-1">Milestones</p>
+                                <ul className="space-y-1">
+                                  {phase.milestones.map((milestone, mIdx) => (
+                                    <li key={mIdx} className="text-xs flex items-start gap-1">
+                                      <Flag className="w-3 h-3 text-blue-500 mt-0.5 shrink-0" />
+                                      {milestone}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Key Milestones Timeline */}
+                  <div>
+                    <h4 className="flex items-center gap-2 font-medium mb-3">
+                      <Target className="w-4 h-4 text-violet-500" />
+                      Key Milestones
+                    </h4>
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                      {journeyTemplate.milestones.map((milestone, idx) => (
+                        <div key={idx} className="flex-shrink-0 w-40 p-3 rounded-lg border bg-violet-50/50 border-violet-200">
+                          <div className="flex items-center gap-1 mb-1">
+                            <Badge className="bg-violet-500 text-white text-[10px]">Week {milestone.targetWeek}</Badge>
+                          </div>
+                          <h5 className="text-sm font-medium text-violet-800 mb-1">{milestone.title}</h5>
+                          <p className="text-[10px] text-violet-600 mb-1">{milestone.description}</p>
+                          <p className="text-[10px] text-violet-700">
+                            <strong>Criteria:</strong> {milestone.successCriteria}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setViewingJourneyId(null)}>
+                Close
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -7149,58 +7541,116 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {confirmedCommitments.map((c: any) => (
-                  <div 
-                    key={c.id}
-                    className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                      selectedCommitmentIds.includes(c.id) 
-                        ? "border-primary bg-primary/5" 
-                        : "border-emerald-500/20 bg-emerald-500/5 hover-elevate"
-                    }`}
-                    onClick={() => toggleCommitmentSelection(c.id)}
-                    data-testid={`commitment-select-${c.id}`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3">
-                        <div className={`mt-1 w-5 h-5 rounded border flex items-center justify-center ${
-                          selectedCommitmentIds.includes(c.id) 
-                            ? "bg-primary border-primary" 
-                            : "border-muted-foreground/30"
-                        }`}>
-                          {selectedCommitmentIds.includes(c.id) && (
-                            <Check className="w-3 h-3 text-primary-foreground" />
-                          )}
-                        </div>
-                        <div>
-                          <h4 className="font-semibold">{c.name}</h4>
-                          {c.description && (
-                            <p className="text-sm text-muted-foreground mt-1">{c.description}</p>
-                          )}
-                          <div className="flex items-center gap-4 mt-2 text-sm">
-                            {c.baselineValue !== null && c.targetValue !== null && (
-                              <span className="text-muted-foreground">
-                                {c.baselineValue} → {c.targetValue} {c.kpiUnit || ""}
-                              </span>
+                {confirmedCommitments.map((c: any) => {
+                  const journeyTemplate = c.solutionPattern ? OUTCOME_JOURNEY_TEMPLATES[c.solutionPattern as SolutionPatternId] : null;
+                  return (
+                    <div 
+                      key={c.id}
+                      className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                        selectedCommitmentIds.includes(c.id) 
+                          ? "border-primary bg-primary/5" 
+                          : "border-emerald-500/20 bg-emerald-500/5 hover-elevate"
+                      }`}
+                      onClick={() => toggleCommitmentSelection(c.id)}
+                      data-testid={`commitment-select-${c.id}`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-3">
+                          <div className={`mt-1 w-5 h-5 rounded border flex items-center justify-center ${
+                            selectedCommitmentIds.includes(c.id) 
+                              ? "bg-primary border-primary" 
+                              : "border-muted-foreground/30"
+                          }`}>
+                            {selectedCommitmentIds.includes(c.id) && (
+                              <Check className="w-3 h-3 text-primary-foreground" />
                             )}
-                            {c.targetDate && (
-                              <span className="text-muted-foreground">
-                                Target: {new Date(c.targetDate).toLocaleDateString()}
-                              </span>
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-semibold">{c.name}</h4>
+                            
+                            <div className="flex flex-wrap items-center gap-1 mt-1">
+                              {c.solutionPattern && SOLUTION_VALUE_PATTERNS[c.solutionPattern as SolutionPatternId] && (
+                                <Badge variant="outline" className="text-xs border-dashed">
+                                  {SOLUTION_VALUE_PATTERNS[c.solutionPattern as SolutionPatternId].name}
+                                </Badge>
+                              )}
+                              {c.valuePillar && VALUE_PILLARS[c.valuePillar as ValuePillarId] && (
+                                <Badge className={`text-xs ${
+                                  c.valuePillar === 'grow' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30' :
+                                  c.valuePillar === 'optimise' ? 'bg-blue-500/10 text-blue-600 border-blue-500/30' :
+                                  c.valuePillar === 'derisk' ? 'bg-amber-500/10 text-amber-600 border-amber-500/30' :
+                                  'bg-violet-500/10 text-violet-600 border-violet-500/30'
+                                } border`}>
+                                  {VALUE_PILLARS[c.valuePillar as ValuePillarId].name}
+                                </Badge>
+                              )}
+                              {(c.implementationTimeline || journeyTemplate?.typicalTimeline) && (
+                                <Badge variant="outline" className="text-[10px] border-dashed">
+                                  <Calendar className="w-3 h-3 mr-0.5" />
+                                  {c.implementationTimeline || journeyTemplate?.typicalTimeline}
+                                </Badge>
+                              )}
+                            </div>
+                            
+                            {c.outcomeStatement && (
+                              <div className="text-xs text-emerald-700 bg-emerald-50 p-2 rounded mt-2 border border-emerald-200">
+                                <strong>Success:</strong> {c.outcomeStatement}
+                              </div>
+                            )}
+                            
+                            {c.description && (
+                              <p className="text-sm text-muted-foreground mt-2">{c.description}</p>
+                            )}
+                            <div className="flex items-center gap-4 mt-2 text-sm">
+                              {c.baselineValue !== null && c.targetValue !== null && (
+                                <span className="text-muted-foreground">
+                                  {c.baselineValue} → {c.targetValue} {c.kpiUnit || ""}
+                                </span>
+                              )}
+                              {c.targetDate && (
+                                <span className="text-muted-foreground">
+                                  Target: {new Date(c.targetDate).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+                            
+                            {journeyTemplate && (
+                              <div className="mt-3 pt-3 border-t border-dashed">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Layers className="w-3 h-3 text-blue-500" />
+                                  <span className="text-xs font-medium">Delivery Roadmap</span>
+                                </div>
+                                <div className="flex gap-1 items-center">
+                                  {journeyTemplate.phases.map((phase, idx) => (
+                                    <div key={idx} className="flex items-center">
+                                      <div className="px-2 py-0.5 rounded text-[10px] bg-blue-50 text-blue-700 border border-blue-200">
+                                        {phase.phase}
+                                      </div>
+                                      {idx < journeyTemplate.phases.length - 1 && (
+                                        <ChevronRight className="w-3 h-3 text-muted-foreground mx-0.5" />
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                                <p className="text-[10px] text-muted-foreground mt-1">
+                                  {journeyTemplate.quickWins.length} quick wins • {journeyTemplate.milestones.length} key milestones
+                                </p>
+                              </div>
                             )}
                           </div>
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <Badge className="bg-emerald-500/10 text-emerald-600">Confirmed</Badge>
-                        {c.estimatedAnnualValue && (
-                          <p className="text-lg font-bold text-emerald-600 mt-2">
-                            ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr
-                          </p>
-                        )}
+                        <div className="text-right shrink-0">
+                          <Badge className="bg-emerald-500/10 text-emerald-600">Confirmed</Badge>
+                          {c.estimatedAnnualValue && (
+                            <p className="text-lg font-bold text-emerald-600 mt-2">
+                              ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>

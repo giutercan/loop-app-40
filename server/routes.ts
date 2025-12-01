@@ -3,6 +3,7 @@ import { storage } from "./storage";
 import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale, generateStrategicPillars, generateStorySuggestion, generateDiscoveryKpiSuggestions, enrichContactWithAI, openai } from "./ai";
 import { z } from "zod";
 import crypto from "crypto";
+import { OUTCOME_JOURNEY_TEMPLATES, type SolutionPatternId } from "@shared/value-frameworks";
 
 // Track in-flight success story generations per project (prevents concurrent requests)
 // NOTE: This in-memory Set is sufficient for single-instance Replit deployment.
@@ -7381,11 +7382,28 @@ Respond in JSON format:
         return res.status(404).json({ error: "Project not found" });
       }
       
-      const validated = insertKpiCommitmentSchema.parse({
-        ...req.body,
-        projectId,
-      });
+      // Check BEFORE schema parsing if journey data was explicitly provided
+      const hasExplicitJourney = req.body.journeyPhases && 
+        Array.isArray(req.body.journeyPhases) && 
+        req.body.journeyPhases.length > 0;
       
+      // Prepare the data with potential template injection
+      let dataToValidate = { ...req.body, projectId };
+      
+      // If solutionPattern is provided but no explicit journey data, inject template
+      const solutionPattern = req.body.solutionPattern as SolutionPatternId | undefined;
+      if (solutionPattern && OUTCOME_JOURNEY_TEMPLATES[solutionPattern] && !hasExplicitJourney) {
+        const template = OUTCOME_JOURNEY_TEMPLATES[solutionPattern];
+        dataToValidate = {
+          ...dataToValidate,
+          journeyPhases: template.phases,
+          quickWins: template.quickWins,
+          keyMilestones: template.milestones,
+          implementationTimeline: req.body.implementationTimeline || template.typicalTimeline,
+        };
+      }
+      
+      const validated = insertKpiCommitmentSchema.parse(dataToValidate);
       const commitment = await storage.createKpiCommitment(validated);
       res.status(201).json(commitment);
     } catch (error: any) {
@@ -7398,11 +7416,39 @@ Respond in JSON format:
     try {
       const id = parseInt(req.params.id);
       
-      const updated = await storage.updateKpiCommitment(id, req.body);
-      if (!updated) {
+      // Get existing commitment to check for pattern changes
+      const existing = await storage.getKpiCommitment(id);
+      if (!existing) {
         return res.status(404).json({ error: "Commitment not found" });
       }
       
+      let updateData = { ...req.body };
+      
+      // Only inject template data when:
+      // 1. solutionPattern is changing to a new value
+      // 2. Journey fields are not explicitly provided in the request
+      const newPattern = req.body.solutionPattern as SolutionPatternId | undefined;
+      const isPatternChange = newPattern && newPattern !== existing.solutionPattern;
+      
+      if (isPatternChange && OUTCOME_JOURNEY_TEMPLATES[newPattern]) {
+        const template = OUTCOME_JOURNEY_TEMPLATES[newPattern];
+        
+        // Only apply template if journey fields are not explicitly provided
+        if (req.body.journeyPhases === undefined) {
+          updateData.journeyPhases = template.phases;
+        }
+        if (req.body.quickWins === undefined) {
+          updateData.quickWins = template.quickWins;
+        }
+        if (req.body.keyMilestones === undefined) {
+          updateData.keyMilestones = template.milestones;
+        }
+        if (req.body.implementationTimeline === undefined) {
+          updateData.implementationTimeline = template.typicalTimeline;
+        }
+      }
+      
+      const updated = await storage.updateKpiCommitment(id, updateData);
       res.json(updated);
     } catch (error: any) {
       res.status(500).json({ error: error.message });

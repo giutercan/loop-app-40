@@ -1506,6 +1506,32 @@ export const kpiCommitments = pgTable("kpi_commitments", {
   // Success Narrative - what does success look like?
   successNarrative: text("success_narrative"), // Qualitative description of success
   
+  // ============================================
+  // OUTCOME JOURNEY - Korn Ferry Value Path
+  // ============================================
+  
+  // Clear outcome statement - what success looks like
+  outcomeStatement: text("outcome_statement"), // e.g., "Leaders at Director+ level will have 2 ready-now successors each"
+  
+  // Journey Phases - structured implementation path (JSONB)
+  // Structure: [{ phase: string, description: string, duration: string, activities: string[], milestones: string[] }]
+  journeyPhases: jsonb("journey_phases"), 
+  
+  // Quick Wins - early value indicators (JSONB)
+  // Structure: [{ title: string, description: string, timeline: string, expectedImpact: string }]
+  quickWins: jsonb("quick_wins"),
+  
+  // Key Milestones - major checkpoints (JSONB)
+  // Structure: [{ title: string, targetDate: string, description: string, successCriteria: string }]
+  keyMilestones: jsonb("key_milestones"),
+  
+  // Implementation Timeline
+  implementationTimeline: text("implementation_timeline"), // e.g., "12-18 months"
+  
+  // Delivery Readiness
+  deliveryReadinessScore: integer("delivery_readiness_score"), // 0-100 score for handoff
+  deliveryNotes: text("delivery_notes"), // Special notes for delivery team
+  
   // Client Collaboration
   collaborationNotes: text("collaboration_notes"), // Notes from client discussions
   clientConfirmedAt: timestamp("client_confirmed_at"), // When client approved

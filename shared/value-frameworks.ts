@@ -629,3 +629,257 @@ Consider the client's industry, maturity, and data availability.`
 export type SolutionPatternId = keyof typeof SOLUTION_VALUE_PATTERNS;
 export type LeadingIndicatorId = keyof typeof LEADING_INDICATORS;
 export type LaggingIndicatorId = keyof typeof LAGGING_INDICATORS;
+
+// ============================================
+// OUTCOME JOURNEY TEMPLATES
+// Pre-built journey patterns for common KF solutions
+// ============================================
+export interface JourneyPhase {
+  phase: string;
+  description: string;
+  duration: string;
+  activities: string[];
+  milestones: string[];
+}
+
+export interface QuickWin {
+  title: string;
+  description: string;
+  timeline: string;
+  expectedImpact: string;
+}
+
+export interface KeyMilestone {
+  title: string;
+  targetWeek: number;
+  description: string;
+  successCriteria: string;
+}
+
+export const OUTCOME_JOURNEY_TEMPLATES: Record<SolutionPatternId, {
+  phases: JourneyPhase[];
+  quickWins: QuickWin[];
+  milestones: KeyMilestone[];
+  typicalTimeline: string;
+}> = {
+  leadership_development: {
+    typicalTimeline: "18-24 months",
+    phases: [
+      {
+        phase: "Foundation",
+        description: "Assess current state and design program",
+        duration: "Months 1-3",
+        activities: ["Leadership assessment", "Gap analysis", "Program design", "Stakeholder alignment"],
+        milestones: ["Assessment complete", "Development plan approved"]
+      },
+      {
+        phase: "Build",
+        description: "Develop leadership capabilities through structured programs",
+        duration: "Months 4-12",
+        activities: ["Development programs", "Coaching deployment", "Action learning projects", "Peer cohorts"],
+        milestones: ["First cohort completed", "Initial behavior changes observed"]
+      },
+      {
+        phase: "Embed",
+        description: "Reinforce behaviors and measure impact",
+        duration: "Months 13-18",
+        activities: ["Succession planning integration", "Performance system alignment", "Culture reinforcement"],
+        milestones: ["Promotion pipeline active", "Retention metrics improved"]
+      },
+      {
+        phase: "Scale",
+        description: "Expand to additional levels and sustain gains",
+        duration: "Months 19-24",
+        activities: ["Program expansion", "Internal capability building", "Continuous improvement"],
+        milestones: ["Full pipeline coverage", "ROI validated"]
+      }
+    ],
+    quickWins: [
+      { title: "Assessment insights delivered", description: "Leadership gap analysis shared with executive team", timeline: "Week 4-6", expectedImpact: "Alignment on development priorities" },
+      { title: "High-potential identification", description: "Top talent identified and engaged", timeline: "Week 8", expectedImpact: "Retention signal to key talent" },
+      { title: "First coaching sessions", description: "Executive coaching begins for priority leaders", timeline: "Month 2", expectedImpact: "Immediate behavior coaching" }
+    ],
+    milestones: [
+      { title: "Assessment Complete", targetWeek: 6, description: "All leaders assessed", successCriteria: "100% of target population assessed" },
+      { title: "Development Plans Active", targetWeek: 12, description: "Individual development plans in place", successCriteria: "All participants have active IDPs" },
+      { title: "First Promotions", targetWeek: 52, description: "Internal promotions from pipeline", successCriteria: "At least 2 internal promotions to target roles" },
+      { title: "ROI Validated", targetWeek: 78, description: "Business impact measured", successCriteria: "Positive ROI demonstrated" }
+    ]
+  },
+  sales_effectiveness: {
+    typicalTimeline: "12-18 months",
+    phases: [
+      {
+        phase: "Diagnose",
+        description: "Assess current sales capability and identify gaps",
+        duration: "Months 1-2",
+        activities: ["Win/loss analysis", "Competency assessment", "Process mapping", "CRM data analysis"],
+        milestones: ["Diagnostic complete", "Priority gaps identified"]
+      },
+      {
+        phase: "Design",
+        description: "Build tailored sales methodology and enablement",
+        duration: "Months 2-4",
+        activities: ["Methodology customization", "Playbook development", "Training design", "Tool configuration"],
+        milestones: ["Methodology approved", "Training materials ready"]
+      },
+      {
+        phase: "Deploy",
+        description: "Roll out training and coaching at scale",
+        duration: "Months 4-9",
+        activities: ["Training delivery", "Manager coaching certification", "Deal coaching", "Reinforcement"],
+        milestones: ["All reps trained", "Manager coaches active"]
+      },
+      {
+        phase: "Optimize",
+        description: "Measure impact and continuously improve",
+        duration: "Months 10-18",
+        activities: ["Performance tracking", "Coaching refinement", "Best practice sharing", "Methodology updates"],
+        milestones: ["Win rate improvement", "Revenue targets met"]
+      }
+    ],
+    quickWins: [
+      { title: "Pipeline review cadence", description: "Weekly deal reviews implemented", timeline: "Week 2", expectedImpact: "Immediate visibility into deal health" },
+      { title: "Top deal acceleration", description: "Focused coaching on top 10 deals", timeline: "Week 4", expectedImpact: "Faster close on priority opportunities" },
+      { title: "Qualification improvements", description: "Better deal qualification criteria applied", timeline: "Month 2", expectedImpact: "Reduced wasted pursuit effort" }
+    ],
+    milestones: [
+      { title: "Diagnostic Complete", targetWeek: 4, description: "Sales capability baseline established", successCriteria: "Gap analysis delivered to leadership" },
+      { title: "Methodology Trained", targetWeek: 16, description: "All sellers certified on methodology", successCriteria: "100% completion rate" },
+      { title: "Win Rate Lift", targetWeek: 36, description: "Measurable improvement in win rates", successCriteria: "5%+ improvement vs baseline" },
+      { title: "Revenue Impact", targetWeek: 52, description: "Revenue targets achieved", successCriteria: "Pipeline velocity and revenue on target" }
+    ]
+  },
+  talent_acquisition: {
+    typicalTimeline: "6-12 months",
+    phases: [
+      {
+        phase: "Assess",
+        description: "Audit current TA process and identify bottlenecks",
+        duration: "Months 1-2",
+        activities: ["Process audit", "Candidate experience mapping", "Recruiter capability assessment", "Tech stack review"],
+        milestones: ["Audit complete", "Quick wins identified"]
+      },
+      {
+        phase: "Redesign",
+        description: "Optimize processes and implement new approaches",
+        duration: "Months 2-4",
+        activities: ["Process redesign", "Assessment implementation", "EVP refinement", "Sourcing strategy"],
+        milestones: ["New process live", "Assessments deployed"]
+      },
+      {
+        phase: "Execute",
+        description: "Full rollout with measurement",
+        duration: "Months 4-9",
+        activities: ["Recruiter training", "Hiring manager enablement", "Metrics tracking", "Continuous optimization"],
+        milestones: ["All recruiters trained", "Metrics dashboard live"]
+      },
+      {
+        phase: "Sustain",
+        description: "Embed changes and measure outcomes",
+        duration: "Months 9-12",
+        activities: ["Quality of hire tracking", "Process refinement", "Internal capability building"],
+        milestones: ["Cost per hire reduced", "Quality metrics improved"]
+      }
+    ],
+    quickWins: [
+      { title: "Bottleneck removal", description: "Eliminate top 3 process bottlenecks", timeline: "Week 3", expectedImpact: "Faster time-to-offer" },
+      { title: "Assessment launch", description: "Predictive assessments for key roles", timeline: "Month 2", expectedImpact: "Better quality signals" },
+      { title: "Interview training", description: "Structured interview training for HMs", timeline: "Month 2", expectedImpact: "More consistent evaluations" }
+    ],
+    milestones: [
+      { title: "Audit Complete", targetWeek: 4, description: "Full TA process mapped", successCriteria: "Recommendations delivered" },
+      { title: "New Process Live", targetWeek: 12, description: "Redesigned process operational", successCriteria: "All roles using new process" },
+      { title: "Time-to-Fill Reduced", targetWeek: 24, description: "Hiring speed improved", successCriteria: "20%+ reduction" },
+      { title: "Quality Validated", targetWeek: 52, description: "Quality of hire measured", successCriteria: "Positive correlation with performance" }
+    ]
+  },
+  org_transformation: {
+    typicalTimeline: "18-36 months",
+    phases: [
+      {
+        phase: "Envision",
+        description: "Define future state and change strategy",
+        duration: "Months 1-3",
+        activities: ["Future state design", "Impact assessment", "Change strategy", "Stakeholder mapping"],
+        milestones: ["Future state approved", "Change roadmap defined"]
+      },
+      {
+        phase: "Architect",
+        description: "Design new structures and operating model",
+        duration: "Months 3-6",
+        activities: ["Organization design", "Role definition", "Process redesign", "Talent implications"],
+        milestones: ["New structure approved", "Roles designed"]
+      },
+      {
+        phase: "Transform",
+        description: "Implement changes with active change management",
+        duration: "Months 6-18",
+        activities: ["Structure implementation", "Talent placement", "Change management", "Culture initiatives"],
+        milestones: ["Day 1 achieved", "Key talent retained"]
+      },
+      {
+        phase: "Embed",
+        description: "Stabilize and optimize new operating model",
+        duration: "Months 18-36",
+        activities: ["Performance stabilization", "Culture embedding", "Continuous improvement", "Success measurement"],
+        milestones: ["Operating effectively", "Benefits realized"]
+      }
+    ],
+    quickWins: [
+      { title: "Leadership alignment", description: "Senior team aligned on future vision", timeline: "Week 4", expectedImpact: "Unified leadership message" },
+      { title: "Decision rights clarity", description: "Key decision rights clarified", timeline: "Month 2", expectedImpact: "Faster decision-making" },
+      { title: "Communication launched", description: "Change story communicated broadly", timeline: "Month 2", expectedImpact: "Reduced uncertainty" }
+    ],
+    milestones: [
+      { title: "Future State Approved", targetWeek: 8, description: "Board/ExCo approval of design", successCriteria: "Sign-off obtained" },
+      { title: "Day 1 Launch", targetWeek: 24, description: "New structure goes live", successCriteria: "All roles staffed, reporting lines active" },
+      { title: "Stabilization", targetWeek: 52, description: "Organization operating effectively", successCriteria: "Engagement scores stable" },
+      { title: "Benefits Realized", targetWeek: 104, description: "Transformation benefits achieved", successCriteria: "Cost/productivity targets met" }
+    ]
+  },
+  rewards_optimization: {
+    typicalTimeline: "12-18 months",
+    phases: [
+      {
+        phase: "Analyze",
+        description: "Understand current rewards landscape and gaps",
+        duration: "Months 1-3",
+        activities: ["Pay equity analysis", "Market benchmarking", "Employee sentiment", "Cost modeling"],
+        milestones: ["Analysis complete", "Gap report delivered"]
+      },
+      {
+        phase: "Design",
+        description: "Develop new rewards philosophy and programs",
+        duration: "Months 3-6",
+        activities: ["Philosophy development", "Structure design", "Incentive redesign", "Communication planning"],
+        milestones: ["Design approved", "Budget confirmed"]
+      },
+      {
+        phase: "Implement",
+        description: "Roll out new programs with change management",
+        duration: "Months 6-12",
+        activities: ["System updates", "Manager training", "Employee communication", "Rollout execution"],
+        milestones: ["Programs live", "All managers trained"]
+      },
+      {
+        phase: "Measure",
+        description: "Track impact and refine approach",
+        duration: "Months 12-18",
+        activities: ["Impact measurement", "Employee feedback", "Refinement", "Continuous improvement"],
+        milestones: ["Retention improved", "Engagement lifted"]
+      }
+    ],
+    quickWins: [
+      { title: "Pay equity fixes", description: "Critical pay equity gaps addressed", timeline: "Month 2", expectedImpact: "Risk reduction, fairness signal" },
+      { title: "Top talent review", description: "Targeted review of critical talent pay", timeline: "Month 3", expectedImpact: "Retention of key performers" },
+      { title: "Communication clarity", description: "Clear total rewards statements", timeline: "Month 4", expectedImpact: "Better rewards understanding" }
+    ],
+    milestones: [
+      { title: "Analysis Complete", targetWeek: 8, description: "Full rewards diagnostic delivered", successCriteria: "Recommendations presented" },
+      { title: "Design Approved", targetWeek: 20, description: "New rewards structure approved", successCriteria: "Executive sign-off and budget" },
+      { title: "Programs Live", targetWeek: 40, description: "New programs operational", successCriteria: "All employees transitioned" },
+      { title: "Impact Measured", targetWeek: 72, description: "Benefits validated", successCriteria: "Retention and engagement improved" }
+    ]
+  }
+};
