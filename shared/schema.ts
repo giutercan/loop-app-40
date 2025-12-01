@@ -232,6 +232,26 @@ export const projects = pgTable("projects", {
     lastUpdated?: string;
   }>(),
   
+  // Green Sheet data (Miller Heiman Strategic Selling call preparation)
+  greenSheetData: jsonb("green_sheet_data").$type<{
+    meetingContact: {
+      name: string;
+      title: string;
+      role: "economic_buyer" | "user_buyer" | "technical_buyer" | "coach" | "champion" | null;
+      influence: "high" | "medium" | "low" | null;
+      knownConcerns: string;
+      personalRapport: string;
+      decisionCriteria: string;
+    };
+    callPlanner: {
+      objective: string;
+      desiredOutcome: string;
+      openingStatement: string;
+      bestActionCommitment: string;
+    };
+    lastUpdated?: string;
+  }>(),
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

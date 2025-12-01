@@ -888,6 +888,67 @@ export default function ProjectRoleView() {
     bestActionCommitment: ""
   });
   const [isGreenSheetExpanded, setIsGreenSheetExpanded] = useState(true);
+  const [greenSheetInitialized, setGreenSheetInitialized] = useState(false);
+  const [lastSavedGreenSheet, setLastSavedGreenSheet] = useState<string | null>(null);
+  
+  // Mutation to save Green Sheet data
+  const saveGreenSheetMutation = useMutation({
+    mutationFn: async (data: { meetingContact: typeof meetingContact; callPlanner: typeof greenSheetEdits }) => {
+      return await apiRequest("PATCH", `/api/projects/${projectId}/green-sheet`, data);
+    },
+    onSuccess: () => {
+      setLastSavedGreenSheet(new Date().toLocaleTimeString());
+    },
+    onError: () => {
+      setLastSavedGreenSheet(null);
+      toast({ title: "Failed to save Green Sheet", description: "Your changes may not be saved. Please try again.", variant: "destructive" });
+    }
+  });
+  
+  // Store stable mutate reference for Green Sheet
+  const greenSheetMutateRef = useRef(saveGreenSheetMutation.mutate);
+  useEffect(() => {
+    greenSheetMutateRef.current = saveGreenSheetMutation.mutate;
+  }, [saveGreenSheetMutation.mutate]);
+  
+  // Debounced auto-save for Green Sheet with change detection
+  const greenSheetSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSavedGreenSheetDataRef = useRef<string>("");
+  
+  const saveGreenSheetDebounced = useCallback((data: { meetingContact: typeof meetingContact; callPlanner: typeof greenSheetEdits }) => {
+    // Deep comparison using JSON stringify to prevent save storms
+    const dataString = JSON.stringify(data);
+    if (dataString === lastSavedGreenSheetDataRef.current) {
+      return; // No changes, skip save
+    }
+    
+    if (greenSheetSaveTimeoutRef.current) {
+      clearTimeout(greenSheetSaveTimeoutRef.current);
+    }
+    greenSheetSaveTimeoutRef.current = setTimeout(() => {
+      lastSavedGreenSheetDataRef.current = dataString;
+      greenSheetMutateRef.current(data);
+    }, 1500);
+  }, []);
+  
+  // Cleanup Green Sheet timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (greenSheetSaveTimeoutRef.current) {
+        clearTimeout(greenSheetSaveTimeoutRef.current);
+      }
+    };
+  }, []);
+  
+  // Auto-save Green Sheet when data changes - compare inside effect, not in deps
+  useEffect(() => {
+    if (!greenSheetInitialized) return;
+    const currentData = JSON.stringify({ meetingContact, callPlanner: greenSheetEdits });
+    // Only trigger save if data actually changed from what was saved
+    if (currentData !== lastSavedGreenSheetDataRef.current) {
+      saveGreenSheetDebounced({ meetingContact, callPlanner: greenSheetEdits });
+    }
+  }, [meetingContact, greenSheetEdits, greenSheetInitialized, saveGreenSheetDebounced]);
   
   // Contact Enrichment state
   const [showEnrichmentDialog, setShowEnrichmentDialog] = useState(false);
@@ -1417,6 +1478,59 @@ export default function ProjectRoleView() {
       saveNarrativeCanvasDebounced(narrativeCanvas);
     }
   }, [narrativeCanvas, narrativeCanvasInitialized, saveNarrativeCanvasDebounced]);
+  
+  // Initialize Green Sheet data from project
+  useEffect(() => {
+    if (project && !greenSheetInitialized) {
+      const savedGreenSheet = (project as any).greenSheetData;
+      let loadedMeetingContact = {
+        name: "",
+        title: "",
+        role: null as ("economic_buyer" | "user_buyer" | "technical_buyer" | "coach" | "champion" | null),
+        influence: null as ("high" | "medium" | "low" | null),
+        knownConcerns: "",
+        personalRapport: "",
+        decisionCriteria: ""
+      };
+      let loadedCallPlanner = {
+        objective: "",
+        desiredOutcome: "",
+        openingStatement: "",
+        bestActionCommitment: ""
+      };
+      
+      if (savedGreenSheet) {
+        if (savedGreenSheet.meetingContact) {
+          loadedMeetingContact = {
+            name: savedGreenSheet.meetingContact.name || "",
+            title: savedGreenSheet.meetingContact.title || "",
+            role: savedGreenSheet.meetingContact.role || null,
+            influence: savedGreenSheet.meetingContact.influence || null,
+            knownConcerns: savedGreenSheet.meetingContact.knownConcerns || "",
+            personalRapport: savedGreenSheet.meetingContact.personalRapport || "",
+            decisionCriteria: savedGreenSheet.meetingContact.decisionCriteria || ""
+          };
+        }
+        if (savedGreenSheet.callPlanner) {
+          loadedCallPlanner = {
+            objective: savedGreenSheet.callPlanner.objective || "",
+            desiredOutcome: savedGreenSheet.callPlanner.desiredOutcome || "",
+            openingStatement: savedGreenSheet.callPlanner.openingStatement || "",
+            bestActionCommitment: savedGreenSheet.callPlanner.bestActionCommitment || ""
+          };
+        }
+        if (savedGreenSheet.lastUpdated) {
+          setLastSavedGreenSheet(new Date(savedGreenSheet.lastUpdated).toLocaleTimeString());
+        }
+      }
+      
+      // Set state and update ref to match loaded data (prevents triggering save on init)
+      setMeetingContact(loadedMeetingContact);
+      setGreenSheetEdits(loadedCallPlanner);
+      lastSavedGreenSheetDataRef.current = JSON.stringify({ meetingContact: loadedMeetingContact, callPlanner: loadedCallPlanner });
+      setGreenSheetInitialized(true);
+    }
+  }, [project, greenSheetInitialized]);
 
   const [expandedMethodologies, setExpandedMethodologies] = useState<Record<string, boolean>>({
     SPIN: true,
@@ -2604,7 +2718,7 @@ export default function ProjectRoleView() {
         <div className="sticky top-4 space-y-2">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Sales Journey</p>
           {[
-            { id: "discover", label: "Discover", icon: Sparkles, progress: workflowProgress.discover, description: "Research & Questions" },
+            { id: "discover", label: "Discover", icon: Sparkles, progress: workflowProgress.discover, description: "Research & Interaction" },
             { id: "build-value", label: "Build Value", icon: Target, progress: workflowProgress.buildValue, description: "Outcomes & Commitments" },
             { id: "align", label: "Align", icon: Handshake, progress: workflowProgress.align, description: "Client Collaboration" },
             { id: "handoff", label: "Handoff", icon: ArrowUpRight, progress: workflowProgress.handoff, description: "Transition to Delivery" },
@@ -3423,7 +3537,7 @@ export default function ProjectRoleView() {
               {[
                 { step: "theme-select" as const, label: "Theme", num: 1 },
                 { step: "intelligence" as const, label: "Intelligence", num: 2 },
-                { step: "questions" as const, label: "Questions", num: 3 },
+                { step: "questions" as const, label: "Client Interaction", num: 3 },
                 { step: "review" as const, label: "Review", num: 4 },
                 { step: "insights" as const, label: "Insights", num: 5 }
               ].map((s, idx) => {
@@ -4327,7 +4441,7 @@ export default function ProjectRoleView() {
                   Back to Theme
                 </Button>
                 <Button onClick={() => setDiscoveryStep("questions")} data-testid="button-next-to-questions">
-                  Continue to Questions
+                  Continue to Client Interaction
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </div>
@@ -4557,6 +4671,12 @@ export default function ProjectRoleView() {
                           <CardTitle className="flex items-center gap-2 text-emerald-700">
                             Interactive Green Sheet
                             <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 text-xs">Miller Heiman</Badge>
+                            {lastSavedGreenSheet && (
+                              <span className="text-xs font-normal text-muted-foreground flex items-center gap-1">
+                                <Check className="w-3 h-3 text-emerald-500" />
+                                Saved {lastSavedGreenSheet}
+                              </span>
+                            )}
                           </CardTitle>
                           <CardDescription>Personalize your strategic call framework</CardDescription>
                         </div>
@@ -5451,7 +5571,7 @@ ${narrativeCanvas.callToAction || "(Not set)"}
                     <Phone className="w-5 h-5 text-primary" />
                     My Call Flow ({myCallFlow.length} questions)
                   </CardTitle>
-                  <CardDescription>Your custom conversation structure from the Questions step</CardDescription>
+                  <CardDescription>Your custom conversation structure from the Client Interaction step</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-3 md:grid-cols-4">
@@ -5492,9 +5612,9 @@ ${narrativeCanvas.callToAction || "(Not set)"}
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <ClipboardList className="w-5 h-5 text-primary" />
-                  Review & Select Questions
+                  Review & Select
                 </CardTitle>
-                <CardDescription>Choose which questions to use in your discovery conversation, then complete in-system or export</CardDescription>
+                <CardDescription>Choose which questions to use in your client interaction, then complete in-system or export</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -5641,7 +5761,7 @@ ${narrativeCanvas.callToAction || "(Not set)"}
             <div className="flex justify-between">
               <Button variant="outline" onClick={() => setDiscoveryStep("questions")} data-testid="button-back-to-questions">
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Questions
+                Back to Client Interaction
               </Button>
               <Button 
                 onClick={() => {
