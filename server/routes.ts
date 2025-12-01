@@ -6520,6 +6520,115 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
     }
   });
   
+  // POST /api/projects/:id/discovery-insights/summary - Generate AI-powered discovery synthesis
+  app.post("/api/projects/:id/discovery-insights/summary", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const project = await storage.getProject(id);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Get related data
+      const notes = await storage.getNotes(id);
+      const insights = await storage.getInsights(id);
+      const account = project.accountId ? await storage.getAccount(project.accountId) : null;
+      
+      // Build synthesis input from all available discovery data
+      const synthesisInput: import("./ai").DiscoverySynthesisInput = {
+        companyName: project.companyName || account?.name || "Unknown Company",
+        industry: project.sector || account?.industry || undefined,
+        discoveryTheme: project.discoveryTheme || undefined,
+        researchDataPoints: insights.map(i => ({
+          label: i.title,
+          value: i.content,
+          kornFerryPillar: i.kornFerryPillar || undefined,
+          solutionArea: i.solutionArea || undefined
+        })),
+        greenSheetData: (project as any).greenSheetData ? {
+          callObjective: (project as any).greenSheetData.callPlanner?.objective,
+          desiredOutcome: (project as any).greenSheetData.callPlanner?.desiredOutcome,
+          openingStatement: (project as any).greenSheetData.callPlanner?.openingStatement,
+          bestActionCommitment: (project as any).greenSheetData.callPlanner?.bestActionCommitment,
+          contacts: (project as any).greenSheetData.meetingContact ? [{
+            name: (project as any).greenSheetData.meetingContact.name,
+            title: (project as any).greenSheetData.meetingContact.title,
+            buyingRole: (project as any).greenSheetData.meetingContact.role,
+            influenceLevel: (project as any).greenSheetData.meetingContact.influence
+          }] : []
+        } : undefined,
+        storyBuilderData: (project as any).storyBuilderData ? {
+          before: {
+            singleMessage: (project as any).storyBuilderData.before?.singleMessage,
+            emotionalReaction: (project as any).storyBuilderData.before?.emotionalReaction,
+            storyStructure: (project as any).storyBuilderData.before?.storyStructure,
+            startingHook: (project as any).storyBuilderData.before?.startingHook,
+            heroCharacter: (project as any).storyBuilderData.before?.heroCharacter,
+            tensionQuestions: (project as any).storyBuilderData.before?.tensionQuestions?.map((tq: any) => ({
+              prompt: tq.prompt,
+              response: tq.response
+            }))
+          },
+          during: {
+            openingLine: (project as any).storyBuilderData.during?.openingLine,
+            turningPoint: (project as any).storyBuilderData.during?.turningPoint,
+            keyDataPoints: (project as any).storyBuilderData.during?.keyDataPoints
+          },
+          after: {
+            momentOfMeaning: (project as any).storyBuilderData.after?.momentOfMeaning,
+            explicitTakeaway: (project as any).storyBuilderData.after?.explicitTakeaway,
+            callToAction: (project as any).storyBuilderData.after?.callToAction
+          }
+        } : undefined,
+        notes: notes.map(n => ({
+          content: n.content,
+          category: n.category || undefined
+        })),
+        callFlow: (project as any).callFlowData?.items?.map((item: any) => ({
+          question: item.question,
+          phase: item.phase
+        }))
+      };
+      
+      // Import and call the synthesis function
+      const { synthesizeDiscoveryInsights } = await import("./ai");
+      const result = await synthesizeDiscoveryInsights(synthesisInput);
+      
+      // Cache the result on the project
+      await storage.updateProject(id, {
+        discoverySynthesis: {
+          ...result,
+          generatedAt: new Date().toISOString()
+        }
+      } as any);
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Discovery Synthesis] Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // GET /api/projects/:id/discovery-insights/summary - Get cached discovery synthesis
+  app.get("/api/projects/:id/discovery-insights/summary", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const project = await storage.getProject(id);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const cached = (project as any).discoverySynthesis;
+      if (cached) {
+        res.json(cached);
+      } else {
+        res.status(404).json({ error: "No discovery synthesis available. Generate one first." });
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
   // PATCH /api/projects/:id/narrative-canvas - Save Narrative Canvas content
   app.patch("/api/projects/:id/narrative-canvas", async (req, res) => {
     try {

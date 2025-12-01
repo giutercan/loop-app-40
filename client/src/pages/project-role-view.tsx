@@ -91,7 +91,8 @@ import {
   BookOpen,
   Pencil,
   PlayCircle,
-  Film
+  Film,
+  Brain
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -720,6 +721,561 @@ const ragColors: Record<string, string> = {
   amber: "bg-amber-500",
   red: "bg-red-500"
 };
+
+interface DiscoverySynthesis {
+  whatWeLearned: {
+    keyThemes: Array<{ theme: string; insight: string; evidence: string[] }>;
+    summary: string;
+  };
+  businessImplications: {
+    opportunities: Array<{ title: string; description: string; kornFerryPillar: string; potentialValue: string; priority: "high" | "medium" | "low" }>;
+    risks: Array<{ title: string; description: string; mitigation: string }>;
+    summary: string;
+  };
+  stakeholderSignals: {
+    championStatus: string;
+    buyingCommittee: string;
+    momentum: "strong" | "moderate" | "weak" | "unclear";
+    nextActions: string[];
+    summary: string;
+  };
+  readinessToBuildValue: {
+    score: number;
+    strengths: string[];
+    gaps: string[];
+    recommendations: string[];
+    nextSteps: string[];
+    summary: string;
+  };
+  executiveSummary: string;
+  generatedAt?: string;
+}
+
+function DiscoverySummaryStep({ 
+  projectId, 
+  project, 
+  themeName,
+  onBackToQuestions,
+  onStartNewDiscovery,
+  onContinueToBuildValue
+}: { 
+  projectId: number; 
+  project: Project;
+  themeName: string;
+  onBackToQuestions: () => void;
+  onStartNewDiscovery: () => void;
+  onContinueToBuildValue: () => void;
+}) {
+  const { toast } = useToast();
+  
+  const { data: synthesis, isLoading, isError, refetch } = useQuery<DiscoverySynthesis | null>({
+    queryKey: ["/api/projects", projectId, "discovery-insights", "summary"],
+    queryFn: async () => {
+      try {
+        const res = await apiRequest("GET", `/api/projects/${projectId}/discovery-insights/summary`);
+        return await res.json();
+      } catch (err: any) {
+        if (err?.message?.startsWith("404:")) return null;
+        throw err;
+      }
+    },
+    enabled: projectId > 0,
+    retry: false,
+    staleTime: 1000 * 60 * 5
+  });
+  
+  const generateMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", `/api/projects/${projectId}/discovery-insights/summary`);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "discovery-insights", "summary"] });
+      await refetch();
+      toast({ title: "Insights Generated", description: "AI has synthesized your discovery data into strategic insights." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to generate insights. Please try again.", variant: "destructive" });
+    }
+  });
+  
+  const generateMarkdownContent = () => {
+    if (!synthesis) return "";
+    const lines: string[] = [];
+    lines.push(`# Discovery Insights - ${project.companyName || themeName}`);
+    lines.push(`Generated: ${synthesis.generatedAt ? new Date(synthesis.generatedAt).toLocaleString() : new Date().toLocaleString()}`);
+    lines.push("");
+    lines.push("## Executive Summary");
+    lines.push(synthesis.executiveSummary);
+    lines.push("");
+    lines.push("## What We Learned");
+    lines.push(synthesis.whatWeLearned.summary);
+    synthesis.whatWeLearned.keyThemes.forEach((theme, i) => {
+      lines.push(`### ${i + 1}. ${theme.theme}`);
+      lines.push(theme.insight);
+      if (theme.evidence.length) lines.push(`Evidence: ${theme.evidence.join(", ")}`);
+      lines.push("");
+    });
+    lines.push("## Business Implications");
+    lines.push(synthesis.businessImplications.summary);
+    lines.push("### Opportunities");
+    synthesis.businessImplications.opportunities.forEach(opp => {
+      lines.push(`- **${opp.title}** (${opp.priority} priority, ${opp.kornFerryPillar}): ${opp.description} - ${opp.potentialValue}`);
+    });
+    if (synthesis.businessImplications.risks.length) {
+      lines.push("### Risks");
+      synthesis.businessImplications.risks.forEach(r => {
+        lines.push(`- **${r.title}**: ${r.description} (Mitigation: ${r.mitigation})`);
+      });
+    }
+    lines.push("");
+    lines.push("## Stakeholder Signals");
+    lines.push(synthesis.stakeholderSignals.summary);
+    lines.push(`- Champion Status: ${synthesis.stakeholderSignals.championStatus}`);
+    lines.push(`- Buying Committee: ${synthesis.stakeholderSignals.buyingCommittee}`);
+    lines.push(`- Momentum: ${synthesis.stakeholderSignals.momentum}`);
+    if (synthesis.stakeholderSignals.nextActions.length) {
+      lines.push("### Next Actions");
+      synthesis.stakeholderSignals.nextActions.forEach(a => lines.push(`- ${a}`));
+    }
+    lines.push("");
+    lines.push("## Readiness to Build Value");
+    lines.push(`Score: ${synthesis.readinessToBuildValue.score}%`);
+    lines.push(synthesis.readinessToBuildValue.summary);
+    lines.push("### Strengths");
+    synthesis.readinessToBuildValue.strengths.forEach(s => lines.push(`+ ${s}`));
+    lines.push("### Gaps");
+    synthesis.readinessToBuildValue.gaps.forEach(g => lines.push(`- ${g}`));
+    if (synthesis.readinessToBuildValue.nextSteps.length) {
+      lines.push("### Recommended Next Steps");
+      synthesis.readinessToBuildValue.nextSteps.forEach((s, i) => lines.push(`${i + 1}. ${s}`));
+    }
+    return lines.join("\n");
+  };
+  
+  const handleCopyMarkdown = () => {
+    const content = generateMarkdownContent();
+    navigator.clipboard.writeText(content);
+    toast({ title: "Copied!", description: "Insights copied to clipboard as markdown" });
+  };
+  
+  const handleDownloadMarkdown = () => {
+    const content = generateMarkdownContent();
+    const blob = new Blob([content], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `discovery-insights-${themeName?.toLowerCase().replace(/\s+/g, "-") || "summary"}-${new Date().toISOString().split("T")[0]}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Downloaded!", description: "Insights saved as markdown file" });
+  };
+  
+  const priorityColors: Record<string, string> = {
+    high: "bg-red-500/10 text-red-700 border-red-500/30",
+    medium: "bg-amber-500/10 text-amber-700 border-amber-500/30",
+    low: "bg-blue-500/10 text-blue-700 border-blue-500/30"
+  };
+  
+  const momentumColors: Record<string, { bg: string; text: string }> = {
+    strong: { bg: "bg-emerald-500", text: "Strong" },
+    moderate: { bg: "bg-amber-500", text: "Moderate" },
+    weak: { bg: "bg-red-500", text: "Weak" },
+    unclear: { bg: "bg-gray-400", text: "Unclear" }
+  };
+  
+  if (isLoading) {
+    return (
+      <Card className="border-primary/20" data-testid="card-loading-insights">
+        <CardContent className="py-12">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <div className="text-center">
+              <p className="font-medium">Loading Discovery Insights</p>
+              <p className="text-sm text-muted-foreground">Retrieving your strategic analysis...</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  if (isError) {
+    return (
+      <Card className="border-destructive/20" data-testid="card-error-insights">
+        <CardContent className="py-12">
+          <div className="flex flex-col items-center gap-4">
+            <AlertCircle className="w-8 h-8 text-destructive" />
+            <div className="text-center">
+              <p className="font-medium">Failed to Load Insights</p>
+              <p className="text-sm text-muted-foreground mb-4">There was an error loading your discovery insights.</p>
+              <Button variant="outline" onClick={() => refetch()} data-testid="button-retry-load">
+                <RefreshCcw className="w-4 h-4 mr-2" />
+                Try Again
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  if (!synthesis) {
+    return (
+      <>
+        <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-purple-500/5" data-testid="card-generate-insights">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Brain className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <CardTitle>Generate Strategic Insights</CardTitle>
+                <CardDescription>AI will analyze all your discovery data and synthesize actionable business insights</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-4">
+                <div className="p-3 rounded-lg border bg-background/50 text-center" data-testid="source-research">
+                  <FileSearch className="w-5 h-5 mx-auto mb-1 text-blue-600" />
+                  <p className="text-xs font-medium">Research Data</p>
+                  <p className="text-[10px] text-muted-foreground">Company intelligence</p>
+                </div>
+                <div className="p-3 rounded-lg border bg-background/50 text-center" data-testid="source-stakeholder">
+                  <Users className="w-5 h-5 mx-auto mb-1 text-purple-600" />
+                  <p className="text-xs font-medium">Stakeholder Info</p>
+                  <p className="text-[10px] text-muted-foreground">Green Sheet contacts</p>
+                </div>
+                <div className="p-3 rounded-lg border bg-background/50 text-center" data-testid="source-narrative">
+                  <MessageSquare className="w-5 h-5 mx-auto mb-1 text-emerald-600" />
+                  <p className="text-xs font-medium">Narrative Content</p>
+                  <p className="text-[10px] text-muted-foreground">Story builder data</p>
+                </div>
+                <div className="p-3 rounded-lg border bg-background/50 text-center" data-testid="source-questions">
+                  <ClipboardList className="w-5 h-5 mx-auto mb-1 text-amber-600" />
+                  <p className="text-xs font-medium">Question Responses</p>
+                  <p className="text-[10px] text-muted-foreground">Discovery answers</p>
+                </div>
+              </div>
+              <Button 
+                onClick={() => generateMutation.mutate()} 
+                disabled={generateMutation.isPending}
+                className="w-full gap-2"
+                size="lg"
+                data-testid="button-generate-insights"
+              >
+                {generateMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Analyzing Discovery Data...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    Generate Strategic Insights
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+        <div className="flex justify-between">
+          <Button variant="outline" onClick={onBackToQuestions} data-testid="button-back-to-questions">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Client Interaction
+          </Button>
+          <Button variant="outline" onClick={onStartNewDiscovery} data-testid="button-start-new-discovery">
+            <RefreshCcw className="w-4 h-4 mr-2" />
+            Start New Discovery
+          </Button>
+        </div>
+      </>
+    );
+  }
+  
+  return (
+    <>
+      {/* Executive Summary Header */}
+      <Card className="bg-gradient-to-r from-emerald-500/5 via-blue-500/5 to-purple-500/5 border-emerald-500/20" data-testid="card-discovery-insights">
+        <CardHeader>
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                <Sparkles className="w-6 h-6 text-emerald-600" />
+              </div>
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  Discovery Insights
+                  <Badge variant="outline" className="text-[10px] bg-primary/5 text-primary border-primary/20">
+                    AI Generated
+                  </Badge>
+                </CardTitle>
+                <CardDescription>Strategic intelligence for {themeName}</CardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {synthesis.generatedAt && (
+                <Badge variant="outline" className="text-xs" data-testid="badge-generated-at">
+                  <Clock className="w-3 h-3 mr-1" />
+                  {new Date(synthesis.generatedAt).toLocaleString()}
+                </Badge>
+              )}
+              <Button variant="outline" size="sm" onClick={handleCopyMarkdown} title="Copy to clipboard" data-testid="button-copy-markdown">
+                <Copy className="w-4 h-4" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleDownloadMarkdown} title="Download as Markdown" data-testid="button-download-markdown">
+                <Download className="w-4 h-4" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending} data-testid="button-regenerate-insights">
+                {generateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCcw className="w-4 h-4" />}
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="p-4 rounded-lg bg-background/50 border" data-testid="text-executive-summary">
+            <p className="text-sm leading-relaxed">{synthesis.executiveSummary}</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* What We Learned */}
+      <Card className="border-blue-500/20" data-testid="card-what-we-learned">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Lightbulb className="w-5 h-5 text-blue-600" />
+            What We Learned
+          </CardTitle>
+          <CardDescription>{synthesis.whatWeLearned.summary}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {synthesis.whatWeLearned.keyThemes.map((theme, idx) => (
+              <div key={idx} className="p-4 rounded-lg border bg-blue-500/5 border-blue-500/20" data-testid={`theme-card-${idx}`}>
+                <h4 className="font-semibold text-sm mb-2 flex items-center gap-2" data-testid={`theme-title-${idx}`}>
+                  <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-xs font-bold text-blue-700">{idx + 1}</div>
+                  {theme.theme}
+                </h4>
+                <p className="text-sm text-muted-foreground mb-3" data-testid={`theme-insight-${idx}`}>{theme.insight}</p>
+                <div className="flex flex-wrap gap-1">
+                  {theme.evidence.map((ev, i) => (
+                    <Badge key={i} variant="outline" className="text-[10px] bg-background" data-testid={`evidence-badge-${idx}-${i}`}>
+                      {ev.length > 50 ? ev.substring(0, 50) + "..." : ev}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Business Implications */}
+      <Card className="border-purple-500/20" data-testid="card-business-implications">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-purple-600" />
+            Business Implications
+          </CardTitle>
+          <CardDescription>{synthesis.businessImplications.summary}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            {/* Opportunities */}
+            <div>
+              <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                <Target className="w-4 h-4 text-emerald-600" />
+                Opportunities
+              </h4>
+              <div className="grid gap-3 md:grid-cols-2">
+                {synthesis.businessImplications.opportunities.map((opp, idx) => (
+                  <div key={idx} className="p-4 rounded-lg border bg-emerald-500/5 border-emerald-500/20" data-testid={`opportunity-card-${idx}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <h5 className="font-medium text-sm" data-testid={`opportunity-title-${idx}`}>{opp.title}</h5>
+                      <Badge className={priorityColors[opp.priority]} data-testid={`opportunity-priority-${idx}`}>
+                        {opp.priority}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-2" data-testid={`opportunity-desc-${idx}`}>{opp.description}</p>
+                    <div className="flex items-center gap-2 text-[10px]">
+                      <Badge variant="outline" data-testid={`opportunity-pillar-${idx}`}>{opp.kornFerryPillar}</Badge>
+                      <span className="text-emerald-600 font-medium" data-testid={`opportunity-value-${idx}`}>{opp.potentialValue}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Risks */}
+            {synthesis.businessImplications.risks.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600" />
+                  Risks to Consider
+                </h4>
+                <div className="space-y-2">
+                  {synthesis.businessImplications.risks.map((risk, idx) => (
+                    <div key={idx} className="p-3 rounded-lg border bg-amber-500/5 border-amber-500/20" data-testid={`risk-card-${idx}`}>
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <h5 className="font-medium text-sm" data-testid={`risk-title-${idx}`}>{risk.title}</h5>
+                          <p className="text-xs text-muted-foreground mt-1" data-testid={`risk-desc-${idx}`}>{risk.description}</p>
+                          <p className="text-xs text-emerald-600 mt-1" data-testid={`risk-mitigation-${idx}`}><strong>Mitigation:</strong> {risk.mitigation}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Stakeholder Signals */}
+      <Card className="border-amber-500/20" data-testid="card-stakeholder-signals">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-amber-600" />
+            Stakeholder Signals
+          </CardTitle>
+          <CardDescription>{synthesis.stakeholderSignals.summary}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-3 mb-4">
+            <div className="p-4 rounded-lg border bg-background" data-testid="stakeholder-champion">
+              <p className="text-xs text-muted-foreground mb-1">Champion Status</p>
+              <p className="text-sm font-medium" data-testid="text-champion-status">{synthesis.stakeholderSignals.championStatus}</p>
+            </div>
+            <div className="p-4 rounded-lg border bg-background" data-testid="stakeholder-committee">
+              <p className="text-xs text-muted-foreground mb-1">Buying Committee</p>
+              <p className="text-sm font-medium" data-testid="text-buying-committee">{synthesis.stakeholderSignals.buyingCommittee}</p>
+            </div>
+            <div className="p-4 rounded-lg border bg-background" data-testid="stakeholder-momentum">
+              <p className="text-xs text-muted-foreground mb-1">Deal Momentum</p>
+              <div className="flex items-center gap-2">
+                <div className={`w-3 h-3 rounded-full ${momentumColors[synthesis.stakeholderSignals.momentum]?.bg}`} data-testid="momentum-indicator" />
+                <span className="text-sm font-medium" data-testid="momentum-text">{momentumColors[synthesis.stakeholderSignals.momentum]?.text}</span>
+              </div>
+            </div>
+          </div>
+          {synthesis.stakeholderSignals.nextActions.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold mb-2">Recommended Stakeholder Actions</p>
+              <div className="space-y-1">
+                {synthesis.stakeholderSignals.nextActions.map((action, idx) => (
+                  <div key={idx} className="flex items-center gap-2 text-sm" data-testid={`stakeholder-action-${idx}`}>
+                    <ChevronRight className="w-4 h-4 text-primary" />
+                    <span>{action}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Readiness to Build Value */}
+      <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-emerald-500/5" data-testid="card-readiness">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <GraduationCap className="w-5 h-5 text-primary" />
+                Readiness to Build Value
+              </CardTitle>
+              <CardDescription>{synthesis.readinessToBuildValue.summary}</CardDescription>
+            </div>
+            <div className="text-center" data-testid="readiness-score-chart">
+              <div className="relative w-20 h-20">
+                <svg className="w-20 h-20 transform -rotate-90">
+                  <circle cx="40" cy="40" r="35" stroke="currentColor" strokeWidth="6" fill="none" className="text-muted/20" />
+                  <circle 
+                    cx="40" cy="40" r="35" 
+                    stroke="currentColor" 
+                    strokeWidth="6" 
+                    fill="none" 
+                    className={synthesis.readinessToBuildValue.score >= 70 ? "text-emerald-500" : synthesis.readinessToBuildValue.score >= 40 ? "text-amber-500" : "text-red-500"}
+                    strokeDasharray={`${(synthesis.readinessToBuildValue.score / 100) * 220} 220`}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-lg font-bold" data-testid="readiness-score">{synthesis.readinessToBuildValue.score}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2 mb-4">
+            <div data-testid="readiness-strengths">
+              <h4 className="text-xs font-semibold text-emerald-600 mb-2 flex items-center gap-1">
+                <CheckCircle className="w-3 h-3" /> Strengths
+              </h4>
+              <ul className="space-y-1">
+                {synthesis.readinessToBuildValue.strengths.map((s, i) => (
+                  <li key={i} className="text-xs text-muted-foreground flex items-start gap-2" data-testid={`strength-item-${i}`}>
+                    <span className="text-emerald-500 mt-1">+</span> {s}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div data-testid="readiness-gaps">
+              <h4 className="text-xs font-semibold text-amber-600 mb-2 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> Gaps
+              </h4>
+              <ul className="space-y-1">
+                {synthesis.readinessToBuildValue.gaps.map((g, i) => (
+                  <li key={i} className="text-xs text-muted-foreground flex items-start gap-2" data-testid={`gap-item-${i}`}>
+                    <span className="text-amber-500 mt-1">-</span> {g}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          
+          {synthesis.readinessToBuildValue.nextSteps.length > 0 && (
+            <div className="p-3 rounded-lg border bg-background mb-4" data-testid="readiness-next-steps">
+              <h4 className="text-xs font-semibold mb-2">Recommended Next Steps</h4>
+              <div className="space-y-1">
+                {synthesis.readinessToBuildValue.nextSteps.map((step, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs" data-testid={`next-step-${i}`}>
+                    <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">{i + 1}</div>
+                    <span>{step}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          <div className="flex items-center justify-between pt-4 border-t">
+            <p className="text-sm text-muted-foreground" data-testid="text-readiness-footer">
+              Ready to define measurable outcomes and create commitments.
+            </p>
+            <Button onClick={onContinueToBuildValue} className="gap-2" data-testid="button-continue-to-build-value">
+              Continue to Build Value
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Navigation */}
+      <div className="flex justify-between">
+        <Button variant="outline" onClick={onBackToQuestions} data-testid="button-back-to-questions">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Client Interaction
+        </Button>
+        <Button variant="outline" onClick={onStartNewDiscovery} data-testid="button-start-new-discovery">
+          <RefreshCcw className="w-4 h-4 mr-2" />
+          Start New Discovery
+        </Button>
+      </div>
+    </>
+  );
+}
 
 export default function ProjectRoleView() {
   const [, params] = useRoute("/projects/:id/:role");
@@ -6265,408 +6821,22 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
           );
         })()} {/* End of Step 3: Questions/Discovery Toolkit */}
 
-        {/* Step 4: Discovery Summary & Coaching */}
-        {discoveryStep === "insights" && (() => {
-          const themeName = selectedDiscoveryTheme ? discoveryThemes.find(t => t.id === selectedDiscoveryTheme)?.name : "General";
-          const questions = discoveryQuestions || [];
-          const selectedQs = questions.filter(q => selectedQuestions.has(q.id));
-          const answeredCount = Object.values(questionAnswers).filter(a => a && a.trim().length > 0).length;
-          
-          const methodologyCounts = {
-            SPIN: selectedQs.filter(q => q.methodology === "SPIN").length,
-            MILLER_HEIMAN: selectedQs.filter(q => q.methodology === "MILLER_HEIMAN").length,
-            PSS: selectedQs.filter(q => q.methodology === "PSS").length
-          };
-          
-          const totalMethodologyCount = methodologyCounts.SPIN + methodologyCounts.MILLER_HEIMAN + methodologyCounts.PSS;
-          
-          const getMethodologyInsight = (methodology: string, count: number) => {
-            if (count === 0) return null;
-            const insights: Record<string, { title: string; insight: string }> = {
-              SPIN: { title: "Pain Points Explored", insight: "SPIN questions helped uncover customer situation, problems, and implications. Strong foundation for value-based positioning." },
-              MILLER_HEIMAN: { title: "Buying Process Mapped", insight: "Blue Sheet insights gathered on decision makers, buying influences, and win themes. Political landscape is clearer." },
-              PSS: { title: "Solution Fit Validated", insight: "Professional Selling Skills questions confirmed solution-customer alignment and established consultative credibility." }
-            };
-            return insights[methodology];
-          };
-
-          const generateExportContent = () => {
-            const lines: string[] = [];
-            lines.push(`# ${themeName} Discovery - Summary`);
-            lines.push(`Generated: ${new Date().toLocaleDateString()}`);
-            lines.push("");
-            lines.push("## Discovery Stats");
-            lines.push(`- Questions Selected: ${selectedQs.length}`);
-            lines.push(`- Call Flow Items: ${myCallFlow.length}`);
-            lines.push(`- Responses Recorded: ${answeredCount}`);
-            lines.push("");
-            lines.push("## Methodology Coverage");
-            lines.push(`- SPIN: ${methodologyCounts.SPIN} questions`);
-            lines.push(`- Miller Heiman: ${methodologyCounts.MILLER_HEIMAN} questions`);
-            lines.push(`- PSS: ${methodologyCounts.PSS} questions`);
-            lines.push("");
-            
-            if (myCallFlow.length > 0) {
-              lines.push("## My Call Flow");
-              lines.push("");
-              const phases = ["opening", "discovery", "support", "closing"];
-              phases.forEach(phase => {
-                const phaseQuestions = myCallFlow.filter(q => q.phase === phase);
-                if (phaseQuestions.length > 0) {
-                  lines.push(`### ${phase.charAt(0).toUpperCase() + phase.slice(1)}`);
-                  phaseQuestions.forEach((q, i) => {
-                    lines.push(`${i + 1}. ${q.question}`);
-                  });
-                  lines.push("");
-                }
-              });
-            }
-            
-            return lines.join("\n");
-          };
-
-          return (
-          <>
-            {/* Discovery Summary Header */}
-            <Card className="bg-gradient-to-r from-emerald-500/5 via-blue-500/5 to-purple-500/5 border-emerald-500/20">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                      <Sparkles className="w-6 h-6 text-emerald-600" />
-                    </div>
-                    <div>
-                      <CardTitle>Discovery Complete</CardTitle>
-                      <CardDescription>Enhanced insights from your {themeName} discovery</CardDescription>
-                    </div>
-                  </div>
-                  <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30 text-sm px-3 py-1">
-                    <CheckCircle className="w-4 h-4 mr-1" />
-                    Completed
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-4">
-                  <div className="p-3 rounded-lg bg-background/50 border text-center">
-                    <div className="text-2xl font-bold text-primary">{selectedQs.length}</div>
-                    <div className="text-xs text-muted-foreground">Questions Selected</div>
-                  </div>
-                  <div className="p-3 rounded-lg bg-background/50 border text-center">
-                    <div className="text-2xl font-bold text-blue-600">{myCallFlow.length}</div>
-                    <div className="text-xs text-muted-foreground">Call Flow Items</div>
-                  </div>
-                  <div className="p-3 rounded-lg bg-background/50 border text-center">
-                    <div className="text-2xl font-bold text-purple-600">{answeredCount}</div>
-                    <div className="text-xs text-muted-foreground">Responses Recorded</div>
-                  </div>
-                  <div className="p-3 rounded-lg bg-background/50 border text-center">
-                    <div className="text-2xl font-bold text-amber-600">
-                      {Object.values(methodologyCounts).filter(c => c > 0).length}
-                    </div>
-                    <div className="text-xs text-muted-foreground">Methodologies Used</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Methodology Coverage Analysis */}
-            <Card className="border-purple-500/20">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Layers className="w-5 h-5 text-purple-600" />
-                  Methodology Coverage
-                </CardTitle>
-                <CardDescription>How your discovery leveraged Korn Ferry selling methodologies</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-3">
-                  {[
-                    { key: "SPIN", name: "SPIN Selling", color: "purple", count: methodologyCounts.SPIN },
-                    { key: "MILLER_HEIMAN", name: "Miller Heiman", color: "blue", count: methodologyCounts.MILLER_HEIMAN },
-                    { key: "PSS", name: "PSS", color: "emerald", count: methodologyCounts.PSS }
-                  ].map(m => {
-                    const insight = getMethodologyInsight(m.key, m.count);
-                    return (
-                      <div 
-                        key={m.key} 
-                        className={`p-4 rounded-lg border ${m.count > 0 ? `bg-${m.color}-500/5 border-${m.color}-500/20` : "bg-muted/30 border-muted"}`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-semibold text-sm">{m.name}</span>
-                          <Badge variant={m.count > 0 ? "default" : "outline"} className="text-xs">
-                            {m.count} questions
-                          </Badge>
-                        </div>
-                        {insight ? (
-                          <>
-                            <p className="font-medium text-xs text-primary mb-1">{insight.title}</p>
-                            <p className="text-xs text-muted-foreground">{insight.insight}</p>
-                          </>
-                        ) : (
-                          <p className="text-xs text-muted-foreground italic">Not used in this discovery. Consider for follow-up.</p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Key Trends - Theme Specific */}
-            <Card className="border-blue-500/20">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-blue-600" />
-                  Key Trends for {themeName}
-                </CardTitle>
-                <CardDescription>Strategic patterns identified from your discovery</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {totalMethodologyCount > 0 ? (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/20">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Target className="w-4 h-4 text-blue-600" />
-                        <h4 className="font-semibold text-sm">Strategic Priority Alignment</h4>
-                      </div>
-                      <p className="text-sm text-muted-foreground">Customer priorities align with Korn Ferry {themeName} capabilities. Clear path to demonstrating unique value proposition.</p>
-                      <Badge className="mt-2 bg-blue-500/10 text-blue-700 border-blue-500/20">High Confidence</Badge>
-                    </div>
-                    <div className="p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
-                      <div className="flex items-center gap-2 mb-2">
-                        <DollarSign className="w-4 h-4 text-emerald-600" />
-                        <h4 className="font-semibold text-sm">Budget Signals Positive</h4>
-                      </div>
-                      <p className="text-sm text-muted-foreground">Economic buyer engaged early. ROI framework will strengthen business case for {themeName} investment.</p>
-                      <Badge className="mt-2 bg-emerald-500/10 text-emerald-700 border-emerald-500/20">Positive Signal</Badge>
-                    </div>
-                    <div className="p-4 rounded-lg bg-amber-500/5 border border-amber-500/20">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Users className="w-4 h-4 text-amber-600" />
-                        <h4 className="font-semibold text-sm">Stakeholder Complexity</h4>
-                      </div>
-                      <p className="text-sm text-muted-foreground">Multiple decision makers identified. Champion development and political navigation will be critical success factors.</p>
-                      <Badge className="mt-2 bg-amber-500/10 text-amber-700 border-amber-500/20">Monitor</Badge>
-                    </div>
-                    <div className="p-4 rounded-lg bg-purple-500/5 border border-purple-500/20">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Zap className="w-4 h-4 text-purple-600" />
-                        <h4 className="font-semibold text-sm">Cross-Sell Opportunity</h4>
-                      </div>
-                      <p className="text-sm text-muted-foreground">Discovery revealed adjacent needs beyond {themeName}. Consider expanding scope or planning follow-on engagements.</p>
-                      <Badge className="mt-2 bg-purple-500/10 text-purple-700 border-purple-500/20">Opportunity</Badge>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-6 rounded-lg bg-muted/30 border text-center">
-                    <HelpCircle className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                    <p className="font-medium text-sm mb-1">Limited Methodology Coverage</p>
-                    <p className="text-sm text-muted-foreground">Your discovery used general questions. Consider incorporating SPIN, Miller Heiman, or PSS methodology questions in follow-up conversations for deeper insights.</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Gaps & Follow-Up Required */}
-            <Card className="border-amber-500/20">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-amber-600" />
-                  Gaps & Follow-Up Required
-                </CardTitle>
-                <CardDescription>Areas requiring additional discovery or validation</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {methodologyCounts.SPIN === 0 && (
-                    <div className="flex items-start gap-3 p-3 rounded-lg border border-amber-500/20 bg-amber-500/5">
-                      <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-medium text-sm">Pain Points Not Fully Explored</p>
-                        <p className="text-xs text-muted-foreground">Consider SPIN questions in follow-up to better understand situation, problems, and implications.</p>
-                      </div>
-                    </div>
-                  )}
-                  {methodologyCounts.MILLER_HEIMAN === 0 && (
-                    <div className="flex items-start gap-3 p-3 rounded-lg border border-amber-500/20 bg-amber-500/5">
-                      <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-medium text-sm">Buying Process Unclear</p>
-                        <p className="text-xs text-muted-foreground">Miller Heiman questions would help map decision makers, buying influences, and political landscape.</p>
-                      </div>
-                    </div>
-                  )}
-                  <div className="flex items-start gap-3 p-3 rounded-lg border border-amber-500/20 bg-amber-500/5">
-                    <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-medium text-sm">Success Metrics Need Definition</p>
-                      <p className="text-xs text-muted-foreground">Work with stakeholders to establish specific outcomes and targets for measuring {themeName} impact.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3 p-3 rounded-lg border border-amber-500/20 bg-amber-500/5">
-                    <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-medium text-sm">Competitive Landscape</p>
-                      <p className="text-xs text-muted-foreground">Validate positioning against potential competitors and prepare differentiation talking points.</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* My Call Flow Summary (if any) */}
-            {myCallFlow.length > 0 && (
-              <Card className="border-primary/20">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="flex items-center gap-2 text-lg">
-                        <Phone className="w-5 h-5 text-primary" />
-                        Your Call Flow
-                      </CardTitle>
-                      <CardDescription>Conversation structure from your client interaction</CardDescription>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => {
-                          navigator.clipboard.writeText(generateExportContent());
-                          toast({ title: "Copied!", description: "Call flow exported to clipboard" });
-                        }}
-                        data-testid="button-copy-call-flow"
-                      >
-                        <Copy className="w-4 h-4 mr-1" />
-                        Copy
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => {
-                          const blob = new Blob([generateExportContent()], { type: "text/markdown" });
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement("a");
-                          a.href = url;
-                          a.download = `discovery-${themeName?.toLowerCase().replace(/\s+/g, "-")}-${new Date().toISOString().split("T")[0]}.md`;
-                          a.click();
-                          URL.revokeObjectURL(url);
-                          toast({ title: "Downloaded!", description: "Discovery summary saved" });
-                        }}
-                        data-testid="button-download-summary"
-                      >
-                        <Download className="w-4 h-4 mr-1" />
-                        Download
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-3 md:grid-cols-4">
-                    {(["opening", "discovery", "support", "closing"] as const).map(phase => {
-                      const phaseQuestions = myCallFlow.filter(q => q.phase === phase);
-                      const phaseColors: Record<string, string> = {
-                        opening: "border-emerald-500/30 bg-emerald-500/5",
-                        discovery: "border-blue-500/30 bg-blue-500/5",
-                        support: "border-purple-500/30 bg-purple-500/5",
-                        closing: "border-amber-500/30 bg-amber-500/5"
-                      };
-                      return (
-                        <div key={phase} className={`p-3 rounded-lg border ${phaseColors[phase]}`}>
-                          <h5 className="font-semibold text-xs uppercase tracking-wide mb-2 text-muted-foreground">
-                            {phase}
-                          </h5>
-                          {phaseQuestions.length === 0 ? (
-                            <p className="text-xs text-muted-foreground italic">—</p>
-                          ) : (
-                            <div className="space-y-1.5">
-                              {phaseQuestions.map((q, i) => (
-                                <p key={q.id} className="text-xs line-clamp-2">{i + 1}. {q.question}</p>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Ready for Build Value - Coaching CTA */}
-            <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-emerald-500/5">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <GraduationCap className="w-5 h-5 text-primary" />
-                  Ready to Build Value
-                </CardTitle>
-                <CardDescription>Your discovery is complete. Here's what's next:</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-3 mb-4">
-                  <div className="p-4 rounded-lg border bg-background">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Target className="w-4 h-4 text-primary" />
-                      <h4 className="font-semibold text-sm">Define Outcomes</h4>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Select measurable outcomes that align with customer priorities and your {themeName} capabilities.</p>
-                  </div>
-                  <div className="p-4 rounded-lg border bg-background">
-                    <div className="flex items-center gap-2 mb-2">
-                      <BarChart3 className="w-4 h-4 text-blue-600" />
-                      <h4 className="font-semibold text-sm">Set Baselines & Goals</h4>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Use AI-powered industry benchmarks to establish realistic baselines and ambitious yet achievable targets.</p>
-                  </div>
-                  <div className="p-4 rounded-lg border bg-background">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Handshake className="w-4 h-4 text-emerald-600" />
-                      <h4 className="font-semibold text-sm">Confirm with Client</h4>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Collaborate with the customer to validate outcomes before moving to delivery handoff.</p>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between pt-4 border-t">
-                  <p className="text-sm text-muted-foreground">
-                    Continue to Build Value to select outcomes and create commitments based on your discovery.
-                  </p>
-                  <Button 
-                    onClick={() => setActiveTab("build-value")}
-                    className="gap-2"
-                    data-testid="button-continue-to-build-value"
-                  >
-                    Continue to Build Value
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Navigation for Insights Step */}
-            <div className="flex justify-between">
-              <Button variant="outline" onClick={() => setDiscoveryStep("questions")} data-testid="button-back-to-questions">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Client Interaction
-              </Button>
-              <Button 
-                variant="outline"
-                onClick={() => {
-                  setDiscoveryStep("theme-select");
-                  setSelectedDiscoveryTheme(null);
-                  setSelectedQuestions(new Set());
-                  setQuestionAnswers({});
-                  setDiscoveryCompleted(false);
-                  setMyCallFlow([]);
-                }}
-                data-testid="button-start-new-discovery"
-              >
-                <RefreshCcw className="w-4 h-4 mr-2" />
-                Start New Discovery
-              </Button>
-            </div>
-          </>
-          );
-        })()}
+        {/* Step 4: Discovery Summary & Coaching - AI-Powered Strategic Insights */}
+        {discoveryStep === "insights" && <DiscoverySummaryStep 
+          projectId={projectId}
+          project={project}
+          themeName={selectedDiscoveryTheme ? discoveryThemes.find(t => t.id === selectedDiscoveryTheme)?.name || "General" : "General"}
+          onBackToQuestions={() => setDiscoveryStep("questions")}
+          onStartNewDiscovery={() => {
+            setDiscoveryStep("theme-select");
+            setSelectedDiscoveryTheme(null);
+            setSelectedQuestions(new Set());
+            setQuestionAnswers({});
+            setDiscoveryCompleted(false);
+            setMyCallFlow([]);
+          }}
+          onContinueToBuildValue={() => setActiveTab("build-value")}
+        />}
       </TabsContent>
 
           {/* STAGE 3: ALIGN - Value Agreement & Client Collaboration */}

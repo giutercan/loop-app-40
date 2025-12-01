@@ -2899,6 +2899,314 @@ Return your response in JSON format:
 }
 
 // ============================================================================
+// DISCOVERY INSIGHTS SYNTHESIS - AI-powered strategic summary of discovery data
+// ============================================================================
+
+export interface DiscoverySynthesisInput {
+  companyName: string;
+  industry?: string;
+  discoveryTheme?: string;
+  researchDataPoints?: Array<{
+    label: string;
+    value: string;
+    kornFerryPillar?: string;
+    solutionArea?: string;
+  }>;
+  headlines?: Array<{ title: string; date: string }>;
+  greenSheetData?: {
+    callObjective?: string;
+    desiredOutcome?: string;
+    openingStatement?: string;
+    bestActionCommitment?: string;
+    contacts?: Array<{
+      name: string;
+      title?: string;
+      buyingRole?: string;
+      influenceLevel?: string;
+    }>;
+  };
+  storyBuilderData?: {
+    before?: {
+      singleMessage?: string;
+      emotionalReaction?: string;
+      storyStructure?: string;
+      startingHook?: string;
+      heroCharacter?: string;
+      tensionQuestions?: Array<{ prompt: string; response?: string }>;
+    };
+    during?: {
+      openingLine?: string;
+      turningPoint?: string;
+      keyDataPoints?: string[];
+    };
+    after?: {
+      momentOfMeaning?: string;
+      explicitTakeaway?: string;
+      callToAction?: string;
+    };
+  };
+  questionResponses?: Array<{
+    question: string;
+    response: string;
+    methodology?: string;
+  }>;
+  notes?: Array<{
+    content: string;
+    category?: string;
+  }>;
+  callFlow?: Array<{
+    question: string;
+    phase: string;
+  }>;
+}
+
+export interface DiscoverySynthesisResult {
+  whatWeLearned: {
+    keyThemes: Array<{
+      theme: string;
+      insight: string;
+      evidence: string[];
+    }>;
+    summary: string;
+  };
+  businessImplications: {
+    opportunities: Array<{
+      title: string;
+      description: string;
+      kornFerryPillar: string;
+      potentialValue: string;
+      priority: "high" | "medium" | "low";
+    }>;
+    risks: Array<{
+      title: string;
+      description: string;
+      mitigation: string;
+    }>;
+    summary: string;
+  };
+  stakeholderSignals: {
+    championStatus: string;
+    buyingCommittee: string;
+    momentum: "strong" | "moderate" | "weak" | "unclear";
+    nextActions: string[];
+    summary: string;
+  };
+  readinessToBuildValue: {
+    score: number; // 0-100
+    strengths: string[];
+    gaps: string[];
+    recommendations: string[];
+    nextSteps: string[];
+    summary: string;
+  };
+  executiveSummary: string;
+}
+
+const discoverySynthesisSchema = z.object({
+  whatWeLearned: z.object({
+    keyThemes: z.array(z.object({
+      theme: z.string(),
+      insight: z.string(),
+      evidence: z.array(z.string())
+    })),
+    summary: z.string()
+  }),
+  businessImplications: z.object({
+    opportunities: z.array(z.object({
+      title: z.string(),
+      description: z.string(),
+      kornFerryPillar: z.string(),
+      potentialValue: z.string(),
+      priority: z.enum(["high", "medium", "low"])
+    })),
+    risks: z.array(z.object({
+      title: z.string(),
+      description: z.string(),
+      mitigation: z.string()
+    })),
+    summary: z.string()
+  }),
+  stakeholderSignals: z.object({
+    championStatus: z.string(),
+    buyingCommittee: z.string(),
+    momentum: z.enum(["strong", "moderate", "weak", "unclear"]),
+    nextActions: z.array(z.string()),
+    summary: z.string()
+  }),
+  readinessToBuildValue: z.object({
+    score: z.number().min(0).max(100),
+    strengths: z.array(z.string()),
+    gaps: z.array(z.string()),
+    recommendations: z.array(z.string()),
+    nextSteps: z.array(z.string()),
+    summary: z.string()
+  }),
+  executiveSummary: z.string()
+});
+
+export async function synthesizeDiscoveryInsights(input: DiscoverySynthesisInput): Promise<DiscoverySynthesisResult> {
+  // Build context from all available data
+  const researchContext = input.researchDataPoints?.length 
+    ? `RESEARCH FINDINGS:\n${input.researchDataPoints.map(dp => `- [${dp.kornFerryPillar || 'General'}] ${dp.label}: ${dp.value}`).join('\n')}`
+    : "No research data collected yet.";
+
+  const headlinesContext = input.headlines?.length
+    ? `RECENT NEWS:\n${input.headlines.slice(0, 5).map(h => `- ${h.title} (${h.date})`).join('\n')}`
+    : "";
+
+  const greenSheetContext = input.greenSheetData ? `
+GREEN SHEET (Call Preparation):
+- Call Objective: ${input.greenSheetData.callObjective || "Not set"}
+- Desired Outcome: ${input.greenSheetData.desiredOutcome || "Not set"}
+- Opening Statement: ${input.greenSheetData.openingStatement || "Not set"}
+- Best Action Commitment: ${input.greenSheetData.bestActionCommitment || "Not set"}
+${input.greenSheetData.contacts?.length ? `- Key Contacts: ${input.greenSheetData.contacts.map(c => 
+  `${c.name}${c.title ? ` (${c.title})` : ''}${c.buyingRole ? ` - ${c.buyingRole}` : ''}`
+).join(', ')}` : ''}` : "";
+
+  const storyContext = input.storyBuilderData?.before ? `
+NARRATIVE PREPARATION:
+- Core Message: ${input.storyBuilderData.before.singleMessage || "Not defined"}
+- Target Emotional Reaction: ${input.storyBuilderData.before.emotionalReaction || "Not defined"}
+- Story Structure: ${input.storyBuilderData.before.storyStructure || "Not selected"}
+- Opening Hook: ${input.storyBuilderData.before.startingHook || "Not crafted"}
+- Hero Character: ${input.storyBuilderData.before.heroCharacter || "Not identified"}
+${input.storyBuilderData.before.tensionQuestions?.length ? `
+TENSION QUESTIONS & RESPONSES:
+${input.storyBuilderData.before.tensionQuestions.map(tq => 
+  `Q: ${tq.prompt}\nA: ${tq.response || "No response recorded"}`
+).join('\n\n')}` : ''}` : "";
+
+  const questionResponsesContext = input.questionResponses?.length
+    ? `\nDISCOVERY QUESTION RESPONSES:\n${input.questionResponses.map(qr => 
+        `Q (${qr.methodology || 'General'}): ${qr.question}\nA: ${qr.response}`
+      ).join('\n\n')}`
+    : "";
+
+  const notesContext = input.notes?.length
+    ? `\nDISCOVERY NOTES:\n${input.notes.map(n => `- [${n.category || 'general'}] ${n.content}`).join('\n')}`
+    : "";
+
+  const callFlowContext = input.callFlow?.length
+    ? `\nPLANNED CALL FLOW:\n${input.callFlow.map(cf => `- [${cf.phase}] ${cf.question}`).join('\n')}`
+    : "";
+
+  const prompt = `You are a senior Korn Ferry consultant analyzing discovery data for ${input.companyName}${input.industry ? ` (${input.industry} industry)` : ''}.
+
+DISCOVERY THEME: ${input.discoveryTheme || "General Discovery"}
+
+${researchContext}
+
+${headlinesContext}
+
+${greenSheetContext}
+
+${storyContext}
+
+${questionResponsesContext}
+
+${notesContext}
+
+${callFlowContext}
+
+Based on ALL the discovery data above, synthesize strategic insights that will help the consultant transition to building value. Analyze patterns, identify opportunities, and provide actionable recommendations.
+
+KORN FERRY VALUE PILLARS (use these for classification):
+- Grow: Revenue growth, market expansion, sales effectiveness
+- Optimise: Cost reduction, productivity improvement, efficiency
+- De-risk: Compliance, retention, succession planning
+- Strengthen Capability: Leadership development, culture, talent
+
+Provide a comprehensive synthesis in JSON format:
+{
+  "whatWeLearned": {
+    "keyThemes": [
+      {
+        "theme": "Theme title (e.g., 'Leadership Succession Gap')",
+        "insight": "What we discovered and why it matters",
+        "evidence": ["Specific data point or response that supports this", "Another supporting evidence"]
+      }
+    ],
+    "summary": "2-3 sentence overview of key learnings"
+  },
+  "businessImplications": {
+    "opportunities": [
+      {
+        "title": "Opportunity name",
+        "description": "Why this is valuable for the client",
+        "kornFerryPillar": "Grow|Optimise|De-risk|Strengthen Capability",
+        "potentialValue": "Estimated business impact or value",
+        "priority": "high|medium|low"
+      }
+    ],
+    "risks": [
+      {
+        "title": "Risk name",
+        "description": "Potential concern or obstacle",
+        "mitigation": "How to address this risk"
+      }
+    ],
+    "summary": "2-3 sentence overview of business implications"
+  },
+  "stakeholderSignals": {
+    "championStatus": "Assessment of whether we have a champion and their strength",
+    "buyingCommittee": "Overview of the decision-making landscape",
+    "momentum": "strong|moderate|weak|unclear",
+    "nextActions": ["Specific stakeholder-related action items"],
+    "summary": "2-3 sentence stakeholder assessment"
+  },
+  "readinessToBuildValue": {
+    "score": 75,
+    "strengths": ["What's going well in the discovery"],
+    "gaps": ["What's missing or needs more work"],
+    "recommendations": ["Specific advice for strengthening position"],
+    "nextSteps": ["Concrete next actions before building value case"],
+    "summary": "Assessment of readiness to move forward"
+  },
+  "executiveSummary": "3-4 sentence executive summary of the entire discovery, suitable for sharing with leadership"
+}
+
+IMPORTANT:
+- Base ALL insights on the actual data provided - reference specific findings
+- If data is sparse, acknowledge gaps and focus on what IS available
+- Be specific and actionable, not generic
+- Tie opportunities to Korn Ferry pillars
+- Provide realistic readiness scores based on available information
+- Make the executive summary compelling and strategic`;
+
+  try {
+    console.log(`[AI Discovery Synthesis] Generating insights for ${input.companyName}`);
+    
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 3000,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    
+    if (!content) {
+      throw new Error("AI returned empty response");
+    }
+    
+    const parsedContent = JSON.parse(content);
+    
+    const validationResult = discoverySynthesisSchema.safeParse(parsedContent);
+    if (!validationResult.success) {
+      console.error("[AI Discovery Synthesis] Validation failed:", validationResult.error);
+      throw new Error(`AI discovery synthesis validation failed: ${validationResult.error.message}`);
+    }
+    
+    console.log(`[AI Discovery Synthesis] Success! Generated strategic insights for ${input.companyName}`);
+    return validationResult.data;
+  } catch (error) {
+    console.error("[AI Discovery Synthesis] Error:", error);
+    throw error;
+  }
+}
+
+// ============================================================================
 // CONTACT ENRICHMENT - AI-powered research for Green Sheet contacts
 // ============================================================================
 
