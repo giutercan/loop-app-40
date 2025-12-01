@@ -883,3 +883,235 @@ export const OUTCOME_JOURNEY_TEMPLATES: Record<SolutionPatternId, {
     ]
   }
 };
+
+// ============================================
+// JOURNEY LOOP FRAMEWORK
+// Interactive, cyclical value realization model
+// ============================================
+
+export interface JourneyLoopStage {
+  id: string;
+  name: string;
+  shortName: string;
+  description: string;
+  icon: string;
+  color: string;
+  sequence: number;
+  activities: string[];
+  successSignals: string[];
+  kpiHighlights: string[];
+  customerMessage: string;
+  duration: string;
+}
+
+export interface JourneyLoopProgress {
+  stageId: string;
+  status: 'not_started' | 'in_progress' | 'completed' | 'blocked';
+  completionPercentage: number;
+  startDate?: string;
+  completedDate?: string;
+  blockers?: string[];
+  evidence?: string[];
+}
+
+export const JOURNEY_LOOP_STAGES: JourneyLoopStage[] = [
+  {
+    id: "implement",
+    name: "Implement",
+    shortName: "Implement",
+    description: "Deploy solutions and embed new capabilities into the organization",
+    icon: "Rocket",
+    color: "blue",
+    sequence: 1,
+    activities: [
+      "Solution deployment",
+      "Change management activation",
+      "Training and enablement",
+      "Process integration",
+      "Stakeholder communication"
+    ],
+    successSignals: [
+      "Solution fully deployed",
+      "Key stakeholders trained",
+      "Processes documented",
+      "Initial adoption metrics captured"
+    ],
+    kpiHighlights: [
+      "Deployment completion rate",
+      "Training completion rate",
+      "Stakeholder engagement score"
+    ],
+    customerMessage: "We're putting the plan into action, deploying solutions and preparing your team for success.",
+    duration: "Weeks 1-8"
+  },
+  {
+    id: "test",
+    name: "Test & Validate",
+    shortName: "Test",
+    description: "Validate approach, gather feedback, and refine based on real-world results",
+    icon: "FlaskConical",
+    color: "amber",
+    sequence: 2,
+    activities: [
+      "Pilot program execution",
+      "Feedback collection",
+      "Performance monitoring",
+      "Issue identification",
+      "Rapid iteration"
+    ],
+    successSignals: [
+      "Pilot results analyzed",
+      "Key adjustments identified",
+      "Stakeholder feedback incorporated",
+      "Refinements deployed"
+    ],
+    kpiHighlights: [
+      "Pilot success rate",
+      "Feedback response rate",
+      "Issue resolution time"
+    ],
+    customerMessage: "We're validating what works, gathering insights, and fine-tuning our approach based on real results.",
+    duration: "Weeks 9-16"
+  },
+  {
+    id: "realize",
+    name: "Realize Value",
+    shortName: "Realize",
+    description: "Capture and measure tangible business outcomes and ROI",
+    icon: "TrendingUp",
+    color: "emerald",
+    sequence: 3,
+    activities: [
+      "Outcome measurement",
+      "ROI calculation",
+      "Success story documentation",
+      "Executive reporting",
+      "Value communication"
+    ],
+    successSignals: [
+      "KPI targets achieved",
+      "ROI demonstrated",
+      "Success stories captured",
+      "Value communicated to stakeholders"
+    ],
+    kpiHighlights: [
+      "Target achievement rate",
+      "Financial ROI",
+      "Stakeholder satisfaction"
+    ],
+    customerMessage: "We're measuring real impact—tracking outcomes, calculating ROI, and documenting your success.",
+    duration: "Weeks 17-24"
+  },
+  {
+    id: "learn",
+    name: "Learn & Reflect",
+    shortName: "Learn",
+    description: "Analyze insights, identify lessons learned, and capture organizational knowledge",
+    icon: "Lightbulb",
+    color: "violet",
+    sequence: 4,
+    activities: [
+      "Retrospective analysis",
+      "Best practice documentation",
+      "Knowledge transfer",
+      "Capability assessment",
+      "Gap identification"
+    ],
+    successSignals: [
+      "Lessons documented",
+      "Best practices shared",
+      "Team capabilities enhanced",
+      "Next opportunities identified"
+    ],
+    kpiHighlights: [
+      "Knowledge retention score",
+      "Capability improvement",
+      "Lesson implementation rate"
+    ],
+    customerMessage: "We're capturing what we've learned—documenting insights and building lasting organizational capability.",
+    duration: "Weeks 25-28"
+  },
+  {
+    id: "iterate",
+    name: "Iterate & Scale",
+    shortName: "Iterate",
+    description: "Expand successful approaches and prepare for the next cycle of value creation",
+    icon: "RefreshCw",
+    color: "rose",
+    sequence: 5,
+    activities: [
+      "Success scaling",
+      "New opportunity identification",
+      "Strategic planning",
+      "Resource optimization",
+      "Next cycle preparation"
+    ],
+    successSignals: [
+      "Approach scaled to new areas",
+      "Next priorities defined",
+      "Resources allocated",
+      "Cycle restart planned"
+    ],
+    kpiHighlights: [
+      "Scale rate",
+      "New opportunity pipeline",
+      "Continuous improvement index"
+    ],
+    customerMessage: "We're building on success—scaling what works and preparing for the next wave of value creation.",
+    duration: "Weeks 29-32+"
+  }
+];
+
+export type JourneyLoopStageId = typeof JOURNEY_LOOP_STAGES[number]['id'];
+
+// Map existing journey phases to loop stages
+export const mapPhasesToLoopStages = (phases: JourneyPhase[]): JourneyLoopStageId[] => {
+  const phaseKeywords: Record<JourneyLoopStageId, string[]> = {
+    implement: ['implement', 'deploy', 'build', 'launch', 'rollout', 'execute', 'activate'],
+    test: ['test', 'pilot', 'validate', 'assess', 'evaluate', 'refine'],
+    realize: ['realize', 'measure', 'track', 'achieve', 'deliver', 'embed', 'sustain'],
+    learn: ['learn', 'reflect', 'review', 'analyze', 'insight'],
+    iterate: ['iterate', 'scale', 'expand', 'optimize', 'improve', 'grow']
+  };
+
+  return phases.map(phase => {
+    const phaseLower = phase.phase.toLowerCase();
+    for (const [stageId, keywords] of Object.entries(phaseKeywords)) {
+      if (keywords.some(kw => phaseLower.includes(kw))) {
+        return stageId as JourneyLoopStageId;
+      }
+    }
+    return 'implement' as JourneyLoopStageId;
+  });
+};
+
+// Get default loop structure for a solution pattern
+export const getLoopForSolutionPattern = (patternId: SolutionPatternId): {
+  stages: JourneyLoopStage[];
+  defaultProgress: JourneyLoopProgress[];
+} => {
+  const template = OUTCOME_JOURNEY_TEMPLATES[patternId];
+  if (!template) {
+    return {
+      stages: JOURNEY_LOOP_STAGES,
+      defaultProgress: JOURNEY_LOOP_STAGES.map(stage => ({
+        stageId: stage.id,
+        status: 'not_started' as const,
+        completionPercentage: 0
+      }))
+    };
+  }
+
+  return {
+    stages: JOURNEY_LOOP_STAGES.map(stage => ({
+      ...stage,
+      activities: stage.activities,
+      duration: stage.duration
+    })),
+    defaultProgress: JOURNEY_LOOP_STAGES.map(stage => ({
+      stageId: stage.id,
+      status: 'not_started' as const,
+      completionPercentage: 0
+    }))
+  };
+};
