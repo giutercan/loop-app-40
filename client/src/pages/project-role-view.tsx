@@ -5088,6 +5088,60 @@ ${narrativeCanvas.callToAction || "(Not set)"}
                                 </div>
                               </div>
                             ))}
+                            {/* Generate More Button */}
+                            <div className="flex items-center justify-center gap-3 pt-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={async () => {
+                                  setIsGeneratingQuestions(true);
+                                  try {
+                                    const response = await apiRequest("POST", `/api/projects/${projectId}/ai/generate-methodology-questions`, {
+                                      companyName: project?.companyName,
+                                      theme: selectedDiscoveryTheme ? discoveryThemes.find(t => t.id === selectedDiscoveryTheme)?.name : "Leadership Development",
+                                      contactRole: meetingContact?.role,
+                                      methodology: selectedQuestionMethodology,
+                                      insights: insights?.slice(0, 3).map((i: any) => i.label) || []
+                                    });
+                                    const data = await response.json();
+                                    if (data.questions && data.questions.length > 0) {
+                                      // Append new questions to existing ones
+                                      setMethodologyQuestions(prev => [...prev, ...data.questions]);
+                                      toast({ title: "More questions added", description: `${data.questions.length} new questions generated` });
+                                    }
+                                  } catch (error) {
+                                    toast({ title: "Generation failed", description: "Please try again", variant: "destructive" });
+                                  }
+                                  setIsGeneratingQuestions(false);
+                                }}
+                                disabled={isGeneratingQuestions}
+                                className="text-purple-700 border-purple-300"
+                                data-testid="button-generate-more-questions"
+                              >
+                                {isGeneratingQuestions ? (
+                                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                                ) : (
+                                  <Plus className="w-4 h-4 mr-1" />
+                                )}
+                                Generate More
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setMethodologyQuestions([]);
+                                  setNarrativeCanvas(prev => ({ ...prev, keyQuestions: [] }));
+                                }}
+                                className="text-muted-foreground"
+                                data-testid="button-clear-questions"
+                              >
+                                <X className="w-4 h-4 mr-1" />
+                                Clear All
+                              </Button>
+                            </div>
+                            <p className="text-xs text-muted-foreground text-center">
+                              {methodologyQuestions.length} questions generated
+                            </p>
                           </div>
                         ) : (
                           <div className="space-y-2">
