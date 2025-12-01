@@ -4774,7 +4774,6 @@ export default function ProjectRoleView() {
     
     return {
       discover: hasDiscoveryInsights || hasAskedQuestions ? 100 : (selectedDiscoveryTheme ? 50 : 0),
-      buildValue: hasCommitments ? (hasConfirmedCommitments ? 100 : 50) : 0,
       align: hasConfirmedCommitments ? 100 : (hasCommitments ? 50 : 0),
       handoff: hasHandoffs ? 100 : (hasConfirmedCommitments ? 50 : 0),
     };
@@ -4790,8 +4789,7 @@ export default function ProjectRoleView() {
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Sales Journey</p>
           {[
             { id: "discover", label: "Discover", icon: Sparkles, progress: workflowProgress.discover, description: "Research & Interaction" },
-            { id: "build-value", label: "Design Outcomes", icon: Target, progress: workflowProgress.buildValue, description: "Draft & Refine Value" },
-            { id: "align", label: "Client Alignment", icon: Handshake, progress: workflowProgress.align, description: "Share & Collaborate" },
+            { id: "align", label: "Outcomes & Alignment", icon: Target, progress: workflowProgress.align, description: "Design & Confirm Value" },
             { id: "handoff", label: "Handoff", icon: ArrowUpRight, progress: workflowProgress.handoff, description: "Transition to Delivery" },
           ].map((stage, idx) => {
             const isActive = activeTab === stage.id;
@@ -4858,147 +4856,20 @@ export default function ProjectRoleView() {
       <div className="flex-1 min-w-0">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           {/* Mobile Tab Navigation */}
-          <TabsList className="grid grid-cols-4 w-full lg:hidden">
+          <TabsList className="grid grid-cols-3 w-full lg:hidden">
             <TabsTrigger value="discover" data-testid="tab-discover">
               <Sparkles className="w-4 h-4 mr-1" />
               <span className="hidden sm:inline">Discover</span>
             </TabsTrigger>
-            <TabsTrigger value="build-value" data-testid="tab-build-value">
-              <Target className="w-4 h-4 mr-1" />
-              <span className="hidden sm:inline">Design</span>
-            </TabsTrigger>
             <TabsTrigger value="align" data-testid="tab-align">
-              <Handshake className="w-4 h-4 mr-1" />
-              <span className="hidden sm:inline">Client</span>
+              <Target className="w-4 h-4 mr-1" />
+              <span className="hidden sm:inline">Align</span>
             </TabsTrigger>
             <TabsTrigger value="handoff" data-testid="tab-handoff">
               <ArrowUpRight className="w-4 h-4 mr-1" />
               <span className="hidden sm:inline">Handoff</span>
             </TabsTrigger>
           </TabsList>
-
-          {/* STAGE 2: DESIGN OUTCOMES - Draft & Refine Value */}
-          <TabsContent value="build-value" className="space-y-6">
-            {/* Design Outcomes Header - Internal Workspace */}
-            <Card className="bg-gradient-to-r from-purple-500/5 via-primary/5 to-emerald-500/5 border-purple-500/20">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                      <Target className="w-6 h-6 text-purple-600" />
-                    </div>
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        Design Outcomes
-                        <Badge variant="outline" className="text-xs">Internal</Badge>
-                      </CardTitle>
-                      <CardDescription>
-                        Draft and refine value outcomes before sharing with your client
-                      </CardDescription>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge className="bg-purple-500/10 text-purple-600">
-                      {commitments.length} Outcome{commitments.length !== 1 ? 's' : ''}
-                    </Badge>
-                    {commitments.filter((c: any) => c.status === "draft").length > 0 && (
-                      <Badge variant="outline" className="text-amber-600 border-amber-300">
-                        {commitments.filter((c: any) => c.status === "draft").length} Draft
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </CardHeader>
-            </Card>
-
-            {/* Sub-navigation for Design Outcomes sections */}
-            <div className="flex items-center gap-2 border-b pb-4">
-              <Button
-                variant={buildValueSection === "commitments" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setBuildValueSection("commitments")}
-                data-testid="btn-build-commitments"
-              >
-                <Target className="w-4 h-4 mr-2" />
-                Outcome Selection
-                {commitments.length > 0 && (
-                  <Badge variant="secondary" className="ml-2 text-xs">{commitments.length}</Badge>
-                )}
-              </Button>
-              <Button
-                variant={buildValueSection === "stories" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setBuildValueSection("stories")}
-                data-testid="btn-build-stories"
-              >
-                <Star className="w-4 h-4 mr-2" />
-                Success Stories
-              </Button>
-            </div>
-
-
-            {/* Commitments Section */}
-            {buildValueSection === "commitments" && (
-              <ValueAgreementTab 
-                projectId={projectId} 
-                project={project}
-                insights={insights}
-                kpis={kpis}
-                jobThemes={jobThemes}
-                prefillSuggestion={prefillSuggestion}
-                onPrefillUsed={() => setPrefillSuggestion(null)}
-              />
-            )}
-
-            {/* Success Stories Section */}
-            {buildValueSection === "stories" && (
-              <Card className="bg-gradient-to-r from-amber-500/5 to-orange-500/5 border-amber-500/20">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                      <Star className="w-6 h-6 text-amber-600" />
-                    </div>
-                    <div>
-                      <CardTitle>Success Stories</CardTitle>
-                      <CardDescription>Verified case studies and proof points for value conversations</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="p-4 rounded-lg border hover-elevate">
-                      <div className="flex items-start justify-between mb-2">
-                        <h4 className="font-semibold">Leadership Development ROI</h4>
-                        <Badge className="bg-emerald-500/10 text-emerald-600">Verified</Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Global manufacturing company achieved 32% improvement in leadership bench strength through targeted development program.
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        <Badge variant="outline" className="text-xs">Manufacturing</Badge>
-                        <Badge variant="outline" className="text-xs">Leadership</Badge>
-                        <Badge variant="secondary" className="text-xs">+32% Bench</Badge>
-                      </div>
-                    </div>
-                    <div className="p-4 rounded-lg border hover-elevate">
-                      <div className="flex items-start justify-between mb-2">
-                        <h4 className="font-semibold">Talent Acquisition Transform</h4>
-                        <Badge className="bg-emerald-500/10 text-emerald-600">Verified</Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Technology company reduced time-to-hire by 40% while improving quality of hire scores.
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        <Badge variant="outline" className="text-xs">Technology</Badge>
-                        <Badge variant="outline" className="text-xs">Talent Acquisition</Badge>
-                        <Badge variant="secondary" className="text-xs">-40% Time-to-hire</Badge>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
 
           {/* Guided Discovery - Theme-Driven Workflow */}
           {/* STAGE 1: DISCOVER - Research & Questions */}
@@ -7454,31 +7325,45 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
             setDiscoveryCompleted(false);
             setMyCallFlow([]);
           }}
-          onContinueToBuildValue={() => setActiveTab("build-value")}
+          onContinueToBuildValue={() => setActiveTab("align")}
         />}
       </TabsContent>
 
-          {/* STAGE 3: CLIENT ALIGNMENT - Share & Collaborate with Client */}
+          {/* STAGE 2: OUTCOMES & ALIGNMENT - Unified Design + Client Collaboration */}
           <TabsContent value="align" className="space-y-6">
-            {/* Client Collaboration Header */}
-            <Card className="bg-gradient-to-r from-blue-500/5 via-indigo-500/5 to-purple-500/5 border-blue-500/20">
-              <CardHeader>
+            {/* Unified Header with Sharing Controls */}
+            <Card className="bg-gradient-to-r from-purple-500/5 via-primary/5 to-blue-500/5 border-purple-500/20">
+              <CardHeader className="pb-3">
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                      <Users className="w-6 h-6 text-blue-600" />
+                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center">
+                      <Target className="w-6 h-6 text-purple-600" />
                     </div>
                     <div>
                       <CardTitle className="flex items-center gap-2">
-                        Client Alignment Portal
+                        Outcomes & Alignment
                         <Badge className="bg-blue-500/10 text-blue-600 text-xs">Shareable</Badge>
                       </CardTitle>
                       <CardDescription>
-                        Share this view with your client for collaborative review and confirmation of value outcomes
+                        Design value outcomes and share with your client for collaborative confirmation
                       </CardDescription>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge className="bg-purple-500/10 text-purple-600">
+                      {commitments.length} Outcome{commitments.length !== 1 ? 's' : ''}
+                    </Badge>
+                    {commitments.filter((c: any) => c.status === "client_confirmed").length > 0 && (
+                      <Badge className="bg-emerald-500/10 text-emerald-600">
+                        {commitments.filter((c: any) => c.status === "client_confirmed").length} Confirmed
+                      </Badge>
+                    )}
+                    {commitments.filter((c: any) => c.status === "draft").length > 0 && (
+                      <Badge variant="outline" className="text-amber-600 border-amber-300">
+                        {commitments.filter((c: any) => c.status === "draft").length} Draft
+                      </Badge>
+                    )}
+                    <div className="h-4 w-px bg-border mx-1" />
                     <Button 
                       variant="outline" 
                       size="sm"
@@ -7508,47 +7393,94 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="p-4 rounded-lg bg-background border">
-                    <div className="flex items-center gap-2 mb-1">
-                      <FileText className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">Outcomes Shared</span>
-                    </div>
-                    <p className="text-2xl font-bold">{commitments.length}</p>
-                  </div>
-                  <div className="p-4 rounded-lg bg-background border">
-                    <div className="flex items-center gap-2 mb-1">
-                      <CheckCircle className="w-4 h-4 text-emerald-600" />
-                      <span className="text-sm text-muted-foreground">Client Confirmed</span>
-                    </div>
-                    <p className="text-2xl font-bold text-emerald-600">
-                      {commitments.filter((c: any) => c.status === "client_confirmed").length}
-                    </p>
-                  </div>
-                  <div className="p-4 rounded-lg bg-background border">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Clock className="w-4 h-4 text-amber-600" />
-                      <span className="text-sm text-muted-foreground">Awaiting Review</span>
-                    </div>
-                    <p className="text-2xl font-bold text-amber-600">
-                      {commitments.filter((c: any) => c.status === "draft" || c.status === "pending").length}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
             </Card>
 
-            {/* Client View of Outcomes */}
-            <ValueAgreementTab 
-              projectId={projectId} 
-              project={project}
-              insights={insights}
-              kpis={kpis}
-              jobThemes={jobThemes}
-              prefillSuggestion={null}
-              onPrefillUsed={() => {}}
-            />
+            {/* Sub-navigation for sections */}
+            <div className="flex items-center gap-2 border-b pb-4">
+              <Button
+                variant={buildValueSection === "commitments" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setBuildValueSection("commitments")}
+                data-testid="btn-build-commitments"
+              >
+                <Target className="w-4 h-4 mr-2" />
+                Outcome Selection
+                {commitments.length > 0 && (
+                  <Badge variant="secondary" className="ml-2 text-xs">{commitments.length}</Badge>
+                )}
+              </Button>
+              <Button
+                variant={buildValueSection === "stories" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setBuildValueSection("stories")}
+                data-testid="btn-build-stories"
+              >
+                <Star className="w-4 h-4 mr-2" />
+                Success Stories
+              </Button>
+            </div>
+
+            {/* Commitments Section */}
+            {buildValueSection === "commitments" && (
+              <ValueAgreementTab 
+                projectId={projectId} 
+                project={project}
+                insights={insights}
+                kpis={kpis}
+                jobThemes={jobThemes}
+                prefillSuggestion={prefillSuggestion}
+                onPrefillUsed={() => setPrefillSuggestion(null)}
+              />
+            )}
+
+            {/* Success Stories Section */}
+            {buildValueSection === "stories" && (
+              <Card className="bg-gradient-to-r from-amber-500/5 to-orange-500/5 border-amber-500/20">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                      <Star className="w-6 h-6 text-amber-600" />
+                    </div>
+                    <div>
+                      <CardTitle>Success Stories</CardTitle>
+                      <CardDescription>Verified case studies and proof points for value conversations</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="p-4 rounded-lg border hover-elevate">
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="font-semibold">Leadership Development ROI</h4>
+                        <Badge className="bg-emerald-500/10 text-emerald-600">Verified</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Global manufacturing company achieved 32% improvement in leadership bench strength through targeted development program.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="outline" className="text-xs">Manufacturing</Badge>
+                        <Badge variant="outline" className="text-xs">Leadership</Badge>
+                        <Badge variant="secondary" className="text-xs">+32% Bench</Badge>
+                      </div>
+                    </div>
+                    <div className="p-4 rounded-lg border hover-elevate">
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="font-semibold">Talent Acquisition Transform</h4>
+                        <Badge className="bg-emerald-500/10 text-emerald-600">Verified</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Technology company reduced time-to-hire by 40% while improving quality of hire scores.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="outline" className="text-xs">Technology</Badge>
+                        <Badge variant="outline" className="text-xs">Talent Acquisition</Badge>
+                        <Badge variant="secondary" className="text-xs">-40% Time-to-hire</Badge>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* STAGE 4: HANDOFF - Transition to Delivery */}
