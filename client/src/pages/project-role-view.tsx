@@ -97,7 +97,9 @@ import {
   Wrench,
   Link2,
   Send,
-  Mic
+  Mic,
+  Trash2,
+  Undo2
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -2816,6 +2818,21 @@ export default function ProjectRoleView() {
       }
     });
 
+    // Revert outcome to draft status
+    const revertToDraftMutation = useMutation({
+      mutationFn: async (id: number) => {
+        const response = await apiRequest("PATCH", `/api/projects/${projectId}/commitments/${id}`, {
+          status: "draft",
+          clientConfirmedAt: null
+        });
+        return response.json();
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "commitments"] });
+        toast({ title: "Reverted to Draft", description: "Outcome has been moved back to drafts for editing." });
+      }
+    });
+
     const resetNewCommitment = () => {
       setNewCommitment({
         name: "",
@@ -3745,7 +3762,7 @@ export default function ProjectRoleView() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Clock className="w-4 h-4 text-blue-600" />
-                Pending Review
+                Pending Client Review
                 <Badge className="ml-auto bg-blue-500/10 text-blue-600">{proposedCommitments.length}</Badge>
               </CardTitle>
             </CardHeader>
@@ -3757,21 +3774,50 @@ export default function ProjectRoleView() {
                   const journeyTemplate = getJourneyData(c);
                   return (
                     <div key={c.id} className="p-3 rounded-lg border border-blue-500/20 bg-blue-500/5" data-testid={`commitment-review-${c.id}`}>
+                      {/* Outcome Header with ID */}
                       <div className="flex items-start justify-between mb-2">
-                        <h4 className="font-medium text-sm">{c.name}</h4>
-                        <div className="flex flex-wrap gap-1 items-center">
-                          {c.provenance?.source === "ai_generated" && (
-                            <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/30 text-[10px] px-1.5">
-                              <Sparkles className="w-3 h-3 mr-0.5" />
-                              AI
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge variant="outline" className="text-[10px] px-1.5 shrink-0 bg-blue-500/10 border-blue-500/30">
+                              #{c.id}
                             </Badge>
-                          )}
-                          {getValuePillarBadge(c.valuePillar)}
-                          {getStatusBadge(c.status)}
+                            <h4 className="font-semibold text-sm truncate" title={c.name}>{c.name}</h4>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 ml-2">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            onClick={() => setEditingCommitment(c)}
+                            title="Edit outcome"
+                            data-testid={`button-edit-pending-${c.id}`}
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            onClick={() => deleteCommitmentMutation.mutate(c.id)}
+                            title="Remove outcome"
+                            data-testid={`button-delete-pending-${c.id}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
                         </div>
                       </div>
                       
-                      {getSolutionPatternBadge(c.solutionPattern)}
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {c.provenance?.source === "ai_generated" && (
+                          <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/30 text-[10px] px-1.5">
+                            <Sparkles className="w-3 h-3 mr-0.5" />
+                            AI
+                          </Badge>
+                        )}
+                        {getValuePillarBadge(c.valuePillar)}
+                        {getSolutionPatternBadge(c.solutionPattern)}
+                      </div>
                       
                       {c.description && (
                         <p className="text-xs text-muted-foreground mt-2 mb-2 line-clamp-2">{c.description}</p>
@@ -3785,11 +3831,15 @@ export default function ProjectRoleView() {
                       
                       <div className="flex items-center flex-wrap gap-2 text-xs text-muted-foreground mb-3">
                         {c.baselineValue !== null && c.targetValue !== null && (
-                          <span>{c.baselineValue} → {c.targetValue} {c.kpiUnit || ""}</span>
+                          <span className="flex items-center gap-1">
+                            <Target className="w-3 h-3" />
+                            {c.baselineValue} → {c.targetValue} {c.kpiUnit || ""}
+                          </span>
                         )}
                         {c.estimatedAnnualValue && (
-                          <span className="text-violet-600 font-medium">
-                            ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr
+                          <span className="text-violet-600 font-medium flex items-center gap-1" title="Estimated annual financial impact of achieving this outcome">
+                            <DollarSign className="w-3 h-3" />
+                            ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr value
                           </span>
                         )}
                         {(c.implementationTimeline || journeyTemplate?.typicalTimeline) && (
@@ -3850,16 +3900,29 @@ export default function ProjectRoleView() {
                         </Collapsible>
                       )}
                       
-                      <Button 
-                        size="sm" 
-                        className="w-full bg-emerald-600 hover:bg-emerald-700"
-                        onClick={() => confirmCommitmentMutation.mutate(c.id)}
-                        disabled={confirmCommitmentMutation.isPending}
-                        data-testid={`button-confirm-commitment-${c.id}`}
-                      >
-                        <Check className="w-4 h-4 mr-2" />
-                        Mark as Client Confirmed
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => revertToDraftMutation.mutate(c.id)}
+                          disabled={revertToDraftMutation.isPending}
+                          data-testid={`button-revert-pending-${c.id}`}
+                        >
+                          <Undo2 className="w-3.5 h-3.5 mr-1" />
+                          Back to Draft
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                          onClick={() => confirmCommitmentMutation.mutate(c.id)}
+                          disabled={confirmCommitmentMutation.isPending}
+                          data-testid={`button-confirm-commitment-${c.id}`}
+                        >
+                          <Check className="w-4 h-4 mr-1" />
+                          Confirm
+                        </Button>
+                      </div>
                     </div>
                   );
                 })
@@ -3872,7 +3935,7 @@ export default function ProjectRoleView() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                Confirmed Outcomes
+                Client Confirmed Outcomes
                 <Badge className="ml-auto bg-emerald-500/10 text-emerald-600">{confirmedCommitments.length}</Badge>
               </CardTitle>
             </CardHeader>
@@ -3884,23 +3947,53 @@ export default function ProjectRoleView() {
                   const journeyTemplate = getJourneyData(c);
                   return (
                     <div key={c.id} className="p-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5" data-testid={`commitment-confirmed-${c.id}`}>
+                      {/* Outcome Header with ID */}
                       <div className="flex items-start justify-between mb-2">
-                        <h4 className="font-medium text-sm">{c.name}</h4>
-                        <div className="flex flex-wrap gap-1 items-center">
-                          {c.provenance?.source === "ai_generated" && (
-                            <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/30 text-[10px] px-1.5">
-                              <Sparkles className="w-3 h-3 mr-0.5" />
-                              AI
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge variant="outline" className="text-[10px] px-1.5 shrink-0 bg-emerald-500/10 border-emerald-500/30">
+                              #{c.id}
                             </Badge>
-                          )}
-                          {getValuePillarBadge(c.valuePillar)}
-                          {getHealthStatusBadge(c.healthStatus)}
-                          {getStatusBadge(c.status)}
+                            <h4 className="font-semibold text-sm truncate" title={c.name}>{c.name}</h4>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 ml-2">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            onClick={() => setEditingCommitment(c)}
+                            title="Edit outcome"
+                            data-testid={`button-edit-confirmed-${c.id}`}
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            onClick={() => deleteCommitmentMutation.mutate(c.id)}
+                            title="Remove outcome"
+                            data-testid={`button-delete-confirmed-${c.id}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
                         </div>
                       </div>
                       
-                      <div className="flex flex-wrap items-center gap-1 mb-2">
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {c.provenance?.source === "ai_generated" && (
+                          <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/30 text-[10px] px-1.5">
+                            <Sparkles className="w-3 h-3 mr-0.5" />
+                            AI
+                          </Badge>
+                        )}
+                        {getValuePillarBadge(c.valuePillar)}
+                        {getHealthStatusBadge(c.healthStatus)}
                         {getSolutionPatternBadge(c.solutionPattern)}
+                      </div>
+                      
+                      <div className="flex flex-wrap items-center gap-1 mb-2">
                         {(c.implementationTimeline || journeyTemplate?.typicalTimeline) && (
                           <Badge variant="outline" className="text-[10px] border-dashed">
                             <Calendar className="w-3 h-3 mr-0.5" />
@@ -3918,13 +4011,17 @@ export default function ProjectRoleView() {
                       {c.description && (
                         <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{c.description}</p>
                       )}
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                      <div className="flex items-center flex-wrap gap-2 text-xs text-muted-foreground mb-2">
                         {c.baselineValue !== null && c.targetValue !== null && (
-                          <span>{c.baselineValue} → {c.targetValue} {c.kpiUnit || ""}</span>
+                          <span className="flex items-center gap-1">
+                            <Target className="w-3 h-3" />
+                            {c.baselineValue} → {c.targetValue} {c.kpiUnit || ""}
+                          </span>
                         )}
                         {c.estimatedAnnualValue && (
-                          <span className="text-emerald-600 font-medium">
-                            ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr
+                          <span className="text-emerald-600 font-medium flex items-center gap-1" title="Estimated annual financial impact of achieving this outcome">
+                            <DollarSign className="w-3 h-3" />
+                            ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr value
                           </span>
                         )}
                       </div>
@@ -3963,6 +4060,30 @@ export default function ProjectRoleView() {
                         </div>
                       )}
                       
+                      <div className="flex gap-2 mt-3 pt-2 border-t border-dashed">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => revertToDraftMutation.mutate(c.id)}
+                          disabled={revertToDraftMutation.isPending}
+                          data-testid={`button-revert-confirmed-${c.id}`}
+                        >
+                          <Undo2 className="w-3.5 h-3.5 mr-1" />
+                          Revert to Draft
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="flex-1"
+                          onClick={() => setViewingJourneyId(c.id)}
+                          data-testid={`button-details-confirmed-${c.id}`}
+                        >
+                          <Eye className="w-3.5 h-3.5 mr-1" />
+                          Details
+                        </Button>
+                      </div>
+                      
                       {c.clientConfirmedAt && (
                         <p className="text-xs text-muted-foreground mt-2">
                           Confirmed: {new Date(c.clientConfirmedAt).toLocaleDateString()}
@@ -3976,22 +4097,27 @@ export default function ProjectRoleView() {
           </Card>
         </div>
 
-        {/* Ready for Handoff Summary */}
+        {/* Ready for Delivery Handoff */}
         {confirmedCommitments.length > 0 && (
-          <Card className="bg-gradient-to-r from-emerald-500/5 to-violet-500/5 border-emerald-500/20">
+          <Card className="bg-gradient-to-r from-emerald-500/5 to-violet-500/5 border-emerald-500/20 mt-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ClipboardCheck className="w-5 h-5 text-emerald-600" />
-                Ready for CSM Handoff
+                Ready for Delivery Handoff
               </CardTitle>
               <CardDescription>
-                {confirmedCommitments.length} outcome(s) confirmed and ready to be handed off to delivery
+                {confirmedCommitments.length} outcome(s) confirmed and ready to be handed off to the delivery team
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Outcome Value</p>
+                  <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    Total Outcome Value
+                    <span className="inline-block ml-1 text-[10px] text-muted-foreground/70 cursor-help" title="This represents the estimated annual financial impact when all confirmed outcomes are successfully achieved">
+                      (?)
+                    </span>
+                  </p>
                   <p className="text-2xl font-bold text-emerald-600">
                     ${(confirmedValue / 1000000).toFixed(2)}M
                   </p>
@@ -4008,12 +4134,41 @@ export default function ProjectRoleView() {
           </Card>
         )}
 
-        {/* Unified Implementation Journey */}
+        {/* Unified Value Journey */}
         {(() => {
           const allCommitmentsWithPattern = (commitments as any[]).filter(c => c.solutionPattern);
           if (allCommitmentsWithPattern.length === 0) return null;
           
-          const selectedOutcomesForTimeline = allCommitmentsWithPattern.map((c: any) => ({
+          // Sort outcomes by estimated value (highest first) for priority ordering
+          // then by timeline duration (shorter timelines first for quick wins)
+          const sortedCommitments = [...allCommitmentsWithPattern].sort((a, b) => {
+            const aTimeline = OUTCOME_JOURNEY_TEMPLATES[a.solutionPattern as SolutionPatternId]?.typicalTimeline || "";
+            const bTimeline = OUTCOME_JOURNEY_TEMPLATES[b.solutionPattern as SolutionPatternId]?.typicalTimeline || "";
+            
+            // Extract month numbers for comparison (e.g., "3-6 months" -> 3)
+            const aMonths = parseInt(aTimeline.match(/\d+/)?.[0] || "12");
+            const bMonths = parseInt(bTimeline.match(/\d+/)?.[0] || "12");
+            
+            // Primary sort: by value (highest first)
+            const aValue = a.estimatedAnnualValue || 0;
+            const bValue = b.estimatedAnnualValue || 0;
+            if (bValue !== aValue) return bValue - aValue;
+            
+            // Secondary sort: by timeline (shorter first for quick wins)
+            return aMonths - bMonths;
+          });
+          
+          // Group outcomes by similar timelines
+          const timelineGroups: Record<string, typeof sortedCommitments> = {};
+          sortedCommitments.forEach(c => {
+            const timeline = OUTCOME_JOURNEY_TEMPLATES[c.solutionPattern as SolutionPatternId]?.typicalTimeline || "Variable";
+            if (!timelineGroups[timeline]) {
+              timelineGroups[timeline] = [];
+            }
+            timelineGroups[timeline].push(c);
+          });
+          
+          const selectedOutcomesForTimeline = sortedCommitments.map((c: any) => ({
             id: c.id.toString(),
             name: c.name,
             solutionPattern: c.solutionPattern as SolutionPatternId,
@@ -4028,10 +4183,10 @@ export default function ProjectRoleView() {
           return (
             <Card data-testid="unified-journey-section">
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2">
                     <Layers className="w-5 h-5 text-primary" />
-                    <CardTitle className="text-lg">Unified Implementation Journey</CardTitle>
+                    <CardTitle className="text-lg">Unified Value Journey</CardTitle>
                   </div>
                   <div className="flex items-center gap-3">
                     <p className="text-sm text-muted-foreground">
@@ -4050,48 +4205,64 @@ export default function ProjectRoleView() {
                   </div>
                 </div>
                 <CardDescription>
-                  Select outcomes below to see how they fit together in a unified timeline
+                  Outcomes ordered by value priority and grouped by similar implementation timelines
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Outcome Selection Controls */}
-                <div className="flex flex-wrap gap-2 p-3 rounded-lg bg-muted/30">
-                  {allCommitmentsWithPattern.map((c: any) => {
-                    const isSelected = timelineSelectedOutcomes.size === 0 || timelineSelectedOutcomes.has(c.id.toString());
-                    const pillar = VALUE_PILLARS[c.valuePillar as ValuePillarId];
-                    
-                    return (
-                      <Badge
-                        key={c.id}
-                        variant={isSelected ? "default" : "outline"}
-                        className={`cursor-pointer transition-all ${isSelected ? '' : 'opacity-60'}`}
-                        onClick={() => {
-                          setTimelineSelectedOutcomes(prev => {
-                            const next = new Set(prev);
-                            if (prev.size === 0) {
-                              allCommitmentsWithPattern.forEach(commitment => {
-                                if (commitment.id !== c.id) {
-                                  next.add(commitment.id.toString());
-                                }
-                              });
-                            } else if (next.has(c.id.toString())) {
-                              next.delete(c.id.toString());
-                            } else {
-                              next.add(c.id.toString());
-                            }
-                            return next;
-                          });
-                        }}
-                        data-testid={`badge-outcome-toggle-${c.id}`}
-                      >
-                        <div className={`w-2 h-2 rounded-full mr-2 ${isSelected ? 'bg-white' : 'bg-current opacity-50'}`} />
-                        {c.name}
-                        {pillar && (
-                          <span className="ml-1 opacity-60 text-xs">({pillar.shortName})</span>
-                        )}
-                      </Badge>
-                    );
-                  })}
+                {/* Outcome Selection Controls - Grouped by Timeline */}
+                <div className="space-y-3">
+                  {Object.entries(timelineGroups).map(([timeline, outcomes]) => (
+                    <div key={timeline} className="p-3 rounded-lg bg-muted/30">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Calendar className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm font-medium text-muted-foreground">{timeline}</span>
+                        <Badge variant="secondary" className="text-[10px]">{outcomes.length} outcome{outcomes.length !== 1 ? 's' : ''}</Badge>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {outcomes.map((c: any) => {
+                          const isSelected = timelineSelectedOutcomes.size === 0 || timelineSelectedOutcomes.has(c.id.toString());
+                          const pillar = VALUE_PILLARS[c.valuePillar as ValuePillarId];
+                          
+                          return (
+                            <Badge
+                              key={c.id}
+                              variant={isSelected ? "default" : "outline"}
+                              className={`cursor-pointer transition-all ${isSelected ? '' : 'opacity-60'}`}
+                              onClick={() => {
+                                setTimelineSelectedOutcomes(prev => {
+                                  const next = new Set(prev);
+                                  if (prev.size === 0) {
+                                    sortedCommitments.forEach(commitment => {
+                                      if (commitment.id !== c.id) {
+                                        next.add(commitment.id.toString());
+                                      }
+                                    });
+                                  } else if (next.has(c.id.toString())) {
+                                    next.delete(c.id.toString());
+                                  } else {
+                                    next.add(c.id.toString());
+                                  }
+                                  return next;
+                                });
+                              }}
+                              data-testid={`badge-outcome-toggle-${c.id}`}
+                            >
+                              <div className={`w-2 h-2 rounded-full mr-2 ${isSelected ? 'bg-white' : 'bg-current opacity-50'}`} />
+                              <span className="flex items-center gap-1">
+                                <span className="font-medium">#{c.id}</span>
+                                {c.name}
+                              </span>
+                              {c.estimatedAnnualValue && (
+                                <span className="ml-1.5 opacity-70 text-[10px]">
+                                  ${(c.estimatedAnnualValue / 1000).toFixed(0)}K
+                                </span>
+                              )}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
                 
                 {/* Timeline Visualization */}
@@ -4108,7 +4279,7 @@ export default function ProjectRoleView() {
                     setTimelineSelectedOutcomes(prev => {
                       const next = new Set(prev);
                       if (prev.size === 0) {
-                        allCommitmentsWithPattern.forEach(commitment => {
+                        sortedCommitments.forEach(commitment => {
                           if (selected && commitment.id.toString() === outcomeId) {
                             next.add(commitment.id.toString());
                           } else if (!selected && commitment.id.toString() !== outcomeId) {

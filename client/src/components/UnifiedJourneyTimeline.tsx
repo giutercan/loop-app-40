@@ -156,7 +156,7 @@ export function UnifiedJourneyTimeline({
             <Layers className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-lg">Implementation Journey</h3>
+            <h3 className="font-semibold text-lg">Value Journey</h3>
             <p className="text-sm text-muted-foreground">
               {journeyData.totalOutcomes} outcome{journeyData.totalOutcomes > 1 ? 's' : ''} · ~{journeyData.totalMonths} months
             </p>
