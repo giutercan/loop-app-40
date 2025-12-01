@@ -85,7 +85,8 @@ import {
   RefreshCw,
   GraduationCap,
   Handshake,
-  ClipboardCheck
+  ClipboardCheck,
+  Copy
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -792,6 +793,17 @@ export default function ProjectRoleView() {
     callToAction: ""
   });
   const [isGeneratingNarrative, setIsGeneratingNarrative] = useState(false);
+  const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
+  const [selectedQuestionMethodology, setSelectedQuestionMethodology] = useState<"all" | "spin" | "miller_heiman" | "pss">("all");
+  
+  // Enhanced questions with methodology and outcome info
+  const [methodologyQuestions, setMethodologyQuestions] = useState<{
+    question: string;
+    methodology: "SPIN" | "Miller Heiman" | "PSS";
+    stage: string;
+    outcome: string;
+    followUp?: string;
+  }[]>([]);
   const [narrativeCanvasInitialized, setNarrativeCanvasInitialized] = useState(false);
   const [lastSavedNarrative, setLastSavedNarrative] = useState<string | null>(null);
   
@@ -4954,37 +4966,154 @@ ${narrativeCanvas.callToAction || "(Not set)"}
                       </div>
                     </div>
                     
-                    {/* ASK Lane */}
+                    {/* ASK Lane - Enhanced with Methodology */}
                     <div className="relative pl-0 md:pl-14">
                       <div className="absolute left-0 top-3 w-12 h-12 rounded-full bg-purple-500 text-white flex items-center justify-center text-sm font-bold hidden md:flex z-10">
                         3
                       </div>
                       <div className="p-4 rounded-xl border-2 border-purple-500/30 bg-purple-500/5">
-                        <div className="flex items-center gap-2 mb-3">
-                          <HelpCircle className="w-5 h-5 text-purple-600" />
-                          <h4 className="font-bold text-purple-700">ASK</h4>
-                          <span className="text-xs text-muted-foreground">Key questions to explore</span>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <HelpCircle className="w-5 h-5 text-purple-600" />
+                            <h4 className="font-bold text-purple-700">ASK</h4>
+                            <span className="text-xs text-muted-foreground">Outcome-focused questions</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Select 
+                              value={selectedQuestionMethodology} 
+                              onValueChange={(v: "all" | "spin" | "miller_heiman" | "pss") => setSelectedQuestionMethodology(v)}
+                            >
+                              <SelectTrigger className="h-8 w-[140px] text-xs" data-testid="select-methodology">
+                                <SelectValue placeholder="Methodology" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All Methods</SelectItem>
+                                <SelectItem value="spin">SPIN Selling</SelectItem>
+                                <SelectItem value="miller_heiman">Miller Heiman</SelectItem>
+                                <SelectItem value="pss">PSS</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={async () => {
+                                setIsGeneratingQuestions(true);
+                                try {
+                                  const response = await apiRequest("POST", `/api/projects/${projectId}/ai/generate-methodology-questions`, {
+                                    companyName: project?.companyName,
+                                    theme: selectedDiscoveryTheme ? discoveryThemes.find(t => t.id === selectedDiscoveryTheme)?.name : "Leadership Development",
+                                    contactRole: meetingContact?.role,
+                                    methodology: selectedQuestionMethodology,
+                                    insights: insights?.slice(0, 3).map((i: any) => i.label) || []
+                                  });
+                                  const data = await response.json();
+                                  if (data.questions && data.questions.length > 0) {
+                                    setMethodologyQuestions(data.questions);
+                                    // Also populate the basic keyQuestions with the generated ones
+                                    setNarrativeCanvas(prev => ({ 
+                                      ...prev, 
+                                      keyQuestions: data.questions.slice(0, 3).map((q: any) => q.question) 
+                                    }));
+                                    toast({ title: "Questions generated", description: `${data.questions.length} outcome-focused questions ready` });
+                                  }
+                                } catch (error) {
+                                  toast({ title: "Generation failed", description: "Please try again", variant: "destructive" });
+                                }
+                                setIsGeneratingQuestions(false);
+                              }}
+                              disabled={isGeneratingQuestions}
+                              className="text-purple-700 border-purple-300"
+                              data-testid="button-generate-questions"
+                            >
+                              {isGeneratingQuestions ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <Sparkles className="w-4 h-4 mr-1" />
+                                  Generate
+                                </>
+                              )}
+                            </Button>
+                          </div>
                         </div>
-                        <div className="space-y-2">
-                          {[0, 1, 2].map((idx) => (
-                            <div key={idx} className="flex items-center gap-2">
-                              <span className="w-6 h-6 rounded-full bg-purple-500/20 text-purple-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
-                                {idx + 1}
-                              </span>
-                              <Input 
-                                placeholder={idx === 0 ? "What's your biggest priority right now?" : idx === 1 ? "How is that impacting your team?" : "What would success look like?"}
-                                value={narrativeCanvas.keyQuestions[idx] || ""}
-                                onChange={(e) => {
-                                  const newQuestions = [...narrativeCanvas.keyQuestions];
-                                  newQuestions[idx] = e.target.value;
-                                  setNarrativeCanvas(prev => ({ ...prev, keyQuestions: newQuestions }));
-                                }}
-                                className="text-sm bg-white/50"
-                                data-testid={`input-narrative-question-${idx}`}
-                              />
-                            </div>
-                          ))}
-                        </div>
+                        
+                        {/* Methodology Questions Display */}
+                        {methodologyQuestions.length > 0 ? (
+                          <div className="space-y-3">
+                            {methodologyQuestions.map((q, idx) => (
+                              <div key={idx} className="p-3 rounded-lg bg-white/60 border border-purple-200/50 space-y-2">
+                                <div className="flex items-start gap-2">
+                                  <span className="w-6 h-6 rounded-full bg-purple-500/20 text-purple-700 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
+                                    {idx + 1}
+                                  </span>
+                                  <div className="flex-1">
+                                    <p className="text-sm font-medium">{q.question}</p>
+                                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                      <Badge 
+                                        variant="outline" 
+                                        className={`text-xs ${
+                                          q.methodology === "SPIN" ? "bg-blue-50 text-blue-700 border-blue-300" :
+                                          q.methodology === "Miller Heiman" ? "bg-emerald-50 text-emerald-700 border-emerald-300" :
+                                          "bg-amber-50 text-amber-700 border-amber-300"
+                                        }`}
+                                      >
+                                        {q.methodology}
+                                      </Badge>
+                                      <span className="text-xs text-muted-foreground">{q.stage}</span>
+                                      {q.outcome && (
+                                        <span className="text-xs text-purple-600 flex items-center gap-1">
+                                          <Target className="w-3 h-3" />
+                                          {q.outcome}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {q.followUp && (
+                                      <p className="text-xs text-muted-foreground mt-1 italic">
+                                        Follow-up: {q.followUp}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(q.question);
+                                      toast({ title: "Copied", description: "Question copied to clipboard" });
+                                    }}
+                                    data-testid={`button-copy-question-${idx}`}
+                                  >
+                                    <Copy className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {[0, 1, 2].map((idx) => (
+                              <div key={idx} className="flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-full bg-purple-500/20 text-purple-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                                  {idx + 1}
+                                </span>
+                                <Input 
+                                  placeholder={idx === 0 ? "What's your biggest priority right now?" : idx === 1 ? "How is that impacting your team?" : "What would success look like?"}
+                                  value={narrativeCanvas.keyQuestions[idx] || ""}
+                                  onChange={(e) => {
+                                    const newQuestions = [...narrativeCanvas.keyQuestions];
+                                    newQuestions[idx] = e.target.value;
+                                    setNarrativeCanvas(prev => ({ ...prev, keyQuestions: newQuestions }));
+                                  }}
+                                  className="text-sm bg-white/50"
+                                  data-testid={`input-narrative-question-${idx}`}
+                                />
+                              </div>
+                            ))}
+                            <p className="text-xs text-muted-foreground text-center mt-2">
+                              Use "Generate" to create methodology-based, outcome-focused questions
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                     

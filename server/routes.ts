@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "./storage";
-import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale, generateStrategicPillars, generateStorySuggestion, generateDiscoveryKpiSuggestions, enrichContactWithAI } from "./ai";
+import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale, generateStrategicPillars, generateStorySuggestion, generateDiscoveryKpiSuggestions, enrichContactWithAI, openai } from "./ai";
 import { z } from "zod";
 import crypto from "crypto";
 
@@ -6590,8 +6590,8 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
       // Fetch insights from database if not provided
       let insightTitles = insights || [];
       if (insightTitles.length === 0) {
-        const storedInsights = await storage.getInsights(projectId);
-        insightTitles = storedInsights.slice(0, 5).map(i => i.title);
+        const storedInsights = await storage.getCompanyDataPoints(projectId);
+        insightTitles = storedInsights.slice(0, 5).map((i: { label: string }) => i.label);
       }
       
       const roleContext = contactRole ? `They are a ${contactRole.replace('_', ' ')}` : '';
@@ -6673,12 +6673,12 @@ Respond in JSON format:
       // Fetch insights from database if not provided in request
       let insightsForAi = discoveryInsights;
       if (!insightsForAi || insightsForAi.length === 0) {
-        const storedInsights = await storage.getInsights(projectId);
-        insightsForAi = storedInsights.slice(0, 10).map(i => ({
-          title: i.title,
-          content: i.content || "",
-          category: i.category,
-          priority: i.priority,
+        const storedInsights = await storage.getCompanyDataPoints(projectId);
+        insightsForAi = storedInsights.slice(0, 10).map((i) => ({
+          title: i.label,
+          content: i.value || "",
+          category: i.relevantCapability || "general",
+          priority: i.priorityScore,
           confidence: i.confidence || undefined
         }));
       }
@@ -6698,6 +6698,99 @@ Respond in JSON format:
       res.json(suggestion);
     } catch (error: any) {
       console.error("[Story Suggestion API] Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/projects/:projectId/ai/generate-methodology-questions - Generate methodology-tagged discovery questions
+  app.post("/api/projects/:projectId/ai/generate-methodology-questions", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const project = await storage.getProject(projectId);
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const { companyName, theme, contactRole, methodology, insights } = req.body;
+      
+      const methodologyGuide = {
+        spin: `SPIN Selling methodology:
+- SITUATION: Questions about their current state, processes, and context (not challenges yet)
+- PROBLEM: Questions that uncover pain points, inefficiencies, and difficulties
+- IMPLICATION: Questions about the consequences and impact of the problems (makes pain bigger)
+- NEED-PAYOFF: Questions that get them to articulate the value of solving the problem`,
+        miller_heiman: `Miller Heiman Strategic Selling:
+- Focus on understanding the buying process and decision-makers
+- Questions about their decision-making process and buying criteria
+- Questions to identify Economic Buyers, User Buyers, Technical Buyers
+- Questions about their ideal outcome and what success looks like`,
+        pss: `Professional Selling Skills (PSS):
+- Opening: Questions that create rapport and establish context
+- Probing: Questions that deeply explore needs and priorities
+- Supporting: Questions that help them envision the solution
+- Closing: Questions that move toward commitment and next steps`,
+        all: `Mix of SPIN Selling, Miller Heiman Strategic Selling, and PSS methodologies:
+Use a variety of approaches to uncover needs, understand the buying process, and build value.`
+      };
+      
+      const methodologyContext = methodologyGuide[methodology as keyof typeof methodologyGuide] || methodologyGuide.all;
+      const insightContext = insights?.length > 0 ? `Known insights about the company: ${insights.join(', ')}` : '';
+      
+      const prompt = `You are an expert sales consultant helping prepare high-impact discovery questions.
+
+Company: ${companyName || project.companyName}
+Theme: ${theme || 'Leadership Development'}
+${contactRole ? `Contact Role: ${contactRole.replace('_', ' ')}` : ''}
+${insightContext}
+
+${methodologyContext}
+
+Generate exactly 6 powerful, outcome-focused discovery questions. These questions should:
+1. Be specific to this company and theme
+2. Focus on uncovering business impact and value
+3. Help build a compelling case for change
+4. Move the conversation toward measurable outcomes
+
+For each question, provide:
+- question: The question itself (make it specific and provocative)
+- methodology: Either "SPIN", "Miller Heiman", or "PSS"
+- stage: The specific stage within that methodology (e.g., "Problem" for SPIN, "Probing" for PSS)
+- outcome: What business outcome or KPI this question helps uncover (e.g., "Employee Retention", "Leadership Pipeline")
+- followUp: A follow-up question hint if they say something interesting
+
+${methodology !== 'all' ? `Focus primarily on ${methodology === 'spin' ? 'SPIN Selling' : methodology === 'miller_heiman' ? 'Miller Heiman' : 'PSS'} methodology.` : 'Use a mix of all three methodologies.'}
+
+Respond in JSON format:
+{
+  "questions": [
+    {
+      "question": "...",
+      "methodology": "SPIN" | "Miller Heiman" | "PSS",
+      "stage": "...",
+      "outcome": "...",
+      "followUp": "..."
+    }
+  ]
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.8,
+        max_tokens: 1200,
+        response_format: { type: "json_object" }
+      });
+      
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error("No response from AI");
+      }
+      
+      const result = JSON.parse(content);
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Generate Methodology Questions API] Error:", error);
       res.status(500).json({ error: error.message });
     }
   });

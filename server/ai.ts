@@ -2,7 +2,8 @@ import OpenAI from "openai";
 import { getSolutionSummary } from "@shared/knowledge";
 import { z } from "zod";
 
-const openai = new OpenAI({
+// Export the OpenAI client for use in routes.ts
+export const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
 });
