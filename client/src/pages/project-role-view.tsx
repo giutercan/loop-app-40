@@ -96,7 +96,8 @@ import {
   Brain,
   Wrench,
   Link2,
-  Send
+  Send,
+  Mic
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -9566,10 +9567,27 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                   <ArrowLeft className="w-4 h-4" />
                   Back to Landing
                 </Button>
-                <Button onClick={() => setStoryBuilderOpen(false)} className="gap-2" data-testid="button-close-story-builder">
-                  <CheckCircle className="w-4 h-4" />
-                  Done
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    className="gap-2 border-blue-500/30 text-blue-600 hover:bg-blue-500/10"
+                    onClick={() => {
+                      window.open("https://yoodli.ai", "_blank");
+                      toast({ 
+                        title: "Opening Yoodli", 
+                        description: "Practice your story delivery with AI speech coaching" 
+                      });
+                    }}
+                    data-testid="button-practice-yoodli"
+                  >
+                    <Mic className="w-4 h-4" />
+                    Practice with Yoodli
+                  </Button>
+                  <Button onClick={() => setStoryBuilderOpen(false)} className="gap-2" data-testid="button-close-story-builder">
+                    <CheckCircle className="w-4 h-4" />
+                    Done
+                  </Button>
+                </div>
               </div>
             </div>
           )}
