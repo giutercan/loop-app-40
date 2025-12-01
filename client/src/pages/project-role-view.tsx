@@ -6290,6 +6290,41 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
             return insights[methodology];
           };
 
+          const generateExportContent = () => {
+            const lines: string[] = [];
+            lines.push(`# ${themeName} Discovery - Summary`);
+            lines.push(`Generated: ${new Date().toLocaleDateString()}`);
+            lines.push("");
+            lines.push("## Discovery Stats");
+            lines.push(`- Questions Selected: ${selectedQs.length}`);
+            lines.push(`- Call Flow Items: ${myCallFlow.length}`);
+            lines.push(`- Responses Recorded: ${answeredCount}`);
+            lines.push("");
+            lines.push("## Methodology Coverage");
+            lines.push(`- SPIN: ${methodologyCounts.SPIN} questions`);
+            lines.push(`- Miller Heiman: ${methodologyCounts.MILLER_HEIMAN} questions`);
+            lines.push(`- PSS: ${methodologyCounts.PSS} questions`);
+            lines.push("");
+            
+            if (myCallFlow.length > 0) {
+              lines.push("## My Call Flow");
+              lines.push("");
+              const phases = ["opening", "discovery", "support", "closing"];
+              phases.forEach(phase => {
+                const phaseQuestions = myCallFlow.filter(q => q.phase === phase);
+                if (phaseQuestions.length > 0) {
+                  lines.push(`### ${phase.charAt(0).toUpperCase() + phase.slice(1)}`);
+                  phaseQuestions.forEach((q, i) => {
+                    lines.push(`${i + 1}. ${q.question}`);
+                  });
+                  lines.push("");
+                }
+              });
+            }
+            
+            return lines.join("\n");
+          };
+
           return (
           <>
             {/* Discovery Summary Header */}
@@ -6480,49 +6515,129 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
               </CardContent>
             </Card>
 
-            {/* Recommended Next Steps */}
-            <Card className="border-emerald-500/20">
+            {/* My Call Flow Summary (if any) */}
+            {myCallFlow.length > 0 && (
+              <Card className="border-primary/20">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <Phone className="w-5 h-5 text-primary" />
+                        Your Call Flow
+                      </CardTitle>
+                      <CardDescription>Conversation structure from your client interaction</CardDescription>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(generateExportContent());
+                          toast({ title: "Copied!", description: "Call flow exported to clipboard" });
+                        }}
+                        data-testid="button-copy-call-flow"
+                      >
+                        <Copy className="w-4 h-4 mr-1" />
+                        Copy
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          const blob = new Blob([generateExportContent()], { type: "text/markdown" });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = `discovery-${themeName?.toLowerCase().replace(/\s+/g, "-")}-${new Date().toISOString().split("T")[0]}.md`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                          toast({ title: "Downloaded!", description: "Discovery summary saved" });
+                        }}
+                        data-testid="button-download-summary"
+                      >
+                        <Download className="w-4 h-4 mr-1" />
+                        Download
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-3 md:grid-cols-4">
+                    {(["opening", "discovery", "support", "closing"] as const).map(phase => {
+                      const phaseQuestions = myCallFlow.filter(q => q.phase === phase);
+                      const phaseColors: Record<string, string> = {
+                        opening: "border-emerald-500/30 bg-emerald-500/5",
+                        discovery: "border-blue-500/30 bg-blue-500/5",
+                        support: "border-purple-500/30 bg-purple-500/5",
+                        closing: "border-amber-500/30 bg-amber-500/5"
+                      };
+                      return (
+                        <div key={phase} className={`p-3 rounded-lg border ${phaseColors[phase]}`}>
+                          <h5 className="font-semibold text-xs uppercase tracking-wide mb-2 text-muted-foreground">
+                            {phase}
+                          </h5>
+                          {phaseQuestions.length === 0 ? (
+                            <p className="text-xs text-muted-foreground italic">—</p>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {phaseQuestions.map((q, i) => (
+                                <p key={q.id} className="text-xs line-clamp-2">{i + 1}. {q.question}</p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Ready for Build Value - Coaching CTA */}
+            <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-emerald-500/5">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <ArrowRight className="w-5 h-5 text-emerald-600" />
-                  Recommended Next Steps
+                  <GraduationCap className="w-5 h-5 text-primary" />
+                  Ready to Build Value
                 </CardTitle>
-                <CardDescription>Actionable items to advance the opportunity</CardDescription>
+                <CardDescription>Your discovery is complete. Here's what's next:</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3 p-3 rounded-lg border hover-elevate">
-                    <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 font-bold text-sm flex-shrink-0">1</div>
-                    <div>
-                      <p className="font-medium text-sm">Share Discovery Summary with Champion</p>
-                      <p className="text-xs text-muted-foreground">Export your call preparation and share key insights. Build internal advocacy for the {themeName} initiative.</p>
-                      <Badge className="mt-2" variant="outline">This Week</Badge>
+                <div className="grid gap-4 md:grid-cols-3 mb-4">
+                  <div className="p-4 rounded-lg border bg-background">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Target className="w-4 h-4 text-primary" />
+                      <h4 className="font-semibold text-sm">Define Outcomes</h4>
                     </div>
+                    <p className="text-xs text-muted-foreground">Select measurable outcomes that align with customer priorities and your {themeName} capabilities.</p>
                   </div>
-                  <div className="flex items-start gap-3 p-3 rounded-lg border hover-elevate">
-                    <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 font-bold text-sm flex-shrink-0">2</div>
-                    <div>
-                      <p className="font-medium text-sm">Schedule Value Discussion with Economic Buyer</p>
-                      <p className="text-xs text-muted-foreground">Prepare ROI model using industry benchmarks and Korn Ferry success stories relevant to {themeName}.</p>
-                      <Badge className="mt-2" variant="outline">Next Week</Badge>
+                  <div className="p-4 rounded-lg border bg-background">
+                    <div className="flex items-center gap-2 mb-2">
+                      <BarChart3 className="w-4 h-4 text-blue-600" />
+                      <h4 className="font-semibold text-sm">Set Baselines & Goals</h4>
                     </div>
+                    <p className="text-xs text-muted-foreground">Use AI-powered industry benchmarks to establish realistic baselines and ambitious yet achievable targets.</p>
                   </div>
-                  <div className="flex items-start gap-3 p-3 rounded-lg border hover-elevate">
-                    <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 font-bold text-sm flex-shrink-0">3</div>
-                    <div>
-                      <p className="font-medium text-sm">Complete Blue Sheet Analysis</p>
-                      <p className="text-xs text-muted-foreground">Document buying center roles, competitive positioning, and win themes in opportunity record.</p>
-                      <Badge className="mt-2" variant="outline">Week 2</Badge>
+                  <div className="p-4 rounded-lg border bg-background">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Handshake className="w-4 h-4 text-emerald-600" />
+                      <h4 className="font-semibold text-sm">Confirm with Client</h4>
                     </div>
+                    <p className="text-xs text-muted-foreground">Collaborate with the customer to validate outcomes before moving to delivery handoff.</p>
                   </div>
-                  <div className="flex items-start gap-3 p-3 rounded-lg border hover-elevate">
-                    <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 font-bold text-sm flex-shrink-0">4</div>
-                    <div>
-                      <p className="font-medium text-sm">Prepare Custom Proposal</p>
-                      <p className="text-xs text-muted-foreground">Use discovery insights to tailor {themeName} proposal addressing specific customer challenges and success criteria.</p>
-                      <Badge className="mt-2" variant="outline">Week 3</Badge>
-                    </div>
-                  </div>
+                </div>
+                <div className="flex items-center justify-between pt-4 border-t">
+                  <p className="text-sm text-muted-foreground">
+                    Continue to Build Value to select outcomes and create commitments based on your discovery.
+                  </p>
+                  <Button 
+                    onClick={() => setActiveTab("build-value")}
+                    className="gap-2"
+                    data-testid="button-continue-to-build-value"
+                  >
+                    Continue to Build Value
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -6533,34 +6648,21 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Client Interaction
               </Button>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline"
-                  onClick={() => {
-                    const content = `# Discovery Insights - ${themeName}\n\n## Summary\n- Questions Selected: ${selectedQs.length}\n- Call Flow Items: ${myCallFlow.length}\n- Responses Recorded: ${answeredCount}\n\n## Methodology Coverage\n- SPIN: ${methodologyCounts.SPIN} questions\n- Miller Heiman: ${methodologyCounts.MILLER_HEIMAN} questions\n- PSS: ${methodologyCounts.PSS} questions`;
-                    navigator.clipboard.writeText(content);
-                    toast({ title: "Copied!", description: "Insights summary copied to clipboard" });
-                  }}
-                  data-testid="button-copy-insights"
-                >
-                  <ClipboardList className="w-4 h-4 mr-2" />
-                  Copy Summary
-                </Button>
-                <Button 
-                  onClick={() => {
-                    setDiscoveryStep("theme-select");
-                    setSelectedDiscoveryTheme(null);
-                    setSelectedQuestions(new Set());
-                    setQuestionAnswers({});
-                    setDiscoveryCompleted(false);
-                    setMyCallFlow([]);
-                  }}
-                  data-testid="button-start-new-discovery"
-                >
-                  Start New Discovery
-                  <RefreshCcw className="w-4 h-4 ml-2" />
-                </Button>
-              </div>
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  setDiscoveryStep("theme-select");
+                  setSelectedDiscoveryTheme(null);
+                  setSelectedQuestions(new Set());
+                  setQuestionAnswers({});
+                  setDiscoveryCompleted(false);
+                  setMyCallFlow([]);
+                }}
+                data-testid="button-start-new-discovery"
+              >
+                <RefreshCcw className="w-4 h-4 mr-2" />
+                Start New Discovery
+              </Button>
             </div>
           </>
           );
