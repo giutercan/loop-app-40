@@ -6549,7 +6549,7 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
         })),
         headlines: headlines.map(h => ({
           title: h.title,
-          date: h.publishedDate || new Date().toISOString()
+          date: h.date || new Date().toISOString()
         })),
         greenSheetData: (project as any).greenSheetData ? {
           callObjective: (project as any).greenSheetData.callPlanner?.objective,
@@ -6587,7 +6587,7 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
           }
         } : undefined,
         notes: discoveryNotes ? [{
-          content: discoveryNotes.notes || "",
+          content: discoveryNotes.freeformNotes || "",
           category: "discovery"
         }] : [],
         callFlow: (project as any).callFlowData?.items?.map((item: any) => ({

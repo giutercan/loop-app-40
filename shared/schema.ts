@@ -304,6 +304,32 @@ export const projects = pgTable("projects", {
     lastUpdated?: string;
   }>(),
   
+  // AI-generated Discovery Synthesis (4-panel executive brief)
+  discoverySynthesis: jsonb("discovery_synthesis").$type<{
+    whatWeLearned: Array<{
+      insight: string;
+      evidence: string[];
+      sourceContext?: string;
+    }>;
+    businessImplications: Array<{
+      implication: string;
+      urgency: "high" | "medium" | "low";
+      kornFerryAlignment?: string;
+    }>;
+    stakeholderSignals: Array<{
+      signal: string;
+      stakeholderType?: string;
+      sentiment?: "positive" | "neutral" | "cautious" | "concerned";
+    }>;
+    readinessToBuildValue: {
+      score: number;
+      rationale: string;
+      gaps: string[];
+      nextSteps: string[];
+    };
+    generatedAt?: string;
+  }>(),
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
