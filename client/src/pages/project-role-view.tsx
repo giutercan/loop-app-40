@@ -749,7 +749,7 @@ export default function ProjectRoleView() {
   const [newNoteCategory, setNewNoteCategory] = useState("general");
   
   // Discovery workflow state - initialized from project data
-  const [discoveryStep, setDiscoveryStepLocal] = useState<"theme-select" | "intelligence" | "questions" | "review" | "insights">("theme-select");
+  const [discoveryStep, setDiscoveryStepLocal] = useState<"theme-select" | "intelligence" | "questions" | "insights">("theme-select");
   const [buildValueSection, setBuildValueSection] = useState<"overview" | "commitments" | "stories">("overview");
   const [selectedDiscoveryTheme, setSelectedDiscoveryThemeLocal] = useState<string | null>(null);
   const [selectedQuestions, setSelectedQuestions] = useState<Set<number>>(new Set());
@@ -3877,10 +3877,9 @@ export default function ProjectRoleView() {
                 { step: "theme-select" as const, label: "Theme", num: 1 },
                 { step: "intelligence" as const, label: "Intelligence", num: 2 },
                 { step: "questions" as const, label: "Client Interaction", num: 3 },
-                { step: "review" as const, label: "Review", num: 4 },
-                { step: "insights" as const, label: "Insights", num: 5 }
+                { step: "insights" as const, label: "Summary & Coaching", num: 4 }
               ].map((s, idx) => {
-                const stepOrder = ["theme-select", "intelligence", "questions", "review", "insights"];
+                const stepOrder = ["theme-select", "intelligence", "questions", "insights"];
                 const currentIdx = stepOrder.indexOf(discoveryStep);
                 const thisIdx = stepOrder.indexOf(s.step);
                 const isComplete = thisIdx < currentIdx;
@@ -6251,331 +6250,22 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Intelligence
               </Button>
-              <Button onClick={() => setDiscoveryStep("review")} data-testid="button-next-to-review">
-                Continue to Review
-                <ArrowRight className="w-4 h-4 ml-2" />
+              <Button 
+                onClick={() => {
+                  setDiscoveryCompleted(true);
+                  setDiscoveryStep("insights");
+                }} 
+                data-testid="button-next-to-insights"
+              >
+                Complete Discovery
+                <Sparkles className="w-4 h-4 ml-2" />
               </Button>
             </div>
           </>
           );
         })()} {/* End of Step 3: Questions/Discovery Toolkit */}
 
-        {/* Step 4: Review & Select Questions */}
-        {discoveryStep === "review" && (() => {
-          const hasExportableContent = myCallFlow.length > 0 || selectedQuestions.size > 0;
-          
-          const generateExportContent = () => {
-            const themeName = selectedDiscoveryTheme ? discoveryThemes.find(t => t.id === selectedDiscoveryTheme)?.name : "Discovery";
-            const lines: string[] = [];
-            lines.push(`# ${themeName} Discovery - Call Preparation`);
-            lines.push(`Generated: ${new Date().toLocaleDateString()}`);
-            lines.push("");
-            
-            const callFlow = myCallFlow || [];
-            const questions = discoveryQuestions || [];
-            const selected = selectedQuestions || new Set<number>();
-            
-            const hasCallFlow = callFlow.length > 0;
-            const selectedQs = questions.filter(q => selected.has(q.id));
-            const hasSelectedQuestions = selectedQs.length > 0;
-            
-            if (!hasCallFlow && !hasSelectedQuestions) {
-              return null;
-            }
-            
-            if (hasCallFlow) {
-              lines.push("## My Call Flow");
-              lines.push("");
-              const phases = ["opening", "discovery", "support", "closing"];
-              phases.forEach(phase => {
-                const phaseQuestions = callFlow.filter(q => q.phase === phase);
-                if (phaseQuestions.length > 0) {
-                  lines.push(`### ${phase.charAt(0).toUpperCase() + phase.slice(1)}`);
-                  phaseQuestions.forEach((q, i) => {
-                    lines.push(`${i + 1}. ${q.question}`);
-                    if (q.methodology) lines.push(`   [${q.methodology}]`);
-                  });
-                  lines.push("");
-                }
-              });
-            }
-            
-            if (hasSelectedQuestions) {
-              lines.push("## Selected Discovery Questions");
-              lines.push("");
-              selectedQs.forEach((q, i) => {
-                lines.push(`${i + 1}. ${q.question}`);
-                lines.push(`   Methodology: ${q.methodology || "General"}`);
-                if (q.followUpHint) lines.push(`   Follow-up: ${q.followUpHint}`);
-                if (q.relatedKPI) lines.push(`   Outcome: ${q.relatedKPI}`);
-                lines.push("");
-              });
-            }
-            
-            return lines.join("\n");
-          };
-          
-          const handleCopyToClipboard = async () => {
-            if (!hasExportableContent) {
-              toast({ title: "Nothing to export", description: "Select questions or build a call flow first", variant: "destructive" });
-              return;
-            }
-            try {
-              const content = generateExportContent();
-              if (!content) {
-                toast({ title: "Nothing to export", description: "Select questions or build a call flow first", variant: "destructive" });
-                return;
-              }
-              await navigator.clipboard.writeText(content);
-              toast({ title: "Copied!", description: "Call preparation exported to clipboard" });
-            } catch {
-              toast({ title: "Copy failed", description: "Please try the download option instead", variant: "destructive" });
-            }
-          };
-          
-          const handleDownload = () => {
-            if (!hasExportableContent) {
-              toast({ title: "Nothing to export", description: "Select questions or build a call flow first", variant: "destructive" });
-              return;
-            }
-            try {
-              const content = generateExportContent();
-              if (!content) {
-                toast({ title: "Nothing to export", description: "Select questions or build a call flow first", variant: "destructive" });
-                return;
-              }
-              const blob = new Blob([content], { type: "text/markdown" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = `discovery-call-prep-${new Date().toISOString().split("T")[0]}.md`;
-              a.click();
-              URL.revokeObjectURL(url);
-              toast({ title: "Downloaded!", description: "Call preparation saved as markdown file" });
-            } catch {
-              toast({ title: "Download failed", description: "Unable to generate file", variant: "destructive" });
-            }
-          };
-          
-          return (
-          <>
-            {/* My Call Flow Summary */}
-            {myCallFlow.length > 0 && (
-              <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-blue-500/5">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Phone className="w-5 h-5 text-primary" />
-                    My Call Flow ({myCallFlow.length} questions)
-                  </CardTitle>
-                  <CardDescription>Your custom conversation structure from the Client Interaction step</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-3 md:grid-cols-4">
-                    {(["opening", "discovery", "support", "closing"] as const).map(phase => {
-                      const phaseQuestions = myCallFlow.filter(q => q.phase === phase);
-                      const phaseColors: Record<string, string> = {
-                        opening: "border-emerald-500/30 bg-emerald-500/5",
-                        discovery: "border-blue-500/30 bg-blue-500/5",
-                        support: "border-purple-500/30 bg-purple-500/5",
-                        closing: "border-amber-500/30 bg-amber-500/5"
-                      };
-                      return (
-                        <div key={phase} className={`p-3 rounded-lg border ${phaseColors[phase]}`}>
-                          <h5 className="font-semibold text-xs uppercase tracking-wide mb-2 text-muted-foreground">
-                            {phase}
-                          </h5>
-                          {phaseQuestions.length === 0 ? (
-                            <p className="text-xs text-muted-foreground italic">No questions</p>
-                          ) : (
-                            <div className="space-y-2">
-                              {phaseQuestions.map((q, i) => (
-                                <div key={q.id} className="flex items-start gap-2">
-                                  <span className="text-xs font-medium text-muted-foreground">{i + 1}.</span>
-                                  <p className="text-xs line-clamp-2">{q.question}</p>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-            
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ClipboardList className="w-5 h-5 text-primary" />
-                  Review & Select
-                </CardTitle>
-                <CardDescription>Choose which questions to use in your client interaction, then complete in-system or export</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {discoveryQuestions.length === 0 && myCallFlow.length === 0 ? (
-                    <div className="text-center py-8">
-                      <HelpCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground">No questions generated yet. Go back to generate questions first.</p>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                        <div className="flex items-center gap-3">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => setSelectedQuestions(new Set((discoveryQuestions || []).map(q => q.id)))}
-                            data-testid="button-select-all"
-                          >
-                            Select All
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => setSelectedQuestions(new Set())}
-                            data-testid="button-clear-all"
-                          >
-                            Clear All
-                          </Button>
-                          <span className="text-sm text-muted-foreground">
-                            {selectedQuestions.size} of {(discoveryQuestions || []).length} selected
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={handleCopyToClipboard}
-                            disabled={selectedQuestions.size === 0 && myCallFlow.length === 0}
-                            data-testid="button-copy-clipboard"
-                          >
-                            <ClipboardList className="w-4 h-4 mr-2" />
-                            Copy
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={handleDownload}
-                            disabled={selectedQuestions.size === 0 && myCallFlow.length === 0}
-                            data-testid="button-download-export"
-                          >
-                            <Download className="w-4 h-4 mr-2" />
-                            Download
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="space-y-3 max-h-[500px] overflow-y-auto">
-                        {(discoveryQuestions || []).map((q) => {
-                          const meta = methodologyMeta[q.methodology || "SPIN"];
-                          const isSelected = selectedQuestions.has(q.id);
-                          return (
-                            <div 
-                              key={q.id} 
-                              className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                                isSelected ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover-elevate"
-                              }`}
-                              onClick={() => {
-                                const newSet = new Set(selectedQuestions);
-                                if (isSelected) {
-                                  newSet.delete(q.id);
-                                } else {
-                                  newSet.add(q.id);
-                                }
-                                setSelectedQuestions(newSet);
-                              }}
-                              data-testid={`question-item-${q.id}`}
-                            >
-                              <div className="flex items-start gap-3">
-                                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                                  isSelected ? "bg-primary border-primary" : "border-muted-foreground"
-                                }`}>
-                                  {isSelected && <Check className="w-4 h-4 text-primary-foreground" />}
-                                </div>
-                                <div className="flex-1">
-                                  <p className="text-sm font-medium mb-2">{q.question}</p>
-                                  <div className="flex flex-wrap gap-2">
-                                    <Badge className={`${meta?.color || ""} border text-xs`}>{meta?.label || q.methodology}</Badge>
-                                    <Badge variant="outline" className="text-xs">{q.capabilityName}</Badge>
-                                    {q.relatedKPI && (
-                                      <Badge variant="secondary" className="text-xs">Outcome: {q.relatedKPI}</Badge>
-                                    )}
-                                  </div>
-                                  {q.followUpHint && (
-                                    <p className="text-xs text-muted-foreground mt-2">
-                                      <span className="font-medium">Follow-up:</span> {q.followUpHint}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Answer Questions In-System */}
-            {selectedQuestions.size > 0 && (
-              <Card className="border-emerald-500/20">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <MessageSquare className="w-5 h-5 text-emerald-600" />
-                    Complete Discovery In-System
-                  </CardTitle>
-                  <CardDescription>Record answers to selected questions for enhanced insights</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {(discoveryQuestions || []).filter(q => selectedQuestions.has(q.id)).slice(0, 5).map((q) => (
-                      <div key={q.id} className="p-4 rounded-lg border">
-                        <p className="text-sm font-medium mb-2">{q.question}</p>
-                        <Textarea 
-                          placeholder="Record the customer's response..."
-                          className="min-h-[80px]"
-                          value={questionAnswers[q.id] || ""}
-                          onChange={(e) => setQuestionAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
-                          data-testid={`answer-${q.id}`}
-                        />
-                      </div>
-                    ))}
-                    {selectedQuestions.size > 5 && (
-                      <p className="text-sm text-muted-foreground text-center">
-                        Showing 5 of {selectedQuestions.size} selected questions
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Navigation for Review Step */}
-            <div className="flex justify-between">
-              <Button variant="outline" onClick={() => setDiscoveryStep("questions")} data-testid="button-back-to-questions">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Client Interaction
-              </Button>
-              <Button 
-                onClick={() => {
-                  setDiscoveryCompleted(true);
-                  setDiscoveryStep("insights");
-                }}
-                disabled={selectedQuestions.size === 0}
-                data-testid="button-complete-discovery"
-              >
-                Complete Discovery & Generate Insights
-                <Sparkles className="w-4 h-4 ml-2" />
-              </Button>
-            </div>
-          </>
-          );
-        })()} {/* End of Step 4: Review */}
-
-        {/* Step 5: Enhanced Insights */}
+        {/* Step 4: Discovery Summary & Coaching */}
         {discoveryStep === "insights" && discoveryCompleted && (() => {
           const themeName = selectedDiscoveryTheme ? discoveryThemes.find(t => t.id === selectedDiscoveryTheme)?.name : "General";
           const questions = discoveryQuestions || [];
@@ -6839,9 +6529,9 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
 
             {/* Navigation for Insights Step */}
             <div className="flex justify-between">
-              <Button variant="outline" onClick={() => setDiscoveryStep("review")} data-testid="button-back-to-review">
+              <Button variant="outline" onClick={() => setDiscoveryStep("questions")} data-testid="button-back-to-questions">
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Review
+                Back to Client Interaction
               </Button>
               <div className="flex gap-2">
                 <Button 
