@@ -6266,7 +6266,60 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
         })()} {/* End of Step 3: Questions/Discovery Toolkit */}
 
         {/* Step 4: Discovery Summary & Coaching */}
-        {discoveryStep === "insights" && discoveryCompleted && (() => {
+        {discoveryStep === "insights" && (() => {
+          if (!discoveryCompleted) {
+            return (
+              <Card className="border-amber-500/20">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                      <AlertCircle className="w-6 h-6 text-amber-600" />
+                    </div>
+                    <div>
+                      <CardTitle>Discovery Not Yet Complete</CardTitle>
+                      <CardDescription>Complete the discovery process to see your summary and coaching insights</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      To generate your discovery summary and coaching recommendations, please go through the discovery steps:
+                    </p>
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <div className="p-4 rounded-lg border bg-muted/30">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">1</div>
+                          <span className="font-medium text-sm">Select Theme</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Choose a discovery theme like Leadership Development or Talent Acquisition</p>
+                      </div>
+                      <div className="p-4 rounded-lg border bg-muted/30">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">2</div>
+                          <span className="font-medium text-sm">Gather Intelligence</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Let AI research the company and gather context</p>
+                      </div>
+                      <div className="p-4 rounded-lg border bg-muted/30">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">3</div>
+                          <span className="font-medium text-sm">Client Interaction</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Build your call flow and capture responses</p>
+                      </div>
+                    </div>
+                    <div className="pt-4">
+                      <Button onClick={() => setDiscoveryStep("theme-select")} data-testid="button-start-discovery">
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Start Discovery
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          }
           const themeName = selectedDiscoveryTheme ? discoveryThemes.find(t => t.id === selectedDiscoveryTheme)?.name : "General";
           const questions = discoveryQuestions || [];
           const selectedQs = questions.filter(q => selectedQuestions.has(q.id));
