@@ -252,6 +252,58 @@ export const projects = pgTable("projects", {
     lastUpdated?: string;
   }>(),
   
+  // Interactive Story Builder (3-phase storytelling framework)
+  storyBuilderData: jsonb("story_builder_data").$type<{
+    before: {
+      singleMessage: string;
+      emotionalReaction: string;
+      storyStructure: string;
+      startingHook: string;
+      heroCharacter: string;
+      evidenceToReference: string;
+      tensionQuestion: string;
+    };
+    during: {
+      openingLine: string;
+      turningPoint: string;
+      keyDataPoints: string;
+      pausePoints: string[];
+      pacingNotes: string;
+    };
+    after: {
+      momentOfMeaning: string;
+      explicitTakeaway: string;
+      callToAction: string;
+    };
+    storyTest: {
+      strangerCareScore: number | null;
+      simplicityScore: number | null;
+      leadershipValuesScore: number | null;
+      testNotes: string;
+    };
+    lastUpdated?: string;
+  }>(),
+  
+  // Call Flow data (methodology-tagged questions for client interaction)
+  callFlowData: jsonb("call_flow_data").$type<{
+    questions: Array<{
+      id: number;
+      question: string;
+      phase: string;
+      methodology?: string;
+      response?: string;
+      isAsked?: boolean;
+    }>;
+    methodologyQuestions: Array<{
+      question: string;
+      methodology: string;
+      stage: string;
+      relatedKPI?: string;
+      followUpHint?: string;
+    }>;
+    lastUpdated?: string;
+  }>(),
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

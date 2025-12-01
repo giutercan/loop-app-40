@@ -86,7 +86,8 @@ import {
   GraduationCap,
   Handshake,
   ClipboardCheck,
-  Copy
+  Copy,
+  BookOpen
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -1022,43 +1023,173 @@ export default function ProjectRoleView() {
     champion: "Equip them to sell internally. Give them the soundbites, data, and stories they can share with others."
   };
   
-  // Interactive Story Builder state
+  // Interactive Story Builder state - aligned with schema
   const [storyBuilderOpen, setStoryBuilderOpen] = useState(false);
-  const [activeStoryPhase, setActiveStoryPhase] = useState<"before" | "during" | "after">("before");
-  const [storyDraft, setStoryDraft] = useState({
-    // BEFORE - Crafting
-    singleMessage: "",
-    emotionalReaction: "",
-    startingHook: "",
-    structure: "situation-struggle-insight-outcome",
-    heroCharacter: "",
-    evidence: "",
-    movingQuestion: "",
-    // DURING - Telling
-    openingLine: "",
-    turningPoint: "",
-    keyDataPoint: "",
-    // AFTER - Landing
-    meaningMoment: "",
-    takeaway: "",
-    callToAction: ""
-  });
-  const [storyTestResults, setStoryTestResults] = useState<{
-    strangerCare: boolean | null;
-    simpleEnough: boolean | null;
-    revealsMeaning: boolean | null;
-  }>({
-    strangerCare: null,
-    simpleEnough: null,
-    revealsMeaning: null
+  const [activeStoryPhase, setActiveStoryPhase] = useState<"before" | "during" | "after" | "test">("before");
+  const [storyBuilderData, setStoryBuilderData] = useState({
+    before: {
+      singleMessage: "",
+      emotionalReaction: "",
+      storyStructure: "situation-struggle-insight-outcome",
+      startingHook: "",
+      heroCharacter: "",
+      evidenceToReference: "",
+      tensionQuestion: ""
+    },
+    during: {
+      openingLine: "",
+      turningPoint: "",
+      keyDataPoints: "",
+      pausePoints: [] as string[],
+      pacingNotes: ""
+    },
+    after: {
+      momentOfMeaning: "",
+      explicitTakeaway: "",
+      callToAction: ""
+    },
+    storyTest: {
+      strangerCareScore: null as number | null,
+      simplicityScore: null as number | null,
+      leadershipValuesScore: null as number | null,
+      testNotes: ""
+    }
   });
   
-  // Reset story test when phase changes
-  useEffect(() => {
-    if (activeStoryPhase !== "after") {
-      setStoryTestResults({ strangerCare: null, simpleEnough: null, revealsMeaning: null });
+  // Legacy storyDraft for backwards compatibility with existing mutation
+  const storyDraft = {
+    singleMessage: storyBuilderData.before.singleMessage,
+    emotionalReaction: storyBuilderData.before.emotionalReaction,
+    startingHook: storyBuilderData.before.startingHook,
+    structure: storyBuilderData.before.storyStructure,
+    heroCharacter: storyBuilderData.before.heroCharacter,
+    evidence: storyBuilderData.before.evidenceToReference,
+    movingQuestion: storyBuilderData.before.tensionQuestion,
+    openingLine: storyBuilderData.during.openingLine,
+    turningPoint: storyBuilderData.during.turningPoint,
+    keyDataPoint: storyBuilderData.during.keyDataPoints,
+    meaningMoment: storyBuilderData.after.momentOfMeaning,
+    takeaway: storyBuilderData.after.explicitTakeaway,
+    callToAction: storyBuilderData.after.callToAction
+  };
+  
+  const setStoryDraft = (updater: (prev: typeof storyDraft) => typeof storyDraft) => {
+    setStoryBuilderData(prev => {
+      const updated = updater({
+        singleMessage: prev.before.singleMessage,
+        emotionalReaction: prev.before.emotionalReaction,
+        startingHook: prev.before.startingHook,
+        structure: prev.before.storyStructure,
+        heroCharacter: prev.before.heroCharacter,
+        evidence: prev.before.evidenceToReference,
+        movingQuestion: prev.before.tensionQuestion,
+        openingLine: prev.during.openingLine,
+        turningPoint: prev.during.turningPoint,
+        keyDataPoint: prev.during.keyDataPoints,
+        meaningMoment: prev.after.momentOfMeaning,
+        takeaway: prev.after.explicitTakeaway,
+        callToAction: prev.after.callToAction
+      });
+      return {
+        ...prev,
+        before: {
+          ...prev.before,
+          singleMessage: updated.singleMessage,
+          emotionalReaction: updated.emotionalReaction,
+          startingHook: updated.startingHook,
+          storyStructure: updated.structure,
+          heroCharacter: updated.heroCharacter,
+          evidenceToReference: updated.evidence,
+          tensionQuestion: updated.movingQuestion
+        },
+        during: {
+          ...prev.during,
+          openingLine: updated.openingLine,
+          turningPoint: updated.turningPoint,
+          keyDataPoints: updated.keyDataPoint
+        },
+        after: {
+          ...prev.after,
+          momentOfMeaning: updated.meaningMoment,
+          explicitTakeaway: updated.takeaway,
+          callToAction: updated.callToAction
+        }
+      };
+    });
+  };
+  
+  const storyTestResults = {
+    strangerCare: storyBuilderData.storyTest.strangerCareScore !== null ? storyBuilderData.storyTest.strangerCareScore >= 3 : null,
+    simpleEnough: storyBuilderData.storyTest.simplicityScore !== null ? storyBuilderData.storyTest.simplicityScore >= 3 : null,
+    revealsMeaning: storyBuilderData.storyTest.leadershipValuesScore !== null ? storyBuilderData.storyTest.leadershipValuesScore >= 3 : null
+  };
+  
+  const setStoryTestResults = (updater: (prev: typeof storyTestResults) => typeof storyTestResults) => {
+    setStoryBuilderData(prev => {
+      const updated = updater({
+        strangerCare: prev.storyTest.strangerCareScore !== null ? prev.storyTest.strangerCareScore >= 3 : null,
+        simpleEnough: prev.storyTest.simplicityScore !== null ? prev.storyTest.simplicityScore >= 3 : null,
+        revealsMeaning: prev.storyTest.leadershipValuesScore !== null ? prev.storyTest.leadershipValuesScore >= 3 : null
+      });
+      return {
+        ...prev,
+        storyTest: {
+          ...prev.storyTest,
+          strangerCareScore: updated.strangerCare === null ? null : (updated.strangerCare ? 5 : 1),
+          simplicityScore: updated.simpleEnough === null ? null : (updated.simpleEnough ? 5 : 1),
+          leadershipValuesScore: updated.revealsMeaning === null ? null : (updated.revealsMeaning ? 5 : 1)
+        }
+      };
+    });
+  };
+  
+  // Story Builder persistence
+  const [storyBuilderInitialized, setStoryBuilderInitialized] = useState(false);
+  const lastSavedStoryBuilderDataRef = useRef<string>("");
+  const [storyBuilderLastSaved, setStoryBuilderLastSaved] = useState<string | null>(null);
+  
+  const saveStoryBuilderMutation = useMutation({
+    mutationFn: async (data: typeof storyBuilderData) => {
+      const response = await apiRequest("PATCH", `/api/projects/${projectId}/story-builder`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      const now = new Date();
+      setStoryBuilderLastSaved(`Saved at ${now.toLocaleTimeString()}`);
+      lastSavedStoryBuilderDataRef.current = JSON.stringify(storyBuilderData);
     }
-  }, [activeStoryPhase]);
+  });
+  
+  const saveStoryBuilderDebounced = useCallback((data: typeof storyBuilderData) => {
+    const dataString = JSON.stringify(data);
+    lastSavedStoryBuilderDataRef.current = dataString;
+    
+    if (saveStoryBuilderTimeoutRef.current) {
+      clearTimeout(saveStoryBuilderTimeoutRef.current);
+    }
+    saveStoryBuilderTimeoutRef.current = setTimeout(() => {
+      saveStoryBuilderMutation.mutate(data);
+    }, 1500);
+  }, [saveStoryBuilderMutation]);
+  
+  const saveStoryBuilderTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  useEffect(() => {
+    return () => {
+      if (saveStoryBuilderTimeoutRef.current) {
+        clearTimeout(saveStoryBuilderTimeoutRef.current);
+      }
+    };
+  }, []);
+  
+  // Auto-save Story Builder when data changes
+  useEffect(() => {
+    if (!storyBuilderInitialized) return;
+    const currentData = JSON.stringify(storyBuilderData);
+    if (currentData !== lastSavedStoryBuilderDataRef.current) {
+      saveStoryBuilderDebounced(storyBuilderData);
+    }
+  }, [storyBuilderData, storyBuilderInitialized, saveStoryBuilderDebounced]);
   
   // AI Story Suggestions state
   const [aiSuggestionLoading, setAiSuggestionLoading] = useState<string | null>(null);
@@ -1118,7 +1249,9 @@ export default function ProjectRoleView() {
   const handleAiSuggestWithStories = (fieldToSuggest: string, stories: Array<{ client: string; industry: string; challenge: string; metrics: string[] }>) => {
     setAiSuggestionLoading(fieldToSuggest);
     setAiSuggestionReasoning("");
-    storySuggestionMutation.mutate({ fieldToSuggest, phase: activeStoryPhase, stories });
+    // Map "test" phase to "after" for AI suggestions (test phase doesn't need AI)
+    const apiPhase = activeStoryPhase === "test" ? "after" : activeStoryPhase;
+    storySuggestionMutation.mutate({ fieldToSuggest, phase: apiPhase, stories });
   };
   
   // Legacy discovery mode (for backward compatibility)
@@ -1465,6 +1598,50 @@ export default function ProjectRoleView() {
       setNarrativeCanvasInitialized(true);
     }
   }, [project, narrativeCanvasInitialized]);
+  
+  // Initialize story builder from project data
+  useEffect(() => {
+    if (project && !storyBuilderInitialized) {
+      const savedData = (project as any).storyBuilderData;
+      if (savedData) {
+        const initialData = {
+          before: {
+            singleMessage: savedData.before?.singleMessage || "",
+            emotionalReaction: savedData.before?.emotionalReaction || "",
+            storyStructure: savedData.before?.storyStructure || "situation-struggle-insight-outcome",
+            startingHook: savedData.before?.startingHook || "",
+            heroCharacter: savedData.before?.heroCharacter || "",
+            evidenceToReference: savedData.before?.evidenceToReference || "",
+            tensionQuestion: savedData.before?.tensionQuestion || ""
+          },
+          during: {
+            openingLine: savedData.during?.openingLine || "",
+            turningPoint: savedData.during?.turningPoint || "",
+            keyDataPoints: savedData.during?.keyDataPoints || "",
+            pausePoints: savedData.during?.pausePoints || [],
+            pacingNotes: savedData.during?.pacingNotes || ""
+          },
+          after: {
+            momentOfMeaning: savedData.after?.momentOfMeaning || "",
+            explicitTakeaway: savedData.after?.explicitTakeaway || "",
+            callToAction: savedData.after?.callToAction || ""
+          },
+          storyTest: {
+            strangerCareScore: savedData.storyTest?.strangerCareScore ?? null,
+            simplicityScore: savedData.storyTest?.simplicityScore ?? null,
+            leadershipValuesScore: savedData.storyTest?.leadershipValuesScore ?? null,
+            testNotes: savedData.storyTest?.testNotes || ""
+          }
+        };
+        lastSavedStoryBuilderDataRef.current = JSON.stringify(initialData);
+        setStoryBuilderData(initialData);
+        if (savedData.lastUpdated) {
+          setStoryBuilderLastSaved(`Last saved ${new Date(savedData.lastUpdated).toLocaleTimeString()}`);
+        }
+      }
+      setStoryBuilderInitialized(true);
+    }
+  }, [project, storyBuilderInitialized]);
   
   // Auto-save narrative canvas when content changes (after initial load)
   useEffect(() => {
@@ -7906,6 +8083,622 @@ ${narrativeCanvas.callToAction || "(Not set)"}
               </Button>
             )}
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Interactive Story Builder Dialog */}
+      <Dialog open={storyBuilderOpen} onOpenChange={setStoryBuilderOpen}>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-purple-600" />
+                  Interactive Story Builder
+                </DialogTitle>
+                <DialogDescription>
+                  Craft compelling stories that connect with {meetingContact.name || "your audience"} using a proven 3-phase framework
+                </DialogDescription>
+              </div>
+              {storyBuilderLastSaved && (
+                <Badge variant="outline" className="text-xs text-muted-foreground">
+                  {storyBuilderLastSaved}
+                </Badge>
+              )}
+            </div>
+          </DialogHeader>
+
+          {/* Phase Navigation */}
+          <div className="flex gap-2 border-b pb-3">
+            {[
+              { id: "before" as const, label: "1. BEFORE", subtitle: "Craft", icon: Lightbulb, color: "bg-amber-500" },
+              { id: "during" as const, label: "2. DURING", subtitle: "Tell", icon: MessageCircle, color: "bg-blue-500" },
+              { id: "after" as const, label: "3. AFTER", subtitle: "Land", icon: Target, color: "bg-green-500" },
+              { id: "test" as const, label: "TEST", subtitle: "Validate", icon: CheckCircle, color: "bg-purple-500" }
+            ].map((phase, idx) => (
+              <Button
+                key={phase.id}
+                variant={activeStoryPhase === phase.id ? "default" : "outline"}
+                className={`flex-1 flex-col h-auto py-2 gap-0.5 ${activeStoryPhase === phase.id ? phase.color : ""}`}
+                onClick={() => setActiveStoryPhase(phase.id)}
+                data-testid={`button-story-phase-${phase.id}`}
+              >
+                <div className="flex items-center gap-1.5">
+                  <phase.icon className="w-3.5 h-3.5" />
+                  <span className="text-xs font-semibold">{phase.label}</span>
+                </div>
+                <span className="text-[10px] opacity-70">{phase.subtitle}</span>
+              </Button>
+            ))}
+          </div>
+
+          {/* BEFORE Phase - Crafting the Story */}
+          {activeStoryPhase === "before" && (
+            <div className="space-y-4 mt-4">
+              <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <div className="flex items-start gap-2">
+                  <Lightbulb className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium text-amber-900">Crafting Your Story</p>
+                    <p className="text-sm text-amber-700 mt-1">
+                      Before you tell your story, you need to know exactly what you want to communicate and why it matters.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-4">
+                {/* Single Message */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-amber-500 text-white text-xs flex items-center justify-center">1</span>
+                      What's the single (provocative) message?
+                    </Label>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-xs gap-1"
+                      onClick={() => {
+                        setAiSuggestionLoading("singleMessage");
+                        storySuggestionMutation.mutate({ fieldToSuggest: "singleMessage", phase: "before" });
+                      }}
+                      disabled={aiSuggestionLoading === "singleMessage"}
+                      data-testid="button-ai-suggest-message"
+                    >
+                      {aiSuggestionLoading === "singleMessage" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                      AI Suggest
+                    </Button>
+                  </div>
+                  <Textarea
+                    placeholder="What is the one idea you need them to remember? Express it in one sentence..."
+                    value={storyBuilderData.before.singleMessage}
+                    onChange={(e) => setStoryBuilderData(prev => ({ ...prev, before: { ...prev.before, singleMessage: e.target.value } }))}
+                    className="min-h-[60px]"
+                    data-testid="input-single-message"
+                  />
+                  <p className="text-xs text-muted-foreground">Tip: If you can't say it in one sentence, you haven't found your message yet.</p>
+                </div>
+
+                {/* Emotional Reaction */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-amber-500 text-white text-xs flex items-center justify-center">2</span>
+                      What emotional reaction do I seek?
+                    </Label>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {["Momentum", "Urgency", "Hope", "Resolve", "Curiosity", "Concern", "Excitement", "Determination"].map((emotion) => (
+                      <Button
+                        key={emotion}
+                        size="sm"
+                        variant={storyBuilderData.before.emotionalReaction === emotion.toLowerCase() ? "default" : "outline"}
+                        className={`h-8 text-xs ${storyBuilderData.before.emotionalReaction === emotion.toLowerCase() ? "bg-amber-500 hover:bg-amber-600" : ""}`}
+                        onClick={() => setStoryBuilderData(prev => ({ ...prev, before: { ...prev.before, emotionalReaction: emotion.toLowerCase() } }))}
+                        data-testid={`button-emotion-${emotion.toLowerCase()}`}
+                      >
+                        {emotion}
+                      </Button>
+                    ))}
+                  </div>
+                  <Textarea
+                    placeholder="What should they feel? What is at stake in this story?"
+                    value={storyBuilderData.before.emotionalReaction.includes(" ") ? storyBuilderData.before.emotionalReaction : ""}
+                    onChange={(e) => setStoryBuilderData(prev => ({ ...prev, before: { ...prev.before, emotionalReaction: e.target.value } }))}
+                    className="min-h-[40px] text-sm"
+                    data-testid="input-emotional-detail"
+                  />
+                </div>
+
+                {/* Story Structure */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-amber-500 text-white text-xs flex items-center justify-center">3</span>
+                    Story Structure
+                  </Label>
+                  <Select
+                    value={storyBuilderData.before.storyStructure}
+                    onValueChange={(v) => setStoryBuilderData(prev => ({ ...prev, before: { ...prev.before, storyStructure: v } }))}
+                  >
+                    <SelectTrigger data-testid="select-story-structure">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="situation-struggle-insight-outcome">Situation → Struggle → Insight → Outcome</SelectItem>
+                      <SelectItem value="problem-agitate-solve">Problem → Agitate → Solve</SelectItem>
+                      <SelectItem value="hero-journey">Hero's Journey (Challenge → Transformation → Victory)</SelectItem>
+                      <SelectItem value="before-after-bridge">Before → After → Bridge</SelectItem>
+                      <SelectItem value="star-chain-hook">Star → Chain → Hook</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Starting Hook */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-amber-500 text-white text-xs flex items-center justify-center">4</span>
+                      What's the right starting hook?
+                    </Label>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-xs gap-1"
+                      onClick={() => {
+                        setAiSuggestionLoading("startingHook");
+                        storySuggestionMutation.mutate({ fieldToSuggest: "startingHook", phase: "before" });
+                      }}
+                      disabled={aiSuggestionLoading === "startingHook"}
+                      data-testid="button-ai-suggest-hook"
+                    >
+                      {aiSuggestionLoading === "startingHook" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                      AI Suggest
+                    </Button>
+                  </div>
+                  <Textarea
+                    placeholder="A moment of high tension? A provocative question? A vivid scene ('Picture this...')? A surprising fact or reversal?"
+                    value={storyBuilderData.before.startingHook}
+                    onChange={(e) => setStoryBuilderData(prev => ({ ...prev, before: { ...prev.before, startingHook: e.target.value } }))}
+                    className="min-h-[60px]"
+                    data-testid="input-starting-hook"
+                  />
+                </div>
+
+                {/* Hero Character */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-amber-500 text-white text-xs flex items-center justify-center">5</span>
+                    Who's the hero? Identify the characters
+                  </Label>
+                  <Textarea
+                    placeholder="How are they involved? What were their motivations or concerns? How did they change?"
+                    value={storyBuilderData.before.heroCharacter}
+                    onChange={(e) => setStoryBuilderData(prev => ({ ...prev, before: { ...prev.before, heroCharacter: e.target.value } }))}
+                    className="min-h-[60px]"
+                    data-testid="input-hero-character"
+                  />
+                </div>
+
+                {/* Evidence */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-amber-500 text-white text-xs flex items-center justify-center">6</span>
+                    What evidence will you reference to build trust?
+                  </Label>
+                  <Textarea
+                    placeholder="Data points, metrics, case studies, third-party validation..."
+                    value={storyBuilderData.before.evidenceToReference}
+                    onChange={(e) => setStoryBuilderData(prev => ({ ...prev, before: { ...prev.before, evidenceToReference: e.target.value } }))}
+                    className="min-h-[60px]"
+                    data-testid="input-evidence"
+                  />
+                </div>
+
+                {/* Tension Question */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-amber-500 text-white text-xs flex items-center justify-center">7</span>
+                    What question keeps the story moving?
+                  </Label>
+                  <Textarea
+                    placeholder="Dilemma, pressure point, uncertainty that creates narrative tension..."
+                    value={storyBuilderData.before.tensionQuestion}
+                    onChange={(e) => setStoryBuilderData(prev => ({ ...prev, before: { ...prev.before, tensionQuestion: e.target.value } }))}
+                    className="min-h-[60px]"
+                    data-testid="input-tension-question"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button onClick={() => setActiveStoryPhase("during")} className="gap-2" data-testid="button-next-to-during">
+                  Continue to Telling
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* DURING Phase - Telling the Story */}
+          {activeStoryPhase === "during" && (
+            <div className="space-y-4 mt-4">
+              <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                <div className="flex items-start gap-2">
+                  <MessageCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium text-blue-900">Telling Your Story</p>
+                    <p className="text-sm text-blue-700 mt-1">
+                      Now you're in the room. Delivery matters as much as content. Pace it like a movie.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-4">
+                {/* Opening Line */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">1</span>
+                      Start fast — no preamble
+                    </Label>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-xs gap-1"
+                      onClick={() => {
+                        setAiSuggestionLoading("openingLine");
+                        storySuggestionMutation.mutate({ fieldToSuggest: "openingLine", phase: "during" });
+                      }}
+                      disabled={aiSuggestionLoading === "openingLine"}
+                      data-testid="button-ai-suggest-opening"
+                    >
+                      {aiSuggestionLoading === "openingLine" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                      AI Suggest
+                    </Button>
+                  </div>
+                  <Textarea
+                    placeholder="Enter the story at the moment of action. Your opening line..."
+                    value={storyBuilderData.during.openingLine}
+                    onChange={(e) => setStoryBuilderData(prev => ({ ...prev, during: { ...prev.during, openingLine: e.target.value } }))}
+                    className="min-h-[80px]"
+                    data-testid="input-opening-line"
+                  />
+                  <p className="text-xs text-muted-foreground">Coach: Short sentences in moments of tension. Longer sentences in reflection.</p>
+                </div>
+
+                {/* Turning Point */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">2</span>
+                    Show the turning point
+                  </Label>
+                  <Textarea
+                    placeholder="What realization changed the course? Why did that moment matter?"
+                    value={storyBuilderData.during.turningPoint}
+                    onChange={(e) => setStoryBuilderData(prev => ({ ...prev, during: { ...prev.during, turningPoint: e.target.value } }))}
+                    className="min-h-[80px]"
+                    data-testid="input-turning-point"
+                  />
+                </div>
+
+                {/* Key Data Points */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">3</span>
+                    Key data points (don't over-explain)
+                  </Label>
+                  <Textarea
+                    placeholder="Use the 'story spine' to bring meaning; data becomes supporting evidence after the story..."
+                    value={storyBuilderData.during.keyDataPoints}
+                    onChange={(e) => setStoryBuilderData(prev => ({ ...prev, during: { ...prev.during, keyDataPoints: e.target.value } }))}
+                    className="min-h-[80px]"
+                    data-testid="input-key-data"
+                  />
+                </div>
+
+                {/* Pacing Notes */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">4</span>
+                    Pacing & pause notes
+                  </Label>
+                  <Textarea
+                    placeholder="Where will you pause strategically? What parts need emphasis? Keep it conversational - speak like a human."
+                    value={storyBuilderData.during.pacingNotes}
+                    onChange={(e) => setStoryBuilderData(prev => ({ ...prev, during: { ...prev.during, pacingNotes: e.target.value } }))}
+                    className="min-h-[60px]"
+                    data-testid="input-pacing"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-between">
+                <Button variant="outline" onClick={() => setActiveStoryPhase("before")} className="gap-2" data-testid="button-back-to-before">
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to Crafting
+                </Button>
+                <Button onClick={() => setActiveStoryPhase("after")} className="gap-2" data-testid="button-next-to-after">
+                  Continue to Landing
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* AFTER Phase - Landing the Story */}
+          {activeStoryPhase === "after" && (
+            <div className="space-y-4 mt-4">
+              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                <div className="flex items-start gap-2">
+                  <Target className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium text-green-900">Landing Your Story</p>
+                    <p className="text-sm text-green-700 mt-1">
+                      The ending determines what they remember. Make it count.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-4">
+                {/* Moment of Meaning */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-green-500 text-white text-xs flex items-center justify-center">1</span>
+                      Finish with a "moment of meaning"
+                    </Label>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-xs gap-1"
+                      onClick={() => {
+                        setAiSuggestionLoading("momentOfMeaning");
+                        storySuggestionMutation.mutate({ fieldToSuggest: "meaningMoment", phase: "after" });
+                      }}
+                      disabled={aiSuggestionLoading === "momentOfMeaning"}
+                      data-testid="button-ai-suggest-meaning"
+                    >
+                      {aiSuggestionLoading === "momentOfMeaning" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                      AI Suggest
+                    </Button>
+                  </div>
+                  <Textarea
+                    placeholder="A crisp insight. A forward-looking question. A short reflective conclusion..."
+                    value={storyBuilderData.after.momentOfMeaning}
+                    onChange={(e) => setStoryBuilderData(prev => ({ ...prev, after: { ...prev.after, momentOfMeaning: e.target.value } }))}
+                    className="min-h-[80px]"
+                    data-testid="input-moment-meaning"
+                  />
+                </div>
+
+                {/* Explicit Takeaway */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-green-500 text-white text-xs flex items-center justify-center">2</span>
+                    Make the takeaway explicit — but not obvious
+                  </Label>
+                  <Textarea
+                    placeholder="Connect story → action. What do you want them to do with this insight?"
+                    value={storyBuilderData.after.explicitTakeaway}
+                    onChange={(e) => setStoryBuilderData(prev => ({ ...prev, after: { ...prev.after, explicitTakeaway: e.target.value } }))}
+                    className="min-h-[80px]"
+                    data-testid="input-takeaway"
+                  />
+                </div>
+
+                {/* Call to Action */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-green-500 text-white text-xs flex items-center justify-center">3</span>
+                    Your call to action
+                  </Label>
+                  <Textarea
+                    placeholder="What specific next step do you want from them?"
+                    value={storyBuilderData.after.callToAction}
+                    onChange={(e) => setStoryBuilderData(prev => ({ ...prev, after: { ...prev.after, callToAction: e.target.value } }))}
+                    className="min-h-[60px]"
+                    data-testid="input-call-to-action"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-between">
+                <Button variant="outline" onClick={() => setActiveStoryPhase("during")} className="gap-2" data-testid="button-back-to-during">
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to Telling
+                </Button>
+                <Button onClick={() => setActiveStoryPhase("test")} className="gap-2 bg-purple-500 hover:bg-purple-600" data-testid="button-test-story">
+                  Test Your Story
+                  <CheckCircle className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* TEST Phase - Story Validation */}
+          {activeStoryPhase === "test" && (
+            <div className="space-y-4 mt-4">
+              <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium text-purple-900">Test Your Story</p>
+                    <p className="text-sm text-purple-700 mt-1">
+                      Before you tell it, run these three tests. If it doesn't pass, go back and sharpen.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-4">
+                {/* Test 1: Stranger Care */}
+                <div className="p-4 rounded-lg border space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="font-semibold text-base flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-full bg-purple-500 text-white text-sm flex items-center justify-center">1</span>
+                      Would a stranger care?
+                    </Label>
+                    <div className="flex gap-2">
+                      {[1, 2, 3, 4, 5].map((score) => (
+                        <Button
+                          key={score}
+                          size="sm"
+                          variant={storyBuilderData.storyTest.strangerCareScore === score ? "default" : "outline"}
+                          className={`w-8 h-8 p-0 ${storyBuilderData.storyTest.strangerCareScore === score ? "bg-purple-500" : ""}`}
+                          onClick={() => setStoryBuilderData(prev => ({ ...prev, storyTest: { ...prev.storyTest, strangerCareScore: score } }))}
+                          data-testid={`button-stranger-score-${score}`}
+                        >
+                          {score}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    If a stranger heard this story, would they lean in or tune out? If not, sharpen the tension or emotional core.
+                  </p>
+                  {storyBuilderData.storyTest.strangerCareScore !== null && storyBuilderData.storyTest.strangerCareScore < 3 && (
+                    <div className="p-2 rounded bg-amber-500/10 text-amber-800 text-sm">
+                      <span className="font-medium">Coach:</span> Try adding more specific stakes or a stronger hook. What would make someone stop scrolling?
+                    </div>
+                  )}
+                </div>
+
+                {/* Test 2: Simplicity */}
+                <div className="p-4 rounded-lg border space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="font-semibold text-base flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-full bg-purple-500 text-white text-sm flex items-center justify-center">2</span>
+                      Is the story simple enough to repeat?
+                    </Label>
+                    <div className="flex gap-2">
+                      {[1, 2, 3, 4, 5].map((score) => (
+                        <Button
+                          key={score}
+                          size="sm"
+                          variant={storyBuilderData.storyTest.simplicityScore === score ? "default" : "outline"}
+                          className={`w-8 h-8 p-0 ${storyBuilderData.storyTest.simplicityScore === score ? "bg-purple-500" : ""}`}
+                          onClick={() => setStoryBuilderData(prev => ({ ...prev, storyTest: { ...prev.storyTest, simplicityScore: score } }))}
+                          data-testid={`button-simplicity-score-${score}`}
+                        >
+                          {score}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Others should be able to retell it without losing impact. Can they say it in 30 seconds?
+                  </p>
+                  {storyBuilderData.storyTest.simplicityScore !== null && storyBuilderData.storyTest.simplicityScore < 3 && (
+                    <div className="p-2 rounded bg-amber-500/10 text-amber-800 text-sm">
+                      <span className="font-medium">Coach:</span> Simplify. Cut details that don't serve the main message. One story, one point.
+                    </div>
+                  )}
+                </div>
+
+                {/* Test 3: Leadership Values */}
+                <div className="p-4 rounded-lg border space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="font-semibold text-base flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-full bg-purple-500 text-white text-sm flex items-center justify-center">3</span>
+                      Does it reveal something meaningful about leadership, judgment, or values?
+                    </Label>
+                    <div className="flex gap-2">
+                      {[1, 2, 3, 4, 5].map((score) => (
+                        <Button
+                          key={score}
+                          size="sm"
+                          variant={storyBuilderData.storyTest.leadershipValuesScore === score ? "default" : "outline"}
+                          className={`w-8 h-8 p-0 ${storyBuilderData.storyTest.leadershipValuesScore === score ? "bg-purple-500" : ""}`}
+                          onClick={() => setStoryBuilderData(prev => ({ ...prev, storyTest: { ...prev.storyTest, leadershipValuesScore: score } }))}
+                          data-testid={`button-leadership-score-${score}`}
+                        >
+                          {score}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    If yes — it's a leader's story. It shows character, not just competence.
+                  </p>
+                  {storyBuilderData.storyTest.leadershipValuesScore !== null && storyBuilderData.storyTest.leadershipValuesScore < 3 && (
+                    <div className="p-2 rounded bg-amber-500/10 text-amber-800 text-sm">
+                      <span className="font-medium">Coach:</span> Add a moment of decision or conflict that reveals character. What choice did someone make?
+                    </div>
+                  )}
+                </div>
+
+                {/* Story Readiness Score */}
+                <div className="p-4 rounded-lg border-2 border-purple-500/30 bg-purple-500/5">
+                  <div className="flex items-center justify-between mb-3">
+                    <Label className="font-semibold text-base">Story Readiness</Label>
+                    {(() => {
+                      const scores = [
+                        storyBuilderData.storyTest.strangerCareScore,
+                        storyBuilderData.storyTest.simplicityScore,
+                        storyBuilderData.storyTest.leadershipValuesScore
+                      ].filter((s): s is number => s !== null);
+                      if (scores.length === 0) return <Badge variant="outline">Not tested yet</Badge>;
+                      const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+                      if (avg >= 4) return <Badge className="bg-green-500">Ready to tell!</Badge>;
+                      if (avg >= 3) return <Badge className="bg-amber-500">Almost there</Badge>;
+                      return <Badge className="bg-red-500">Needs work</Badge>;
+                    })()}
+                  </div>
+                  <div className="flex gap-2">
+                    {[
+                      { label: "Engagement", score: storyBuilderData.storyTest.strangerCareScore },
+                      { label: "Simplicity", score: storyBuilderData.storyTest.simplicityScore },
+                      { label: "Values", score: storyBuilderData.storyTest.leadershipValuesScore }
+                    ].map((item) => (
+                      <div key={item.label} className="flex-1 text-center p-2 rounded bg-white/50">
+                        <p className="text-xs text-muted-foreground">{item.label}</p>
+                        <p className="text-lg font-bold">{item.score ?? "—"}<span className="text-xs font-normal text-muted-foreground">/5</span></p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Test Notes */}
+                <div className="space-y-2">
+                  <Label>Notes for improvement</Label>
+                  <Textarea
+                    placeholder="What will you change before telling this story?"
+                    value={storyBuilderData.storyTest.testNotes}
+                    onChange={(e) => setStoryBuilderData(prev => ({ ...prev, storyTest: { ...prev.storyTest, testNotes: e.target.value } }))}
+                    className="min-h-[60px]"
+                    data-testid="input-test-notes"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-between">
+                <Button variant="outline" onClick={() => setActiveStoryPhase("after")} className="gap-2" data-testid="button-back-to-after">
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to Landing
+                </Button>
+                <Button onClick={() => setStoryBuilderOpen(false)} className="gap-2" data-testid="button-close-story-builder">
+                  <CheckCircle className="w-4 h-4" />
+                  Done
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* AI Reasoning Display */}
+          {aiSuggestionReasoning && (
+            <div className="mt-4 p-3 rounded-lg bg-muted/50 border">
+              <div className="flex items-start gap-2">
+                <Sparkles className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-medium text-purple-700">AI Coaching Insight</p>
+                  <p className="text-sm text-muted-foreground mt-1">{aiSuggestionReasoning}</p>
+                </div>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

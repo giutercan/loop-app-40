@@ -6580,6 +6580,75 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
     }
   });
   
+  // PATCH /api/projects/:id/story-builder - Save Story Builder data
+  app.patch("/api/projects/:id/story-builder", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { before, during, after, storyTest } = req.body;
+      
+      const storyBuilderData = {
+        before: before || {
+          singleMessage: "",
+          emotionalReaction: "",
+          storyStructure: "",
+          startingHook: "",
+          heroCharacter: "",
+          evidenceToReference: "",
+          tensionQuestion: ""
+        },
+        during: during || {
+          openingLine: "",
+          turningPoint: "",
+          keyDataPoints: "",
+          pausePoints: [],
+          pacingNotes: ""
+        },
+        after: after || {
+          momentOfMeaning: "",
+          explicitTakeaway: "",
+          callToAction: ""
+        },
+        storyTest: storyTest || {
+          strangerCareScore: null,
+          simplicityScore: null,
+          leadershipValuesScore: null,
+          testNotes: ""
+        },
+        lastUpdated: new Date().toISOString(),
+      };
+      
+      const updated = await storage.updateProject(id, { storyBuilderData } as any);
+      if (!updated) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // PATCH /api/projects/:id/call-flow - Save Call Flow data
+  app.patch("/api/projects/:id/call-flow", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { questions, methodologyQuestions } = req.body;
+      
+      const callFlowData = {
+        questions: questions || [],
+        methodologyQuestions: methodologyQuestions || [],
+        lastUpdated: new Date().toISOString(),
+      };
+      
+      const updated = await storage.updateProject(id, { callFlowData } as any);
+      if (!updated) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
   // POST /api/projects/:projectId/ai/enrich-contact - AI-powered contact research for Green Sheet
   app.post("/api/projects/:projectId/ai/enrich-contact", async (req, res) => {
     try {
