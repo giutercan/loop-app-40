@@ -118,6 +118,8 @@ import {
 } from "@shared/value-frameworks";
 import { DemoModeButton } from "@/demo/DemoModeButton";
 import { useDemoMode } from "@/demo/DemoModeContext";
+import { JourneyLoopVisualizer } from "@/components/JourneyLoopVisualizer";
+import { JOURNEY_LOOP_STAGES } from "@shared/value-frameworks";
 
 type Role = "sales" | "consultant" | "delivery" | "csm" | "client_sponsor";
 
@@ -4433,16 +4435,16 @@ export default function ProjectRoleView() {
           </DialogContent>
         </Dialog>
 
-        {/* View Journey Dialog */}
+        {/* View Journey Dialog - Enhanced with Interactive Loop */}
         <Dialog open={viewingJourneyId !== null} onOpenChange={() => setViewingJourneyId(null)}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Layers className="w-5 h-5 text-emerald-600" />
-                Outcome Journey Roadmap
+                <RefreshCw className="w-5 h-5 text-primary" />
+                Value Realization Journey
               </DialogTitle>
               <DialogDescription>
-                Korn Ferry methodology-driven implementation path with phases, milestones, and quick wins
+                Interactive delivery loop with phases, milestones, and success tracking
               </DialogDescription>
             </DialogHeader>
             {(() => {
@@ -4459,124 +4461,171 @@ export default function ProjectRoleView() {
               }
               
               return (
-                <div className="space-y-6 py-4">
-                  {/* Outcome Summary */}
-                  <div className="p-4 rounded-lg bg-emerald-50 border border-emerald-200">
-                    <h4 className="font-medium text-emerald-800 mb-1">{commitment.name}</h4>
-                    {commitment.outcomeStatement && (
-                      <p className="text-sm text-emerald-700 mb-2">
-                        <strong>Success:</strong> {commitment.outcomeStatement}
-                      </p>
-                    )}
-                    <div className="flex flex-wrap gap-2">
-                      {getSolutionPatternBadge(commitment.solutionPattern)}
-                      {getValuePillarBadge(commitment.valuePillar)}
-                      <Badge variant="outline" className="text-xs">
-                        <Calendar className="w-3 h-3 mr-1" />
-                        {commitment.implementationTimeline || journeyTemplate.typicalTimeline}
-                      </Badge>
-                    </div>
-                  </div>
-
-                  {/* Quick Wins Section */}
-                  {journeyTemplate.quickWins.length > 0 && (
-                    <div>
-                      <h4 className="flex items-center gap-2 font-medium mb-3">
-                        <Zap className="w-4 h-4 text-amber-500" />
-                        Quick Wins
-                        <span className="text-xs text-muted-foreground font-normal">(Early value indicators)</span>
-                      </h4>
-                      <div className="grid gap-3 md:grid-cols-3">
-                        {journeyTemplate.quickWins.map((qw, idx) => (
-                          <div key={idx} className="p-3 rounded-lg border bg-amber-50/50 border-amber-200">
-                            <h5 className="text-sm font-medium text-amber-800 mb-1">{qw.title}</h5>
-                            <p className="text-xs text-amber-700 mb-2">{qw.description}</p>
-                            <div className="flex items-center justify-between text-[10px]">
-                              <span className="text-amber-600">{qw.timeline}</span>
-                              <span className="text-amber-700 font-medium">{qw.expectedImpact}</span>
-                            </div>
-                          </div>
-                        ))}
+                <Tabs defaultValue="loop" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 mb-4">
+                    <TabsTrigger value="loop" className="flex items-center gap-2">
+                      <RefreshCw className="w-4 h-4" />
+                      Interactive Loop
+                    </TabsTrigger>
+                    <TabsTrigger value="timeline" className="flex items-center gap-2">
+                      <Layers className="w-4 h-4" />
+                      Timeline View
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="loop" className="mt-0">
+                    {/* Outcome Summary */}
+                    <div className="p-4 rounded-lg bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 mb-4">
+                      <h4 className="font-medium mb-1">{commitment.name}</h4>
+                      {commitment.outcomeStatement && (
+                        <p className="text-sm text-muted-foreground mb-2">
+                          <strong>Success:</strong> {commitment.outcomeStatement}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        {getSolutionPatternBadge(commitment.solutionPattern)}
+                        {getValuePillarBadge(commitment.valuePillar)}
+                        <Badge variant="outline" className="text-xs">
+                          <Calendar className="w-3 h-3 mr-1" />
+                          {commitment.implementationTimeline || journeyTemplate.typicalTimeline}
+                        </Badge>
                       </div>
                     </div>
-                  )}
-
-                  {/* Journey Phases */}
-                  <div>
-                    <h4 className="flex items-center gap-2 font-medium mb-3">
-                      <Layers className="w-4 h-4 text-blue-500" />
-                      Implementation Phases
-                    </h4>
-                    <div className="space-y-4">
-                      {journeyTemplate.phases.map((phase, idx) => (
-                        <div key={idx} className="relative pl-8">
-                          {/* Connector line */}
-                          {idx < journeyTemplate.phases.length - 1 && (
-                            <div className="absolute left-3 top-8 w-0.5 h-[calc(100%+0.5rem)] bg-blue-200" />
-                          )}
-                          {/* Phase number circle */}
-                          <div className="absolute left-0 top-0 w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-medium">
-                            {idx + 1}
-                          </div>
-                          <div className="p-4 rounded-lg border bg-card">
-                            <div className="flex items-center justify-between mb-2">
-                              <h5 className="font-medium">{phase.phase}</h5>
-                              <Badge variant="outline" className="text-xs">{phase.duration}</Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground mb-3">{phase.description}</p>
-                            
-                            <div className="grid gap-3 md:grid-cols-2">
-                              <div>
-                                <p className="text-xs font-medium text-muted-foreground mb-1">Activities</p>
-                                <ul className="space-y-1">
-                                  {phase.activities.map((activity, actIdx) => (
-                                    <li key={actIdx} className="text-xs flex items-start gap-1">
-                                      <Check className="w-3 h-3 text-emerald-500 mt-0.5 shrink-0" />
-                                      {activity}
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                              <div>
-                                <p className="text-xs font-medium text-muted-foreground mb-1">Milestones</p>
-                                <ul className="space-y-1">
-                                  {phase.milestones.map((milestone, mIdx) => (
-                                    <li key={mIdx} className="text-xs flex items-start gap-1">
-                                      <Flag className="w-3 h-3 text-blue-500 mt-0.5 shrink-0" />
-                                      {milestone}
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Key Milestones Timeline */}
-                  <div>
-                    <h4 className="flex items-center gap-2 font-medium mb-3">
-                      <Target className="w-4 h-4 text-violet-500" />
-                      Key Milestones
-                    </h4>
-                    <div className="flex gap-2 overflow-x-auto pb-2">
-                      {journeyTemplate.milestones.map((milestone, idx) => (
-                        <div key={idx} className="flex-shrink-0 w-40 p-3 rounded-lg border bg-violet-50/50 border-violet-200">
-                          <div className="flex items-center gap-1 mb-1">
-                            <Badge className="bg-violet-500 text-white text-[10px]">Week {milestone.targetWeek}</Badge>
-                          </div>
-                          <h5 className="text-sm font-medium text-violet-800 mb-1">{milestone.title}</h5>
-                          <p className="text-[10px] text-violet-600 mb-1">{milestone.description}</p>
-                          <p className="text-[10px] text-violet-700">
-                            <strong>Criteria:</strong> {milestone.successCriteria}
+                    
+                    {/* Interactive Journey Loop */}
+                    <JourneyLoopVisualizer
+                      outcomeName={commitment.name}
+                      solutionPattern={commitment.solutionPattern}
+                      quickWins={journeyTemplate.quickWins}
+                      kpis={[{ 
+                        name: commitment.name, 
+                        target: commitment.targetValue, 
+                        current: commitment.currentValue 
+                      }]}
+                    />
+                  </TabsContent>
+                  
+                  <TabsContent value="timeline" className="mt-0">
+                    <div className="space-y-6 py-4">
+                      {/* Outcome Summary */}
+                      <div className="p-4 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
+                        <h4 className="font-medium text-emerald-800 dark:text-emerald-300 mb-1">{commitment.name}</h4>
+                        {commitment.outcomeStatement && (
+                          <p className="text-sm text-emerald-700 dark:text-emerald-400 mb-2">
+                            <strong>Success:</strong> {commitment.outcomeStatement}
                           </p>
+                        )}
+                        <div className="flex flex-wrap gap-2">
+                          {getSolutionPatternBadge(commitment.solutionPattern)}
+                          {getValuePillarBadge(commitment.valuePillar)}
+                          <Badge variant="outline" className="text-xs">
+                            <Calendar className="w-3 h-3 mr-1" />
+                            {commitment.implementationTimeline || journeyTemplate.typicalTimeline}
+                          </Badge>
                         </div>
-                      ))}
+                      </div>
+
+                      {/* Quick Wins Section */}
+                      {journeyTemplate.quickWins.length > 0 && (
+                        <div>
+                          <h4 className="flex items-center gap-2 font-medium mb-3">
+                            <Zap className="w-4 h-4 text-amber-500" />
+                            Quick Wins
+                            <span className="text-xs text-muted-foreground font-normal">(Early value indicators)</span>
+                          </h4>
+                          <div className="grid gap-3 md:grid-cols-3">
+                            {journeyTemplate.quickWins.map((qw, idx) => (
+                              <div key={idx} className="p-3 rounded-lg border bg-amber-50/50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
+                                <h5 className="text-sm font-medium text-amber-800 dark:text-amber-300 mb-1">{qw.title}</h5>
+                                <p className="text-xs text-amber-700 dark:text-amber-400 mb-2">{qw.description}</p>
+                                <div className="flex items-center justify-between text-[10px]">
+                                  <span className="text-amber-600 dark:text-amber-500">{qw.timeline}</span>
+                                  <span className="text-amber-700 dark:text-amber-300 font-medium">{qw.expectedImpact}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Journey Phases */}
+                      <div>
+                        <h4 className="flex items-center gap-2 font-medium mb-3">
+                          <Layers className="w-4 h-4 text-blue-500" />
+                          Implementation Phases
+                        </h4>
+                        <div className="space-y-4">
+                          {journeyTemplate.phases.map((phase, idx) => (
+                            <div key={idx} className="relative pl-8">
+                              {/* Connector line */}
+                              {idx < journeyTemplate.phases.length - 1 && (
+                                <div className="absolute left-3 top-8 w-0.5 h-[calc(100%+0.5rem)] bg-blue-200 dark:bg-blue-800" />
+                              )}
+                              {/* Phase number circle */}
+                              <div className="absolute left-0 top-0 w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-medium">
+                                {idx + 1}
+                              </div>
+                              <div className="p-4 rounded-lg border bg-card">
+                                <div className="flex items-center justify-between mb-2">
+                                  <h5 className="font-medium">{phase.phase}</h5>
+                                  <Badge variant="outline" className="text-xs">{phase.duration}</Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground mb-3">{phase.description}</p>
+                                
+                                <div className="grid gap-3 md:grid-cols-2">
+                                  <div>
+                                    <p className="text-xs font-medium text-muted-foreground mb-1">Activities</p>
+                                    <ul className="space-y-1">
+                                      {phase.activities.map((activity, actIdx) => (
+                                        <li key={actIdx} className="text-xs flex items-start gap-1">
+                                          <Check className="w-3 h-3 text-emerald-500 mt-0.5 shrink-0" />
+                                          {activity}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-medium text-muted-foreground mb-1">Milestones</p>
+                                    <ul className="space-y-1">
+                                      {phase.milestones.map((milestone, mIdx) => (
+                                        <li key={mIdx} className="text-xs flex items-start gap-1">
+                                          <Flag className="w-3 h-3 text-blue-500 mt-0.5 shrink-0" />
+                                          {milestone}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Key Milestones Timeline */}
+                      <div>
+                        <h4 className="flex items-center gap-2 font-medium mb-3">
+                          <Target className="w-4 h-4 text-violet-500" />
+                          Key Milestones
+                        </h4>
+                        <div className="flex gap-2 overflow-x-auto pb-2">
+                          {journeyTemplate.milestones.map((milestone, idx) => (
+                            <div key={idx} className="flex-shrink-0 w-40 p-3 rounded-lg border bg-violet-50/50 dark:bg-violet-950/30 border-violet-200 dark:border-violet-800">
+                              <div className="flex items-center gap-1 mb-1">
+                                <Badge className="bg-violet-500 text-white text-[10px]">Week {milestone.targetWeek}</Badge>
+                              </div>
+                              <h5 className="text-sm font-medium text-violet-800 dark:text-violet-300 mb-1">{milestone.title}</h5>
+                              <p className="text-[10px] text-violet-600 dark:text-violet-400 mb-1">{milestone.description}</p>
+                              <p className="text-[10px] text-violet-700 dark:text-violet-300">
+                                <strong>Criteria:</strong> {milestone.successCriteria}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  </TabsContent>
+                </Tabs>
               );
             })()}
             <DialogFooter>

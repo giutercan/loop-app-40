@@ -25,36 +25,59 @@ const iconMap: Record<string, any> = {
   RefreshCw
 };
 
-const colorMap: Record<string, { bg: string; border: string; text: string; gradient: string }> = {
+const colorMap: Record<string, { 
+  bg: string; 
+  border: string; 
+  text: string; 
+  gradient: string;
+  svgFill: string;
+  svgStroke: string;
+  svgFillActive: string;
+}> = {
   blue: { 
     bg: 'bg-blue-500/20', 
     border: 'border-blue-500', 
     text: 'text-blue-600 dark:text-blue-400',
-    gradient: 'from-blue-500 to-blue-600'
+    gradient: 'from-blue-500 to-blue-600',
+    svgFill: '#dbeafe',
+    svgStroke: '#3b82f6',
+    svgFillActive: '#3b82f6'
   },
   amber: { 
     bg: 'bg-amber-500/20', 
     border: 'border-amber-500', 
     text: 'text-amber-600 dark:text-amber-400',
-    gradient: 'from-amber-500 to-amber-600'
+    gradient: 'from-amber-500 to-amber-600',
+    svgFill: '#fef3c7',
+    svgStroke: '#f59e0b',
+    svgFillActive: '#f59e0b'
   },
   emerald: { 
     bg: 'bg-emerald-500/20', 
     border: 'border-emerald-500', 
     text: 'text-emerald-600 dark:text-emerald-400',
-    gradient: 'from-emerald-500 to-emerald-600'
+    gradient: 'from-emerald-500 to-emerald-600',
+    svgFill: '#d1fae5',
+    svgStroke: '#10b981',
+    svgFillActive: '#10b981'
   },
   violet: { 
     bg: 'bg-violet-500/20', 
     border: 'border-violet-500', 
     text: 'text-violet-600 dark:text-violet-400',
-    gradient: 'from-violet-500 to-violet-600'
+    gradient: 'from-violet-500 to-violet-600',
+    svgFill: '#ede9fe',
+    svgStroke: '#8b5cf6',
+    svgFillActive: '#8b5cf6'
   },
   rose: { 
     bg: 'bg-rose-500/20', 
     border: 'border-rose-500', 
     text: 'text-rose-600 dark:text-rose-400',
-    gradient: 'from-rose-500 to-rose-600'
+    gradient: 'from-rose-500 to-rose-600',
+    svgFill: '#ffe4e6',
+    svgStroke: '#f43f5e',
+    svgFillActive: '#f43f5e'
   }
 };
 
@@ -131,12 +154,15 @@ export function JourneyLoopVisualizer({
     return (
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="mx-auto">
         <defs>
-          {stages.map((stage, i) => (
-            <linearGradient key={stage.id} id={`gradient-${stage.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" className={`text-${stage.color}-400`} style={{ stopColor: 'currentColor' }} />
-              <stop offset="100%" className={`text-${stage.color}-600`} style={{ stopColor: 'currentColor' }} />
-            </linearGradient>
-          ))}
+          {stages.map((stage) => {
+            const colors = colorMap[stage.color];
+            return (
+              <linearGradient key={stage.id} id={`gradient-${stage.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor={colors.svgStroke} stopOpacity={0.7} />
+                <stop offset="100%" stopColor={colors.svgStroke} />
+              </linearGradient>
+            );
+          })}
           <filter id="glow">
             <feGaussianBlur stdDeviation="3" result="coloredBlur" />
             <feMerge>
@@ -146,7 +172,7 @@ export function JourneyLoopVisualizer({
           </filter>
         </defs>
 
-        {stages.map((_, i) => {
+        {stages.map((stage, i) => {
           const angle1 = (i * 72 - 90) * (Math.PI / 180);
           const angle2 = ((i + 1) * 72 - 90) * (Math.PI / 180);
           const x1 = centerX + radius * Math.cos(angle1);
@@ -158,17 +184,18 @@ export function JourneyLoopVisualizer({
           const ctrlX = centerX + (radius * 1.15) * Math.cos(midAngle);
           const ctrlY = centerY + (radius * 1.15) * Math.sin(midAngle);
 
-          const isActive = stages[i].id === activeStage.id || stages[(i + 1) % stages.length].id === activeStage.id;
+          const isActive = stage.id === activeStage.id || stages[(i + 1) % stages.length].id === activeStage.id;
+          const stageColors = colorMap[stage.color];
           
           return (
             <motion.path
               key={`arc-${i}`}
               d={`M ${x1} ${y1} Q ${ctrlX} ${ctrlY} ${x2} ${y2}`}
               fill="none"
-              stroke={isActive ? `url(#gradient-${stages[i].color})` : 'currentColor'}
+              stroke={isActive ? `url(#gradient-${stage.id})` : stageColors.svgStroke}
               strokeWidth={isActive ? 3 : 2}
               strokeDasharray="8 4"
-              className={isActive ? '' : 'text-muted-foreground/30'}
+              opacity={isActive ? 1 : 0.3}
               initial={{ pathLength: 0 }}
               animate={{ pathLength: 1 }}
               transition={{ duration: 0.8, delay: i * 0.1 }}
@@ -191,7 +218,7 @@ export function JourneyLoopVisualizer({
                 cx={x}
                 cy={y}
                 r={nodeRadius + 4}
-                className={isActive ? colors.border.replace('border-', 'stroke-') : 'stroke-muted-foreground/20'}
+                stroke={isActive ? colors.svgStroke : '#e5e7eb'}
                 strokeWidth={isActive ? 3 : 1}
                 fill="none"
                 filter={isActive ? 'url(#glow)' : undefined}
@@ -204,9 +231,10 @@ export function JourneyLoopVisualizer({
                 cx={x}
                 cy={y}
                 r={nodeRadius}
-                className={`${isActive ? colors.bg.replace('/20', '') : 'fill-background'} cursor-pointer`}
+                fill={isActive ? colors.svgFillActive : colors.svgFill}
                 strokeWidth={2}
-                stroke={isActive ? 'white' : 'currentColor'}
+                stroke={isActive ? 'white' : colors.svgStroke}
+                style={{ cursor: interactive ? 'pointer' : 'default' }}
                 onClick={() => interactive && setActiveStage(stage)}
                 whileHover={interactive ? { scale: 1.1 } : {}}
                 whileTap={interactive ? { scale: 0.95 } : {}}
@@ -230,7 +258,8 @@ export function JourneyLoopVisualizer({
                 x={x}
                 y={y + nodeRadius + 16}
                 textAnchor="middle"
-                className={`text-xs font-medium fill-current ${isActive ? colors.text : 'text-muted-foreground'}`}
+                fill={isActive ? colors.svgStroke : '#6b7280'}
+                style={{ fontSize: '12px', fontWeight: 500 }}
               >
                 {stage.shortName}
               </text>
@@ -255,7 +284,8 @@ export function JourneyLoopVisualizer({
           x={centerX}
           y={centerY - 8}
           textAnchor="middle"
-          className="text-sm font-semibold fill-current text-foreground"
+          fill="#374151"
+          style={{ fontSize: '14px', fontWeight: 600 }}
         >
           Value
         </text>
@@ -263,7 +293,8 @@ export function JourneyLoopVisualizer({
           x={centerX}
           y={centerY + 10}
           textAnchor="middle"
-          className="text-sm font-semibold fill-current text-foreground"
+          fill="#374151"
+          style={{ fontSize: '14px', fontWeight: 600 }}
         >
           Journey
         </text>
