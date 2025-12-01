@@ -6529,9 +6529,11 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
         return res.status(404).json({ error: "Project not found" });
       }
       
-      // Get related data
+      // Get related data from storage
       const discoveryNotes = await storage.getDiscoveryNotes(id);
-      const insights = await storage.getInsights(id);
+      const companyDataPoints = await storage.getCompanyDataPoints(id);
+      const headlines = await storage.getHeadlines(id);
+      const jobThemes = await storage.getJobThemes(id);
       const account = project.accountId ? await storage.getAccount(project.accountId) : null;
       
       // Build synthesis input from all available discovery data
@@ -6539,11 +6541,15 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
         companyName: project.companyName || account?.name || "Unknown Company",
         industry: project.sector || account?.industry || undefined,
         discoveryTheme: project.discoveryTheme || undefined,
-        researchDataPoints: insights.map(i => ({
-          label: i.title,
-          value: i.content,
-          kornFerryPillar: i.kornFerryPillar || undefined,
-          solutionArea: i.solutionArea || undefined
+        researchDataPoints: companyDataPoints.map(dp => ({
+          label: dp.label,
+          value: dp.value,
+          kornFerryPillar: dp.kornFerryPillar || undefined,
+          solutionArea: dp.solutionArea || undefined
+        })),
+        headlines: headlines.map(h => ({
+          title: h.title,
+          date: h.publishedDate || new Date().toISOString()
         })),
         greenSheetData: (project as any).greenSheetData ? {
           callObjective: (project as any).greenSheetData.callPlanner?.objective,
