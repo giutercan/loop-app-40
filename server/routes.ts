@@ -6795,6 +6795,245 @@ Respond in JSON format:
     }
   });
 
+  // POST /api/projects/:projectId/ai/suggest-success-stories - Suggest relevant Korn Ferry success stories
+  app.post("/api/projects/:projectId/ai/suggest-success-stories", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const project = await storage.getProject(projectId);
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const { companyName, industry, theme, keyMessage, insights } = req.body;
+      
+      // Curated Korn Ferry success stories from kornferry.com/about-us/business-impact/client-stories
+      const kornFerryStories = [
+        {
+          title: "Employee Engagement Success for a Global Insurance Leader",
+          client: "Allianz",
+          industry: "Insurance/Financial Services",
+          solution: "Employee Engagement, Korn Ferry Listen",
+          outcome: "Enhanced team performance through employee engagement technology and consulting",
+          url: "https://www.kornferry.com/insights/featured-topics/employee-experience/employee-engagement-success-for-a-global-insurance-leader"
+        },
+        {
+          title: "How Interim Solutions Supported a Global Financial Leader",
+          client: "Western Union",
+          industry: "Financial Services",
+          solution: "Interim Talent Solutions, Digital Banking",
+          outcome: "Expanded digital banking platform through specialized technology experts",
+          url: "https://www.kornferry.com/insights/featured-topics/employee-experience/how-interim-solutions-supported-a-global-financial-leader"
+        },
+        {
+          title: "Winning Sales Chemistry with a Global Industry Leader",
+          client: "Brenntag",
+          industry: "Chemical Distribution",
+          solution: "Sales Transformation, Korn Ferry Sell",
+          outcome: "Implemented consistent sales processes and drove success across global operations",
+          url: "https://www.kornferry.com/insights/featured-topics/sales-transformation/winning-sales-chemistry-with-a-global-industry-leader"
+        },
+        {
+          title: "A High-Flying Partnership to Build a Resilient Workforce",
+          client: "Massport",
+          industry: "Government/Transportation",
+          solution: "Organizational Transformation, Talent Development",
+          outcome: "Transformed talent strategy and enhanced customer experience",
+          url: "https://www.kornferry.com/insights/featured-topics/organizational-transformation/a-high-flying-partnership-to-build-a-resilient-workforce"
+        },
+        {
+          title: "Delivering a Recipe for Sales Success to a Global Food Supplier",
+          client: "Lamb Weston",
+          industry: "Food & Beverage",
+          solution: "Sales Transformation",
+          outcome: "Developed winning strategy for sales transformation in restaurant and retail channels",
+          url: "https://www.kornferry.com/insights/featured-topics/sales-transformation/delivering-a-recipe-for-sales-success-to-a-global-food-supplier"
+        },
+        {
+          title: "Nurturing Talent Success for a Global Semiconductor Leader",
+          client: "ASML",
+          industry: "Technology/Semiconductors",
+          solution: "Talent Management, Workforce Planning",
+          outcome: "Enabled strong talent management structure for semiconductor industry leader",
+          url: "https://www.kornferry.com/insights/featured-topics/workforce-management/nuturing-talent-success-for-a-global-semiconductor-leader"
+        },
+        {
+          title: "Investing in Korn Ferry Assess for Talent Management Solutions",
+          client: "NatWest",
+          industry: "Banking/Financial Services",
+          solution: "Korn Ferry Assess, Talent Strategy",
+          outcome: "Advanced talent strategy through assessment products",
+          url: "https://www.kornferry.com/insights/featured-topics/workforce-management/investing-in-korn-ferry-assess-for-talent-management-solutions"
+        },
+        {
+          title: "Ensuring Strong Leadership Talent through Korn Ferry Assess",
+          client: "State Farm",
+          industry: "Insurance",
+          solution: "Leadership Development, Korn Ferry Assess",
+          outcome: "Developed leadership pipeline and improved talent development strategies",
+          url: "https://www.kornferry.com/insights/featured-topics/workforce-management/ensuring-strong-leadership-talent-through-korn-ferry-assess"
+        },
+        {
+          title: "Engineering a Win for Sales",
+          client: "IMI",
+          industry: "Engineering/Manufacturing",
+          solution: "Sales Transformation, Korn Ferry Sell",
+          outcome: "Improved sales processes and built culture of success",
+          url: "https://www.kornferry.com/insights/featured-topics/sales-transformation/engineering-a-win-for-sales"
+        },
+        {
+          title: "Korn Ferry Boosts Talent Strategy for Chemicals Company",
+          client: "Clariant",
+          industry: "Chemicals",
+          solution: "Job Structure, Workforce Planning",
+          outcome: "Upgraded job structure and improved workforce planning",
+          url: "https://www.kornferry.com/insights/featured-topics/organizational-transformation/korn-ferry-digital-boosts-talent-strategy-for-chemicals-company"
+        },
+        {
+          title: "Improving Customer Satisfaction at Leading Telecommunications Company",
+          client: "Telstra",
+          industry: "Telecommunications",
+          solution: "Customer Service Training, NPS Improvement",
+          outcome: "Improved NPS scores through comprehensive customer service training",
+          url: "https://www.kornferry.com/insights/featured-topics/organizational-transformation/improving-customer-satisfaction-at-leading-telecommunications-company"
+        },
+        {
+          title: "Juicing Up Talent at a Multi-Billion Dollar Beverage Company",
+          client: "Tropicana",
+          industry: "Food & Beverage",
+          solution: "Talent Recruitment, Operations Optimization",
+          outcome: "Strengthened internal processes, placed critical roles, optimized operations",
+          url: "https://www.kornferry.com/insights/featured-topics/talent-recruitment/juicing-up-talent-at-a-multi-billion-dollar-beverage-company"
+        },
+        {
+          title: "A Major Tire Company Rolls with Korn Ferry",
+          client: "Goodyear",
+          industry: "Manufacturing/Automotive",
+          solution: "Learning & Development",
+          outcome: "Developed and integrated global L&D framework",
+          url: "https://www.kornferry.com/insights/featured-topics/organizational-transformation/a-major-tire-company-rolls-with-korn-ferry"
+        },
+        {
+          title: "Driving Transformation With a Large Sanitation Company",
+          client: "Sabesp",
+          industry: "Utilities/Infrastructure",
+          solution: "Leadership Development, Organizational Alignment",
+          outcome: "Strengthened leaders and improved internal alignment",
+          url: "https://www.kornferry.com/insights/featured-topics/organizational-transformation/driving-transformation-with-a-large-sanitation-company"
+        },
+        {
+          title: "The Right Prescription: Building a Global RPO Partnership",
+          client: "Global Biopharmaceutical Company",
+          industry: "Pharmaceutical/Healthcare",
+          solution: "RPO, Talent Acquisition",
+          outcome: "Implemented complete recruitment solution and improved talent acquisition",
+          url: "https://www.kornferry.com/insights/featured-topics/talent-recruitment/building-a-global-rpo-partnership"
+        },
+        {
+          title: "Providing Talent Management Solutions at the Speed of AI",
+          client: "European AI Manufacturing Hub",
+          industry: "Technology/Manufacturing",
+          solution: "Talent Strategy, HR Digitization",
+          outcome: "Redefined talent strategy and digitized HR processes",
+          url: "https://www.kornferry.com/insights/featured-topics/workforce-management/providing-talent-management-solutions-at-the-speed-of-ai"
+        },
+        {
+          title: "How KF Sell Helped a Global Financial Market Leader to Thrive",
+          client: "Global Financial Market Infrastructure Provider",
+          industry: "Financial Services",
+          solution: "Sales Transformation, Korn Ferry Sell",
+          outcome: "Transformed sales organization and drove strategic, sustainable growth",
+          url: "https://www.kornferry.com/insights/featured-topics/sales-transformation/how-korn-ferry-sell-helped-a-global-financial-market-leader-to-thrive"
+        },
+        {
+          title: "Global Beauty Leader Transforms Employee Experience",
+          client: "Global Beauty Company",
+          industry: "Consumer Goods/Beauty",
+          solution: "Employee Engagement, Culture Alignment",
+          outcome: "Measured employee engagement and aligned it with company culture",
+          url: "https://www.kornferry.com/insights/featured-topics/employee-experience/global-beauty-leader-transforms-employee-experience"
+        },
+        {
+          title: "A Talent Management Strategy to Move the World",
+          client: "Maersk",
+          industry: "Logistics/Shipping",
+          solution: "Talent Management, Organizational Transformation",
+          outcome: "Human-centric talent management strategy transforming the organization",
+          url: "https://www.kornferry.com/insights/featured-topics/organizational-transformation/a-talent-management-strategy-to-move-the-world"
+        }
+      ];
+      
+      const insightContext = insights?.length > 0 ? `Known company challenges: ${insights.join(', ')}` : '';
+      
+      const prompt = `You are a Korn Ferry sales consultant helping find the most relevant success stories to share with a prospect.
+
+Target Company: ${companyName || project.companyName}
+Industry: ${industry || project.sector || 'Not specified'}
+Theme/Need: ${theme || 'General consulting'}
+${keyMessage ? `Key Message to Support: ${keyMessage}` : ''}
+${insightContext}
+
+Here are Korn Ferry's available client success stories:
+${kornFerryStories.map((s, i) => `${i + 1}. "${s.title}" - ${s.client} (${s.industry}) - Solution: ${s.solution} - Outcome: ${s.outcome}`).join('\n')}
+
+Select the 3 MOST RELEVANT stories for this prospect. Consider:
+1. Industry similarity or transferable lessons
+2. Solution alignment with the prospect's likely needs
+3. Compelling outcomes that would resonate
+
+For each selected story, explain WHY it's relevant to this specific prospect.
+
+Respond in JSON format:
+{
+  "stories": [
+    {
+      "title": "exact story title from list",
+      "client": "client name",
+      "industry": "industry",
+      "solution": "solution type",
+      "outcome": "specific outcome achieved",
+      "relevance": "1-2 sentence explanation of why this is relevant to the prospect",
+      "url": "story URL"
+    }
+  ]
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.7,
+        max_tokens: 1000,
+        response_format: { type: "json_object" }
+      });
+      
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error("No response from AI");
+      }
+      
+      const result = JSON.parse(content);
+      
+      // Ensure URLs are included from our curated list
+      if (result.stories) {
+        result.stories = result.stories.map((story: any) => {
+          const matchedStory = kornFerryStories.find(s => 
+            s.title.toLowerCase().includes(story.title?.toLowerCase()?.substring(0, 30) || '') ||
+            story.title?.toLowerCase()?.includes(s.title.toLowerCase().substring(0, 30))
+          );
+          return {
+            ...story,
+            url: matchedStory?.url || story.url || "https://www.kornferry.com/about-us/business-impact/client-stories"
+          };
+        });
+      }
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Suggest Success Stories API] Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // POST /api/migrate/projects-to-accounts - Migration endpoint to auto-create accounts
   app.post("/api/migrate/projects-to-accounts", async (req, res) => {
     try {

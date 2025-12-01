@@ -804,6 +804,19 @@ export default function ProjectRoleView() {
     outcome: string;
     followUp?: string;
   }[]>([]);
+  
+  // Korn Ferry success story suggestions
+  const [isGeneratingStories, setIsGeneratingStories] = useState(false);
+  const [suggestedStories, setSuggestedStories] = useState<{
+    title: string;
+    client: string;
+    industry: string;
+    solution: string;
+    outcome: string;
+    relevance: string;
+    url: string;
+  }[]>([]);
+  
   const [narrativeCanvasInitialized, setNarrativeCanvasInitialized] = useState(false);
   const [lastSavedNarrative, setLastSavedNarrative] = useState<string | null>(null);
   
@@ -4941,7 +4954,7 @@ ${narrativeCanvas.callToAction || "(Not set)"}
                           <h4 className="font-bold text-blue-700">STORY</h4>
                           <span className="text-xs text-muted-foreground">Your key message + proof</span>
                         </div>
-                        <div className="grid gap-3 md:grid-cols-2">
+                        <div className="space-y-3">
                           <div>
                             <Label className="text-xs text-muted-foreground mb-1 block">Key Message</Label>
                             <Textarea 
@@ -4953,7 +4966,43 @@ ${narrativeCanvas.callToAction || "(Not set)"}
                             />
                           </div>
                           <div>
-                            <Label className="text-xs text-muted-foreground mb-1 block">Proof Point</Label>
+                            <div className="flex items-center justify-between mb-1">
+                              <Label className="text-xs text-muted-foreground">Proof Point</Label>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={async () => {
+                                  setIsGeneratingStories(true);
+                                  try {
+                                    const response = await apiRequest("POST", `/api/projects/${projectId}/ai/suggest-success-stories`, {
+                                      companyName: project?.companyName,
+                                      industry: project?.sector,
+                                      theme: selectedDiscoveryTheme ? discoveryThemes.find(t => t.id === selectedDiscoveryTheme)?.name : "Leadership Development",
+                                      keyMessage: narrativeCanvas.keyMessage,
+                                      insights: insights?.slice(0, 3).map((i: any) => i.label) || []
+                                    });
+                                    const data = await response.json();
+                                    if (data.stories && data.stories.length > 0) {
+                                      setSuggestedStories(data.stories);
+                                      toast({ title: "Stories found", description: `${data.stories.length} relevant Korn Ferry success stories` });
+                                    }
+                                  } catch (error) {
+                                    toast({ title: "Could not find stories", description: "Please try again", variant: "destructive" });
+                                  }
+                                  setIsGeneratingStories(false);
+                                }}
+                                disabled={isGeneratingStories}
+                                className="h-7 text-xs text-blue-700 border-blue-300"
+                                data-testid="button-suggest-stories"
+                              >
+                                {isGeneratingStories ? (
+                                  <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                                ) : (
+                                  <Trophy className="w-3 h-3 mr-1" />
+                                )}
+                                Find KF Stories
+                              </Button>
+                            </div>
                             <Textarea 
                               placeholder="Evidence, data, or success story..."
                               value={narrativeCanvas.proofPoint}
@@ -4961,6 +5010,54 @@ ${narrativeCanvas.callToAction || "(Not set)"}
                               className="min-h-[60px] text-sm bg-white/50"
                               data-testid="input-narrative-proof"
                             />
+                            
+                            {/* Suggested Success Stories */}
+                            {suggestedStories.length > 0 && (
+                              <div className="mt-3 space-y-2">
+                                <p className="text-xs font-medium text-blue-700 flex items-center gap-1">
+                                  <Trophy className="w-3 h-3" />
+                                  Relevant Korn Ferry Success Stories
+                                </p>
+                                {suggestedStories.map((story, idx) => (
+                                  <div 
+                                    key={idx} 
+                                    className="p-2 rounded-lg bg-blue-50/50 border border-blue-200/50 text-xs space-y-1 cursor-pointer hover:bg-blue-100/50 transition-colors"
+                                    onClick={() => {
+                                      const proofText = `${story.title}: ${story.outcome}`;
+                                      setNarrativeCanvas(prev => ({ ...prev, proofPoint: proofText }));
+                                      toast({ title: "Story added", description: "Added as your proof point" });
+                                    }}
+                                    data-testid={`story-suggestion-${idx}`}
+                                  >
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="flex-1">
+                                        <p className="font-medium text-blue-800">{story.title}</p>
+                                        <p className="text-muted-foreground">{story.client} • {story.industry}</p>
+                                      </div>
+                                      <a 
+                                        href={story.url} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="text-blue-600 hover:text-blue-800"
+                                      >
+                                        <ExternalLink className="w-3 h-3" />
+                                      </a>
+                                    </div>
+                                    <p className="text-blue-700">{story.outcome}</p>
+                                    <p className="text-emerald-600 italic">Why relevant: {story.relevance}</p>
+                                  </div>
+                                ))}
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setSuggestedStories([])}
+                                  className="w-full h-6 text-xs text-muted-foreground"
+                                >
+                                  <X className="w-3 h-3 mr-1" /> Dismiss
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
