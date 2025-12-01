@@ -94,7 +94,9 @@ import {
   PlayCircle,
   Film,
   Brain,
-  Wrench
+  Wrench,
+  Link2,
+  Send
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -840,7 +842,7 @@ function DiscoverySummaryStep({
       synthesis.stakeholderSignals.nextActions.forEach(a => lines.push(`- ${a}`));
     }
     lines.push("");
-    lines.push("## Readiness to Build Value");
+    lines.push("## Readiness to Design Outcomes");
     lines.push(`Score: ${synthesis.readinessToBuildValue.score}%`);
     lines.push(synthesis.readinessToBuildValue.summary);
     lines.push("### Strengths");
@@ -1178,14 +1180,14 @@ function DiscoverySummaryStep({
         </CardContent>
       </Card>
 
-      {/* Readiness to Build Value */}
+      {/* Readiness to Design Outcomes */}
       <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-emerald-500/5" data-testid="card-readiness">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <GraduationCap className="w-5 h-5 text-primary" />
-                Readiness to Build Value
+                Readiness to Design Outcomes
               </CardTitle>
               <CardDescription>{synthesis.readinessToBuildValue.summary}</CardDescription>
             </div>
@@ -1256,8 +1258,8 @@ function DiscoverySummaryStep({
             <p className="text-sm text-muted-foreground" data-testid="text-readiness-footer">
               Ready to define measurable outcomes and create commitments.
             </p>
-            <Button onClick={onContinueToBuildValue} className="gap-2" data-testid="button-continue-to-build-value">
-              Continue to Build Value
+            <Button onClick={onContinueToBuildValue} className="gap-2" data-testid="button-continue-to-design">
+              Continue to Design Outcomes
               <ArrowRight className="w-4 h-4" />
             </Button>
           </div>
@@ -4221,8 +4223,8 @@ export default function ProjectRoleView() {
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Sales Journey</p>
           {[
             { id: "discover", label: "Discover", icon: Sparkles, progress: workflowProgress.discover, description: "Research & Interaction" },
-            { id: "build-value", label: "Build Value", icon: Target, progress: workflowProgress.buildValue, description: "Outcomes & Commitments" },
-            { id: "align", label: "Align", icon: Handshake, progress: workflowProgress.align, description: "Client Collaboration" },
+            { id: "build-value", label: "Design Outcomes", icon: Target, progress: workflowProgress.buildValue, description: "Draft & Refine Value" },
+            { id: "align", label: "Client Alignment", icon: Handshake, progress: workflowProgress.align, description: "Share & Collaborate" },
             { id: "handoff", label: "Handoff", icon: ArrowUpRight, progress: workflowProgress.handoff, description: "Transition to Delivery" },
           ].map((stage, idx) => {
             const isActive = activeTab === stage.id;
@@ -4296,11 +4298,11 @@ export default function ProjectRoleView() {
             </TabsTrigger>
             <TabsTrigger value="build-value" data-testid="tab-build-value">
               <Target className="w-4 h-4 mr-1" />
-              <span className="hidden sm:inline">Build</span>
+              <span className="hidden sm:inline">Design</span>
             </TabsTrigger>
             <TabsTrigger value="align" data-testid="tab-align">
               <Handshake className="w-4 h-4 mr-1" />
-              <span className="hidden sm:inline">Align</span>
+              <span className="hidden sm:inline">Client</span>
             </TabsTrigger>
             <TabsTrigger value="handoff" data-testid="tab-handoff">
               <ArrowUpRight className="w-4 h-4 mr-1" />
@@ -4308,9 +4310,41 @@ export default function ProjectRoleView() {
             </TabsTrigger>
           </TabsList>
 
-          {/* STAGE 2: BUILD VALUE - KPIs, Commitments, Stories */}
+          {/* STAGE 2: DESIGN OUTCOMES - Draft & Refine Value */}
           <TabsContent value="build-value" className="space-y-6">
-            {/* Sub-navigation for Build Value sections */}
+            {/* Design Outcomes Header - Internal Workspace */}
+            <Card className="bg-gradient-to-r from-purple-500/5 via-primary/5 to-emerald-500/5 border-purple-500/20">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                      <Target className="w-6 h-6 text-purple-600" />
+                    </div>
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        Design Outcomes
+                        <Badge variant="outline" className="text-xs">Internal</Badge>
+                      </CardTitle>
+                      <CardDescription>
+                        Draft and refine value outcomes before sharing with your client
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-purple-500/10 text-purple-600">
+                      {commitments.length} Outcome{commitments.length !== 1 ? 's' : ''}
+                    </Badge>
+                    {commitments.filter((c: any) => c.status === "draft").length > 0 && (
+                      <Badge variant="outline" className="text-amber-600 border-amber-300">
+                        {commitments.filter((c: any) => c.status === "draft").length} Draft
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+
+            {/* Sub-navigation for Design Outcomes sections */}
             <div className="flex items-center gap-2 border-b pb-4">
               <Button
                 variant={buildValueSection === "commitments" ? "default" : "ghost"}
@@ -6838,8 +6872,88 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
         />}
       </TabsContent>
 
-          {/* STAGE 3: ALIGN - Value Agreement & Client Collaboration */}
+          {/* STAGE 3: CLIENT ALIGNMENT - Share & Collaborate with Client */}
           <TabsContent value="align" className="space-y-6">
+            {/* Client Collaboration Header */}
+            <Card className="bg-gradient-to-r from-blue-500/5 via-indigo-500/5 to-purple-500/5 border-blue-500/20">
+              <CardHeader>
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                      <Users className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        Client Alignment Portal
+                        <Badge className="bg-blue-500/10 text-blue-600 text-xs">Shareable</Badge>
+                      </CardTitle>
+                      <CardDescription>
+                        Share this view with your client for collaborative review and confirmation of value outcomes
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        const shareUrl = `${window.location.origin}/client-portal/${projectId}`;
+                        navigator.clipboard.writeText(shareUrl);
+                        toast({ title: "Link Copied", description: "Client portal link copied to clipboard" });
+                      }}
+                      data-testid="btn-copy-client-link"
+                    >
+                      <Link2 className="w-4 h-4 mr-2" />
+                      Copy Client Link
+                    </Button>
+                    <Button 
+                      size="sm"
+                      onClick={() => {
+                        toast({ 
+                          title: "Invitation Sent", 
+                          description: "Client has been invited to review and confirm outcomes" 
+                        });
+                      }}
+                      data-testid="btn-send-to-client"
+                    >
+                      <Send className="w-4 h-4 mr-2" />
+                      Send to Client
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="p-4 rounded-lg bg-background border">
+                    <div className="flex items-center gap-2 mb-1">
+                      <FileText className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Outcomes Shared</span>
+                    </div>
+                    <p className="text-2xl font-bold">{commitments.length}</p>
+                  </div>
+                  <div className="p-4 rounded-lg bg-background border">
+                    <div className="flex items-center gap-2 mb-1">
+                      <CheckCircle className="w-4 h-4 text-emerald-600" />
+                      <span className="text-sm text-muted-foreground">Client Confirmed</span>
+                    </div>
+                    <p className="text-2xl font-bold text-emerald-600">
+                      {commitments.filter((c: any) => c.status === "client_confirmed").length}
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-lg bg-background border">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Clock className="w-4 h-4 text-amber-600" />
+                      <span className="text-sm text-muted-foreground">Awaiting Review</span>
+                    </div>
+                    <p className="text-2xl font-bold text-amber-600">
+                      {commitments.filter((c: any) => c.status === "draft" || c.status === "pending").length}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Client View of Outcomes */}
             <ValueAgreementTab 
               projectId={projectId} 
               project={project}
