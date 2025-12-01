@@ -6829,6 +6829,25 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                           <p className="text-xs text-muted-foreground">Leadership</p>
                         </div>
                       </div>
+                      {/* Practice with Yoodli */}
+                      <div className="mt-4 pt-4 border-t border-purple-200">
+                        <Button 
+                          variant="outline" 
+                          className="w-full gap-2 border-blue-500/30 text-blue-600 hover:bg-blue-500/10"
+                          onClick={() => {
+                            window.open("https://yoodli.ai", "_blank");
+                            toast({ 
+                              title: "Opening Yoodli", 
+                              description: "Practice your story delivery with AI speech coaching" 
+                            });
+                          }}
+                          data-testid="button-practice-yoodli-inline"
+                        >
+                          <Mic className="w-4 h-4" />
+                          Practice with Yoodli
+                          <ExternalLink className="w-3 h-3 ml-1" />
+                        </Button>
+                      </div>
                     </div>
                   </TabsContent>
                 </Tabs>
