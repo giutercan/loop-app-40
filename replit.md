@@ -44,6 +44,13 @@ The system is built on a robust architecture leveraging AI and a structured work
   - BEFORE (Craft): Single provocative message, emotional reaction selection, story structure templates (Situation-Struggle-Insight-Outcome, Problem-Agitate-Solve, etc.), starting hook, hero character, and evidence to reference.
   - DURING (Tell): Opening line, turning point, key data points, with coaching tips for pacing and delivery.
   - AFTER (Land): Moment of meaning, explicit takeaway, and call to action. Includes story test functionality to validate if stories are compelling (stranger care test, simplicity test, leadership values test) with visual readiness scoring.
+  - **Tension Questions System**: Enhanced question management with AI-powered recommendations tagged by sales methodology (SPIN, Miller Heiman, PSS). Features include:
+    - Story Questions Coach dialog for generating contextual questions based on Green Sheet contact info and discovery themes
+    - Multi-select question picker with methodology badges and expected outcomes
+    - Custom question input for manual additions
+    - Individual response fields for each selected question
+    - Auto-save with version tracking and debounce to prevent data loss
+    - Backward compatibility migration from legacy single-field `tensionQuestion` to new `tensionQuestions` array structure
 - **Executive Demo Mode**: Guided tour showcasing the complete Sales → Delivery journey using Chanel as a fictitious luxury retail customer.
   - **Demo Activation**: Purple "Executive Demo" button in header triggers demo mode with dialog explaining what users will see.
   - **Demo Data Seeding**: POST `/api/demo/seed-chanel` endpoint creates complete Chanel account, project, job themes, KPI commitments, and handoff packets. Use `?force=true` query param to reseed fresh data.
