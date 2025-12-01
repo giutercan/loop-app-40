@@ -32,8 +32,8 @@ The system is built on a robust architecture leveraging AI and a structured work
 - **Role-Based Workspaces**: 
   - **Sales Workspace (4-Stage Journey)**: 
     - **Discover**: Theme-driven AI research with methodology-tagged questions (SPIN, Miller Heiman, PSS), interactive call builder, and Green Sheet
-    - **Build Value**: Overview dashboard, AI-Suggested KPIs from discovery, Commitments sub-tab, and Success Stories sub-tab
-    - **Align**: Client collaboration, value agreement, and confirmation workflow
+    - **Design Outcomes** (internal): Purple gradient header with "Internal" badge, outcome selection with AI recommendations, success stories - workspace for drafting and refining value outcomes before client sharing
+    - **Client Alignment** (shareable): Blue gradient header with "Shareable" badge, Copy Client Link and Send to Client buttons, outcome status metrics (Shared, Confirmed, Awaiting Review) - client-facing collaboration portal
     - **Handoff**: Auto-populated confirmed commitments, Select All, bundle creation for CSM transfer
   - **Sales Workflow Progress**: Visual sidebar with stage completion indicators showing progress across all 4 stages
   - **Delivery Workspace**: Health Dashboard, KPI Tracking, QBR, Value Governance, Success Capture.
@@ -41,7 +41,7 @@ The system is built on a robust architecture leveraging AI and a structured work
   - **Step 1: Theme Select**: Choose discovery theme (Leadership Development, Talent Acquisition, etc.)
   - **Step 2: Intelligence**: AI research and context gathering for the account
   - **Step 3: Questions (Client Interaction)**: Interactive call builder with Green Sheet, methodology-tagged questions, Story Builder coach
-  - **Step 4: Insights (Discovery Summary & Coaching)**: Comprehensive summary with methodology coverage, key trends, gaps analysis, call flow export (copy/download), and "Ready for Build Value" coaching CTA
+  - **Step 4: Insights (Discovery Summary & Coaching)**: Comprehensive summary with methodology coverage, key trends, gaps analysis, call flow export (copy/download), and "Ready for Design Outcomes" coaching CTA
 - **Guided Discovery**: AI generates methodology-tagged questions (SPIN Selling, Miller Heiman Strategic Selling, PSS Professional Selling Skills) with methodology stages, follow-up hints, and related KPIs. Questions are collapsible by methodology with mark-as-asked functionality.
 - **Execution Canvas**: Enhanced with KPI health status overview (On Track, At Risk, Off Track, Needs Data), status-based color coding, current value tracking from actuals, and intelligent actionable next steps based on current progress.
 - **Interactive Green Sheet**: Enhanced Miller Heiman Green Sheet with meeting contact identification (name, title, buying role, influence level). Provides role-based coaching for Economic Buyers, User Buyers, Technical Buyers, Coaches, and Champions. Includes editable call objective, desired outcome, opening statement, and best action commitment fields.
