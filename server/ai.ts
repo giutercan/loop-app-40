@@ -3309,3 +3309,244 @@ Return your analysis in JSON format:
     throw error;
   }
 }
+
+// ============================================================================
+// OUTCOME RECOMMENDATIONS - AI-powered recommendations from discovery synthesis
+// ============================================================================
+
+export interface OutcomeRecommendationInput {
+  companyName: string;
+  industry?: string;
+  discoverySynthesis: DiscoverySynthesisResult;
+  existingCommitments?: Array<{ title: string; kpiName?: string }>;
+}
+
+export interface OutcomeRecommendation {
+  id: string;
+  outcomeName: string;
+  outcomeDescription: string;
+  why: {
+    strategicRationale: string;
+    discoveryEvidence: string[];
+    businessImpact: string;
+  };
+  how: {
+    approach: string;
+    kornFerrySolution: string;
+    timeframe: string;
+    keyActivities: string[];
+  };
+  benchmark: {
+    industryLow: string;
+    industryMedian: string;
+    industryHigh: string;
+    topPerformerTarget: string;
+    source: string;
+  };
+  kpiDetails: {
+    metricName: string;
+    unit: string;
+    suggestedBaseline: string;
+    suggestedTarget: string;
+    targetTimeframe: string;
+  };
+  valuePillar: "grow" | "optimise" | "derisk" | "strengthen";
+  priority: "high" | "medium" | "low";
+  estimatedAnnualValue: string;
+  confidenceScore: number;
+}
+
+export interface OutcomeRecommendationsResult {
+  recommendations: OutcomeRecommendation[];
+  summary: string;
+  totalPotentialValue: string;
+}
+
+const outcomeRecommendationSchema = z.object({
+  id: z.string(),
+  outcomeName: z.string(),
+  outcomeDescription: z.string(),
+  why: z.object({
+    strategicRationale: z.string(),
+    discoveryEvidence: z.array(z.string()),
+    businessImpact: z.string()
+  }),
+  how: z.object({
+    approach: z.string(),
+    kornFerrySolution: z.string(),
+    timeframe: z.string(),
+    keyActivities: z.array(z.string())
+  }),
+  benchmark: z.object({
+    industryLow: z.string(),
+    industryMedian: z.string(),
+    industryHigh: z.string(),
+    topPerformerTarget: z.string(),
+    source: z.string()
+  }),
+  kpiDetails: z.object({
+    metricName: z.string(),
+    unit: z.string(),
+    suggestedBaseline: z.string(),
+    suggestedTarget: z.string(),
+    targetTimeframe: z.string()
+  }),
+  valuePillar: z.enum(["grow", "optimise", "derisk", "strengthen"]),
+  priority: z.enum(["high", "medium", "low"]),
+  estimatedAnnualValue: z.string(),
+  confidenceScore: z.number().min(0).max(100)
+});
+
+const outcomeRecommendationsResultSchema = z.object({
+  recommendations: z.array(outcomeRecommendationSchema),
+  summary: z.string(),
+  totalPotentialValue: z.string()
+});
+
+export async function generateOutcomeRecommendations(input: OutcomeRecommendationInput): Promise<OutcomeRecommendationsResult> {
+  const { companyName, industry, discoverySynthesis, existingCommitments } = input;
+  
+  const existingContext = existingCommitments?.length 
+    ? `\nEXISTING COMMITMENTS (avoid duplicates):\n${existingCommitments.map(c => `- ${c.title}${c.kpiName ? ` (${c.kpiName})` : ''}`).join('\n')}`
+    : "";
+
+  const synthesisContext = `
+DISCOVERY SYNTHESIS FOR ${companyName.toUpperCase()}${industry ? ` (${industry})` : ''}:
+
+WHAT WE LEARNED:
+${discoverySynthesis.whatWeLearned.keyThemes.map(t => 
+  `Theme: ${t.theme}\nInsight: ${t.insight}\nEvidence: ${t.evidence.join('; ')}`
+).join('\n\n')}
+Summary: ${discoverySynthesis.whatWeLearned.summary}
+
+BUSINESS OPPORTUNITIES:
+${discoverySynthesis.businessImplications.opportunities.map(o => 
+  `[${o.priority.toUpperCase()}] ${o.title}: ${o.description} (${o.kornFerryPillar}, Value: ${o.potentialValue})`
+).join('\n')}
+
+RISKS TO ADDRESS:
+${discoverySynthesis.businessImplications.risks.map(r => 
+  `${r.title}: ${r.description} (Mitigation: ${r.mitigation})`
+).join('\n')}
+
+STAKEHOLDER SIGNALS:
+- Champion Status: ${discoverySynthesis.stakeholderSignals.championStatus}
+- Buying Committee: ${discoverySynthesis.stakeholderSignals.buyingCommittee}
+- Momentum: ${discoverySynthesis.stakeholderSignals.momentum}
+
+READINESS ASSESSMENT:
+- Score: ${discoverySynthesis.readinessToBuildValue.score}/100
+- Strengths: ${discoverySynthesis.readinessToBuildValue.strengths.join('; ')}
+- Gaps: ${discoverySynthesis.readinessToBuildValue.gaps.join('; ')}
+
+EXECUTIVE SUMMARY: ${discoverySynthesis.executiveSummary}
+${existingContext}`;
+
+  const prompt = `You are a senior Korn Ferry value architect. Based on the discovery synthesis below, generate outcome recommendations that this customer should commit to achieving.
+
+${synthesisContext}
+
+Generate 3-5 outcome recommendations. Each recommendation must be:
+1. Directly tied to discovery insights (with evidence)
+2. Measurable with clear KPIs
+3. Achievable within 12-18 months
+4. Aligned to Korn Ferry solutions and value pillars
+
+KORN FERRY VALUE PILLARS:
+- grow: Revenue growth, market expansion, sales effectiveness
+- optimise: Cost reduction, productivity improvement, efficiency gains
+- derisk: Risk mitigation, compliance, retention, succession
+- strengthen: Leadership development, culture transformation, capability building
+
+KORN FERRY SOLUTIONS:
+- Leadership Development: Executive coaching, leadership programs
+- Talent Acquisition: Recruitment optimization, employer branding
+- Succession Planning: Pipeline development, high-potential programs
+- Organizational Design: Structure optimization, role clarity
+- Culture Transformation: Engagement, values alignment
+- Sales Effectiveness: Revenue enablement, sales training
+- Rewards & Performance: Compensation, recognition programs
+
+INDUSTRY BENCHMARKS:
+Provide realistic benchmarks based on the industry. Use ranges (low/median/high) and cite "Korn Ferry Industry Benchmarks 2024" or "Industry Best Practice Research".
+
+Return your recommendations in this JSON format:
+{
+  "recommendations": [
+    {
+      "id": "rec_1",
+      "outcomeName": "Reduce Leadership Turnover",
+      "outcomeDescription": "Decrease voluntary turnover among senior leaders through targeted retention and development programs",
+      "why": {
+        "strategicRationale": "Why this outcome matters for this specific customer",
+        "discoveryEvidence": ["Evidence point 1 from discovery", "Evidence point 2"],
+        "businessImpact": "The quantifiable business impact of achieving this outcome"
+      },
+      "how": {
+        "approach": "Brief description of how to achieve this",
+        "kornFerrySolution": "Which Korn Ferry solution area applies",
+        "timeframe": "12 months",
+        "keyActivities": ["Activity 1", "Activity 2", "Activity 3"]
+      },
+      "benchmark": {
+        "industryLow": "25%",
+        "industryMedian": "18%",
+        "industryHigh": "8%",
+        "topPerformerTarget": "10%",
+        "source": "Korn Ferry Industry Benchmarks 2024"
+      },
+      "kpiDetails": {
+        "metricName": "Leadership Turnover Rate",
+        "unit": "%",
+        "suggestedBaseline": "22%",
+        "suggestedTarget": "12%",
+        "targetTimeframe": "12 months"
+      },
+      "valuePillar": "derisk",
+      "priority": "high",
+      "estimatedAnnualValue": "$2.5M",
+      "confidenceScore": 85
+    }
+  ],
+  "summary": "Brief executive summary of the recommendations package",
+  "totalPotentialValue": "$X.XM"
+}
+
+Guidelines:
+- Generate recommendations that directly address discovery findings
+- Use specific numbers in benchmarks and targets
+- Ensure recommendations complement (don't duplicate) existing commitments
+- Prioritize high-impact, achievable outcomes
+- Include a mix of value pillars where supported by discovery`;
+
+  try {
+    console.log(`[AI Outcome Recommendations] Generating for ${companyName}`);
+    
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 4000,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    
+    if (!content) {
+      throw new Error("AI returned empty response");
+    }
+    
+    const parsedContent = JSON.parse(content);
+    
+    const validationResult = outcomeRecommendationsResultSchema.safeParse(parsedContent);
+    if (!validationResult.success) {
+      console.error("[AI Outcome Recommendations] Validation failed:", validationResult.error);
+      throw new Error(`AI outcome recommendations validation failed: ${validationResult.error.message}`);
+    }
+    
+    console.log(`[AI Outcome Recommendations] Success! Generated ${validationResult.data.recommendations.length} recommendations for ${companyName}`);
+    return validationResult.data;
+  } catch (error) {
+    console.error("[AI Outcome Recommendations] Error:", error);
+    throw error;
+  }
+}

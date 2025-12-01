@@ -330,6 +330,47 @@ export const projects = pgTable("projects", {
     generatedAt?: string;
   }>(),
   
+  // AI-generated Outcome Recommendations (Build Value stage)
+  outcomeRecommendations: jsonb("outcome_recommendations").$type<{
+    recommendations: Array<{
+      id: string;
+      outcomeName: string;
+      outcomeDescription: string;
+      why: {
+        strategicRationale: string;
+        discoveryEvidence: string[];
+        businessImpact: string;
+      };
+      how: {
+        approach: string;
+        kornFerrySolution: string;
+        timeframe: string;
+        keyActivities: string[];
+      };
+      benchmark: {
+        industryLow: string;
+        industryMedian: string;
+        industryHigh: string;
+        topPerformerTarget: string;
+        source: string;
+      };
+      kpiDetails: {
+        metricName: string;
+        unit: string;
+        suggestedBaseline: string;
+        suggestedTarget: string;
+        targetTimeframe: string;
+      };
+      valuePillar: "grow" | "optimise" | "derisk" | "strengthen";
+      priority: "high" | "medium" | "low";
+      estimatedAnnualValue: string;
+      confidenceScore: number;
+    }>;
+    summary: string;
+    totalPotentialValue: string;
+    generatedAt?: string;
+  }>(),
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

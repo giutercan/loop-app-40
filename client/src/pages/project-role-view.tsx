@@ -43,6 +43,7 @@ import {
   FileText,
   ChevronRight,
   ChevronDown,
+  ChevronUp,
   Star,
   Plus,
   DollarSign,
@@ -92,7 +93,8 @@ import {
   Pencil,
   PlayCircle,
   Film,
-  Brain
+  Brain,
+  Wrench
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -2581,6 +2583,42 @@ export default function ProjectRoleView() {
   const kpisAtRisk = kpis.filter(k => k.status === "at-risk" || k.status === "off-track").length;
   const totalValue = valueCases.reduce((sum, vc) => sum + (vc.estimatedValue || 0), 0);
 
+  // Outcome Recommendation Type (from AI)
+  type OutcomeRecommendation = {
+    id: string;
+    outcomeName: string;
+    outcomeDescription: string;
+    why: {
+      strategicRationale: string;
+      discoveryEvidence: string[];
+      businessImpact: string;
+    };
+    how: {
+      approach: string;
+      kornFerrySolution: string;
+      timeframe: string;
+      keyActivities: string[];
+    };
+    benchmark: {
+      industryLow: string;
+      industryMedian: string;
+      industryHigh: string;
+      topPerformerTarget: string;
+      source: string;
+    };
+    kpiDetails: {
+      metricName: string;
+      unit: string;
+      suggestedBaseline: string;
+      suggestedTarget: string;
+      targetTimeframe: string;
+    };
+    valuePillar: "grow" | "optimise" | "derisk" | "strengthen";
+    priority: "high" | "medium" | "low";
+    estimatedAnnualValue: string;
+    confidenceScore: number;
+  };
+
   // Value Agreement Tab Component
   const ValueAgreementTab = ({ 
     projectId, 
@@ -2611,6 +2649,17 @@ export default function ProjectRoleView() {
   }) => {
     const [isAddCommitmentOpen, setIsAddCommitmentOpen] = useState(false);
     const [editingCommitment, setEditingCommitment] = useState<any>(null);
+    
+    // AI Outcome Recommendations state
+    const [outcomeRecommendations, setOutcomeRecommendations] = useState<OutcomeRecommendation[]>([]);
+    const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+    const [recommendationsInitialLoading, setRecommendationsInitialLoading] = useState(true);
+    const [recommendationsSummary, setRecommendationsSummary] = useState<string>("");
+    const [selectedRecommendations, setSelectedRecommendations] = useState<Set<string>>(new Set());
+    const [expandedRecommendation, setExpandedRecommendation] = useState<string | null>(null);
+    const [editingRecommendation, setEditingRecommendation] = useState<OutcomeRecommendation | null>(null);
+    const [editedValues, setEditedValues] = useState<{baseline: string; target: string; targetDate: string}>({baseline: "", target: "", targetDate: ""});
+    const [creatingFromRecommendations, setCreatingFromRecommendations] = useState(false);
     const [newCommitment, setNewCommitment] = useState({
       name: "",
       description: "",
@@ -2895,6 +2944,202 @@ export default function ProjectRoleView() {
     const totalCommittedValue = (commitments as any[]).reduce((sum, c) => sum + (c.estimatedAnnualValue || 0), 0);
     const confirmedValue = confirmedCommitments.reduce((sum, c) => sum + (c.estimatedAnnualValue || 0), 0);
 
+    // Generate AI outcome recommendations from discovery synthesis
+    const generateRecommendations = async () => {
+      if (recommendationsLoading) return;
+      setRecommendationsLoading(true);
+      
+      try {
+        const response = await apiRequest("POST", `/api/projects/${projectId}/outcome-recommendations`, {});
+        const data = await response.json();
+        
+        if (data.recommendations && Array.isArray(data.recommendations)) {
+          setOutcomeRecommendations(data.recommendations);
+          setRecommendationsSummary(data.summary || "");
+          toast({
+            title: "Recommendations Ready",
+            description: `Generated ${data.recommendations.length} outcome recommendations based on discovery insights`
+          });
+        }
+      } catch (error: any) {
+        console.error("Failed to generate recommendations:", error);
+        toast({
+          variant: "destructive",
+          title: "Generation Failed",
+          description: error.message || "Could not generate recommendations. Make sure discovery insights are available."
+        });
+      } finally {
+        setRecommendationsLoading(false);
+      }
+    };
+
+    // Fetch cached recommendations on mount
+    useEffect(() => {
+      const fetchCachedRecommendations = async () => {
+        setRecommendationsInitialLoading(true);
+        try {
+          const response = await fetch(`/api/projects/${projectId}/outcome-recommendations`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.recommendations) {
+              setOutcomeRecommendations(data.recommendations);
+              setRecommendationsSummary(data.summary || "");
+            }
+          }
+        } catch (error) {
+          // Silently fail - recommendations not cached yet
+        } finally {
+          setRecommendationsInitialLoading(false);
+        }
+      };
+      fetchCachedRecommendations();
+    }, [projectId]);
+
+    // Toggle recommendation selection
+    const toggleRecommendationSelection = (id: string) => {
+      setSelectedRecommendations(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(id)) {
+          newSet.delete(id);
+        } else {
+          newSet.add(id);
+        }
+        return newSet;
+      });
+    };
+
+    // Helper to parse numeric value from string (e.g., "$2.5M" -> 2500000)
+    const parseValueToNumber = (value: string): number | null => {
+      if (!value) return null;
+      const cleanedValue = value.replace(/[^0-9.-]/g, '');
+      const num = parseFloat(cleanedValue);
+      if (isNaN(num)) return null;
+      // Handle if value contains M for millions
+      if (value.toLowerCase().includes('m')) {
+        return Math.round(num * 1000000);
+      }
+      // Handle if value contains K for thousands
+      if (value.toLowerCase().includes('k')) {
+        return Math.round(num * 1000);
+      }
+      return Math.round(num);
+    };
+
+    // Create commitments from selected recommendations
+    const createCommitmentsFromRecommendations = async () => {
+      if (selectedRecommendations.size === 0 || creatingFromRecommendations) return;
+      
+      setCreatingFromRecommendations(true);
+      const selectedRecs = outcomeRecommendations.filter(r => selectedRecommendations.has(r.id));
+      let successCount = 0;
+      
+      try {
+        for (const rec of selectedRecs) {
+          try {
+            await createCommitmentMutation.mutateAsync({
+              commitmentTitle: rec.outcomeName,
+              commitmentDescription: rec.outcomeDescription,
+              customMetricName: rec.kpiDetails.metricName,
+              metricUnit: rec.kpiDetails.unit,
+              baselineValue: rec.kpiDetails.suggestedBaseline,
+              targetValue: rec.kpiDetails.suggestedTarget,
+              targetDate: null,
+              estimatedAnnualValue: parseValueToNumber(rec.estimatedAnnualValue),
+              valuePillar: rec.valuePillar,
+              strategyAlignmentRationale: rec.why.strategicRationale,
+              provenance: {
+                source: "ai_generated",
+                sourceInsightTitle: rec.why.discoveryEvidence[0] || "Discovery Synthesis",
+                recommendationId: rec.id,
+                generatedAt: new Date().toISOString(),
+              }
+            });
+            successCount++;
+          } catch (error) {
+            console.error(`Failed to create commitment from ${rec.outcomeName}:`, error);
+          }
+        }
+        
+        setSelectedRecommendations(new Set());
+        if (successCount > 0) {
+          toast({
+            title: "Outcomes Created",
+            description: `Created ${successCount} outcome${successCount > 1 ? 's' : ''} from recommendations. Review and submit for client approval.`
+          });
+        }
+      } finally {
+        setCreatingFromRecommendations(false);
+      }
+    };
+
+    // Start editing a recommendation (to complete baseline before adding)
+    const startEditingRecommendation = (rec: OutcomeRecommendation) => {
+      setEditingRecommendation(rec);
+      setEditedValues({
+        baseline: rec.kpiDetails.suggestedBaseline,
+        target: rec.kpiDetails.suggestedTarget,
+        targetDate: ""
+      });
+    };
+
+    // Create single commitment from edited recommendation
+    const createCommitmentFromEditedRecommendation = async () => {
+      if (!editingRecommendation) return;
+      
+      try {
+        await createCommitmentMutation.mutateAsync({
+          commitmentTitle: editingRecommendation.outcomeName,
+          commitmentDescription: editingRecommendation.outcomeDescription,
+          customMetricName: editingRecommendation.kpiDetails.metricName,
+          metricUnit: editingRecommendation.kpiDetails.unit,
+          baselineValue: editedValues.baseline,
+          targetValue: editedValues.target,
+          targetDate: editedValues.targetDate ? new Date(editedValues.targetDate).toISOString() : null,
+          estimatedAnnualValue: parseValueToNumber(editingRecommendation.estimatedAnnualValue),
+          valuePillar: editingRecommendation.valuePillar,
+          strategyAlignmentRationale: editingRecommendation.why.strategicRationale,
+          provenance: {
+            source: "ai_generated",
+            sourceInsightTitle: editingRecommendation.why.discoveryEvidence[0] || "Discovery Synthesis",
+            recommendationId: editingRecommendation.id,
+            generatedAt: new Date().toISOString(),
+          }
+        });
+        
+        setEditingRecommendation(null);
+        setEditedValues({baseline: "", target: "", targetDate: ""});
+      } catch (error) {
+        console.error("Failed to create commitment:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to create outcome. Please try again."
+        });
+      }
+    };
+
+    // Value pillar display helpers
+    const getRecommendationPillarBadge = (pillar: string) => {
+      const pillarConfig: Record<string, { name: string; color: string }> = {
+        grow: { name: "Grow", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" },
+        optimise: { name: "Optimise", color: "bg-blue-500/10 text-blue-600 border-blue-500/30" },
+        derisk: { name: "De-risk", color: "bg-amber-500/10 text-amber-600 border-amber-500/30" },
+        strengthen: { name: "Strengthen", color: "bg-violet-500/10 text-violet-600 border-violet-500/30" }
+      };
+      const config = pillarConfig[pillar] || pillarConfig.grow;
+      return <Badge className={`${config.color} border text-xs`}>{config.name}</Badge>;
+    };
+
+    const getPriorityBadge = (priority: string) => {
+      const priorityConfig: Record<string, { color: string }> = {
+        high: { color: "bg-red-500/10 text-red-600" },
+        medium: { color: "bg-amber-500/10 text-amber-600" },
+        low: { color: "bg-slate-500/10 text-slate-600" }
+      };
+      const config = priorityConfig[priority] || priorityConfig.medium;
+      return <Badge className={`${config.color} text-xs`}>{priority.charAt(0).toUpperCase() + priority.slice(1)} Priority</Badge>;
+    };
+
     return (
       <div className="space-y-6">
         {/* Header */}
@@ -2941,6 +3186,368 @@ export default function ProjectRoleView() {
             </div>
           </CardContent>
         </Card>
+
+        {/* AI Outcome Recommendations */}
+        <Card className="border-primary/20">
+          <CardHeader>
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">AI-Recommended Outcomes</CardTitle>
+                  <CardDescription>
+                    Strategic outcomes based on your discovery insights
+                  </CardDescription>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {selectedRecommendations.size > 0 && (
+                  <Button 
+                    onClick={createCommitmentsFromRecommendations}
+                    disabled={creatingFromRecommendations || recommendationsLoading}
+                    data-testid="button-add-selected-outcomes"
+                  >
+                    {creatingFromRecommendations ? (
+                      <>
+                        <RefreshCcw className="w-4 h-4 mr-2 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add {selectedRecommendations.size} Selected
+                      </>
+                    )}
+                  </Button>
+                )}
+                <Button 
+                  variant="outline" 
+                  onClick={generateRecommendations}
+                  disabled={recommendationsLoading || creatingFromRecommendations}
+                  data-testid="button-generate-recommendations"
+                >
+                  {recommendationsLoading ? (
+                    <>
+                      <RefreshCcw className="w-4 h-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      {outcomeRecommendations.length > 0 ? "Refresh" : "Generate"}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {recommendationsInitialLoading ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <RefreshCcw className="w-12 h-12 mx-auto mb-4 opacity-50 animate-spin" />
+                <p className="font-medium">Loading recommendations...</p>
+              </div>
+            ) : outcomeRecommendations.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Lightbulb className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p className="font-medium mb-2">No recommendations yet</p>
+                <p className="text-sm mb-4">Generate AI-powered outcome recommendations based on your discovery insights</p>
+                <Button variant="outline" onClick={generateRecommendations} disabled={recommendationsLoading}>
+                  {recommendationsLoading ? (
+                    <>
+                      <RefreshCcw className="w-4 h-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Generate Recommendations
+                    </>
+                  )}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {recommendationsSummary && (
+                  <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-sm">
+                    <p className="text-muted-foreground">{recommendationsSummary}</p>
+                  </div>
+                )}
+                
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {outcomeRecommendations.map((rec) => (
+                    <div 
+                      key={rec.id}
+                      className={`relative p-4 rounded-lg border hover-elevate transition-all ${
+                        selectedRecommendations.has(rec.id) ? "border-primary bg-primary/5" : ""
+                      }`}
+                      data-testid={`recommendation-card-${rec.id}`}
+                    >
+                      {/* Selection checkbox */}
+                      <div className="absolute top-3 right-3">
+                        <button
+                          onClick={() => toggleRecommendationSelection(rec.id)}
+                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                            selectedRecommendations.has(rec.id) 
+                              ? "bg-primary border-primary text-primary-foreground" 
+                              : "border-muted-foreground/30 hover:border-primary"
+                          }`}
+                          data-testid={`checkbox-select-${rec.id}`}
+                        >
+                          {selectedRecommendations.has(rec.id) && <Check className="w-3 h-3" />}
+                        </button>
+                      </div>
+                      
+                      {/* Header */}
+                      <div className="pr-8 mb-3">
+                        <h4 className="font-semibold text-sm mb-1">{rec.outcomeName}</h4>
+                        <div className="flex flex-wrap gap-1">
+                          {getRecommendationPillarBadge(rec.valuePillar)}
+                          {getPriorityBadge(rec.priority)}
+                        </div>
+                      </div>
+                      
+                      {/* Description */}
+                      <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
+                        {rec.outcomeDescription}
+                      </p>
+                      
+                      {/* KPI Details */}
+                      <div className="p-2 rounded bg-muted/30 mb-3">
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-muted-foreground">Baseline</span>
+                          <span className="font-medium">{rec.kpiDetails.suggestedBaseline}</span>
+                        </div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-muted-foreground">Target</span>
+                          <span className="font-medium text-emerald-600">{rec.kpiDetails.suggestedTarget}</span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground">Est. Value</span>
+                          <span className="font-medium text-primary">{rec.estimatedAnnualValue}</span>
+                        </div>
+                      </div>
+                      
+                      {/* Expand/Collapse for details */}
+                      <Collapsible open={expandedRecommendation === rec.id}>
+                        <CollapsibleTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="w-full text-xs"
+                            onClick={() => setExpandedRecommendation(
+                              expandedRecommendation === rec.id ? null : rec.id
+                            )}
+                          >
+                            {expandedRecommendation === rec.id ? (
+                              <>
+                                <ChevronUp className="w-3 h-3 mr-1" />
+                                Hide Details
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown className="w-3 h-3 mr-1" />
+                                Why, How & Benchmark
+                              </>
+                            )}
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="space-y-3 pt-3">
+                          {/* WHY */}
+                          <div className="p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+                            <h5 className="text-xs font-semibold text-emerald-700 mb-1 flex items-center gap-1">
+                              <MessageSquare className="w-3 h-3" />
+                              WHY
+                            </h5>
+                            <p className="text-xs text-muted-foreground mb-2">{rec.why.strategicRationale}</p>
+                            <div className="text-xs">
+                              <span className="font-medium">Evidence:</span>
+                              <ul className="list-disc list-inside text-muted-foreground mt-1">
+                                {rec.why.discoveryEvidence.slice(0, 3).map((e, i) => (
+                                  <li key={i} className="line-clamp-1">{e}</li>
+                                ))}
+                              </ul>
+                            </div>
+                            <p className="text-xs mt-2">
+                              <span className="font-medium">Impact:</span>{" "}
+                              <span className="text-muted-foreground">{rec.why.businessImpact}</span>
+                            </p>
+                          </div>
+                          
+                          {/* HOW */}
+                          <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/20">
+                            <h5 className="text-xs font-semibold text-blue-700 mb-1 flex items-center gap-1">
+                              <Wrench className="w-3 h-3" />
+                              HOW
+                            </h5>
+                            <p className="text-xs text-muted-foreground mb-2">{rec.how.approach}</p>
+                            <div className="flex flex-wrap gap-1 mb-2">
+                              <Badge variant="outline" className="text-[10px]">{rec.how.kornFerrySolution}</Badge>
+                              <Badge variant="outline" className="text-[10px]">{rec.how.timeframe}</Badge>
+                            </div>
+                            <div className="text-xs">
+                              <span className="font-medium">Key Activities:</span>
+                              <ul className="list-disc list-inside text-muted-foreground mt-1">
+                                {rec.how.keyActivities.slice(0, 3).map((a, i) => (
+                                  <li key={i} className="line-clamp-1">{a}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                          
+                          {/* BENCHMARK */}
+                          <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
+                            <h5 className="text-xs font-semibold text-amber-700 mb-1 flex items-center gap-1">
+                              <TrendingUp className="w-3 h-3" />
+                              INDUSTRY BENCHMARK
+                            </h5>
+                            <div className="grid grid-cols-3 gap-2 text-center mb-2">
+                              <div>
+                                <p className="text-[10px] text-muted-foreground">Low</p>
+                                <p className="text-xs font-medium">{rec.benchmark.industryLow}</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-muted-foreground">Median</p>
+                                <p className="text-xs font-medium">{rec.benchmark.industryMedian}</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-muted-foreground">High</p>
+                                <p className="text-xs font-medium">{rec.benchmark.industryHigh}</p>
+                              </div>
+                            </div>
+                            <div className="text-center p-2 rounded bg-primary/10">
+                              <p className="text-[10px] text-muted-foreground">Top Performer Target</p>
+                              <p className="text-sm font-bold text-primary">{rec.benchmark.topPerformerTarget}</p>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-2 italic">{rec.benchmark.source}</p>
+                          </div>
+                          
+                          {/* Action buttons */}
+                          <div className="flex gap-2 pt-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              className="flex-1"
+                              onClick={() => startEditingRecommendation(rec)}
+                              data-testid={`button-edit-recommendation-${rec.id}`}
+                            >
+                              <Pencil className="w-3 h-3 mr-1" />
+                              Edit & Add
+                            </Button>
+                            <Button 
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => {
+                                setSelectedRecommendations(new Set([rec.id]));
+                                createCommitmentsFromRecommendations();
+                              }}
+                              data-testid={`button-quick-add-${rec.id}`}
+                            >
+                              <Plus className="w-3 h-3 mr-1" />
+                              Quick Add
+                            </Button>
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Edit Recommendation Dialog */}
+        <Dialog open={!!editingRecommendation} onOpenChange={(open) => !open && setEditingRecommendation(null)}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Complete Outcome Details</DialogTitle>
+              <DialogDescription>
+                Review and adjust the baseline and target values before adding this outcome
+              </DialogDescription>
+            </DialogHeader>
+            {editingRecommendation && (
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-semibold mb-1">{editingRecommendation.outcomeName}</h4>
+                  <p className="text-sm text-muted-foreground">{editingRecommendation.outcomeDescription}</p>
+                </div>
+                
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-baseline">Baseline Value ({editingRecommendation.kpiDetails.unit})</Label>
+                    <Input 
+                      id="edit-baseline"
+                      value={editedValues.baseline}
+                      onChange={(e) => setEditedValues(prev => ({...prev, baseline: e.target.value}))}
+                      placeholder={editingRecommendation.kpiDetails.suggestedBaseline}
+                      data-testid="input-edit-baseline"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Suggested: {editingRecommendation.kpiDetails.suggestedBaseline}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-target">Target Value ({editingRecommendation.kpiDetails.unit})</Label>
+                    <Input 
+                      id="edit-target"
+                      value={editedValues.target}
+                      onChange={(e) => setEditedValues(prev => ({...prev, target: e.target.value}))}
+                      placeholder={editingRecommendation.kpiDetails.suggestedTarget}
+                      data-testid="input-edit-target"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Top performer target: {editingRecommendation.benchmark.topPerformerTarget}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="edit-target-date">Target Date</Label>
+                  <Input 
+                    id="edit-target-date"
+                    type="date"
+                    value={editedValues.targetDate}
+                    onChange={(e) => setEditedValues(prev => ({...prev, targetDate: e.target.value}))}
+                    data-testid="input-edit-target-date"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Recommended timeframe: {editingRecommendation.how.timeframe}
+                  </p>
+                </div>
+                
+                <div className="p-3 rounded-lg bg-muted/30">
+                  <p className="text-sm font-medium mb-1">Estimated Annual Value</p>
+                  <p className="text-lg font-bold text-primary">{editingRecommendation.estimatedAnnualValue}</p>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditingRecommendation(null)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={createCommitmentFromEditedRecommendation}
+                disabled={createCommitmentMutation.isPending}
+                data-testid="button-save-edited-recommendation"
+              >
+                {createCommitmentMutation.isPending ? (
+                  <>
+                    <RefreshCcw className="w-4 h-4 mr-2 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4 mr-2" />
+                    Add Outcome
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Outcome Pipeline */}
         <div className="grid gap-6 lg:grid-cols-3" data-demo-step="kpi-pipeline">

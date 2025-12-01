@@ -6635,6 +6635,74 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
     }
   });
   
+  // POST /api/projects/:id/outcome-recommendations - Generate AI-powered outcome recommendations
+  app.post("/api/projects/:id/outcome-recommendations", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const project = await storage.getProject(id);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Get discovery synthesis - required for generating recommendations
+      const synthesis = (project as any).discoverySynthesis;
+      if (!synthesis) {
+        return res.status(400).json({ 
+          error: "Discovery synthesis required. Please generate insights first from the Discovery stage." 
+        });
+      }
+      
+      // Get existing commitments to avoid duplicates
+      const existingCommitments = await storage.getKpiCommitments(id);
+      const account = project.accountId ? await storage.getAccount(project.accountId) : null;
+      
+      // Import and call the outcome recommendations function
+      const { generateOutcomeRecommendations } = await import("./ai");
+      const result = await generateOutcomeRecommendations({
+        companyName: project.companyName || account?.name || "Unknown Company",
+        industry: project.sector || account?.industry || undefined,
+        discoverySynthesis: synthesis,
+        existingCommitments: existingCommitments.map(c => ({
+          title: c.commitmentTitle,
+          kpiName: c.customMetricName || undefined
+        }))
+      });
+      
+      // Cache recommendations on project
+      await storage.updateProject(id, {
+        outcomeRecommendations: {
+          ...result,
+          generatedAt: new Date().toISOString()
+        }
+      } as any);
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Outcome Recommendations] Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // GET /api/projects/:id/outcome-recommendations - Get cached outcome recommendations
+  app.get("/api/projects/:id/outcome-recommendations", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const project = await storage.getProject(id);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const cached = (project as any).outcomeRecommendations;
+      if (cached) {
+        res.json(cached);
+      } else {
+        res.status(404).json({ error: "No outcome recommendations available. Generate them first." });
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
   // PATCH /api/projects/:id/narrative-canvas - Save Narrative Canvas content
   app.patch("/api/projects/:id/narrative-canvas", async (req, res) => {
     try {
