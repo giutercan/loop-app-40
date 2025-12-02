@@ -18,6 +18,7 @@ import AccountValueSpine from "@/pages/account-value-spine";
 import AccountHub from "@/pages/account-hub";
 import AccountRoleView from "@/pages/account-role-view";
 import ProjectRoleView from "@/pages/project-role-view";
+import Presentation from "@/pages/presentation";
 import ProjectLayout from "@/components/ProjectLayout";
 import { CommandPalette } from "@/components/CommandPalette";
 import { DemoModeProvider } from "@/demo/DemoModeContext";
@@ -94,6 +95,7 @@ function Router() {
       <Route path="/projects/:id/dashboard" component={DashboardWithLayout} />
       <Route path="/questionnaire/:token" component={Questionnaire} />
       <Route path="/shared/alignment/:token" component={SharedAlignment} />
+      <Route path="/presentation" component={Presentation} />
       <Route component={NotFound} />
     </Switch>
   );
