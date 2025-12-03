@@ -287,6 +287,7 @@ export default function AccountsDashboard() {
             <Link 
               href="/" 
               className="flex items-center gap-3 hover-elevate rounded-lg px-2 py-1 -mx-2"
+              data-testid="link-landing-logo"
             >
               <div className="w-10 h-10 bg-gradient-to-br from-primary via-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
                 <TrendingUp className="w-6 h-6 text-primary-foreground" />
