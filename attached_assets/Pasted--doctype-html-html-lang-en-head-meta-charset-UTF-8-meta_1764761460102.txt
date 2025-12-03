@@ -1,0 +1,793 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Value Lifecycle Platform - Presentation</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --forest-green: #00634F;
+        --dark-sky: #005971;
+        --emerald: #009B77;
+        --bright-green: #05C690;
+        --lime: #8DC63F;
+        --aqua: #00ADBB;
+        --purple: #A3238E;
+        --dark-blue: #00173B;
+        --dark-gray: #929192;
+        --light-gray: #DAD8D6;
+        --red: #ef4444;
+        --amber: #f59e0b;
+        --background: #ffffff;
+        --foreground: #00173B;
+        --muted: #F5F5F5;
+        --muted-foreground: #929192;
+        --border: #DAD8D6;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        background: var(--background);
+        color: var(--foreground);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .progress-bar {
+        height: 4px;
+        background: var(--muted);
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--forest-green), var(--dark-sky), var(--emerald));
+        transition: width 0.3s ease;
+      }
+
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 2rem;
+        border-bottom: 1px solid var(--border);
+        position: fixed;
+        top: 4px;
+        left: 0;
+        right: 0;
+        background: var(--background);
+        z-index: 50;
+      }
+
+      .slide-counter {
+        color: var(--muted-foreground);
+        font-size: 0.875rem;
+      }
+
+      .slides-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 6rem 2rem 6rem;
+        min-height: 100vh;
+        cursor: pointer;
+      }
+
+      .slide {
+        display: none;
+        flex-direction: column;
+        flex: 1;
+        animation: fadeIn 0.4s ease;
+      }
+
+      .slide.active {
+        display: flex;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .slide-header {
+        text-align: center;
+        margin-bottom: 3rem;
+      }
+
+      .slide-header h2 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        color: var(--forest-green);
+      }
+
+      .slide-header p {
+        font-size: 1.25rem;
+        color: var(--muted-foreground);
+      }
+
+      .slide-content {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 2rem;
+        border-top: 1px solid var(--border);
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: var(--background);
+        z-index: 50;
+      }
+
+      .nav-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border: none;
+        background: transparent;
+        color: var(--foreground);
+        font-size: 0.875rem;
+        cursor: pointer;
+        border-radius: 0.5rem;
+        transition: background 0.2s;
+      }
+
+      .nav-btn:hover {
+        background: var(--muted);
+      }
+
+      .nav-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .dots {
+        display: flex;
+        gap: 0.25rem;
+      }
+
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 4px;
+        background: var(--border);
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .dot.active {
+        width: 24px;
+        background: linear-gradient(90deg, var(--forest-green), var(--dark-sky));
+      }
+
+      .card {
+        background: var(--background);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+
+      .card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+        max-width: 1200px;
+        width: 100%;
+      }
+
+      .card-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+      }
+
+      .card h3 {
+        font-size: 1.125rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+      }
+
+      .card p {
+        color: var(--muted-foreground);
+        font-size: 0.875rem;
+        line-height: 1.5;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        background: var(--muted);
+        color: var(--foreground);
+        margin: 0.25rem;
+      }
+
+      .title-slide {
+        text-align: center;
+      }
+
+      .title-logo {
+        width: 96px;
+        height: 96px;
+        border-radius: 24px;
+        background: linear-gradient(135deg, var(--forest-green), var(--dark-sky), var(--emerald));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 2rem;
+        font-size: 3rem;
+        color: white;
+      }
+
+      .title-slide h1 {
+        font-size: 3.5rem;
+        font-weight: 700;
+        background: linear-gradient(90deg, var(--forest-green), var(--dark-sky), var(--emerald));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 1rem;
+      }
+
+      .title-slide .subtitle {
+        font-size: 1.5rem;
+        color: var(--muted-foreground);
+        max-width: 600px;
+        margin: 0 auto 2rem;
+      }
+
+      .badge-row {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+
+      .badge-row .badge {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+      }
+
+      .bg-red { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); }
+      .bg-amber { background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.2); }
+      .bg-lime { background: rgba(141, 198, 63, 0.15); border-color: rgba(141, 198, 63, 0.3); }
+      .bg-emerald { background: rgba(0, 155, 119, 0.1); border-color: rgba(0, 155, 119, 0.2); }
+      .bg-bright-green { background: rgba(5, 198, 144, 0.1); border-color: rgba(5, 198, 144, 0.2); }
+      .bg-aqua { background: rgba(0, 173, 187, 0.1); border-color: rgba(0, 173, 187, 0.2); }
+      .bg-dark-sky { background: rgba(0, 89, 113, 0.1); border-color: rgba(0, 89, 113, 0.2); }
+      .bg-forest-green { background: rgba(0, 99, 79, 0.1); border-color: rgba(0, 99, 79, 0.2); }
+      .bg-purple { background: rgba(163, 35, 142, 0.1); border-color: rgba(163, 35, 142, 0.2); }
+
+      .text-red { color: var(--red); }
+      .text-amber { color: var(--amber); }
+      .text-lime { color: var(--lime); }
+      .text-emerald { color: var(--emerald); }
+      .text-bright-green { color: var(--bright-green); }
+      .text-aqua { color: var(--aqua); }
+      .text-dark-sky { color: var(--dark-sky); }
+      .text-forest-green { color: var(--forest-green); }
+      .text-purple { color: var(--purple); }
+
+      .icon-red { background: rgba(239, 68, 68, 0.1); color: var(--red); }
+      .icon-amber { background: rgba(245, 158, 11, 0.1); color: var(--amber); }
+      .icon-lime { background: rgba(141, 198, 63, 0.15); color: var(--lime); }
+      .icon-emerald { background: rgba(0, 155, 119, 0.15); color: var(--emerald); }
+      .icon-bright-green { background: rgba(5, 198, 144, 0.15); color: var(--bright-green); }
+      .icon-aqua { background: rgba(0, 173, 187, 0.15); color: var(--aqua); }
+      .icon-dark-sky { background: rgba(0, 89, 113, 0.15); color: var(--dark-sky); }
+      .icon-forest-green { background: rgba(0, 99, 79, 0.15); color: var(--forest-green); }
+      .icon-purple { background: rgba(163, 35, 142, 0.15); color: var(--purple); }
+
+      .journey-flow {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin: 2rem 0;
+      }
+
+      .journey-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 1.5rem 2rem;
+        border-radius: 1rem;
+        text-align: center;
+      }
+
+      .journey-step .icon {
+        font-size: 2rem;
+        margin-bottom: 0.75rem;
+      }
+
+      .journey-step h4 {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+      }
+
+      .journey-step p {
+        font-size: 0.875rem;
+        color: var(--muted-foreground);
+      }
+
+      .arrow {
+        font-size: 1.5rem;
+        color: var(--muted-foreground);
+      }
+
+      .pillars-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+        max-width: 900px;
+        width: 100%;
+      }
+
+      .pillar-card {
+        padding: 1.5rem;
+      }
+
+      .pillar-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      .pillar-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+      }
+
+      .pillar-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+      }
+
+      .pillar-subtitle {
+        font-size: 0.875rem;
+        color: var(--muted-foreground);
+      }
+
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+        max-width: 900px;
+        width: 100%;
+      }
+
+      .stat-card {
+        text-align: center;
+        padding: 2rem;
+      }
+
+      .stat-value {
+        font-size: 3rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+      }
+
+      .stat-label {
+        color: var(--muted-foreground);
+        font-size: 0.875rem;
+      }
+
+      .features-list {
+        list-style: none;
+      }
+
+      .features-list li {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+        font-size: 0.875rem;
+      }
+
+      .features-list .check {
+        color: var(--bright-green);
+        font-size: 1rem;
+      }
+
+      .two-col {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 2rem;
+        max-width: 1000px;
+        width: 100%;
+      }
+
+      .health-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        max-width: 800px;
+        width: 100%;
+        margin-bottom: 2rem;
+      }
+
+      .health-card {
+        text-align: center;
+        padding: 1rem;
+      }
+
+      .health-icon {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .health-label {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+      }
+
+      .health-desc {
+        font-size: 0.75rem;
+        color: var(--muted-foreground);
+      }
+
+      .handoff-flow {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        margin-bottom: 2rem;
+      }
+
+      .handoff-step {
+        padding: 1.5rem 2rem;
+        text-align: center;
+      }
+
+      .handoff-step .icon {
+        font-size: 2.5rem;
+        margin-bottom: 0.75rem;
+      }
+
+      .quote-box {
+        background: linear-gradient(135deg, rgba(0, 99, 79, 0.05), rgba(0, 89, 113, 0.05), rgba(0, 155, 119, 0.05));
+        border: 1px solid rgba(0, 99, 79, 0.2);
+        border-radius: 1rem;
+        padding: 2rem;
+        text-align: center;
+        max-width: 600px;
+        margin: 2rem auto 0;
+      }
+
+      .quote-box p {
+        font-size: 1.125rem;
+        line-height: 1.6;
+      }
+
+      .cta-slide {
+        text-align: center;
+      }
+
+      .cta-logo {
+        width: 80px;
+        height: 80px;
+        border-radius: 20px;
+        background: linear-gradient(135deg, var(--forest-green), var(--dark-sky), var(--emerald));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 2rem;
+        font-size: 2.5rem;
+        color: white;
+      }
+
+      .cta-slide h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        color: var(--forest-green);
+      }
+
+      .cta-slide .subtitle {
+        font-size: 1.25rem;
+        color: var(--muted-foreground);
+        max-width: 600px;
+        margin: 0 auto;
+      }
+
+      /* Solid color backgrounds with white text */
+      .bg-forest-green-solid { background: var(--forest-green); color: white; }
+      .bg-dark-sky-solid { background: var(--dark-sky); color: white; }
+      .bg-emerald-solid { background: var(--emerald); color: white; }
+      .bg-bright-green-solid { background: var(--bright-green); color: white; }
+      .bg-purple-solid { background: var(--purple); color: white; }
+
+      .bg-forest-green-solid h3,
+      .bg-dark-sky-solid h3,
+      .bg-emerald-solid h3,
+      .bg-bright-green-solid h3,
+      .bg-purple-solid h3 { color: white; }
+
+      .bg-forest-green-solid p,
+      .bg-dark-sky-solid p,
+      .bg-emerald-solid p,
+      .bg-bright-green-solid p,
+      .bg-purple-solid p { color: rgba(255, 255, 255, 0.9); }
+
+      @media (max-width: 768px) {
+        .title-slide h1 { font-size: 2.5rem; }
+        .slide-header h2 { font-size: 1.75rem; }
+        .pillars-grid { grid-template-columns: 1fr; }
+        .stats-grid { grid-template-columns: 1fr; }
+        .two-col { grid-template-columns: 1fr; }
+        .health-grid { grid-template-columns: repeat(2, 1fr); }
+        .handoff-flow { flex-direction: column; }
+        .arrow { transform: rotate(90deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progress"></div>
+    </div>
+
+    <header>
+      <div style="font-weight: 600; color: var(--forest-green)">Value Lifecycle Platform</div>
+      <div class="slide-counter">
+        <span id="currentSlide">1</span> / <span id="totalSlides">10</span>
+      </div>
+    </header>
+
+    <div class="slides-container" id="slidesContainer">
+      <!-- Slide 1: Title -->
+      <div class="slide active" data-slide="1">
+        <div class="slide-content">
+          <div class="title-slide">
+            <div class="title-logo">■</div>
+            <h1>Value Lifecycle Platform</h1>
+            <p class="subtitle">
+              Transforming how Korn Ferry sells, delivers, and proves value
+            </p>
+            <div class="badge-row">
+              <span class="badge">🧠 AI-Powered</span>
+              <span class="badge">👥 Role-Based</span>
+              <span class="badge">🎯 Outcome-Focused</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 2: The Challenge -->
+      <div class="slide" data-slide="2">
+        <div class="slide-header">
+          <h2>The Problem We're Solving</h2>
+          <p>Inconsistent execution hurts client experience and our results</p>
+        </div>
+        <div class="slide-content">
+          <div class="card-grid">
+            <div class="card bg-red">
+              <div class="card-icon icon-red">💬</div>
+              <h3>Inconsistent Talk Tracks</h3>
+              <p>Every consultant tells the story differently. No standard way to position our offerings, outcomes, or value—clients get confused, opportunities get missed.</p>
+            </div>
+            <div class="card bg-amber">
+              <div class="card-icon icon-amber">📋</div>
+              <h3>Fragmented Knowledge</h3>
+              <p>Success stories live in someone's head. Best practices aren't shared. Salesforce adoption is low because it doesn't give sellers what they need in the moment.</p>
+            </div>
+            <div class="card bg-lime">
+              <div class="card-icon icon-lime">🔀</div>
+              <h3>Broken Handoffs</h3>
+              <p>Sales promises one thing, delivery discovers something else. No shared context means the client has to repeat themselves—poor experience, lost trust.</p>
+            </div>
+            <div class="card bg-red">
+              <div class="card-icon icon-red">❓</div>
+              <h3>Everyone on Different Data</h3>
+              <p>Sales sees one version, delivery sees another, client gets a third. No single source of truth means misalignment from day one.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 3: Our Vision -->
+      <div class="slide" data-slide="3">
+        <div class="slide-header">
+          <h2>The Solution: Human + AI Excellence</h2>
+          <p>One platform. One story. One seamless client experience.</p>
+        </div>
+        <div class="slide-content">
+          <div style="max-width: 800px; width: 100%">
+            <p style="text-align: center; font-size: 1.25rem; color: var(--muted-foreground); margin-bottom: 2rem;">
+              A single platform where AI amplifies human expertise—enabling every team member to deliver 
+              <strong style="color: var(--forest-green)">consistent talk tracks, the same data, and a unified client experience</strong> 
+              from first call to proven results.
+            </p>
+
+            <div class="journey-flow">
+              <div class="journey-step card bg-forest-green-solid">
+                <div class="icon">🤝</div>
+                <h4>Intelligent Sales</h4>
+                <p style="color: rgba(255, 255, 255, 0.9)">AI-guided discovery + standard talk tracks</p>
+              </div>
+              <span class="arrow">→</span>
+              <div class="journey-step card bg-dark-sky-solid">
+                <div class="icon">🔄</div>
+                <h4>Seamless Handoff</h4>
+                <p style="color: rgba(255, 255, 255, 0.9)">Zero context loss to delivery</p>
+              </div>
+              <span class="arrow">→</span>
+              <div class="journey-step card bg-bright-green-solid">
+                <div class="icon">📊</div>
+                <h4>Shared Truth</h4>
+                <p style="color: rgba(255, 255, 255, 0.9)">Everyone working from same data</p>
+              </div>
+            </div>
+
+            <div class="quote-box">
+              <p>"Salesforce tells us <em>who</em> the client is.<br/>
+              <strong style="color: var(--forest-green)">This platform tells us <em>how</em> to win and what to deliver.</strong>"</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 4: Value Pillars -->
+      <div class="slide" data-slide="4">
+        <div class="slide-header">
+          <h2>The 4 Value Pillars</h2>
+          <p>Every Korn Ferry solution maps to measurable business impact</p>
+        </div>
+        <div class="slide-content">
+          <div class="pillars-grid">
+            <div class="card pillar-card bg-bright-green">
+              <div class="pillar-header">
+                <div class="pillar-icon" style="background: rgba(5, 198, 144, 0.2)">📈</div>
+                <div>
+                  <div class="pillar-title text-bright-green">Grow</div>
+                  <div class="pillar-subtitle">Revenue & Market Share</div>
+                </div>
+              </div>
+              <div>
+                <span class="badge">Revenue growth</span>
+                <span class="badge">Market expansion</span>
+                <span class="badge">Innovation</span>
+              </div>
+            </div>
+
+            <div class="card pillar-card bg-aqua">
+              <div class="pillar-header">
+                <div class="pillar-icon" style="background: rgba(0, 173, 187, 0.2)">📊</div>
+                <div>
+                  <div class="pillar-title text-aqua">Optimise</div>
+                  <div class="pillar-subtitle">Productivity & Efficiency</div>
+                </div>
+              </div>
+              <div>
+                <span class="badge">Cost reduction</span>
+                <span class="badge">Process efficiency</span>
+                <span class="badge">Time-to-market</span>
+              </div>
+            </div>
+
+            <div class="card pillar-card bg-lime">
+              <div class="pillar-header">
+                <div class="pillar-icon" style="background: rgba(141, 198, 63, 0.2)">🛡</div>
+                <div>
+                  <div class="pillar-title text-lime">De-risk</div>
+                  <div class="pillar-subtitle">Retention & Compliance</div>
+                </div>
+              </div>
+              <div>
+                <span class="badge">Turnover reduction</span>
+                <span class="badge">Succession readiness</span>
+                <span class="badge">Risk mitigation</span>
+              </div>
+            </div>
+
+            <div class="card pillar-card bg-purple">
+              <div class="pillar-header">
+                <div class="pillar-icon" style="background: rgba(163, 35, 142, 0.2)">👥</div>
+                <div>
+                  <div class="pillar-title text-purple">Strengthen</div>
+                  <div class="pillar-subtitle">Leadership & Culture</div>
+                </div>
+              </div>
+              <div>
+                <span class="badge">Leadership pipeline</span>
+                <span class="badge">Culture shift</span>
+                <span class="badge">Skills development</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 5: AI Discovery -->
+      <div class="slide" data-slide="5">
+        <div class="slide-header">
+          <h2>Sales Intelligence That Actually Works</h2>
+          <p>AI does the research. You drive the conversation.</p>
+        </div>
+        <div class="slide-content">
+          <div style="max-width: 1000px; width: 100%">
+            <div class="card-grid" style="margin-bottom: 2rem">
+              <div class="card" style="text-align: center">
+                <div class="card-icon" style="background: linear-gradient(135deg, var(--forest-green), var(--dark-sky)); margin: 0 auto 1rem; color: white;">🧠</div>
+                <h3>Instant Company Intel</h3>
+                <p>AI researches the company, industry trends, and strategic priorities in minutes—not hours</p>
+              </div>
+              <div class="card" style="text-align: center">
+                <div class="card-icon" style="background: linear-gradient(135deg, var(--dark-sky), var(--aqua)); margin: 0 auto 1rem; color: white;">📖</div>
+                <h3>Standard Talk Tracks</h3>
+                <p>AI suggests the right KF offerings, proven outcomes, and value stories based on what it learns</p>
+              </div>
+              <div class="card" style="text-align: center">
+                <div class="card-icon" style="background: linear-gradient(135deg, var(--emerald), var(--bright-green)); margin: 0 auto 1rem; color: white;">💬</div>
+                <h3>Guided Questions</h3>
+                <p>SPIN, Miller Heiman methodology built in—AI generates questions you should ask each stakeholder</p>
+              </div>
+            </div>
+
+            <div class="card bg-forest-green-solid" style="display: flex; gap: 1.5rem; align-items: flex-start">
+              <div class="card-icon" style="background: rgba(255, 255, 255, 0.2); color: white; flex-shrink: 0;">⚡</div>
+              <div>
+                <h3 style="margin-bottom: 0.75rem">This Is Human + AI at Its Best</h3>
+                <p style="margin-bottom: 1rem">You bring the relationships and expertise. AI brings instant research, proven frameworks, and consistent positioning. Together, you show up to every call better prepared than any competitor.</p>
+                <div>
+                  <span class="badge" style="background: rgba(255, 255, 255, 0.2); color: white;">60% less prep time</span>
+                  <span class="badge" style="background: rgba(255, 255, 255, 0.2); color: white;">Consistent positioning</span>
+                  <span class="badge" style="background: rgba(255, 255, 255, 0.2); color: white;">Better conversations</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 6: Collaborative Alignment -->
+      <div class="slide" data-slide="6">
+        <div class="slide-header">
+          <h2>Collaborative Alignment</h2>
+          <p>Sales and clients co-create measurable outcomes</p>
+        </div>
+        <div class="slide-content">
+          <div style="max-width: 1000px; width: 100%">
+            <div class="two
