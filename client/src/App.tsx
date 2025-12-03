@@ -71,10 +71,8 @@ function DashboardWithLayout() {
 function Router() {
   return (
     <Switch>
-      {/* Client Hub is the default entry point */}
-      <Route path="/">
-        <Redirect to="/accounts" />
-      </Route>
+      {/* Landing page is the entry point */}
+      <Route path="/" component={Landing} />
       <Route path="/welcome" component={Landing} />
       {/* Projects route now redirects to accounts - account-centric architecture */}
       <Route path="/projects">
