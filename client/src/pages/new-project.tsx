@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useLocation } from "wouter";
+import { useState, useEffect } from "react";
+import { useLocation, useSearch } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -64,11 +64,16 @@ interface CompanySuggestion {
 
 export default function NewProject() {
   const [, setLocation] = useLocation();
+  const searchString = useSearch() || "";
   const { toast } = useToast();
   const [companySearch, setCompanySearch] = useState("");
   const [companySuggestions, setCompanySuggestions] = useState<CompanySuggestion[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [open, setOpen] = useState(false);
+
+  const urlParams = new URLSearchParams(searchString);
+  const accountIdParam = urlParams.get("accountId");
+  const initialAccountId = accountIdParam && !isNaN(parseInt(accountIdParam)) ? parseInt(accountIdParam) : undefined;
 
   const { data: accounts = [] } = useQuery<Account[]>({
     queryKey: ["/api/accounts"],
@@ -80,9 +85,15 @@ export default function NewProject() {
       companyName: "",
       sector: "",
       companyLogoUrl: "",
-      accountId: undefined,
+      accountId: initialAccountId,
     },
   });
+
+  useEffect(() => {
+    if (initialAccountId !== undefined) {
+      form.setValue("accountId", initialAccountId);
+    }
+  }, [initialAccountId, form]);
 
   const createProjectMutation = useMutation({
     mutationFn: async (data: CreateProjectForm) => {

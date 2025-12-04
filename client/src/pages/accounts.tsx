@@ -554,6 +554,17 @@ function AccountCard({
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-2 space-y-2">
+                <Link href={`/projects/new?accountId=${account.id}`}>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full mb-2 gap-1.5 border-dashed"
+                    data-testid={`button-add-initiative-expanded-${account.id}`}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add New Initiative
+                  </Button>
+                </Link>
                 {projects.map((project) => {
                   // Derive salesStage from currentPhase for backward compatibility with legacy data
                   const deriveSalesStageFromPhase = (phase: string): "discover" | "build_value" | "align" | "handoff" => {
@@ -709,9 +720,20 @@ function AccountCard({
               </CollapsibleContent>
             </Collapsible>
           ) : (
-            <div className="text-center py-3 text-sm text-muted-foreground border rounded-lg bg-muted/20">
-              <FolderOpen className="w-5 h-5 mx-auto mb-1 opacity-50" />
-              No initiatives yet
+            <div className="text-center py-4 text-sm text-muted-foreground border rounded-lg bg-muted/20 space-y-2">
+              <FolderOpen className="w-5 h-5 mx-auto opacity-50" />
+              <p>No initiatives yet</p>
+              <Link href={`/projects/new?accountId=${account.id}`}>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2 gap-1"
+                  data-testid={`button-add-initiative-${account.id}`}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add Initiative
+                </Button>
+              </Link>
             </div>
           )}
 
