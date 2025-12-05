@@ -8018,12 +8018,14 @@ Respond in JSON format:
         industry: project.sector || undefined,
         discoveryTheme: project.discoveryTheme || undefined,
         discoverySynthesis: discoverySynthesis || undefined,
-        dataPoints: dataPoints.map(dp => ({
-          label: dp.label,
-          value: dp.value,
-          solutionArea: dp.solutionArea,
-          kornFerryPillar: dp.kornFerryPillar
-        })),
+        dataPoints: dataPoints
+          .filter(dp => dp.solutionArea && dp.kornFerryPillar)
+          .map(dp => ({
+            label: dp.label,
+            value: dp.value,
+            solutionArea: dp.solutionArea!,
+            kornFerryPillar: dp.kornFerryPillar!
+          })),
         solutionAreas
       });
       
