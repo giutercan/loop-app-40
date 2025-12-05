@@ -304,7 +304,10 @@ export default function CompetitiveIntelligence({ projectId, companyName, soluti
           <p className="text-sm text-muted-foreground mb-4">
             There was an error loading the competitive analysis.
           </p>
-          <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/projects', projectId, 'competitive-intelligence'] })}>
+          <Button 
+            onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/projects', projectId, 'competitive-intelligence'] })}
+            data-testid="button-retry-competitive-intelligence"
+          >
             Try Again
           </Button>
         </CardContent>
