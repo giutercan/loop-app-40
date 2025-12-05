@@ -122,6 +122,7 @@ import { DemoModeButton } from "@/demo/DemoModeButton";
 import { useDemoMode } from "@/demo/DemoModeContext";
 import { JourneyLoopVisualizer } from "@/components/JourneyLoopVisualizer";
 import { UnifiedJourneyTimeline } from "@/components/UnifiedJourneyTimeline";
+import CompetitiveIntelligence from "@/components/CompetitiveIntelligence";
 import { JOURNEY_LOOP_STAGES, UNIFIED_JOURNEY_PHASES, createUnifiedJourney } from "@shared/value-frameworks";
 
 type Role = "sales" | "consultant" | "delivery" | "csm" | "client_sponsor";
@@ -5969,6 +5970,23 @@ export default function ProjectRoleView() {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Competitive Intelligence Section */}
+              <CompetitiveIntelligence
+                projectId={project.id}
+                companyName={project.companyName}
+                solutionAreas={selectedDiscoveryTheme ? 
+                  (selectedDiscoveryTheme === "kf-full-search" 
+                    ? ["ASSESS", "DEVELOP", "TRANSFORM", "REWARD", "COMMERCIAL", "ANALYTICS"]
+                    : selectedDiscoveryTheme === "leadership" ? ["DEVELOP", "ASSESS"]
+                    : selectedDiscoveryTheme === "talent-acquisition" ? ["ASSESS", "DEVELOP"]
+                    : selectedDiscoveryTheme === "transformation" ? ["TRANSFORM", "ANALYTICS"]
+                    : selectedDiscoveryTheme === "rewards" ? ["REWARD"]
+                    : selectedDiscoveryTheme === "sales-effectiveness" ? ["COMMERCIAL"]
+                    : ["ASSESS", "DEVELOP", "TRANSFORM"]
+                  ) : undefined
+                }
+              />
 
               {/* Navigation for Intelligence Step */}
               <div className="flex justify-between">
