@@ -354,6 +354,23 @@ export interface IStorage {
   createHandoffPacket(packet: InsertHandoffPacket): Promise<HandoffPacket>;
   updateHandoffPacket(id: number, packet: Partial<InsertHandoffPacket>): Promise<HandoffPacket | undefined>;
   deleteHandoffPacket(id: number): Promise<void>;
+  
+  // ============================================================================
+  // COMPETITIVE INTELLIGENCE
+  // ============================================================================
+  
+  // Competitive Intelligence (AI-generated positioning per competitor)
+  getCompetitiveIntelligence(projectId: number): Promise<schema.CompetitiveIntelligence[]>;
+  getCompetitiveIntelligenceBySolutionArea(projectId: number, solutionArea: string): Promise<schema.CompetitiveIntelligence[]>;
+  createCompetitiveIntelligence(intel: schema.InsertCompetitiveIntelligence): Promise<schema.CompetitiveIntelligence>;
+  updateCompetitiveIntelligence(id: number, intel: Partial<schema.InsertCompetitiveIntelligence>): Promise<schema.CompetitiveIntelligence | undefined>;
+  deleteCompetitiveIntelligence(id: number): Promise<void>;
+  deleteAllCompetitiveIntelligenceForProject(projectId: number): Promise<void>;
+  
+  // Competitive Summary (high-level AI-generated competitive positioning)
+  getCompetitiveSummary(projectId: number): Promise<schema.CompetitiveSummary | undefined>;
+  upsertCompetitiveSummary(summary: schema.InsertCompetitiveSummary): Promise<schema.CompetitiveSummary>;
+  deleteCompetitiveSummary(projectId: number): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -2028,6 +2045,72 @@ export class DbStorage implements IStorage {
   
   async deleteHandoffPacket(id: number): Promise<void> {
     await db.delete(schema.handoffPackets).where(eq(schema.handoffPackets.id, id));
+  }
+  
+  // ============================================================================
+  // COMPETITIVE INTELLIGENCE
+  // ============================================================================
+  
+  // Competitive Intelligence (AI-generated positioning per competitor)
+  async getCompetitiveIntelligence(projectId: number): Promise<schema.CompetitiveIntelligence[]> {
+    return await db.select().from(schema.competitiveIntelligence)
+      .where(eq(schema.competitiveIntelligence.projectId, projectId))
+      .orderBy(schema.competitiveIntelligence.solutionArea, schema.competitiveIntelligence.competitorName);
+  }
+  
+  async getCompetitiveIntelligenceBySolutionArea(projectId: number, solutionArea: string): Promise<schema.CompetitiveIntelligence[]> {
+    return await db.select().from(schema.competitiveIntelligence)
+      .where(and(
+        eq(schema.competitiveIntelligence.projectId, projectId),
+        eq(schema.competitiveIntelligence.solutionArea, solutionArea as "ASSESS" | "DEVELOP" | "TRANSFORM" | "REWARD" | "COMMERCIAL" | "ANALYTICS")
+      ))
+      .orderBy(schema.competitiveIntelligence.competitorName);
+  }
+  
+  async createCompetitiveIntelligence(intel: schema.InsertCompetitiveIntelligence): Promise<schema.CompetitiveIntelligence> {
+    const results = await db.insert(schema.competitiveIntelligence).values(intel).returning();
+    return results[0];
+  }
+  
+  async updateCompetitiveIntelligence(id: number, intel: Partial<schema.InsertCompetitiveIntelligence>): Promise<schema.CompetitiveIntelligence | undefined> {
+    const results = await db.update(schema.competitiveIntelligence)
+      .set({ ...intel, updatedAt: new Date() })
+      .where(eq(schema.competitiveIntelligence.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deleteCompetitiveIntelligence(id: number): Promise<void> {
+    await db.delete(schema.competitiveIntelligence).where(eq(schema.competitiveIntelligence.id, id));
+  }
+  
+  async deleteAllCompetitiveIntelligenceForProject(projectId: number): Promise<void> {
+    await db.delete(schema.competitiveIntelligence).where(eq(schema.competitiveIntelligence.projectId, projectId));
+  }
+  
+  // Competitive Summary (high-level AI-generated competitive positioning)
+  async getCompetitiveSummary(projectId: number): Promise<schema.CompetitiveSummary | undefined> {
+    const results = await db.select().from(schema.competitiveSummary)
+      .where(eq(schema.competitiveSummary.projectId, projectId));
+    return results[0];
+  }
+  
+  async upsertCompetitiveSummary(summary: schema.InsertCompetitiveSummary): Promise<schema.CompetitiveSummary> {
+    const existing = await this.getCompetitiveSummary(summary.projectId);
+    if (existing) {
+      const results = await db.update(schema.competitiveSummary)
+        .set({ ...summary, updatedAt: new Date() })
+        .where(eq(schema.competitiveSummary.projectId, summary.projectId))
+        .returning();
+      return results[0];
+    } else {
+      const results = await db.insert(schema.competitiveSummary).values(summary).returning();
+      return results[0];
+    }
+  }
+  
+  async deleteCompetitiveSummary(projectId: number): Promise<void> {
+    await db.delete(schema.competitiveSummary).where(eq(schema.competitiveSummary.projectId, projectId));
   }
 }
 

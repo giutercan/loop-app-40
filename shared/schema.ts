@@ -876,6 +876,56 @@ export const insertDiscoveryPhaseTransferSchema = createInsertSchema(discoveryPh
 export type InsertDiscoveryPhaseTransfer = z.infer<typeof insertDiscoveryPhaseTransferSchema>;
 export type DiscoveryPhaseTransfer = typeof discoveryPhaseTransfers.$inferSelect;
 
+// Competitive Intelligence - AI-generated positioning tailored to specific company
+export const competitiveIntelligence = pgTable("competitive_intelligence", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  solutionArea: text("solution_area", {
+    enum: ["ASSESS", "DEVELOP", "TRANSFORM", "REWARD", "COMMERCIAL", "ANALYTICS"]
+  }).notNull(),
+  competitorId: text("competitor_id").notNull(), // References competitor id from knowledge.ts
+  competitorName: text("competitor_name").notNull(), // Denormalized for display
+  contextualPositioning: text("contextual_positioning").notNull(), // AI-generated: how KF differentiates vs this competitor for THIS company
+  clientSpecificAdvantages: text("client_specific_advantages").array(), // Why KF is better for this specific client
+  conversationStarters: text("conversation_starters").array(), // AI-generated talking points
+  battleCardScenario: text("battle_card_scenario"), // Specific competitive scenario
+  battleCardResponse: text("battle_card_response"), // How to respond
+  winTheme: text("win_theme"), // Key theme to emphasize
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertCompetitiveIntelligenceSchema = createInsertSchema(competitiveIntelligence).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertCompetitiveIntelligence = z.infer<typeof insertCompetitiveIntelligenceSchema>;
+export type CompetitiveIntelligence = typeof competitiveIntelligence.$inferSelect;
+
+// Competitive Summary - High-level AI-generated competitive positioning for a project
+export const competitiveSummary = pgTable("competitive_summary", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }).unique(),
+  executiveSummary: text("executive_summary"), // AI-generated: Overall competitive positioning for this opportunity
+  primaryCompetitors: text("primary_competitors").array(), // Competitor IDs most likely to compete for this work
+  competitorLikelihood: jsonb("competitor_likelihood"), // { competitorId: { likelihood: "high"|"medium"|"low", reason: string } }
+  kornFerryDifferentiators: text("korn_ferry_differentiators").array(), // Differentiator IDs most relevant for this client
+  keyWinThemes: text("key_win_themes").array(), // Top 3 themes to emphasize when competing
+  avoidThemes: text("avoid_themes").array(), // Topics to downplay or avoid
+  industryContext: text("industry_context"), // AI-generated industry-specific competitive dynamics
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertCompetitiveSummarySchema = createInsertSchema(competitiveSummary).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertCompetitiveSummary = z.infer<typeof insertCompetitiveSummarySchema>;
+export type CompetitiveSummary = typeof competitiveSummary.$inferSelect;
+
 // API Request/Response Schemas for Jobs & Priorities
 
 // Prioritize Jobs Request
