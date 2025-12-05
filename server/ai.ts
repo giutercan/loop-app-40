@@ -1,5 +1,13 @@
 import OpenAI from "openai";
-import { getSolutionSummary } from "@shared/knowledge";
+import { 
+  getSolutionSummary, 
+  COMPETITORS, 
+  KORN_FERRY_DIFFERENTIATORS, 
+  COMPETITIVE_COMPARISONS,
+  getCompetitorsBySolutionArea,
+  getDifferentiatorsBySolutionArea,
+  getCompetitiveComparison
+} from "@shared/knowledge";
 import { z } from "zod";
 
 // Export the OpenAI client for use in routes.ts
@@ -3547,6 +3555,239 @@ Guidelines:
     return validationResult.data;
   } catch (error) {
     console.error("[AI Outcome Recommendations] Error:", error);
+    throw error;
+  }
+}
+
+// ============================================================================
+// COMPETITIVE INTELLIGENCE - AI-Generated Positioning
+// ============================================================================
+
+export interface CompetitiveIntelligenceInput {
+  companyName: string;
+  industry?: string;
+  discoveryTheme?: string;
+  discoverySynthesis?: any; // Full synthesis from discovery phase
+  dataPoints?: Array<{
+    label: string;
+    value: string;
+    solutionArea: string;
+    kornFerryPillar: string;
+  }>;
+  solutionAreas: string[]; // Which solution areas to analyze (e.g., ["ASSESS", "DEVELOP"])
+}
+
+export interface CompetitorPositioning {
+  competitorId: string;
+  competitorName: string;
+  solutionArea: string;
+  contextualPositioning: string; // How KF differentiates vs this competitor FOR THIS client
+  clientSpecificAdvantages: string[];
+  conversationStarters: string[];
+  battleCardScenario: string;
+  battleCardResponse: string;
+  winTheme: string;
+  likelihoodToCompete: "high" | "medium" | "low";
+  likelihoodReason: string;
+}
+
+export interface CompetitiveSummaryResult {
+  executiveSummary: string;
+  primaryCompetitors: string[]; // Top 3-5 competitors most likely to compete for this work
+  competitorLikelihood: Record<string, { likelihood: "high" | "medium" | "low"; reason: string }>;
+  kornFerryDifferentiators: string[]; // Most relevant differentiators for this client
+  keyWinThemes: string[];
+  avoidThemes: string[];
+  industryContext: string;
+  positioning: CompetitorPositioning[];
+}
+
+const competitorPositioningSchema = z.object({
+  competitorId: z.string(),
+  competitorName: z.string(),
+  solutionArea: z.string(),
+  contextualPositioning: z.string(),
+  clientSpecificAdvantages: z.array(z.string()),
+  conversationStarters: z.array(z.string()),
+  battleCardScenario: z.string(),
+  battleCardResponse: z.string(),
+  winTheme: z.string(),
+  likelihoodToCompete: z.enum(["high", "medium", "low"]),
+  likelihoodReason: z.string()
+});
+
+const competitiveSummaryResultSchema = z.object({
+  executiveSummary: z.string(),
+  primaryCompetitors: z.array(z.string()),
+  competitorLikelihood: z.record(z.object({
+    likelihood: z.enum(["high", "medium", "low"]),
+    reason: z.string()
+  })),
+  kornFerryDifferentiators: z.array(z.string()),
+  keyWinThemes: z.array(z.string()),
+  avoidThemes: z.array(z.string()),
+  industryContext: z.string(),
+  positioning: z.array(competitorPositioningSchema)
+});
+
+export async function generateCompetitiveIntelligence(
+  input: CompetitiveIntelligenceInput
+): Promise<CompetitiveSummaryResult> {
+  const { companyName, industry, discoveryTheme, discoverySynthesis, dataPoints, solutionAreas } = input;
+  
+  // Build context from static knowledge base
+  const relevantCompetitors: typeof COMPETITORS = [];
+  const relevantDifferentiators: typeof KORN_FERRY_DIFFERENTIATORS = [];
+  const relevantComparisons: typeof COMPETITIVE_COMPARISONS = [];
+  
+  for (const area of solutionAreas) {
+    const areaCompetitors = getCompetitorsBySolutionArea(area);
+    areaCompetitors.forEach(c => {
+      if (!relevantCompetitors.find(rc => rc.id === c.id)) {
+        relevantCompetitors.push(c);
+      }
+    });
+    
+    const areaDifferentiators = getDifferentiatorsBySolutionArea(area);
+    areaDifferentiators.forEach(d => {
+      if (!relevantDifferentiators.find(rd => rd.id === d.id)) {
+        relevantDifferentiators.push(d);
+      }
+    });
+    
+    const comparison = getCompetitiveComparison(area);
+    if (comparison) {
+      relevantComparisons.push(comparison);
+    }
+  }
+  
+  // Build the competitive knowledge context
+  const competitorContext = relevantCompetitors.map(c => `
+COMPETITOR: ${c.name} (${c.id})
+Category: ${c.category}
+Focus Areas: ${c.focusAreas.join(", ")}
+Strengths: ${c.strengths.join("; ")}
+Weaknesses: ${c.weaknesses.join("; ")}
+Where They Win: ${c.whereTheyWin.join("; ")}
+`).join("\n");
+
+  const differentiatorContext = relevantDifferentiators.map(d => `
+DIFFERENTIATOR: ${d.name}
+Description: ${d.description}
+Evidence: ${d.evidencePoints.join("; ")}
+Competitive Advantage vs: ${d.competitiveAdvantageVs.join(", ")}
+`).join("\n");
+
+  const comparisonContext = relevantComparisons.map(c => `
+SOLUTION AREA: ${c.solutionArea}
+KF Strengths: ${c.kornFerryStrengths.join("; ")}
+Battle Cards: ${c.battleCards.map(bc => `Scenario: ${bc.scenario} → Response: ${bc.kornFerryResponse}`).join("\n")}
+`).join("\n");
+
+  // Build discovery context if available
+  let discoveryContext = "";
+  if (discoverySynthesis) {
+    discoveryContext = `
+DISCOVERY SYNTHESIS:
+Executive Summary: ${discoverySynthesis.executiveSummary || "Not available"}
+What We Learned: ${discoverySynthesis.whatWeLearned?.keyThemes?.map((t: any) => t.theme + ": " + t.insight).join("; ") || "Not available"}
+Business Opportunities: ${discoverySynthesis.businessImplications?.opportunities?.map((o: any) => o.title).join(", ") || "Not available"}
+`;
+  }
+  
+  if (dataPoints && dataPoints.length > 0) {
+    discoveryContext += `\nKEY INSIGHTS FROM RESEARCH:
+${dataPoints.slice(0, 10).map(dp => `- ${dp.label}: ${dp.value} [${dp.solutionArea}]`).join("\n")}
+`;
+  }
+  
+  const prompt = `You are a senior Korn Ferry competitive strategist. Generate personalized competitive intelligence for this specific client engagement.
+
+CLIENT CONTEXT:
+Company: ${companyName}
+${industry ? `Industry: ${industry}` : ""}
+${discoveryTheme ? `Discovery Theme: ${discoveryTheme}` : ""}
+Solution Areas in Scope: ${solutionAreas.join(", ")}
+
+${discoveryContext}
+
+COMPETITIVE LANDSCAPE KNOWLEDGE:
+${competitorContext}
+
+KORN FERRY DIFFERENTIATORS:
+${differentiatorContext}
+
+COMPETITIVE COMPARISONS BY SOLUTION AREA:
+${comparisonContext}
+
+Based on the client context and competitive knowledge above, generate a comprehensive competitive intelligence brief.
+
+IMPORTANT GUIDELINES:
+1. Be specific to ${companyName} - use their industry, challenges, and context to personalize positioning
+2. For each competitor, explain WHY they might compete for THIS specific engagement
+3. Create battle card scenarios that are realistic for this client's situation
+4. Recommend differentiators that resonate with this client's priorities
+5. Identify themes to emphasize AND themes to avoid based on client context
+6. Include 2-3 conversation starters per competitor that a consultant could use
+
+Return your analysis in this JSON format:
+{
+  "executiveSummary": "2-3 sentence overview of competitive positioning for this opportunity",
+  "primaryCompetitors": ["competitorId1", "competitorId2", "competitorId3"],
+  "competitorLikelihood": {
+    "competitorId": { "likelihood": "high|medium|low", "reason": "Why they're likely to compete" }
+  },
+  "kornFerryDifferentiators": ["differentiator_id_1", "differentiator_id_2"],
+  "keyWinThemes": ["Theme to emphasize 1", "Theme to emphasize 2", "Theme to emphasize 3"],
+  "avoidThemes": ["Topic to avoid or downplay"],
+  "industryContext": "Industry-specific competitive dynamics for ${industry || "this sector"}",
+  "positioning": [
+    {
+      "competitorId": "mckinsey",
+      "competitorName": "McKinsey & Company",
+      "solutionArea": "TRANSFORM",
+      "contextualPositioning": "How KF wins against this competitor for THIS client",
+      "clientSpecificAdvantages": ["Advantage 1 relevant to client", "Advantage 2"],
+      "conversationStarters": ["Question to ask client about competitor", "Another opener"],
+      "battleCardScenario": "Realistic scenario for this engagement",
+      "battleCardResponse": "How to respond effectively",
+      "winTheme": "Key theme to emphasize",
+      "likelihoodToCompete": "high|medium|low",
+      "likelihoodReason": "Why this competitor might/might not compete"
+    }
+  ]
+}
+
+Generate positioning for the top 4-6 most relevant competitors for the solution areas in scope.`;
+
+  try {
+    console.log(`[AI Competitive Intelligence] Generating for ${companyName}, areas: ${solutionAreas.join(", ")}`);
+    
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 6000,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    
+    if (!content) {
+      throw new Error("AI returned empty response");
+    }
+    
+    const parsedContent = JSON.parse(content);
+    
+    const validationResult = competitiveSummaryResultSchema.safeParse(parsedContent);
+    if (!validationResult.success) {
+      console.error("[AI Competitive Intelligence] Validation failed:", validationResult.error);
+      throw new Error(`AI competitive intelligence validation failed: ${validationResult.error.message}`);
+    }
+    
+    console.log(`[AI Competitive Intelligence] Success! Generated positioning for ${validationResult.data.positioning.length} competitors`);
+    return validationResult.data;
+  } catch (error) {
+    console.error("[AI Competitive Intelligence] Error:", error);
     throw error;
   }
 }
