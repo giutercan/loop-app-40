@@ -841,3 +841,510 @@ export const KORN_FERRY_BENCHMARKS: KPIBenchmark[] = [
 export function getBenchmarkForKPI(kpiName: string): KPIBenchmark | null {
   return KORN_FERRY_BENCHMARKS.find(b => b.kpiName === kpiName) || null;
 }
+
+// ============================================================================
+// COMPETITIVE INTELLIGENCE - Korn Ferry vs Competitors by Solution Area
+// ============================================================================
+
+export interface CompetitorOffering {
+  name: string;
+  description: string;
+  strengths: string[];
+  limitations: string[];
+}
+
+export interface Competitor {
+  id: string;
+  name: string;
+  shortName: string;
+  category: "big4" | "boutique" | "hrtech" | "management_consulting" | "executive_search";
+  website: string;
+  description: string;
+  solutionAreas: string[]; // Which KF solution areas they compete in
+  offerings: Record<string, CompetitorOffering>; // Key offerings by solution area
+}
+
+export interface KornFerryDifferentiator {
+  id: string;
+  title: string;
+  description: string;
+  proofPoints: string[];
+  relevantSolutionAreas: string[];
+  competitiveAdvantageVs: string[]; // Which competitors this differentiates against
+}
+
+export interface CompetitorComparison {
+  solutionArea: string;
+  kornFerryStrengths: string[];
+  competitorWeaknesses: Record<string, string[]>; // Competitor ID -> weaknesses
+  battleCards: Array<{
+    scenario: string;
+    kornFerryResponse: string;
+    winTheme: string;
+  }>;
+}
+
+// Major competitors in talent and organizational consulting
+export const COMPETITORS: Competitor[] = [
+  {
+    id: "mckinsey",
+    name: "McKinsey & Company",
+    shortName: "McKinsey",
+    category: "management_consulting",
+    website: "mckinsey.com",
+    description: "Global management consulting firm with talent practice",
+    solutionAreas: ["TRANSFORM", "DEVELOP", "ANALYTICS"],
+    offerings: {
+      TRANSFORM: {
+        name: "McKinsey Organization Practice",
+        description: "Org design, operating models, talent strategy",
+        strengths: ["CEO-level relationships", "Cross-functional transformation", "Strong brand in boardroom"],
+        limitations: ["Less depth in talent assessment", "Higher cost", "Generalist approach to people topics"]
+      },
+      DEVELOP: {
+        name: "McKinsey Leadership Programs",
+        description: "Executive development and leadership transformation",
+        strengths: ["Top-tier executive access", "Business strategy integration"],
+        limitations: ["Limited assessment IP", "Less depth in behavioral science", "Fewer proprietary tools"]
+      }
+    }
+  },
+  {
+    id: "deloitte",
+    name: "Deloitte Human Capital",
+    shortName: "Deloitte",
+    category: "big4",
+    website: "deloitte.com",
+    description: "Big 4 consulting firm with comprehensive human capital practice",
+    solutionAreas: ["TRANSFORM", "DEVELOP", "REWARD", "ANALYTICS"],
+    offerings: {
+      TRANSFORM: {
+        name: "Human Capital Consulting",
+        description: "Workforce transformation, org design, M&A integration",
+        strengths: ["Technology integration", "Global delivery capability", "Audit/tax cross-sell"],
+        limitations: ["More technology-focused than people-focused", "Less proprietary assessment IP", "Consultant quality variance"]
+      },
+      REWARD: {
+        name: "Total Rewards",
+        description: "Compensation strategy and benchmarking",
+        strengths: ["Large compensation database", "Technology integration"],
+        limitations: ["Less conjoint/preference modeling depth", "More transactional than strategic"]
+      },
+      ANALYTICS: {
+        name: "Workforce Analytics",
+        description: "People analytics and workforce planning",
+        strengths: ["Technology platforms", "Data integration"],
+        limitations: ["Less behavioral science depth", "Fewer predictive validity studies"]
+      }
+    }
+  },
+  {
+    id: "mercer",
+    name: "Mercer",
+    shortName: "Mercer",
+    category: "boutique",
+    website: "mercer.com",
+    description: "Global consulting leader in health, wealth, and career",
+    solutionAreas: ["REWARD", "ASSESS", "DEVELOP", "ANALYTICS"],
+    offerings: {
+      REWARD: {
+        name: "Mercer Career",
+        description: "Compensation benchmarking, job architecture, rewards strategy",
+        strengths: ["Market-leading compensation data", "Global pay benchmarking", "Benefits consulting"],
+        limitations: ["Less leadership development depth", "Transactional focus on surveys", "Limited assessment integration"]
+      },
+      ASSESS: {
+        name: "Mercer | Mettl",
+        description: "Assessment platform and psychometric testing",
+        strengths: ["Digital assessment platform", "High volume capability"],
+        limitations: ["Less executive assessment depth", "Acquired platform vs. proprietary IP", "Limited success profile methodology"]
+      }
+    }
+  },
+  {
+    id: "egon_zehnder",
+    name: "Egon Zehnder",
+    shortName: "Egon Zehnder",
+    category: "executive_search",
+    website: "egonzehnder.com",
+    description: "Executive search and leadership advisory firm",
+    solutionAreas: ["ASSESS", "DEVELOP"],
+    offerings: {
+      ASSESS: {
+        name: "Leadership Advisory",
+        description: "Executive assessment, board assessment, succession planning",
+        strengths: ["Executive relationship depth", "Board-level credibility", "Search integration"],
+        limitations: ["Narrower solution set", "Less scalable assessment", "Limited analytics depth"]
+      },
+      DEVELOP: {
+        name: "Executive Development",
+        description: "CEO and executive coaching and development",
+        strengths: ["Senior executive focus", "Coaching network"],
+        limitations: ["Less programmatic L&D", "Smaller scale capability", "Less measurement rigor"]
+      }
+    }
+  },
+  {
+    id: "heidrick",
+    name: "Heidrick & Struggles",
+    shortName: "Heidrick",
+    category: "executive_search",
+    website: "heidrick.com",
+    description: "Executive search and leadership consulting firm",
+    solutionAreas: ["ASSESS", "DEVELOP"],
+    offerings: {
+      ASSESS: {
+        name: "Heidrick Consulting",
+        description: "Leadership assessment and culture advisory",
+        strengths: ["Search integration", "CEO/board relationships", "Culture assessment tools"],
+        limitations: ["Smaller consulting practice", "Less depth in programmatic assessment", "Limited reward/commercial expertise"]
+      },
+      DEVELOP: {
+        name: "Leadership Development",
+        description: "Executive coaching and team effectiveness",
+        strengths: ["Executive access", "Team coaching"],
+        limitations: ["Less scalable programs", "Limited measurement", "Smaller faculty network"]
+      }
+    }
+  },
+  {
+    id: "shl",
+    name: "SHL",
+    shortName: "SHL",
+    category: "hrtech",
+    website: "shl.com",
+    description: "Talent measurement and assessment technology provider",
+    solutionAreas: ["ASSESS", "ANALYTICS"],
+    offerings: {
+      ASSESS: {
+        name: "SHL Talent Assessment",
+        description: "Psychometric assessments, cognitive tests, situational judgment",
+        strengths: ["Large assessment library", "Strong normative data", "Technology platform"],
+        limitations: ["Product-focused vs. consulting", "Less strategic advisory", "Limited development integration"]
+      },
+      ANALYTICS: {
+        name: "SHL TalentCentral",
+        description: "Assessment platform with analytics",
+        strengths: ["Technology at scale", "AI-enhanced assessments"],
+        limitations: ["Less consulting depth", "Platform vs. advisory model", "Limited org transformation capability"]
+      }
+    }
+  },
+  {
+    id: "gallup",
+    name: "Gallup",
+    shortName: "Gallup",
+    category: "boutique",
+    website: "gallup.com",
+    description: "Analytics and advice firm focused on engagement and strengths",
+    solutionAreas: ["DEVELOP", "ANALYTICS"],
+    offerings: {
+      DEVELOP: {
+        name: "CliftonStrengths",
+        description: "Strengths-based development and team building",
+        strengths: ["Strong brand recognition", "Simple methodology", "Large coach network"],
+        limitations: ["Narrow focus on strengths", "Less comprehensive L&D", "Limited leadership assessment depth"]
+      },
+      ANALYTICS: {
+        name: "Gallup Q12 Engagement",
+        description: "Employee engagement surveys and analytics",
+        strengths: ["Industry benchmark", "Research credibility", "Simple metrics"],
+        limitations: ["Narrow engagement focus", "Less predictive analytics", "Limited talent assessment integration"]
+      }
+    }
+  },
+  {
+    id: "bts",
+    name: "BTS",
+    shortName: "BTS",
+    category: "boutique",
+    website: "bts.com",
+    description: "Strategy execution and leadership development firm",
+    solutionAreas: ["DEVELOP", "COMMERCIAL"],
+    offerings: {
+      DEVELOP: {
+        name: "BTS Leadership Programs",
+        description: "Experiential learning and business simulations",
+        strengths: ["Business simulation expertise", "Strategy alignment", "Custom programs"],
+        limitations: ["Less assessment depth", "Limited succession planning", "Smaller global footprint"]
+      },
+      COMMERCIAL: {
+        name: "Sales Transformation",
+        description: "Sales effectiveness and commercial capability",
+        strengths: ["Business simulation", "Sales training expertise"],
+        limitations: ["Less assessment integration", "Limited reward expertise", "Smaller delivery network"]
+      }
+    }
+  }
+];
+
+// Korn Ferry's key differentiators
+export const KORN_FERRY_DIFFERENTIATORS: KornFerryDifferentiator[] = [
+  {
+    id: "four-dimensions",
+    title: "Four Dimensions of Leadership & Professional Success",
+    description: "Proprietary framework integrating competencies, traits, drivers, and experiences - validated across 70+ million assessments",
+    proofPoints: [
+      "Based on 70+ million leadership assessments",
+      "Predictive validity proven across 4,000+ studies",
+      "Integrates personality, cognitive ability, and behavioral competencies",
+      "Connected to business outcomes through validated research"
+    ],
+    relevantSolutionAreas: ["ASSESS", "DEVELOP"],
+    competitiveAdvantageVs: ["shl", "gallup", "egon_zehnder", "heidrick", "mercer"]
+  },
+  {
+    id: "success-profiles",
+    title: "Success Profiles Methodology",
+    description: "Data-driven role profiling that defines what great looks like at every level - beyond generic competency models",
+    proofPoints: [
+      "Benchmarked against 4+ million role profiles",
+      "Links role requirements to organizational strategy",
+      "Integrates with hiring, development, and succession",
+      "Predictively valid for performance outcomes"
+    ],
+    relevantSolutionAreas: ["ASSESS", "DEVELOP", "TRANSFORM"],
+    competitiveAdvantageVs: ["mckinsey", "deloitte", "mercer", "shl"]
+  },
+  {
+    id: "pay-data",
+    title: "World's Largest Compensation Database",
+    description: "Compensation data covering 30+ million incumbents across 25,000 organizations in 150+ countries",
+    proofPoints: [
+      "30+ million incumbents in database",
+      "25,000+ participating organizations",
+      "150+ countries covered",
+      "Real-time market intelligence"
+    ],
+    relevantSolutionAreas: ["REWARD"],
+    competitiveAdvantageVs: ["deloitte", "mckinsey"]
+  },
+  {
+    id: "integrated-solutions",
+    title: "End-to-End Talent Lifecycle Integration",
+    description: "Unique ability to connect assessment, development, succession, and rewards into coherent talent strategy",
+    proofPoints: [
+      "Single platform connecting all talent processes",
+      "Data flows between hiring, development, and succession",
+      "Consistent competency language across solutions",
+      "Unified analytics and reporting"
+    ],
+    relevantSolutionAreas: ["ASSESS", "DEVELOP", "TRANSFORM", "REWARD", "ANALYTICS"],
+    competitiveAdvantageVs: ["mckinsey", "deloitte", "egon_zehnder", "heidrick", "gallup", "bts"]
+  },
+  {
+    id: "kf-listen",
+    title: "KF Listen - Real-time Employee Insights",
+    description: "Continuous listening platform that captures employee sentiment and links it to business outcomes",
+    proofPoints: [
+      "AI-powered sentiment analysis",
+      "Links engagement to turnover risk",
+      "Predictive analytics for retention",
+      "Actionable manager dashboards"
+    ],
+    relevantSolutionAreas: ["ANALYTICS", "DEVELOP"],
+    competitiveAdvantageVs: ["gallup", "deloitte"]
+  },
+  {
+    id: "kf-sell",
+    title: "KF Sell - Commercial Excellence",
+    description: "Comprehensive sales effectiveness solution combining assessment, training, and methodology",
+    proofPoints: [
+      "Proven ROI in 500+ sales transformations",
+      "Integration with CRM and sales analytics",
+      "Proprietary sales competency framework",
+      "End-to-end from hiring to development to compensation"
+    ],
+    relevantSolutionAreas: ["COMMERCIAL"],
+    competitiveAdvantageVs: ["bts", "deloitte", "mckinsey"]
+  },
+  {
+    id: "ai-ready-leader",
+    title: "AI-Ready Leader Development",
+    description: "Purpose-built programs to prepare leaders for Human+AI collaboration and ethical AI governance",
+    proofPoints: [
+      "Developed with latest AI research",
+      "Focuses on AI literacy AND ethical judgment",
+      "Practical AI adoption frameworks",
+      "Integrated with leadership assessment"
+    ],
+    relevantSolutionAreas: ["DEVELOP"],
+    competitiveAdvantageVs: ["mckinsey", "deloitte", "bts", "gallup"]
+  }
+];
+
+// Solution area competitive comparisons
+export const COMPETITIVE_COMPARISONS: CompetitorComparison[] = [
+  {
+    solutionArea: "ASSESS",
+    kornFerryStrengths: [
+      "Four Dimensions framework validated on 70M+ assessments",
+      "Success Profiles methodology linking roles to strategy",
+      "Executive assessment with search legacy",
+      "Full integration with development and succession"
+    ],
+    competitorWeaknesses: {
+      "shl": ["Product-centric vs. consulting model", "Limited strategic advisory", "No development integration"],
+      "mercer": ["Acquired assessment platform", "Limited executive depth", "Transactional focus"],
+      "egon_zehnder": ["Narrower solution set", "Less scalable", "Limited analytics"],
+      "heidrick": ["Smaller consulting practice", "Less programmatic capability"]
+    },
+    battleCards: [
+      {
+        scenario: "Client wants high-volume assessment for early-career hiring",
+        kornFerryResponse: "Combine Korn Ferry Assess with Success Profiles to ensure assessments predict job success, not just test scores. Show ROI through quality-of-hire tracking.",
+        winTheme: "Predictive validity and business outcomes"
+      },
+      {
+        scenario: "Client considering SHL for cost reasons",
+        kornFerryResponse: "Highlight that assessment is only valuable if it predicts performance. Show our validation studies and offer to prove ROI through a pilot with measurable outcomes.",
+        winTheme: "Business impact over cost-per-assessment"
+      }
+    ]
+  },
+  {
+    solutionArea: "DEVELOP",
+    kornFerryStrengths: [
+      "Assessment-led development with personalized journeys",
+      "World's largest leadership development faculty",
+      "Business impact measurement methodology",
+      "AI-Ready Leader capability"
+    ],
+    competitorWeaknesses: {
+      "mckinsey": ["Limited proprietary assessment", "Generalist approach", "Less measurement rigor"],
+      "gallup": ["Narrow strengths focus", "Limited leadership depth", "No succession integration"],
+      "bts": ["Less assessment depth", "Limited succession planning", "Smaller footprint"],
+      "egon_zehnder": ["Less programmatic L&D", "Smaller scale", "Limited measurement"]
+    },
+    battleCards: [
+      {
+        scenario: "Client wants McKinsey for leadership development",
+        kornFerryResponse: "Acknowledge McKinsey's strategy credibility, then position our differentiated assessment-led approach that creates personalized development journeys with measurable behavior change.",
+        winTheme: "Personalization and measurement"
+      },
+      {
+        scenario: "Client considering Gallup for engagement and development",
+        kornFerryResponse: "Strengths are important but insufficient. Show how our Four Dimensions approach provides a more complete picture of leadership potential and development needs.",
+        winTheme: "Comprehensive vs. one-dimensional"
+      }
+    ]
+  },
+  {
+    solutionArea: "TRANSFORM",
+    kornFerryStrengths: [
+      "Integration of organization design with talent strategy",
+      "M&A expertise with cultural integration",
+      "Workforce planning with analytics",
+      "Change leadership development"
+    ],
+    competitorWeaknesses: {
+      "mckinsey": ["Less depth in talent", "Higher cost", "More strategy than implementation"],
+      "deloitte": ["More technology-focused", "Less people expertise", "Variable consultant quality"]
+    },
+    battleCards: [
+      {
+        scenario: "Client wants McKinsey for operating model redesign",
+        kornFerryResponse: "Acknowledge McKinsey's strategy capability, but highlight that org design fails without the right talent strategy. Position our integrated approach combining structure with capability building.",
+        winTheme: "Structure + Talent integration"
+      },
+      {
+        scenario: "Client considering Deloitte for M&A integration",
+        kornFerryResponse: "Deloitte excels at systems integration. For people integration - cultural alignment, leadership retention, capability transfer - our expertise in assessment and culture is unmatched.",
+        winTheme: "People-focused M&A success"
+      }
+    ]
+  },
+  {
+    solutionArea: "REWARD",
+    kornFerryStrengths: [
+      "World's largest compensation database (30M+ incumbents)",
+      "Total Rewards Optimization methodology",
+      "Pay equity expertise with analytics",
+      "Integration with job architecture and success profiles"
+    ],
+    competitorWeaknesses: {
+      "mercer": ["Transactional survey focus", "Less strategic advisory", "Limited assessment integration"],
+      "deloitte": ["Smaller pay database", "Less specialized expertise", "More technology focus"]
+    },
+    battleCards: [
+      {
+        scenario: "Client wants Mercer for compensation benchmarking",
+        kornFerryResponse: "Acknowledge Mercer's data, but highlight our Total Rewards Optimization approach that maximizes perceived employee value per dollar spent, not just market positioning.",
+        winTheme: "Strategic optimization over benchmarking"
+      },
+      {
+        scenario: "Client needs pay equity analysis",
+        kornFerryResponse: "Our pay equity methodology combines the world's largest database with job architecture expertise. We don't just identify gaps - we help fix root causes in job structures and practices.",
+        winTheme: "Root cause analysis and sustainable solutions"
+      }
+    ]
+  },
+  {
+    solutionArea: "COMMERCIAL",
+    kornFerryStrengths: [
+      "End-to-end sales transformation capability",
+      "Assessment integration for sales hiring",
+      "Sales compensation expertise",
+      "Proven ROI methodology"
+    ],
+    competitorWeaknesses: {
+      "bts": ["Less assessment integration", "Limited reward expertise", "Smaller network"],
+      "deloitte": ["Less sales-specific expertise", "Technology focus over behavior"]
+    },
+    battleCards: [
+      {
+        scenario: "Client considering BTS for sales training",
+        kornFerryResponse: "Training alone doesn't transform sales. Show how KF Sell integrates assessment (hire better), development (build capability), and compensation (motivate right behaviors) for sustainable sales improvement.",
+        winTheme: "Integrated transformation over training"
+      }
+    ]
+  },
+  {
+    solutionArea: "ANALYTICS",
+    kornFerryStrengths: [
+      "Talent analytics connected to business outcomes",
+      "Predictive models validated on our assessment data",
+      "Turnover risk and succession analytics",
+      "Integration with KF Listen and broader data"
+    ],
+    competitorWeaknesses: {
+      "deloitte": ["Less behavioral science", "Technology platform focus", "Fewer validity studies"],
+      "gallup": ["Narrow engagement focus", "Less predictive analytics", "Limited assessment data"],
+      "shl": ["Platform vs. advisory", "Limited consulting depth"]
+    },
+    battleCards: [
+      {
+        scenario: "Client wants people analytics platform",
+        kornFerryResponse: "Analytics without action is just reporting. Show how our analytics are connected to interventions - assessment, development, succession - so insights translate to impact.",
+        winTheme: "Insights to action"
+      }
+    ]
+  }
+];
+
+// Helper functions for competitive intelligence
+export function getCompetitorsBySolutionArea(solutionArea: string): Competitor[] {
+  return COMPETITORS.filter(c => c.solutionAreas.includes(solutionArea));
+}
+
+export function getCompetitorById(id: string): Competitor | undefined {
+  return COMPETITORS.find(c => c.id === id);
+}
+
+export function getDifferentiatorsBySolutionArea(solutionArea: string): KornFerryDifferentiator[] {
+  return KORN_FERRY_DIFFERENTIATORS.filter(d => d.relevantSolutionAreas.includes(solutionArea));
+}
+
+export function getDifferentiatorsVsCompetitor(competitorId: string): KornFerryDifferentiator[] {
+  return KORN_FERRY_DIFFERENTIATORS.filter(d => d.competitiveAdvantageVs.includes(competitorId));
+}
+
+export function getCompetitiveComparison(solutionArea: string): CompetitorComparison | undefined {
+  return COMPETITIVE_COMPARISONS.find(c => c.solutionArea === solutionArea);
+}
+
+export function getCompetitorSummary(): string {
+  return COMPETITORS.map(c => 
+    `${c.name} (${c.category}): Competes in ${c.solutionAreas.join(", ")}`
+  ).join("\n");
+}
