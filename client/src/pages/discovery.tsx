@@ -26,6 +26,7 @@ import ValueCaseBuilder from "@/components/ValueCaseBuilder";
 import ProjectSelector from "@/components/ProjectSelector";
 import StatusBadge from "@/components/StatusBadge";
 import KPIRecommendationDialog from "@/components/KPIRecommendationDialog";
+import CompetitiveIntelligence from "@/components/CompetitiveIntelligence";
 import { ArrowRight, Save, FileText, Plus, Trash2, Sparkles, MessageSquarePlus, Briefcase, ExternalLink, Upload, Mic, X, File, Share2, Copy, Check, Users, Loader2, CheckCircle, Target, TrendingDown, TrendingUp, Activity, Award, Building, Calendar, AlertCircle, ChevronDown, Lightbulb, BarChart3, MessageSquare, Edit, Lock, Unlock, Flag, GripVertical, Layers, RefreshCw, Star } from "lucide-react";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { AppTour } from "@/components/AppTour";
@@ -2518,6 +2519,21 @@ export default function Discovery() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Competitive Intelligence Section */}
+            {projectId && project && (
+              <CompetitiveIntelligence
+                projectId={projectId}
+                companyName={project.companyName}
+                solutionAreas={dataPoints
+                  .map(dp => dp.solutionArea)
+                  .filter((area): area is "ASSESS" | "DEVELOP" | "TRANSFORM" | "REWARD" | "COMMERCIAL" | "ANALYTICS" => 
+                    area !== null && area !== undefined
+                  )
+                  .filter((area, index, self) => self.indexOf(area) === index)
+                }
+              />
+            )}
           </TabsContent>
 
 
