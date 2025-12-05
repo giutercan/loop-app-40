@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "./storage";
-import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale, generateStrategicPillars, generateStorySuggestion, generateDiscoveryKpiSuggestions, enrichContactWithAI, openai } from "./ai";
+import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale, generateStrategicPillars, generateStorySuggestion, generateDiscoveryKpiSuggestions, enrichContactWithAI, openai, generateCompetitiveIntelligence } from "./ai";
 import { z } from "zod";
 import crypto from "crypto";
 import { OUTCOME_JOURNEY_TEMPLATES, type SolutionPatternId } from "@shared/value-frameworks";
@@ -7939,6 +7939,178 @@ Respond in JSON format:
         res.json({ exists: false });
       }
     } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // COMPETITIVE INTELLIGENCE ROUTES
+  // ============================================================================
+
+  // GET /api/projects/:projectId/competitive-intelligence - Get all competitive intelligence for a project
+  app.get("/api/projects/:projectId/competitive-intelligence", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      if (isNaN(projectId)) {
+        return res.status(400).json({ error: "Invalid project ID" });
+      }
+      
+      const [competitiveIntel, competitiveSummary] = await Promise.all([
+        storage.getCompetitiveIntelligence(projectId),
+        storage.getCompetitiveSummary(projectId)
+      ]);
+      
+      res.json({ 
+        positioning: competitiveIntel,
+        summary: competitiveSummary || null
+      });
+    } catch (error: any) {
+      console.error("Error fetching competitive intelligence:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/projects/:projectId/competitive-intelligence/generate - Generate AI-powered competitive intelligence
+  app.post("/api/projects/:projectId/competitive-intelligence/generate", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      if (isNaN(projectId)) {
+        return res.status(400).json({ error: "Invalid project ID" });
+      }
+      
+      // Validate request body
+      const requestSchema = z.object({
+        solutionAreas: z.array(z.enum(["ASSESS", "DEVELOP", "TRANSFORM", "REWARD", "COMMERCIAL", "ANALYTICS"])).min(1),
+        regenerate: z.boolean().optional()
+      });
+      
+      const parseResult = requestSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: "Invalid request body", details: parseResult.error });
+      }
+      
+      const { solutionAreas, regenerate } = parseResult.data;
+      
+      // Get project data for context
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Check if we already have intelligence and regenerate is not requested
+      const existingSummary = await storage.getCompetitiveSummary(projectId);
+      if (existingSummary && !regenerate) {
+        return res.status(200).json({ 
+          message: "Competitive intelligence already exists. Set regenerate: true to refresh.",
+          summary: existingSummary
+        });
+      }
+      
+      // Gather context from project
+      const [dataPoints, discoverySynthesis] = await Promise.all([
+        storage.getCompanyDataPoints(projectId),
+        Promise.resolve(project.discoverySynthesis) // Already on the project
+      ]);
+      
+      // Generate competitive intelligence using AI
+      const result = await generateCompetitiveIntelligence({
+        companyName: project.companyName,
+        industry: project.sector || undefined,
+        discoveryTheme: project.discoveryTheme || undefined,
+        discoverySynthesis: discoverySynthesis || undefined,
+        dataPoints: dataPoints.map(dp => ({
+          label: dp.label,
+          value: dp.value,
+          solutionArea: dp.solutionArea,
+          kornFerryPillar: dp.kornFerryPillar
+        })),
+        solutionAreas
+      });
+      
+      // Clear existing intelligence if regenerating
+      if (regenerate) {
+        await storage.deleteAllCompetitiveIntelligenceForProject(projectId);
+        await storage.deleteCompetitiveSummary(projectId);
+      }
+      
+      // Save the summary
+      await storage.upsertCompetitiveSummary({
+        projectId,
+        executiveSummary: result.executiveSummary,
+        primaryCompetitors: result.primaryCompetitors,
+        competitorLikelihood: result.competitorLikelihood,
+        kornFerryDifferentiators: result.kornFerryDifferentiators,
+        keyWinThemes: result.keyWinThemes,
+        avoidThemes: result.avoidThemes,
+        industryContext: result.industryContext
+      });
+      
+      // Save individual competitor positioning
+      for (const pos of result.positioning) {
+        await storage.createCompetitiveIntelligence({
+          projectId,
+          solutionArea: pos.solutionArea as "ASSESS" | "DEVELOP" | "TRANSFORM" | "REWARD" | "COMMERCIAL" | "ANALYTICS",
+          competitorId: pos.competitorId,
+          competitorName: pos.competitorName,
+          contextualPositioning: pos.contextualPositioning,
+          clientSpecificAdvantages: pos.clientSpecificAdvantages,
+          conversationStarters: pos.conversationStarters,
+          battleCardScenario: pos.battleCardScenario,
+          battleCardResponse: pos.battleCardResponse,
+          winTheme: pos.winTheme
+        });
+      }
+      
+      res.json({
+        success: true,
+        message: `Generated competitive intelligence for ${result.positioning.length} competitors`,
+        summary: result
+      });
+    } catch (error: any) {
+      console.error("Error generating competitive intelligence:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/projects/:projectId/competitive-intelligence/by-solution/:solutionArea - Get competitive intel by solution area
+  app.get("/api/projects/:projectId/competitive-intelligence/by-solution/:solutionArea", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const solutionArea = req.params.solutionArea;
+      
+      if (isNaN(projectId)) {
+        return res.status(400).json({ error: "Invalid project ID" });
+      }
+      
+      const validAreas = ["ASSESS", "DEVELOP", "TRANSFORM", "REWARD", "COMMERCIAL", "ANALYTICS"];
+      if (!validAreas.includes(solutionArea)) {
+        return res.status(400).json({ error: `Invalid solution area. Must be one of: ${validAreas.join(", ")}` });
+      }
+      
+      const positioning = await storage.getCompetitiveIntelligenceBySolutionArea(projectId, solutionArea);
+      res.json({ positioning });
+    } catch (error: any) {
+      console.error("Error fetching competitive intelligence by solution area:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/projects/:projectId/competitive-intelligence - Clear all competitive intelligence for a project
+  app.delete("/api/projects/:projectId/competitive-intelligence", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      if (isNaN(projectId)) {
+        return res.status(400).json({ error: "Invalid project ID" });
+      }
+      
+      await Promise.all([
+        storage.deleteAllCompetitiveIntelligenceForProject(projectId),
+        storage.deleteCompetitiveSummary(projectId)
+      ]);
+      
+      res.json({ success: true, message: "Competitive intelligence cleared" });
+    } catch (error: any) {
+      console.error("Error clearing competitive intelligence:", error);
       res.status(500).json({ error: error.message });
     }
   });
