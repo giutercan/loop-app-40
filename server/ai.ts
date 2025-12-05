@@ -3662,19 +3662,28 @@ export async function generateCompetitiveIntelligence(
   }
   
   // Build the competitive knowledge context
-  const competitorContext = relevantCompetitors.map(c => `
+  const competitorContext = relevantCompetitors.map(c => {
+    // Extract strengths and limitations from all offerings
+    const allStrengths: string[] = [];
+    const allLimitations: string[] = [];
+    Object.values(c.offerings).forEach(offering => {
+      allStrengths.push(...(offering.strengths || []));
+      allLimitations.push(...(offering.limitations || []));
+    });
+    
+    return `
 COMPETITOR: ${c.name} (${c.id})
 Category: ${c.category}
-Focus Areas: ${c.focusAreas.join(", ")}
-Strengths: ${c.strengths.join("; ")}
-Weaknesses: ${c.weaknesses.join("; ")}
-Where They Win: ${c.whereTheyWin.join("; ")}
-`).join("\n");
+Solution Areas: ${c.solutionAreas.join(", ")}
+Strengths: ${allStrengths.slice(0, 5).join("; ") || "Not specified"}
+Weaknesses/Limitations: ${allLimitations.slice(0, 5).join("; ") || "Not specified"}
+`;
+  }).join("\n");
 
   const differentiatorContext = relevantDifferentiators.map(d => `
-DIFFERENTIATOR: ${d.name}
+DIFFERENTIATOR: ${d.title}
 Description: ${d.description}
-Evidence: ${d.evidencePoints.join("; ")}
+Evidence: ${d.proofPoints.join("; ")}
 Competitive Advantage vs: ${d.competitiveAdvantageVs.join(", ")}
 `).join("\n");
 
