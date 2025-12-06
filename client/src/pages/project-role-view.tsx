@@ -123,6 +123,7 @@ import { useDemoMode } from "@/demo/DemoModeContext";
 import { JourneyLoopVisualizer } from "@/components/JourneyLoopVisualizer";
 import { UnifiedJourneyTimeline } from "@/components/UnifiedJourneyTimeline";
 import CompetitiveIntelligence from "@/components/CompetitiveIntelligence";
+import KpiOutcomeSelector from "@/components/KpiOutcomeSelector";
 import { JOURNEY_LOOP_STAGES, UNIFIED_JOURNEY_PHASES, createUnifiedJourney } from "@shared/value-frameworks";
 
 type Role = "sales" | "consultant" | "delivery" | "csm" | "client_sponsor";
@@ -3239,6 +3240,42 @@ export default function ProjectRoleView() {
 
     return (
       <div className="space-y-6">
+        {/* KPI-First Outcome Selector */}
+        <KpiOutcomeSelector
+          projectId={projectId}
+          discoveryTheme={(() => {
+            const themeMap: Record<string, string> = {
+              "leadership": "Leadership Development",
+              "talent-acquisition": "Talent Acquisition",
+              "engagement": "Employee Engagement",
+              "sales-effectiveness": "Sales Transformation",
+              "transformation": "Organizational Design",
+              "rewards": "Total Rewards",
+              "succession": "Succession Planning",
+              "culture": "Culture Transformation",
+              "kf-full-search": "Leadership Development"
+            };
+            return themeMap[selectedDiscoveryTheme || ""] || undefined;
+          })()}
+          solutionAreas={selectedDiscoveryTheme ? 
+            (selectedDiscoveryTheme === "kf-full-search" 
+              ? ["ASSESS", "DEVELOP", "TRANSFORM", "REWARD", "COMMERCIAL", "ANALYTICS"]
+              : selectedDiscoveryTheme === "leadership" ? ["DEVELOP", "ASSESS"]
+              : selectedDiscoveryTheme === "talent-acquisition" ? ["ASSESS", "DEVELOP"]
+              : selectedDiscoveryTheme === "transformation" ? ["TRANSFORM", "ANALYTICS"]
+              : selectedDiscoveryTheme === "rewards" ? ["REWARD"]
+              : selectedDiscoveryTheme === "sales-effectiveness" ? ["COMMERCIAL"]
+              : ["ASSESS", "DEVELOP", "TRANSFORM"]
+            ) : []
+          }
+          onKpisSelected={(kpiIds) => {
+            console.log("Selected KPIs:", kpiIds);
+          }}
+          onOutcomesSelected={(outcomeIds) => {
+            console.log("Selected Outcomes:", outcomeIds);
+          }}
+        />
+
         {/* Header */}
         <Card className="bg-gradient-to-r from-violet-500/5 to-purple-500/5 border-violet-500/20">
           <CardHeader>
