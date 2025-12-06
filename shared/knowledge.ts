@@ -1348,3 +1348,699 @@ export function getCompetitorSummary(): string {
     `${c.name} (${c.category}): Competes in ${c.solutionAreas.join(", ")}`
   ).join("\n");
 }
+
+// ============================================================================
+// KPI LIBRARY - Measurable outcomes with KF success story mappings
+// ============================================================================
+
+export interface KFSuccessStory {
+  id: string;
+  title: string;
+  client: string; // Anonymized or public client name
+  industry: string;
+  metric: string; // The measurable result
+  description: string;
+  year: number;
+  solutionUsed: string; // KF solution/product used
+}
+
+export interface KpiDefinition {
+  id: string;
+  name: string;
+  category: "leadership" | "talent_acquisition" | "employee_experience" | "sales" | "organizational" | "rewards";
+  description: string;
+  metricType: "percentage" | "score" | "days" | "ratio" | "currency" | "count";
+  typicalBaseline: string;
+  industryBenchmark: string;
+  stretchTarget: string;
+  kornFerryProven: boolean;
+  successStoryIds: string[]; // Links to KF success stories
+  relevantSolutionAreas: string[];
+  calculationHint: string;
+}
+
+export interface OutcomeDefinition {
+  id: string;
+  name: string;
+  description: string;
+  linkedKpiIds: string[]; // Which KPIs this outcome drives
+  kornFerryProven: boolean;
+  successStoryIds: string[];
+  relevantSolutionAreas: string[];
+  kfCapability: string; // Which KF product/service delivers this
+  impactStatement: string; // What success looks like
+}
+
+// Korn Ferry Success Stories - based on real case studies
+export const KF_SUCCESS_STORIES: KFSuccessStory[] = [
+  {
+    id: "healthcare-exec-placement",
+    title: "Healthcare Executive Placement Excellence",
+    client: "Fortune 100 Healthcare Companies",
+    industry: "Healthcare",
+    metric: "1,000+ healthcare executives placed with 45% diversity (33% women, 25% POC)",
+    description: "Placed over 1,000 healthcare executives in 5 years, serving 12 of Fortune 100 healthcare companies with industry-leading diversity outcomes.",
+    year: 2024,
+    solutionUsed: "Executive Search"
+  },
+  {
+    id: "rpo-construction",
+    title: "Major Construction RPO Transformation",
+    client: "Major Construction Company",
+    industry: "Construction",
+    metric: "44% DE&I hires achieved, 96% offer acceptance rate, 88% hiring manager satisfaction",
+    description: "Delivered 1,700+ hires with exceptional diversity outcomes, nearly doubling the client's 25% DE&I target.",
+    year: 2024,
+    solutionUsed: "RPO"
+  },
+  {
+    id: "allianz-engagement",
+    title: "Global Insurance Leader Employee Engagement",
+    client: "Allianz (World's Largest Insurance Company)",
+    industry: "Insurance",
+    metric: "Enhanced team performance through comprehensive engagement measurement",
+    description: "Used Korn Ferry Listen technology and consulting expertise to improve employee engagement and team effectiveness.",
+    year: 2024,
+    solutionUsed: "Korn Ferry Listen"
+  },
+  {
+    id: "state-farm-leadership",
+    title: "Mutual Insurance Leadership Pipeline",
+    client: "Major Mutual Insurance Company",
+    industry: "Insurance",
+    metric: "Developed leadership pipeline with improved talent development strategies",
+    description: "Used Korn Ferry Assess to build a robust leadership succession pipeline and enhance talent development programs.",
+    year: 2024,
+    solutionUsed: "Korn Ferry Assess"
+  },
+  {
+    id: "telstra-nps",
+    title: "Telecommunications NPS Improvement",
+    client: "Major Australian Telecommunications Provider",
+    industry: "Telecommunications",
+    metric: "Improved NPS scores through customer service training",
+    description: "Partnered to provide comprehensive customer service training that directly improved Net Promoter Scores.",
+    year: 2024,
+    solutionUsed: "Professional Development"
+  },
+  {
+    id: "brenntag-sales",
+    title: "Chemical Distribution Sales Transformation",
+    client: "Global Chemical & Ingredients Distributor",
+    industry: "Chemical Distribution",
+    metric: "Implemented consistent global sales processes driving revenue growth",
+    description: "Helped implement consistent sales processes across global operations through Korn Ferry Sell methodology.",
+    year: 2024,
+    solutionUsed: "Korn Ferry Sell"
+  },
+  {
+    id: "imi-sales-culture",
+    title: "Engineering Company Sales Culture",
+    client: "Global Engineering Company",
+    industry: "Engineering",
+    metric: "Improved sales processes and built culture of success",
+    description: "Transformed sales effectiveness through Korn Ferry Sell, embedding a winning sales culture.",
+    year: 2024,
+    solutionUsed: "Korn Ferry Sell"
+  },
+  {
+    id: "natwest-talent",
+    title: "UK Financial Institution Talent Strategy",
+    client: "Major UK Financial Institution",
+    industry: "Financial Services",
+    metric: "Advanced talent strategy using assessment products",
+    description: "Used Korn Ferry Assess products to advance talent strategy and improve leadership selection.",
+    year: 2024,
+    solutionUsed: "Korn Ferry Assess"
+  },
+  {
+    id: "asml-talent-mgmt",
+    title: "Semiconductor Leader Talent Management",
+    client: "Global Semiconductor Industry Supplier",
+    industry: "Technology",
+    metric: "Enabled strong talent management structure",
+    description: "Built comprehensive talent management infrastructure for a leading semiconductor supplier.",
+    year: 2024,
+    solutionUsed: "Talent Management Consulting"
+  },
+  {
+    id: "maersk-transformation",
+    title: "Maersk Human-Centric Talent Strategy",
+    client: "Maersk",
+    industry: "Logistics & Transportation",
+    metric: "Transformational talent management strategy opening new business horizons",
+    description: "Developed new human-centric talent management strategy transforming the organization.",
+    year: 2023,
+    solutionUsed: "Organizational Transformation"
+  },
+  {
+    id: "goodyear-ld",
+    title: "Tire Company Global L&D Framework",
+    client: "Major North American Tire Company",
+    industry: "Manufacturing",
+    metric: "Integrated global learning and development framework",
+    description: "Developed and integrated a global L&D framework for consistent leadership development.",
+    year: 2024,
+    solutionUsed: "Leadership Development"
+  },
+  {
+    id: "biopharma-rpo",
+    title: "Biopharmaceutical Global RPO Partnership",
+    client: "Global Biopharmaceutical Company",
+    industry: "Healthcare & Life Sciences",
+    metric: "Complete recruitment solution with improved talent acquisition",
+    description: "Implemented end-to-end recruitment solution improving talent acquisition processes globally.",
+    year: 2024,
+    solutionUsed: "RPO"
+  }
+];
+
+// KPI Library - organized by category
+export const KPI_LIBRARY: KpiDefinition[] = [
+  // Leadership KPIs
+  {
+    id: "succession-readiness",
+    name: "Leadership Succession Readiness",
+    category: "leadership",
+    description: "Percentage of critical leadership roles with at least one ready-now successor identified and validated",
+    metricType: "percentage",
+    typicalBaseline: "35%",
+    industryBenchmark: "65%",
+    stretchTarget: "85%",
+    kornFerryProven: true,
+    successStoryIds: ["state-farm-leadership", "maersk-transformation"],
+    relevantSolutionAreas: ["ASSESS", "DEVELOP"],
+    calculationHint: "Ready-now successors / Critical leadership positions × 100"
+  },
+  {
+    id: "leadership-bench-strength",
+    name: "Leadership Bench Strength",
+    category: "leadership",
+    description: "Average number of ready successors per critical leadership role",
+    metricType: "ratio",
+    typicalBaseline: "0.8",
+    industryBenchmark: "1.5",
+    stretchTarget: "2.0",
+    kornFerryProven: true,
+    successStoryIds: ["state-farm-leadership"],
+    relevantSolutionAreas: ["ASSESS", "DEVELOP"],
+    calculationHint: "Total ready successors / Critical roles"
+  },
+  {
+    id: "hipo-retention",
+    name: "High-Potential Retention Rate",
+    category: "leadership",
+    description: "Percentage of identified high-potential employees retained year-over-year",
+    metricType: "percentage",
+    typicalBaseline: "75%",
+    industryBenchmark: "88%",
+    stretchTarget: "95%",
+    kornFerryProven: true,
+    successStoryIds: ["maersk-transformation"],
+    relevantSolutionAreas: ["ASSESS", "DEVELOP", "REWARD"],
+    calculationHint: "HiPos retained / HiPos at start of period × 100"
+  },
+  {
+    id: "leadership-effectiveness",
+    name: "Leadership Effectiveness Score",
+    category: "leadership",
+    description: "Average leadership effectiveness rating from 360 assessments or engagement surveys",
+    metricType: "score",
+    typicalBaseline: "3.2/5",
+    industryBenchmark: "3.8/5",
+    stretchTarget: "4.2/5",
+    kornFerryProven: true,
+    successStoryIds: ["goodyear-ld", "state-farm-leadership"],
+    relevantSolutionAreas: ["ASSESS", "DEVELOP"],
+    calculationHint: "Average of leadership assessment scores"
+  },
+
+  // Talent Acquisition KPIs
+  {
+    id: "time-to-fill",
+    name: "Time to Fill Critical Roles",
+    category: "talent_acquisition",
+    description: "Average number of days to fill critical/leadership positions",
+    metricType: "days",
+    typicalBaseline: "90 days",
+    industryBenchmark: "60 days",
+    stretchTarget: "45 days",
+    kornFerryProven: true,
+    successStoryIds: ["rpo-construction", "biopharma-rpo"],
+    relevantSolutionAreas: ["ASSESS"],
+    calculationHint: "Average days from requisition open to offer accepted"
+  },
+  {
+    id: "quality-of-hire",
+    name: "Quality of Hire Index",
+    category: "talent_acquisition",
+    description: "Composite score based on new hire performance, retention, and hiring manager satisfaction",
+    metricType: "score",
+    typicalBaseline: "65/100",
+    industryBenchmark: "78/100",
+    stretchTarget: "88/100",
+    kornFerryProven: true,
+    successStoryIds: ["rpo-construction", "healthcare-exec-placement"],
+    relevantSolutionAreas: ["ASSESS"],
+    calculationHint: "(Performance rating + 1-year retention + HM satisfaction) / 3"
+  },
+  {
+    id: "offer-acceptance",
+    name: "Offer Acceptance Rate",
+    category: "talent_acquisition",
+    description: "Percentage of job offers accepted by candidates",
+    metricType: "percentage",
+    typicalBaseline: "80%",
+    industryBenchmark: "90%",
+    stretchTarget: "96%",
+    kornFerryProven: true,
+    successStoryIds: ["rpo-construction"],
+    relevantSolutionAreas: ["ASSESS", "REWARD"],
+    calculationHint: "Offers accepted / Offers extended × 100"
+  },
+  {
+    id: "dei-hiring",
+    name: "Diversity Hiring Rate",
+    category: "talent_acquisition",
+    description: "Percentage of new hires from underrepresented groups",
+    metricType: "percentage",
+    typicalBaseline: "25%",
+    industryBenchmark: "38%",
+    stretchTarget: "45%",
+    kornFerryProven: true,
+    successStoryIds: ["rpo-construction", "healthcare-exec-placement"],
+    relevantSolutionAreas: ["ASSESS"],
+    calculationHint: "Diverse hires / Total hires × 100"
+  },
+
+  // Employee Experience KPIs
+  {
+    id: "engagement-score",
+    name: "Employee Engagement Score",
+    category: "employee_experience",
+    description: "Overall employee engagement measured through validated survey",
+    metricType: "score",
+    typicalBaseline: "62/100",
+    industryBenchmark: "72/100",
+    stretchTarget: "82/100",
+    kornFerryProven: true,
+    successStoryIds: ["allianz-engagement"],
+    relevantSolutionAreas: ["DEVELOP", "REWARD"],
+    calculationHint: "Aggregate engagement survey score"
+  },
+  {
+    id: "enps",
+    name: "Employee Net Promoter Score (eNPS)",
+    category: "employee_experience",
+    description: "Likelihood of employees recommending the organization as a place to work",
+    metricType: "score",
+    typicalBaseline: "+15",
+    industryBenchmark: "+35",
+    stretchTarget: "+50",
+    kornFerryProven: true,
+    successStoryIds: ["allianz-engagement"],
+    relevantSolutionAreas: ["DEVELOP", "REWARD"],
+    calculationHint: "% Promoters - % Detractors"
+  },
+  {
+    id: "voluntary-turnover",
+    name: "Voluntary Turnover Rate",
+    category: "employee_experience",
+    description: "Percentage of employees who voluntarily leave the organization annually",
+    metricType: "percentage",
+    typicalBaseline: "18%",
+    industryBenchmark: "12%",
+    stretchTarget: "8%",
+    kornFerryProven: true,
+    successStoryIds: ["allianz-engagement", "maersk-transformation"],
+    relevantSolutionAreas: ["DEVELOP", "REWARD"],
+    calculationHint: "Voluntary departures / Average headcount × 100"
+  },
+
+  // Sales KPIs
+  {
+    id: "sales-win-rate",
+    name: "Sales Win Rate",
+    category: "sales",
+    description: "Percentage of qualified opportunities converted to closed-won deals",
+    metricType: "percentage",
+    typicalBaseline: "22%",
+    industryBenchmark: "35%",
+    stretchTarget: "45%",
+    kornFerryProven: true,
+    successStoryIds: ["brenntag-sales", "imi-sales-culture"],
+    relevantSolutionAreas: ["COMMERCIAL"],
+    calculationHint: "Closed-won / (Closed-won + Closed-lost) × 100"
+  },
+  {
+    id: "revenue-per-seller",
+    name: "Revenue per Seller",
+    category: "sales",
+    description: "Average revenue generated per sales representative",
+    metricType: "currency",
+    typicalBaseline: "Varies by industry",
+    industryBenchmark: "Top quartile performance",
+    stretchTarget: "+25% improvement",
+    kornFerryProven: true,
+    successStoryIds: ["brenntag-sales", "imi-sales-culture"],
+    relevantSolutionAreas: ["COMMERCIAL"],
+    calculationHint: "Total revenue / Number of sellers"
+  },
+  {
+    id: "sales-cycle-length",
+    name: "Sales Cycle Length",
+    category: "sales",
+    description: "Average number of days from opportunity creation to close",
+    metricType: "days",
+    typicalBaseline: "120 days",
+    industryBenchmark: "90 days",
+    stretchTarget: "75 days",
+    kornFerryProven: true,
+    successStoryIds: ["brenntag-sales"],
+    relevantSolutionAreas: ["COMMERCIAL"],
+    calculationHint: "Average days from opportunity open to close"
+  },
+
+  // Organizational KPIs
+  {
+    id: "productivity-index",
+    name: "Workforce Productivity Index",
+    category: "organizational",
+    description: "Revenue or output per full-time equivalent employee",
+    metricType: "currency",
+    typicalBaseline: "Industry baseline",
+    industryBenchmark: "Top quartile",
+    stretchTarget: "+15% improvement",
+    kornFerryProven: true,
+    successStoryIds: ["maersk-transformation", "asml-talent-mgmt"],
+    relevantSolutionAreas: ["TRANSFORM", "ANALYTICS"],
+    calculationHint: "Revenue / FTE count"
+  },
+  {
+    id: "customer-nps",
+    name: "Customer Net Promoter Score",
+    category: "organizational",
+    description: "Customer likelihood to recommend products/services",
+    metricType: "score",
+    typicalBaseline: "+20",
+    industryBenchmark: "+40",
+    stretchTarget: "+55",
+    kornFerryProven: true,
+    successStoryIds: ["telstra-nps"],
+    relevantSolutionAreas: ["DEVELOP", "TRANSFORM"],
+    calculationHint: "% Promoters - % Detractors"
+  },
+  {
+    id: "manager-effectiveness",
+    name: "Manager Effectiveness Score",
+    category: "organizational",
+    description: "Employee ratings of their direct manager's effectiveness",
+    metricType: "score",
+    typicalBaseline: "3.4/5",
+    industryBenchmark: "4.0/5",
+    stretchTarget: "4.3/5",
+    kornFerryProven: true,
+    successStoryIds: ["goodyear-ld", "allianz-engagement"],
+    relevantSolutionAreas: ["DEVELOP"],
+    calculationHint: "Average manager effectiveness survey score"
+  },
+
+  // Rewards KPIs
+  {
+    id: "pay-equity-gap",
+    name: "Pay Equity Gap",
+    category: "rewards",
+    description: "Unexplained pay gap between demographic groups after controlling for legitimate factors",
+    metricType: "percentage",
+    typicalBaseline: "5-8%",
+    industryBenchmark: "<3%",
+    stretchTarget: "<1%",
+    kornFerryProven: true,
+    successStoryIds: [],
+    relevantSolutionAreas: ["REWARD"],
+    calculationHint: "Regression-adjusted pay gap"
+  },
+  {
+    id: "comp-competitiveness",
+    name: "Compensation Competitiveness Ratio",
+    category: "rewards",
+    description: "How pay compares to market median for comparable roles",
+    metricType: "percentage",
+    typicalBaseline: "95%",
+    industryBenchmark: "100%",
+    stretchTarget: "105%",
+    kornFerryProven: true,
+    successStoryIds: [],
+    relevantSolutionAreas: ["REWARD"],
+    calculationHint: "Average actual pay / Market median pay × 100"
+  }
+];
+
+// Outcome definitions - what actions drive KPI improvements
+export const OUTCOME_LIBRARY: OutcomeDefinition[] = [
+  // Leadership Outcomes
+  {
+    id: "build-succession-pipeline",
+    name: "Build Leadership Succession Pipeline",
+    description: "Identify, assess, and develop ready successors for all critical leadership roles",
+    linkedKpiIds: ["succession-readiness", "leadership-bench-strength", "hipo-retention"],
+    kornFerryProven: true,
+    successStoryIds: ["state-farm-leadership", "healthcare-exec-placement"],
+    relevantSolutionAreas: ["ASSESS", "DEVELOP"],
+    kfCapability: "Korn Ferry Assess + Succession Planning",
+    impactStatement: "Organizations with strong succession pipelines are 2.5x more likely to outperform peers"
+  },
+  {
+    id: "assess-leadership-potential",
+    name: "Assess Leadership Potential at Scale",
+    description: "Use validated assessments to identify high-potential leaders across the organization",
+    linkedKpiIds: ["succession-readiness", "leadership-bench-strength", "quality-of-hire"],
+    kornFerryProven: true,
+    successStoryIds: ["state-farm-leadership", "natwest-talent"],
+    relevantSolutionAreas: ["ASSESS"],
+    kfCapability: "Korn Ferry Assess - Four Dimensions",
+    impactStatement: "Based on 70M+ leadership assessments with proven predictive validity"
+  },
+  {
+    id: "accelerate-leader-development",
+    name: "Accelerate Leader Development",
+    description: "Deploy targeted development programs for emerging and senior leaders",
+    linkedKpiIds: ["leadership-effectiveness", "hipo-retention", "engagement-score"],
+    kornFerryProven: true,
+    successStoryIds: ["goodyear-ld", "maersk-transformation"],
+    relevantSolutionAreas: ["DEVELOP"],
+    kfCapability: "Leadership Development Programs",
+    impactStatement: "Integrated L&D frameworks drive 23% higher leadership effectiveness scores"
+  },
+  {
+    id: "executive-coaching",
+    name: "Deploy Executive Coaching",
+    description: "One-on-one coaching for senior leaders to accelerate performance and transition",
+    linkedKpiIds: ["leadership-effectiveness", "hipo-retention"],
+    kornFerryProven: true,
+    successStoryIds: ["state-farm-leadership"],
+    relevantSolutionAreas: ["DEVELOP"],
+    kfCapability: "Executive Coaching",
+    impactStatement: "Executive coaching delivers 5-7x ROI through improved leader performance"
+  },
+
+  // Talent Acquisition Outcomes
+  {
+    id: "implement-rpo",
+    name: "Implement RPO Solution",
+    description: "Partner with Korn Ferry for end-to-end recruitment process outsourcing",
+    linkedKpiIds: ["time-to-fill", "quality-of-hire", "offer-acceptance", "dei-hiring"],
+    kornFerryProven: true,
+    successStoryIds: ["rpo-construction", "biopharma-rpo"],
+    relevantSolutionAreas: ["ASSESS"],
+    kfCapability: "Recruitment Process Outsourcing",
+    impactStatement: "Korn Ferry RPO: #1 ranked by HRO Today, 96% offer acceptance rates"
+  },
+  {
+    id: "reduce-hiring-bias",
+    name: "Reduce Bias in Hiring Decisions",
+    description: "Implement structured assessments and training to minimize unconscious bias",
+    linkedKpiIds: ["dei-hiring", "quality-of-hire"],
+    kornFerryProven: true,
+    successStoryIds: ["rpo-construction", "healthcare-exec-placement"],
+    relevantSolutionAreas: ["ASSESS"],
+    kfCapability: "Korn Ferry Assess + Inclusive Hiring Training",
+    impactStatement: "44% DE&I hires achieved vs 25% target through structured assessment"
+  },
+  {
+    id: "executive-search",
+    name: "Executive Search for Critical Roles",
+    description: "Leverage Korn Ferry's executive search for C-suite and senior leadership hires",
+    linkedKpiIds: ["time-to-fill", "quality-of-hire", "dei-hiring"],
+    kornFerryProven: true,
+    successStoryIds: ["healthcare-exec-placement"],
+    relevantSolutionAreas: ["ASSESS"],
+    kfCapability: "Executive Search",
+    impactStatement: "Forbes #1 America's Best Executive Recruiter 2024"
+  },
+
+  // Employee Experience Outcomes
+  {
+    id: "measure-engagement",
+    name: "Implement Continuous Engagement Listening",
+    description: "Deploy Korn Ferry Listen for real-time employee engagement measurement and action",
+    linkedKpiIds: ["engagement-score", "enps", "voluntary-turnover"],
+    kornFerryProven: true,
+    successStoryIds: ["allianz-engagement"],
+    relevantSolutionAreas: ["DEVELOP"],
+    kfCapability: "Korn Ferry Listen",
+    impactStatement: "World's largest insurance company enhanced team performance through Listen"
+  },
+  {
+    id: "manager-development",
+    name: "Develop People Manager Capability",
+    description: "Train managers on employee engagement, coaching, and performance conversations",
+    linkedKpiIds: ["manager-effectiveness", "engagement-score", "voluntary-turnover"],
+    kornFerryProven: true,
+    successStoryIds: ["goodyear-ld", "allianz-engagement"],
+    relevantSolutionAreas: ["DEVELOP"],
+    kfCapability: "First-Line Essentials + Manager Development",
+    impactStatement: "Effective managers are the #1 driver of employee engagement"
+  },
+  {
+    id: "culture-transformation",
+    name: "Drive Culture Transformation",
+    description: "Align organizational culture with strategy through assessment and targeted interventions",
+    linkedKpiIds: ["engagement-score", "voluntary-turnover", "productivity-index"],
+    kornFerryProven: true,
+    successStoryIds: ["maersk-transformation"],
+    relevantSolutionAreas: ["TRANSFORM"],
+    kfCapability: "Culture Shaping",
+    impactStatement: "Human-centric talent strategy opens new business horizons"
+  },
+
+  // Sales Outcomes
+  {
+    id: "sales-methodology",
+    name: "Implement Strategic Sales Methodology",
+    description: "Deploy Korn Ferry Sell with Miller Heiman methodology for consistent sales execution",
+    linkedKpiIds: ["sales-win-rate", "revenue-per-seller", "sales-cycle-length"],
+    kornFerryProven: true,
+    successStoryIds: ["brenntag-sales", "imi-sales-culture"],
+    relevantSolutionAreas: ["COMMERCIAL"],
+    kfCapability: "Korn Ferry Sell",
+    impactStatement: "AI-enabled Blue Sheet methodology proven to improve win rates"
+  },
+  {
+    id: "sales-culture",
+    name: "Build High-Performance Sales Culture",
+    description: "Transform sales organization culture through coaching, incentives, and capability building",
+    linkedKpiIds: ["sales-win-rate", "revenue-per-seller"],
+    kornFerryProven: true,
+    successStoryIds: ["imi-sales-culture", "brenntag-sales"],
+    relevantSolutionAreas: ["COMMERCIAL"],
+    kfCapability: "Sales Transformation Consulting",
+    impactStatement: "Consistent global sales processes driving revenue growth"
+  },
+  {
+    id: "sales-talent-assessment",
+    name: "Assess and Hire Top Sales Talent",
+    description: "Use validated assessments to identify and hire salespeople with success DNA",
+    linkedKpiIds: ["sales-win-rate", "revenue-per-seller", "quality-of-hire"],
+    kornFerryProven: true,
+    successStoryIds: [],
+    relevantSolutionAreas: ["ASSESS", "COMMERCIAL"],
+    kfCapability: "Sales Assessment + Korn Ferry Assess",
+    impactStatement: "Top performers outsell average performers by 2x - assessment identifies them"
+  },
+
+  // Organizational Outcomes
+  {
+    id: "customer-service-training",
+    name: "Elevate Customer Service Capability",
+    description: "Train frontline teams on customer service excellence to drive NPS",
+    linkedKpiIds: ["customer-nps", "engagement-score"],
+    kornFerryProven: true,
+    successStoryIds: ["telstra-nps"],
+    relevantSolutionAreas: ["DEVELOP"],
+    kfCapability: "Service Ready™ Solutions",
+    impactStatement: "Customer service training directly improved NPS scores"
+  },
+  {
+    id: "org-design",
+    name: "Optimize Organization Design",
+    description: "Redesign organization structure to align with strategy and improve effectiveness",
+    linkedKpiIds: ["productivity-index", "engagement-score"],
+    kornFerryProven: true,
+    successStoryIds: ["maersk-transformation", "asml-talent-mgmt"],
+    relevantSolutionAreas: ["TRANSFORM"],
+    kfCapability: "Organization Strategy",
+    impactStatement: "Right structure enables 20%+ productivity improvement"
+  },
+  {
+    id: "workforce-planning",
+    name: "Strategic Workforce Planning",
+    description: "Build data-driven workforce plans aligned with business strategy",
+    linkedKpiIds: ["productivity-index", "time-to-fill", "succession-readiness"],
+    kornFerryProven: true,
+    successStoryIds: ["asml-talent-mgmt"],
+    relevantSolutionAreas: ["ANALYTICS", "TRANSFORM"],
+    kfCapability: "Workforce Planning + Korn Ferry Intelligence Cloud",
+    impactStatement: "Proactive workforce planning reduces talent gaps by 40%"
+  },
+
+  // Rewards Outcomes
+  {
+    id: "pay-equity-analysis",
+    name: "Conduct Pay Equity Analysis",
+    description: "Analyze and remediate unexplained pay gaps across demographic groups",
+    linkedKpiIds: ["pay-equity-gap", "engagement-score"],
+    kornFerryProven: true,
+    successStoryIds: [],
+    relevantSolutionAreas: ["REWARD"],
+    kfCapability: "Pay Equity Consulting",
+    impactStatement: "World's largest compensation database enables precise equity analysis"
+  },
+  {
+    id: "total-rewards-optimization",
+    name: "Optimize Total Rewards Strategy",
+    description: "Maximize perceived employee value per compensation dollar spent",
+    linkedKpiIds: ["comp-competitiveness", "voluntary-turnover", "engagement-score"],
+    kornFerryProven: true,
+    successStoryIds: [],
+    relevantSolutionAreas: ["REWARD"],
+    kfCapability: "Total Rewards Optimization",
+    impactStatement: "Strategic rewards drive 15% higher retention at same cost"
+  }
+];
+
+// Helper functions for KPI and Outcome lookups
+export function getKpisByCategory(category: KpiDefinition["category"]): KpiDefinition[] {
+  return KPI_LIBRARY.filter(k => k.category === category);
+}
+
+export function getKpiById(id: string): KpiDefinition | undefined {
+  return KPI_LIBRARY.find(k => k.id === id);
+}
+
+export function getKpisForSolutionArea(solutionArea: string): KpiDefinition[] {
+  return KPI_LIBRARY.filter(k => k.relevantSolutionAreas.includes(solutionArea));
+}
+
+export function getOutcomesForKpi(kpiId: string): OutcomeDefinition[] {
+  return OUTCOME_LIBRARY.filter(o => o.linkedKpiIds.includes(kpiId));
+}
+
+export function getOutcomeById(id: string): OutcomeDefinition | undefined {
+  return OUTCOME_LIBRARY.find(o => o.id === id);
+}
+
+export function getSuccessStoryById(id: string): KFSuccessStory | undefined {
+  return KF_SUCCESS_STORIES.find(s => s.id === id);
+}
+
+export function getKpiCategories(): Array<{ id: KpiDefinition["category"]; label: string }> {
+  return [
+    { id: "leadership", label: "Leadership & Succession" },
+    { id: "talent_acquisition", label: "Talent Acquisition" },
+    { id: "employee_experience", label: "Employee Experience" },
+    { id: "sales", label: "Sales Performance" },
+    { id: "organizational", label: "Organizational Effectiveness" },
+    { id: "rewards", label: "Rewards & Compensation" }
+  ];
+}
