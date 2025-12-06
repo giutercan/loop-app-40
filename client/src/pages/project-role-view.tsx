@@ -3243,6 +3243,7 @@ export default function ProjectRoleView() {
         {/* KPI-First Outcome Selector */}
         <KpiOutcomeSelector
           projectId={projectId}
+          companyName={project?.companyName}
           discoveryTheme={(() => {
             const themeMap: Record<string, string> = {
               "leadership": "Leadership Development",
@@ -3271,8 +3272,15 @@ export default function ProjectRoleView() {
           onKpisSelected={(kpiIds) => {
             console.log("Selected KPIs:", kpiIds);
           }}
-          onOutcomesSelected={(outcomeIds) => {
-            console.log("Selected Outcomes:", outcomeIds);
+          onOutcomesSelected={(outcomes) => {
+            console.log("Selected Outcomes with timelines:", outcomes);
+          }}
+          onVisionComplete={(vision) => {
+            console.log("Vision complete:", vision);
+            toast({
+              title: "Value Vision Finalized",
+              description: `${vision.kpis.length} strategic goals and ${vision.outcomes.length} outcomes ready for commitment.`
+            });
           }}
         />
 
