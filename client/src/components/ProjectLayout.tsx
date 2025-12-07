@@ -37,6 +37,7 @@ import { AppTour } from "@/components/AppTour";
 import { PhaseChecklist } from "@/components/PhaseChecklist";
 import { LogoEditDialog } from "@/components/LogoEditDialog";
 import { CommandPaletteHint } from "@/components/CommandPalette";
+import { LoopContextIndicator } from "@/components/LoopContextIndicator";
 import type { Project, Account } from "@shared/schema";
 
 interface ProjectLayoutProps {
@@ -355,6 +356,7 @@ export default function ProjectLayout({
             </div>
 
             <div className="flex items-center gap-4">
+              <LoopContextIndicator />
               <CommandPaletteHint />
               <div className="flex items-center gap-2">
                 {phases.map((phase, index) => {

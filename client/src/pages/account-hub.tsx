@@ -47,6 +47,7 @@ import {
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { AppTour } from "@/components/AppTour";
+import { LoopContextIndicator } from "@/components/LoopContextIndicator";
 
 interface InitiativeSummary {
   id: number;
@@ -321,6 +322,7 @@ export default function AccountHub() {
                     {account.tier.charAt(0).toUpperCase() + account.tier.slice(1)}
                   </Badge>
                 )}
+                <LoopContextIndicator />
               </div>
               <p className="text-muted-foreground">
                 {account.industry || "No industry specified"} 
