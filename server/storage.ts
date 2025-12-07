@@ -54,7 +54,9 @@ import type {
   EvidenceArtefact, InsertEvidenceArtefact,
   AccountHub, LifecyclePhase,
   KpiCommitment, InsertKpiCommitment,
-  HandoffPacket, InsertHandoffPacket
+  HandoffPacket, InsertHandoffPacket,
+  AiSession, InsertAiSession,
+  AiMessage, InsertAiMessage
 } from "@shared/schema";
 
 export interface IStorage {
@@ -371,6 +373,22 @@ export interface IStorage {
   getCompetitiveSummary(projectId: number): Promise<schema.CompetitiveSummary | undefined>;
   upsertCompetitiveSummary(summary: schema.InsertCompetitiveSummary): Promise<schema.CompetitiveSummary>;
   deleteCompetitiveSummary(projectId: number): Promise<void>;
+  
+  // ============================================================================
+  // AI COMPANION - Session and Message tracking
+  // ============================================================================
+  
+  // AI Sessions
+  getAiSession(sessionId: string): Promise<AiSession | undefined>;
+  getAiSessionsByContext(accountId?: number, projectId?: number): Promise<AiSession[]>;
+  createAiSession(session: InsertAiSession): Promise<AiSession>;
+  updateAiSession(sessionId: string, session: Partial<InsertAiSession>): Promise<AiSession | undefined>;
+  deleteAiSession(sessionId: string): Promise<void>;
+  
+  // AI Messages
+  getAiMessages(sessionId: string): Promise<AiMessage[]>;
+  createAiMessage(message: InsertAiMessage): Promise<AiMessage>;
+  deleteAiMessages(sessionId: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -2111,6 +2129,67 @@ export class DbStorage implements IStorage {
   
   async deleteCompetitiveSummary(projectId: number): Promise<void> {
     await db.delete(schema.competitiveSummary).where(eq(schema.competitiveSummary.projectId, projectId));
+  }
+  
+  // ============================================================================
+  // AI COMPANION - Session and Message tracking
+  // ============================================================================
+  
+  async getAiSession(sessionId: string): Promise<AiSession | undefined> {
+    const results = await db.select().from(schema.aiSessions)
+      .where(eq(schema.aiSessions.sessionId, sessionId));
+    return results[0];
+  }
+  
+  async getAiSessionsByContext(accountId?: number, projectId?: number): Promise<AiSession[]> {
+    if (projectId) {
+      return await db.select().from(schema.aiSessions)
+        .where(eq(schema.aiSessions.projectId, projectId))
+        .orderBy(desc(schema.aiSessions.updatedAt));
+    }
+    if (accountId) {
+      return await db.select().from(schema.aiSessions)
+        .where(eq(schema.aiSessions.accountId, accountId))
+        .orderBy(desc(schema.aiSessions.updatedAt));
+    }
+    return await db.select().from(schema.aiSessions)
+      .where(eq(schema.aiSessions.isActive, true))
+      .orderBy(desc(schema.aiSessions.updatedAt));
+  }
+  
+  async createAiSession(session: InsertAiSession): Promise<AiSession> {
+    const results = await db.insert(schema.aiSessions).values(session).returning();
+    return results[0];
+  }
+  
+  async updateAiSession(sessionId: string, session: Partial<InsertAiSession>): Promise<AiSession | undefined> {
+    // Protect sessionId from being overwritten - remove it from the update payload
+    const { sessionId: _, ...safeUpdates } = session as any;
+    
+    const results = await db.update(schema.aiSessions)
+      .set({ ...safeUpdates, updatedAt: new Date() })
+      .where(eq(schema.aiSessions.sessionId, sessionId))
+      .returning();
+    return results[0];
+  }
+  
+  async deleteAiSession(sessionId: string): Promise<void> {
+    await db.delete(schema.aiSessions).where(eq(schema.aiSessions.sessionId, sessionId));
+  }
+  
+  async getAiMessages(sessionId: string): Promise<AiMessage[]> {
+    return await db.select().from(schema.aiMessages)
+      .where(eq(schema.aiMessages.sessionId, sessionId))
+      .orderBy(schema.aiMessages.createdAt);
+  }
+  
+  async createAiMessage(message: InsertAiMessage): Promise<AiMessage> {
+    const results = await db.insert(schema.aiMessages).values(message).returning();
+    return results[0];
+  }
+  
+  async deleteAiMessages(sessionId: string): Promise<void> {
+    await db.delete(schema.aiMessages).where(eq(schema.aiMessages.sessionId, sessionId));
   }
 }
 

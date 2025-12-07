@@ -1664,6 +1664,77 @@ export type InsertHandoffPacket = z.infer<typeof insertHandoffPacketSchema>;
 export type HandoffPacket = typeof handoffPackets.$inferSelect;
 
 // ============================================================================
+// AI COMPANION - Session and Message tracking
+// ============================================================================
+
+// AI Companion Sessions - Track conversation sessions with context
+export const aiSessions = pgTable("ai_sessions", {
+  id: serial("id").primaryKey(),
+  sessionId: text("session_id").notNull().unique(), // UUID for session identification
+  userId: text("user_id"), // Optional user identifier
+  accountId: integer("account_id").references(() => accounts.id, { onDelete: "set null" }),
+  projectId: integer("project_id").references(() => projects.id, { onDelete: "set null" }),
+  
+  // Context snapshot - what page/state the user was on
+  contextType: text("context_type", { 
+    enum: ["global", "account", "initiative", "discovery", "alignment", "realisation"] 
+  }).notNull().default("global"),
+  contextSnapshot: jsonb("context_snapshot"), // Additional context data (page, filters, etc.)
+  
+  // Session metadata
+  title: text("title"), // Optional session title (can be auto-generated)
+  isActive: boolean("is_active").notNull().default(true),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertAiSessionSchema = createInsertSchema(aiSessions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertAiSession = z.infer<typeof insertAiSessionSchema>;
+export type AiSession = typeof aiSessions.$inferSelect;
+
+// AI Companion Messages - Individual messages in a session
+export const aiMessages = pgTable("ai_messages", {
+  id: serial("id").primaryKey(),
+  sessionId: text("session_id").notNull().references(() => aiSessions.sessionId, { onDelete: "cascade" }),
+  
+  // Message content
+  role: text("role", { enum: ["user", "assistant", "system", "tool"] }).notNull(),
+  content: text("content").notNull(),
+  
+  // Tool calls and results (for assistant messages that invoke tools)
+  toolCalls: jsonb("tool_calls"), // Array of {toolName, arguments, result}
+  toolName: text("tool_name"), // For tool role messages, which tool was called
+  
+  // Metadata
+  metadata: jsonb("metadata"), // Additional data (tokens used, model, etc.)
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertAiMessageSchema = createInsertSchema(aiMessages).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertAiMessage = z.infer<typeof insertAiMessageSchema>;
+export type AiMessage = typeof aiMessages.$inferSelect;
+
+// Tool execution result for tracking actions taken
+export const toolExecutionSchema = z.object({
+  toolName: z.string(),
+  arguments: z.record(z.any()),
+  result: z.any(),
+  status: z.enum(["success", "error", "pending_confirmation"]),
+  executedAt: z.string(),
+  confirmedByUser: z.boolean().optional(),
+});
+export type ToolExecution = z.infer<typeof toolExecutionSchema>;
+
+// ============================================================================
 // ACCOUNT HUB - Aggregated view for Client Value Hub
 // ============================================================================
 

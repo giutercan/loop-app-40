@@ -8116,4 +8116,378 @@ Respond in JSON format:
       res.status(500).json({ error: error.message });
     }
   });
+
+  // ============================================================================
+  // AI COMPANION CHAT ENDPOINTS
+  // ============================================================================
+
+  // POST /api/companion/sessions - Create a new companion session
+  app.post("/api/companion/sessions", async (req, res) => {
+    try {
+      const requestSchema = z.object({
+        accountId: z.number().optional(),
+        projectId: z.number().optional(),
+        userId: z.string().optional(),
+        title: z.string().optional(),
+        contextType: z.enum(["global", "account", "initiative", "discovery", "alignment", "realisation"]).optional()
+      });
+      
+      const parseResult = requestSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: "Invalid request body", details: parseResult.error });
+      }
+      
+      const { accountId, projectId, userId, title, contextType } = parseResult.data;
+      const sessionId = crypto.randomUUID();
+      
+      const session = await storage.createAiSession({
+        sessionId,
+        userId: userId || null,
+        accountId: accountId || null,
+        projectId: projectId || null,
+        contextType: contextType || "global",
+        title: title || null,
+        isActive: true
+      });
+      
+      res.status(201).json(session);
+    } catch (error: any) {
+      console.error("Error creating companion session:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/companion/sessions/:sessionId - Get a session with messages
+  app.get("/api/companion/sessions/:sessionId", async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      
+      const [session, messages] = await Promise.all([
+        storage.getAiSession(sessionId),
+        storage.getAiMessages(sessionId)
+      ]);
+      
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      
+      res.json({ session, messages });
+    } catch (error: any) {
+      console.error("Error fetching companion session:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/companion/sessions - Get sessions by context
+  app.get("/api/companion/sessions", async (req, res) => {
+    try {
+      const accountId = req.query.accountId ? parseInt(req.query.accountId as string) : undefined;
+      const projectId = req.query.projectId ? parseInt(req.query.projectId as string) : undefined;
+      
+      const sessions = await storage.getAiSessionsByContext(accountId, projectId);
+      res.json(sessions);
+    } catch (error: any) {
+      console.error("Error fetching companion sessions:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/companion/sessions/:sessionId - Delete a session
+  app.delete("/api/companion/sessions/:sessionId", async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      await storage.deleteAiSession(sessionId);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting companion session:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/companion/chat - Send a message and get AI response
+  app.post("/api/companion/chat", async (req, res) => {
+    const { 
+      executeCompanionTool, 
+      companionToolDefinitions 
+    } = await import("./companion-tools");
+    
+    try {
+      const requestSchema = z.object({
+        sessionId: z.string(),
+        message: z.string().min(1),
+        context: z.object({
+          accountId: z.number().optional(),
+          projectId: z.number().optional(),
+          currentPage: z.string().optional()
+        }).optional()
+      });
+      
+      const parseResult = requestSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: "Invalid request body", details: parseResult.error });
+      }
+      
+      const { sessionId, message, context } = parseResult.data;
+      
+      // Verify session exists
+      const session = await storage.getAiSession(sessionId);
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      
+      // Get message history for context
+      const history = await storage.getAiMessages(sessionId);
+      
+      // Save user message
+      await storage.createAiMessage({
+        sessionId,
+        role: "user",
+        content: message
+      });
+      
+      // Build system prompt with context
+      let systemPrompt = `You are a helpful AI assistant for the Korn Ferry Value Lifecycle Platform. You help users:
+- Get summaries of accounts and initiatives
+- Prepare for client meetings
+- Track and update KPIs
+- Navigate the platform
+- Get recommendations on next actions
+
+You have access to tools to read and write data. For write operations, always ask for confirmation before executing.
+Be concise but helpful. Use the user's context (current account, project, page) to provide relevant information.`;
+
+      if (context?.accountId || context?.projectId) {
+        systemPrompt += `\n\nCurrent context: ${context.accountId ? `Account ID ${context.accountId}` : ''}${context.projectId ? ` Project ID ${context.projectId}` : ''}${context.currentPage ? ` on page ${context.currentPage}` : ''}`;
+      }
+
+      // Build messages for OpenAI
+      const openAiMessages: any[] = [
+        { role: "system", content: systemPrompt }
+      ];
+      
+      // Add history (last 20 messages for context window)
+      const recentHistory = history.slice(-20);
+      for (const msg of recentHistory) {
+        if (msg.role === "user" || msg.role === "assistant") {
+          openAiMessages.push({ role: msg.role, content: msg.content });
+        }
+      }
+      
+      // Add current message
+      openAiMessages.push({ role: "user", content: message });
+
+      // Convert tool definitions to OpenAI format
+      const tools = companionToolDefinitions.map(tool => ({
+        type: "function" as const,
+        function: {
+          name: tool.name,
+          description: tool.description,
+          parameters: tool.parameters
+        }
+      }));
+
+      // Call OpenAI with function calling
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: openAiMessages,
+        tools,
+        tool_choice: "auto"
+      });
+
+      const assistantMessage = response.choices[0].message;
+      let responseContent = assistantMessage.content || "";
+      let toolResults: any[] = [];
+      let pendingConfirmation: any = null;
+
+      // Handle tool calls
+      if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
+        for (const toolCall of assistantMessage.tool_calls) {
+          // Type guard for function tool calls
+          if (!('function' in toolCall)) continue;
+          const toolName = toolCall.function.name;
+          const toolArgs = JSON.parse(toolCall.function.arguments);
+          
+          const toolResult = await executeCompanionTool(
+            toolName,
+            toolArgs,
+            {
+              accountId: context?.accountId,
+              projectId: context?.projectId,
+              currentPage: context?.currentPage
+            }
+          );
+          
+          toolResults.push({
+            toolName,
+            arguments: toolArgs,
+            result: toolResult
+          });
+          
+          // If tool requires confirmation, save for frontend handling
+          if (toolResult.requiresConfirmation) {
+            pendingConfirmation = {
+              toolName,
+              arguments: toolArgs,
+              confirmationMessage: toolResult.confirmationMessage,
+              action: toolResult.data?.action,
+              payload: toolResult.data?.payload || toolResult.data
+            };
+          }
+        }
+
+        // If tools were called, get a follow-up response with results
+        if (toolResults.length > 0 && !pendingConfirmation) {
+          const toolResultsForAI = toolResults.map(tr => ({
+            role: "tool" as const,
+            content: JSON.stringify(tr.result),
+            tool_call_id: assistantMessage.tool_calls!.find(tc => 'function' in tc && tc.function.name === tr.toolName)?.id || ""
+          }));
+
+          const followUpResponse = await openai.chat.completions.create({
+            model: "gpt-4o",
+            messages: [
+              ...openAiMessages,
+              assistantMessage,
+              ...toolResultsForAI
+            ]
+          });
+          
+          responseContent = followUpResponse.choices[0].message.content || "";
+        }
+      }
+
+      // Save assistant response
+      await storage.createAiMessage({
+        sessionId,
+        role: "assistant",
+        content: responseContent,
+        toolCalls: toolResults.length > 0 ? toolResults : null
+      });
+
+      // Update session timestamp
+      await storage.updateAiSession(sessionId, {});
+
+      res.json({
+        response: responseContent,
+        toolResults: toolResults.length > 0 ? toolResults : undefined,
+        pendingConfirmation
+      });
+    } catch (error: any) {
+      console.error("Error in companion chat:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/companion/confirm - Confirm and execute a pending action
+  app.post("/api/companion/confirm", async (req, res) => {
+    const { confirmAndExecuteAction } = await import("./companion-tools");
+    
+    try {
+      const requestSchema = z.object({
+        sessionId: z.string(),
+        action: z.string(),
+        payload: z.any(),
+        confirmed: z.boolean()
+      });
+      
+      const parseResult = requestSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: "Invalid request body", details: parseResult.error });
+      }
+      
+      const { sessionId, action, payload, confirmed } = parseResult.data;
+      
+      // Session ownership verification - ensure session exists and is active
+      const session = await storage.getAiSession(sessionId);
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      if (!session.isActive) {
+        return res.status(403).json({ error: "Session is no longer active" });
+      }
+      
+      if (!confirmed) {
+        // User declined - save message and return
+        await storage.createAiMessage({
+          sessionId,
+          role: "assistant",
+          content: "Action cancelled. Let me know if you'd like to do something else."
+        });
+        return res.json({ success: true, cancelled: true });
+      }
+      
+      // Execute the action
+      const result = await confirmAndExecuteAction(action, payload);
+      
+      // Save result as message
+      await storage.createAiMessage({
+        sessionId,
+        role: "assistant",
+        content: result.success 
+          ? `Done! ${action === 'createKPI' ? 'KPI created successfully.' : action === 'updateKPI' ? 'KPI updated successfully.' : 'Note added successfully.'}`
+          : `Sorry, there was an error: ${result.error}`,
+        toolCalls: [{ toolName: action, arguments: payload, result }]
+      });
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error confirming companion action:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/companion/tools - Get available tool definitions
+  app.get("/api/companion/tools", async (req, res) => {
+    const { companionToolDefinitions } = await import("./companion-tools");
+    res.json(companionToolDefinitions);
+  });
+
+  // POST /api/companion/quick-action - Execute a quick action without full chat
+  // SECURITY: Only read-only tools are allowed via quick-action endpoint
+  app.post("/api/companion/quick-action", async (req, res) => {
+    const { executeCompanionTool, companionToolDefinitions } = await import("./companion-tools");
+    
+    try {
+      const requestSchema = z.object({
+        toolName: z.string(),
+        args: z.record(z.any()),
+        context: z.object({
+          accountId: z.number().optional(),
+          projectId: z.number().optional(),
+          currentPage: z.string().optional()
+        }).optional()
+      });
+      
+      const parseResult = requestSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: "Invalid request body", details: parseResult.error });
+      }
+      
+      const { toolName, args, context } = parseResult.data;
+      
+      // Security: Only allow read-only tools via quick-action (no session required)
+      const toolDef = companionToolDefinitions.find(t => t.name === toolName);
+      if (!toolDef) {
+        return res.status(400).json({ error: "Unknown tool" });
+      }
+      if (!toolDef.isReadOnly) {
+        return res.status(403).json({ error: "Write operations require a chat session" });
+      }
+      
+      const result = await executeCompanionTool(
+        toolName,
+        args,
+        {
+          accountId: context?.accountId,
+          projectId: context?.projectId,
+          currentPage: context?.currentPage
+        }
+      );
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error executing quick action:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 }

@@ -23,6 +23,7 @@ import ProjectLayout from "@/components/ProjectLayout";
 import { CommandPalette } from "@/components/CommandPalette";
 import { DemoModeProvider } from "@/demo/DemoModeContext";
 import { ExecutiveDemoTour } from "@/demo/ExecutiveDemoTour";
+import { CompanionProvider } from "@/components/AICompanionPanel";
 
 function DiscoveryWithLayout() {
   const [, params] = useRoute("/projects/:id/discovery");
@@ -104,10 +105,12 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <DemoModeProvider>
-          <CommandPalette />
-          <ExecutiveDemoTour />
-          <Toaster />
-          <Router />
+          <CompanionProvider>
+            <CommandPalette />
+            <ExecutiveDemoTour />
+            <Toaster />
+            <Router />
+          </CompanionProvider>
         </DemoModeProvider>
       </TooltipProvider>
     </QueryClientProvider>
