@@ -44,6 +44,7 @@ import {
 } from "@/hooks/use-companion-presence";
 import { useProactiveInsights, type ProactiveInsight } from "@/hooks/use-proactive-insights";
 import { useVoiceSession } from "@/hooks/use-voice-session";
+import { AppHeader } from "@/components/AppHeader";
 
 interface Message {
   id: number;
@@ -111,27 +112,10 @@ export function CompanionProvider({ children }: { children: React.ReactNode }) {
       trackEntityView: presence.trackEntityView,
       setFormContext: presence.setFormContext,
     }}>
+      <AppHeader />
       {children}
       <AICompanionPanel onSessionCreated={updateSessionId} />
-      <CompanionTriggerButton />
     </CompanionContext.Provider>
-  );
-}
-
-function CompanionTriggerButton() {
-  const { isOpen, setIsOpen } = useCompanion();
-  
-  if (isOpen) return null;
-  
-  return (
-    <Button
-      onClick={() => setIsOpen(true)}
-      className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full shadow-lg bg-gradient-to-r from-[#005971] to-[#A3238E] hover:from-[#00634F] hover:to-[#A3238E] transition-all duration-300"
-      size="icon"
-      data-testid="button-companion-trigger"
-    >
-      <Sparkles className="h-6 w-6 text-white" />
-    </Button>
   );
 }
 
