@@ -421,19 +421,23 @@ function AICompanionPanel({ onSessionCreated }: AICompanionPanelProps) {
         data-testid="panel-companion"
       >
         <SheetHeader className="px-4 py-3 border-b bg-gradient-to-r from-[#005971] to-[#A3238E]">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center">
-                <Sparkles className="h-4 w-4 text-white" />
-              </div>
-              <div>
-                <SheetTitle className="text-white text-base font-semibold">AI Companion</SheetTitle>
-                <p className="text-white/70 text-xs">Powered by GPT-4</p>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center">
+                  <Sparkles className="h-4 w-4 text-white" />
+                </div>
+                <div>
+                  <SheetTitle className="text-white text-base font-semibold">The Loop</SheetTitle>
+                  <p className="text-white/70 text-xs">AI-Powered Assistant</p>
+                </div>
               </div>
             </div>
-            <Badge variant="outline" className="text-white/80 border-white/30 text-xs">
-              {getContextType()}
-            </Badge>
+            <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2">
+              <div className="h-2 w-2 rounded-full bg-[#009B77] animate-pulse" />
+              <span className="text-white/60 text-xs uppercase tracking-wide">Context</span>
+              <span className="text-white font-medium text-sm capitalize">{getContextType()}</span>
+            </div>
           </div>
         </SheetHeader>
         
@@ -450,9 +454,9 @@ function AICompanionPanel({ onSessionCreated }: AICompanionPanelProps) {
                   <div className="h-16 w-16 mx-auto rounded-full bg-gradient-to-r from-[#005971]/10 to-[#A3238E]/10 flex items-center justify-center mb-3">
                     <Bot className="h-8 w-8 text-[#005971]" />
                   </div>
-                  <h3 className="font-semibold text-foreground mb-1">How can I help?</h3>
+                  <h3 className="font-semibold text-foreground mb-1">Welcome to The Loop</h3>
                   <p className="text-sm text-muted-foreground">
-                    I can help you understand your data, prepare for meetings, and manage KPIs.
+                    Your AI assistant for data insights, meeting prep, and KPI management.
                   </p>
                 </div>
                 
