@@ -465,23 +465,6 @@ function AICompanionPanel({ onSessionCreated }: AICompanionPanelProps) {
                   <p className="text-white/70 text-xs">AI-Powered Assistant</p>
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setVoiceModeEnabled(!voiceModeEnabled)}
-                className={cn(
-                  "h-8 px-2 text-white/80 hover:text-white hover:bg-white/10",
-                  voiceModeEnabled && "bg-white/20 text-white"
-                )}
-                data-testid="button-voice-mode-toggle"
-              >
-                {voiceModeEnabled ? (
-                  <Volume2 className="h-4 w-4 mr-1" />
-                ) : (
-                  <MicOff className="h-4 w-4 mr-1" />
-                )}
-                <span className="text-xs">{voiceModeEnabled ? "Voice On" : "Voice Off"}</span>
-              </Button>
             </div>
             <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2">
               <div className="h-2 w-2 rounded-full bg-[#009B77] animate-pulse" />
@@ -688,52 +671,17 @@ function AICompanionPanel({ onSessionCreated }: AICompanionPanelProps) {
         <Separator />
         
         <div className="p-4">
-          {voiceSession.error && (
-            <div className="mb-2 p-2 bg-destructive/10 border border-destructive/20 rounded-md">
-              <p className="text-xs text-destructive">{voiceSession.error}</p>
-            </div>
-          )}
-          {voiceSession.isRecording && (
-            <div className="mb-2 p-2 bg-[#A3238E]/10 border border-[#A3238E]/20 rounded-md flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-              <p className="text-xs text-[#A3238E]">Recording... Click the mic to stop and send</p>
-            </div>
-          )}
-          {voiceSession.isProcessing && (
-            <div className="mb-2 p-2 bg-[#005971]/10 border border-[#005971]/20 rounded-md flex items-center gap-2">
-              <Loader2 className="h-3 w-3 animate-spin text-[#005971]" />
-              <p className="text-xs text-[#005971]">Processing speech...</p>
-            </div>
-          )}
           <div className="flex gap-2">
             <Input
               ref={inputRef}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={voiceSession.isRecording ? "Listening..." : "Ask me anything..."}
-              disabled={sendMessageMutation.isPending || !localSessionId || voiceSession.isRecording}
+              placeholder="Ask me anything..."
+              disabled={sendMessageMutation.isPending || !localSessionId}
               className="flex-1"
               data-testid="input-companion-message"
             />
-            {voiceModeEnabled && (
-              <Button
-                onClick={handleVoiceToggle}
-                disabled={sendMessageMutation.isPending || !localSessionId || voiceSession.isProcessing}
-                size="icon"
-                variant={voiceSession.isRecording ? "default" : "outline"}
-                className={cn(
-                  voiceSession.isRecording && "bg-red-500 hover:bg-red-600 animate-pulse"
-                )}
-                data-testid="button-voice-record"
-              >
-                {voiceSession.isRecording ? (
-                  <MicOff className="h-4 w-4" />
-                ) : (
-                  <Mic className="h-4 w-4" />
-                )}
-              </Button>
-            )}
             <Button
               onClick={handleSendMessage}
               disabled={!inputValue.trim() || sendMessageMutation.isPending || !localSessionId}
@@ -749,7 +697,7 @@ function AICompanionPanel({ onSessionCreated }: AICompanionPanelProps) {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-2 text-center">
-            {voiceModeEnabled ? "Voice mode enabled - responses will be spoken aloud" : "AI can make mistakes. Verify important information."}
+            AI can make mistakes. Verify important information.
           </p>
         </div>
       </SheetContent>

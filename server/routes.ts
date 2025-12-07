@@ -8298,13 +8298,14 @@ Respond in JSON format:
       
       // Build system prompt with context
       let systemPrompt = `You are a helpful AI assistant for the Korn Ferry Value Lifecycle Platform. You help users:
+- Create new accounts and initiatives/projects
 - Get summaries of accounts and initiatives
 - Prepare for client meetings
 - Track and update KPIs
 - Navigate the platform
 - Get recommendations on next actions
 
-You have access to tools to read and write data. For write operations, always ask for confirmation before executing.
+You have access to tools to read and write data. When the user asks to CREATE something (accounts, initiatives, KPIs, notes), USE THE APPROPRIATE TOOL - do not just give instructions. For write operations, the tool will automatically ask for confirmation before executing.
 Be concise but helpful. Use the user's context (current account, project, page) to provide relevant information.`;
 
       if (context?.accountId || context?.projectId) {
@@ -8471,11 +8472,21 @@ Be concise but helpful. Use the user's context (current account, project, page) 
       const result = await confirmAndExecuteAction(action, payload);
       
       // Save result as message
+      const getSuccessMessage = () => {
+        if (result.data?.message) return `Done! ${result.data.message}`;
+        switch (action) {
+          case 'createAccount': return 'Done! Account created successfully.';
+          case 'createInitiative': return 'Done! Initiative created successfully.';
+          case 'createKPI': return 'Done! KPI created successfully.';
+          case 'updateKPI': return 'Done! KPI updated successfully.';
+          default: return 'Done! Action completed successfully.';
+        }
+      };
       await storage.createAiMessage({
         sessionId,
         role: "assistant",
         content: result.success 
-          ? `Done! ${action === 'createKPI' ? 'KPI created successfully.' : action === 'updateKPI' ? 'KPI updated successfully.' : 'Note added successfully.'}`
+          ? getSuccessMessage()
           : `Sorry, there was an error: ${result.error}`,
         toolCalls: [{ toolName: action, arguments: payload, result }]
       });

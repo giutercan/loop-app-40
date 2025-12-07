@@ -173,6 +173,37 @@ export const companionToolDefinitions: ToolDefinition[] = [
   // WRITE TOOLS - Create new records
   // ============================================================================
   {
+    name: "createAccount",
+    description: "Create a new account/client in the system. Use when user asks to add a new client or account.",
+    parameters: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "The account/company name" },
+        industry: { type: "string", description: "Industry sector (optional)" },
+        tier: { type: "string", enum: ["enterprise", "strategic", "growth"], description: "Account tier level (optional)" },
+        strategyNotes: { type: "string", description: "Initial strategy notes (optional)" }
+      },
+      required: ["name"]
+    },
+    capability: "write",
+    requiresConfirmation: true
+  },
+  {
+    name: "createInitiative",
+    description: "Create a new initiative/project under an account. Use when user asks to add a new project, initiative, or engagement.",
+    parameters: {
+      type: "object",
+      properties: {
+        accountId: { type: "number", description: "The account ID to create the initiative under" },
+        name: { type: "string", description: "The initiative/project name" },
+        description: { type: "string", description: "Brief description of the initiative (optional)" }
+      },
+      required: ["accountId", "name"]
+    },
+    capability: "write",
+    requiresConfirmation: true
+  },
+  {
     name: "createKPI",
     description: "Create a new KPI for tracking value in a job theme. Use when user wants to add a new metric or KPI to track.",
     parameters: {
@@ -467,8 +498,14 @@ export async function executeCompanionTool(
       case "recommendNextAction":
         return await recommendNextAction(args.accountId, args.projectId);
       
+      case "createAccount":
+        return await createAccount(args as { name: string; industry?: string; tier?: string; strategyNotes?: string });
+      
+      case "createInitiative":
+        return await createInitiative(args as { accountId: number; name: string; description?: string });
+      
       case "createKPI":
-        return await createKPI(args);
+        return await createKPI(args as { jobThemeId: number; kpiName: string; kpiType?: string; unit: string; baselineValue?: string; targetValue?: string; estimatedValuePerUnit?: number });
       
       case "updateKPI":
         return await updateKPI(args);
@@ -749,6 +786,71 @@ async function recommendNextAction(accountId?: number, projectId?: number): Prom
     data: {
       recommendations,
       priority: recommendations[0] || "Continue current work"
+    }
+  };
+}
+
+async function createAccount(args: {
+  name: string;
+  industry?: string;
+  tier?: string;
+  strategyNotes?: string;
+}): Promise<ToolResult> {
+  const sanitizedName = sanitizeInput(args.name);
+  if (!sanitizedName) {
+    return { success: false, error: "Account name is required" };
+  }
+  
+  const accountData = {
+    name: sanitizedName,
+    industry: args.industry ? sanitizeInput(args.industry) : "",
+    tier: (args.tier as "enterprise" | "strategic" | "growth") || null,
+    strategyNotes: args.strategyNotes ? sanitizeInput(args.strategyNotes) : null
+  };
+  
+  return {
+    success: true,
+    requiresConfirmation: true,
+    confirmationMessage: `Create new account "${sanitizedName}"${args.industry ? ` in ${args.industry}` : ""}?`,
+    data: {
+      action: "createAccount",
+      payload: accountData,
+      preview: `Account: ${sanitizedName}${args.tier ? ` (${args.tier})` : ""}`
+    }
+  };
+}
+
+async function createInitiative(args: {
+  accountId: number;
+  name: string;
+  description?: string;
+}): Promise<ToolResult> {
+  const sanitizedName = sanitizeInput(args.name);
+  if (!sanitizedName) {
+    return { success: false, error: "Initiative name is required" };
+  }
+  
+  const account = await storage.getAccount(args.accountId);
+  if (!account) {
+    return { success: false, error: "Account not found" };
+  }
+  
+  const initiativeData = {
+    accountId: args.accountId,
+    name: sanitizedName,
+    description: args.description ? sanitizeInput(args.description) : null,
+    status: "active",
+    currentPhase: "discovery"
+  };
+  
+  return {
+    success: true,
+    requiresConfirmation: true,
+    confirmationMessage: `Create new initiative "${sanitizedName}" under account "${account.name}"?`,
+    data: {
+      action: "createInitiative",
+      payload: initiativeData,
+      preview: `Initiative: ${sanitizedName} (under ${account.name})`
     }
   };
 }
@@ -1559,6 +1661,16 @@ export async function confirmAndExecuteAction(
 ): Promise<ToolResult> {
   try {
     switch (action) {
+      case "createAccount":
+        // Payload is already sanitized in createAccount tool
+        const newAccount = await storage.createAccount(payload);
+        return { success: true, data: { created: newAccount, message: `Account "${newAccount.name}" created successfully!` } };
+      
+      case "createInitiative":
+        // Payload is already sanitized in createInitiative tool
+        const newProject = await storage.createProject(payload);
+        return { success: true, data: { created: newProject, message: `Initiative "${newProject.name}" created successfully!` } };
+      
       case "createKPI":
         // Payload is already sanitized in createKPI tool
         const newKpi = await storage.createJobThemeKPI(payload);
