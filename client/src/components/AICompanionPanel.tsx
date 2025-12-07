@@ -25,7 +25,12 @@ import {
   ChevronRight,
   Building2,
   Calendar,
-  BarChart3
+  BarChart3,
+  Lightbulb,
+  AlertTriangle,
+  Play,
+  ArrowRight,
+  Zap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
@@ -33,6 +38,7 @@ import {
   type EntityReference, 
   type FormContext 
 } from "@/hooks/use-companion-presence";
+import { useProactiveInsights, type ProactiveInsight } from "@/hooks/use-proactive-insights";
 
 interface Message {
   id: number;
@@ -124,6 +130,103 @@ function CompanionTriggerButton() {
   );
 }
 
+interface InsightCardProps {
+  insight: ProactiveInsight;
+  onAction: (prompt: string) => void;
+  onDismiss: () => void;
+  disabled?: boolean;
+}
+
+function InsightCard({ insight, onAction, onDismiss, disabled }: InsightCardProps) {
+  const getInsightIcon = () => {
+    switch (insight.type) {
+      case "recommendation":
+        return <Lightbulb className="h-4 w-4 text-[#009B77]" />;
+      case "tip":
+        return <Sparkles className="h-4 w-4 text-[#005971]" />;
+      case "warning":
+        return <AlertTriangle className="h-4 w-4 text-amber-500" />;
+      case "action":
+        return <Play className="h-4 w-4 text-[#A3238E]" />;
+      default:
+        return <Lightbulb className="h-4 w-4 text-muted-foreground" />;
+    }
+  };
+  
+  const getBorderColor = () => {
+    switch (insight.type) {
+      case "recommendation":
+        return "border-[#009B77]/30";
+      case "tip":
+        return "border-[#005971]/30";
+      case "warning":
+        return "border-amber-500/30";
+      case "action":
+        return "border-[#A3238E]/30";
+      default:
+        return "border-muted";
+    }
+  };
+  
+  const getBgColor = () => {
+    switch (insight.type) {
+      case "recommendation":
+        return "bg-[#009B77]/5";
+      case "tip":
+        return "bg-[#005971]/5";
+      case "warning":
+        return "bg-amber-500/5";
+      case "action":
+        return "bg-[#A3238E]/5";
+      default:
+        return "bg-muted/50";
+    }
+  };
+  
+  return (
+    <Card 
+      className={cn("border", getBorderColor(), getBgColor())}
+      data-testid={`insight-card-${insight.id}`}
+    >
+      <CardContent className="p-3">
+        <div className="flex items-start gap-2">
+          <div className="mt-0.5">{getInsightIcon()}</div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-medium text-foreground">{insight.title}</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-5 w-5 p-0 text-muted-foreground shrink-0"
+                onClick={onDismiss}
+                data-testid={`button-dismiss-insight-${insight.id}`}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+              {insight.description}
+            </p>
+            {insight.actionPrompt && insight.actionLabel && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-2 h-7 px-2 text-xs text-[#005971] hover:text-[#00634F]"
+                onClick={() => onAction(insight.actionPrompt!)}
+                disabled={disabled}
+                data-testid={`button-insight-action-${insight.id}`}
+              >
+                {insight.actionLabel}
+                <ArrowRight className="h-3 w-3 ml-1" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 interface AICompanionPanelProps {
   onSessionCreated?: (sessionId: string | null) => void;
 }
@@ -135,10 +238,25 @@ function AICompanionPanel({ onSessionCreated }: AICompanionPanelProps) {
   const [inputValue, setInputValue] = useState("");
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
   const [isTyping, setIsTyping] = useState(false);
+  const [showInsights, setShowInsights] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   
   const currentPage = location;
+  
+  const { 
+    insights,
+    allInsights,
+    dismissInsight, 
+    dismissAll,
+    resetDismissed,
+    routeContext 
+  } = useProactiveInsights({
+    accountId,
+    projectId,
+    enabled: isOpen,
+    maxInsights: 3,
+  });
   
   const { data: sessionData, isLoading: sessionLoading, refetch: refetchSession } = useQuery<{ session: any; messages: Message[] }>({
     queryKey: ['/api/companion/sessions', localSessionId],
@@ -358,6 +476,53 @@ function AICompanionPanel({ onSessionCreated }: AICompanionPanelProps) {
                     ))}
                   </div>
                 </div>
+                
+                {showInsights && insights.length > 0 ? (
+                  <div className="space-y-2 pt-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                        <Zap className="h-3 w-3 text-[#A3238E]" />
+                        Contextual Insights
+                      </p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs text-muted-foreground"
+                        onClick={() => setShowInsights(false)}
+                        data-testid="button-hide-insights"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      {insights.map((insight) => (
+                        <InsightCard
+                          key={insight.id}
+                          insight={insight}
+                          onAction={(prompt) => handleQuickAction(prompt)}
+                          onDismiss={() => dismissInsight(insight.id)}
+                          disabled={sendMessageMutation.isPending}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : (!showInsights || (insights.length === 0 && allInsights.length > 0)) && (
+                  <div className="pt-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full text-xs text-muted-foreground"
+                      onClick={() => {
+                        setShowInsights(true);
+                        resetDismissed();
+                      }}
+                      data-testid="button-show-insights"
+                    >
+                      <Zap className="h-3 w-3 mr-1 text-[#A3238E]" />
+                      Show contextual insights
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : (
               messages.map((msg) => (
