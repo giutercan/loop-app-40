@@ -8496,7 +8496,7 @@ Be concise but helpful. Use the user's context (current account, project, page) 
   // POST /api/companion/quick-action - Execute a quick action without full chat
   // SECURITY: Only read-only tools are allowed via quick-action endpoint
   app.post("/api/companion/quick-action", async (req, res) => {
-    const { executeCompanionTool, companionToolDefinitions } = await import("./companion-tools");
+    const { executeCompanionTool, companionToolDefinitions, isReadOnlyTool } = await import("./companion-tools");
     
     try {
       const requestSchema = z.object({
@@ -8521,7 +8521,7 @@ Be concise but helpful. Use the user's context (current account, project, page) 
       if (!toolDef) {
         return res.status(400).json({ error: "Unknown tool" });
       }
-      if (!toolDef.isReadOnly) {
+      if (!isReadOnlyTool(toolName)) {
         return res.status(403).json({ error: "Write operations require a chat session" });
       }
       
