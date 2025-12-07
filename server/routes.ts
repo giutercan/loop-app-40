@@ -8204,6 +8204,57 @@ Respond in JSON format:
     }
   });
 
+  // PATCH /api/companion/sessions/:sessionId/state - Sync session presence state
+  app.patch("/api/companion/sessions/:sessionId/state", async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      
+      const stateSchema = z.object({
+        currentRoute: z.string().optional(),
+        previousRoutes: z.array(z.string()).optional(),
+        activeEntities: z.array(z.object({
+          type: z.enum(["account", "project", "jobTheme", "kpi", "successStory"]),
+          id: z.number(),
+          name: z.string().optional(),
+        })).optional(),
+        formContext: z.object({
+          formId: z.string(),
+          entityType: z.string(),
+          entityId: z.number().optional(),
+          isDirty: z.boolean(),
+          fieldsFocused: z.array(z.string()).optional(),
+        }).optional().nullable(),
+        lastSyncAt: z.string().optional(),
+      });
+      
+      const parseResult = stateSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: "Invalid state data", details: parseResult.error });
+      }
+      
+      const session = await storage.getAiSession(sessionId);
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      
+      const existingSnapshot = (session.contextSnapshot as Record<string, any>) || {};
+      const updatedSnapshot = {
+        ...existingSnapshot,
+        ...parseResult.data,
+        lastSyncAt: new Date().toISOString(),
+      };
+      
+      const updated = await storage.updateAiSession(sessionId, {
+        contextSnapshot: updatedSnapshot,
+      });
+      
+      res.json({ success: true, state: updatedSnapshot });
+    } catch (error: any) {
+      console.error("Error syncing companion session state:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // POST /api/companion/chat - Send a message and get AI response
   app.post("/api/companion/chat", async (req, res) => {
     const { 

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, createContext, useContext } from "react";
+import { useState, useRef, useEffect, createContext, useContext, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -28,6 +28,11 @@ import {
   BarChart3
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { 
+  useCompanionPresence, 
+  type EntityReference, 
+  type FormContext 
+} from "@/hooks/use-companion-presence";
 
 interface Message {
   id: number;
@@ -51,7 +56,10 @@ interface CompanionContextType {
   setIsOpen: (open: boolean) => void;
   accountId?: number;
   projectId?: number;
+  sessionId: string | null;
   setContext: (ctx: { accountId?: number; projectId?: number }) => void;
+  trackEntityView: (entity: EntityReference) => void;
+  setFormContext: (context: FormContext | null) => void;
 }
 
 const CompanionContext = createContext<CompanionContextType | null>(null);
@@ -68,16 +76,32 @@ export function CompanionProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [accountId, setAccountId] = useState<number | undefined>();
   const [projectId, setProjectId] = useState<number | undefined>();
+  const [sessionId, setSessionId] = useState<string | null>(null);
   
-  const setContext = (ctx: { accountId?: number; projectId?: number }) => {
+  const presence = useCompanionPresence({ sessionId });
+  
+  const setContext = useCallback((ctx: { accountId?: number; projectId?: number }) => {
     setAccountId(ctx.accountId);
     setProjectId(ctx.projectId);
-  };
+  }, []);
+  
+  const updateSessionId = useCallback((id: string | null) => {
+    setSessionId(id);
+  }, []);
   
   return (
-    <CompanionContext.Provider value={{ isOpen, setIsOpen, accountId, projectId, setContext }}>
+    <CompanionContext.Provider value={{ 
+      isOpen, 
+      setIsOpen, 
+      accountId, 
+      projectId, 
+      sessionId,
+      setContext,
+      trackEntityView: presence.trackEntityView,
+      setFormContext: presence.setFormContext,
+    }}>
       {children}
-      <AICompanionPanel />
+      <AICompanionPanel onSessionCreated={updateSessionId} />
       <CompanionTriggerButton />
     </CompanionContext.Provider>
   );
@@ -100,10 +124,14 @@ function CompanionTriggerButton() {
   );
 }
 
-function AICompanionPanel() {
+interface AICompanionPanelProps {
+  onSessionCreated?: (sessionId: string | null) => void;
+}
+
+function AICompanionPanel({ onSessionCreated }: AICompanionPanelProps) {
   const { isOpen, setIsOpen, accountId, projectId } = useCompanion();
   const [location] = useLocation();
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [localSessionId, setLocalSessionId] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState("");
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
   const [isTyping, setIsTyping] = useState(false);
@@ -113,8 +141,8 @@ function AICompanionPanel() {
   const currentPage = location;
   
   const { data: sessionData, isLoading: sessionLoading, refetch: refetchSession } = useQuery<{ session: any; messages: Message[] }>({
-    queryKey: ['/api/companion/sessions', sessionId],
-    enabled: !!sessionId,
+    queryKey: ['/api/companion/sessions', localSessionId],
+    enabled: !!localSessionId,
   });
   
   const createSessionMutation = useMutation({
@@ -127,14 +155,15 @@ function AICompanionPanel() {
       return res.json();
     },
     onSuccess: (data) => {
-      setSessionId(data.sessionId);
+      setLocalSessionId(data.sessionId);
+      onSessionCreated?.(data.sessionId);
     }
   });
   
   const sendMessageMutation = useMutation({
     mutationFn: async (message: string) => {
       const res = await apiRequest("POST", "/api/companion/chat", {
-        sessionId,
+        sessionId: localSessionId,
         message,
         context: {
           accountId,
@@ -160,7 +189,7 @@ function AICompanionPanel() {
     mutationFn: async (confirmed: boolean) => {
       if (!pendingConfirmation) return;
       const res = await apiRequest("POST", "/api/companion/confirm", {
-        sessionId,
+        sessionId: localSessionId,
         action: pendingConfirmation.action,
         payload: pendingConfirmation.payload,
         confirmed
@@ -185,10 +214,10 @@ function AICompanionPanel() {
   }
   
   useEffect(() => {
-    if (isOpen && !sessionId && !createSessionMutation.isPending) {
+    if (isOpen && !localSessionId && !createSessionMutation.isPending) {
       createSessionMutation.mutate();
     }
-  }, [isOpen, sessionId]);
+  }, [isOpen, localSessionId]);
   
   useEffect(() => {
     if (scrollRef.current) {
@@ -431,13 +460,13 @@ function AICompanionPanel() {
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Ask me anything..."
-              disabled={sendMessageMutation.isPending || !sessionId}
+              disabled={sendMessageMutation.isPending || !localSessionId}
               className="flex-1"
               data-testid="input-companion-message"
             />
             <Button
               onClick={handleSendMessage}
-              disabled={!inputValue.trim() || sendMessageMutation.isPending || !sessionId}
+              disabled={!inputValue.trim() || sendMessageMutation.isPending || !localSessionId}
               size="icon"
               className="bg-[#005971] hover:bg-[#00634F]"
               data-testid="button-send-message"
