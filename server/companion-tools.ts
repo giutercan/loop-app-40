@@ -488,6 +488,42 @@ export async function executeCompanionTool(
       case "listInitiatives":
         return await listInitiatives(args.accountId);
       
+      case "listJobThemes":
+        return await listJobThemes(args.projectId);
+      
+      case "editKPI":
+        return await editKPI(args);
+      
+      case "editJobTheme":
+        return await editJobTheme(args);
+      
+      case "editAccount":
+        return await editAccount(args);
+      
+      case "recommendKPIs":
+        return await recommendKPIs(args.projectId, args.jobThemeId, args.count);
+      
+      case "recommendQuestions":
+        return await recommendQuestions(args.projectId, args.methodology, args.topic, args.count);
+      
+      case "recommendSuccessStories":
+        return await recommendSuccessStories(args.projectId, args.industry, args.valuePillar);
+      
+      case "runDiscoverySetup":
+        return await runDiscoverySetup(args.projectId, args.focusAreas);
+      
+      case "runQBRPrep":
+        return await runQBRPrep(args.projectId, args.reviewPeriod, args.audience);
+      
+      case "runHandoffBundle":
+        return await runHandoffBundle(args.projectId, args.recipientRole, args.includeFullHistory);
+      
+      case "navigateTo":
+        return await navigateTo(args);
+      
+      case "showInContext":
+        return await showInContext(args.entityType, args.entityId, args.displayMode);
+      
       default:
         return { success: false, error: `Unknown tool: ${toolName}` };
     }
@@ -885,6 +921,635 @@ async function listInitiatives(accountId: number): Promise<ToolResult> {
       status: i.status,
       ragStatus: i.ragStatus
     }))
+  };
+}
+
+async function listJobThemes(projectId: number): Promise<ToolResult> {
+  const jobThemes = await storage.getJobThemes(projectId);
+  return {
+    success: true,
+    data: jobThemes.map(t => ({
+      id: t.id,
+      name: t.jobName,
+      priorityRank: t.priorityRank,
+      strategicPillarId: t.pillarId,
+      solutionArea: t.solutionArea,
+      kornFerryPillar: t.kornFerryPillar
+    }))
+  };
+}
+
+async function editKPI(args: {
+  kpiId: number;
+  kpiName?: string;
+  targetValue?: string;
+  baselineValue?: string;
+  estimatedValuePerUnit?: number;
+  unit?: string;
+}): Promise<ToolResult> {
+  const existingKpi = await storage.getJobThemeKPI(args.kpiId);
+  if (!existingKpi) {
+    return { success: false, error: "KPI not found" };
+  }
+  
+  const updates: any = {};
+  const confirmParts: string[] = [];
+  
+  if (args.kpiName) {
+    updates.kpiName = sanitizeInput(args.kpiName);
+    confirmParts.push(`name to "${updates.kpiName}"`);
+  }
+  if (args.targetValue) {
+    updates.targetValue = sanitizeInput(args.targetValue);
+    confirmParts.push(`target to ${updates.targetValue}`);
+  }
+  if (args.baselineValue) {
+    updates.baselineValue = sanitizeInput(args.baselineValue);
+    confirmParts.push(`baseline to ${updates.baselineValue}`);
+  }
+  if (args.estimatedValuePerUnit !== undefined) {
+    updates.estimatedValuePerUnit = args.estimatedValuePerUnit;
+    confirmParts.push(`value per unit to $${args.estimatedValuePerUnit}`);
+  }
+  if (args.unit) {
+    updates.unit = sanitizeInput(args.unit);
+    confirmParts.push(`unit to ${updates.unit}`);
+  }
+  
+  if (confirmParts.length === 0) {
+    return { success: false, error: "No changes specified" };
+  }
+  
+  return {
+    success: true,
+    requiresConfirmation: true,
+    confirmationMessage: `Update "${existingKpi.kpiName}": ${confirmParts.join(", ")}?`,
+    data: { action: "editKPI", kpiId: args.kpiId, updates }
+  };
+}
+
+async function editJobTheme(args: {
+  jobThemeId: number;
+  jobName?: string;
+  priorityRank?: number;
+  strategicPillarId?: number;
+}): Promise<ToolResult> {
+  const existingTheme = await storage.getJobTheme(args.jobThemeId);
+  if (!existingTheme) {
+    return { success: false, error: "Job theme not found" };
+  }
+  
+  const updates: any = {};
+  const confirmParts: string[] = [];
+  
+  if (args.jobName) {
+    updates.jobName = sanitizeInput(args.jobName);
+    confirmParts.push(`name to "${updates.jobName}"`);
+  }
+  if (args.priorityRank !== undefined) {
+    updates.priorityRank = args.priorityRank;
+    confirmParts.push(`priority to #${args.priorityRank}`);
+  }
+  if (args.strategicPillarId !== undefined) {
+    updates.pillarId = args.strategicPillarId;
+    confirmParts.push(`strategic pillar assignment`);
+  }
+  
+  if (confirmParts.length === 0) {
+    return { success: false, error: "No changes specified" };
+  }
+  
+  return {
+    success: true,
+    requiresConfirmation: true,
+    confirmationMessage: `Update job theme "${existingTheme.jobName}": ${confirmParts.join(", ")}?`,
+    data: { action: "editJobTheme", jobThemeId: args.jobThemeId, updates }
+  };
+}
+
+async function editAccount(args: {
+  accountId: number;
+  name?: string;
+  industry?: string;
+  tier?: string;
+  strategyNotes?: string;
+}): Promise<ToolResult> {
+  const existingAccount = await storage.getAccount(args.accountId);
+  if (!existingAccount) {
+    return { success: false, error: "Account not found" };
+  }
+  
+  const updates: any = {};
+  const confirmParts: string[] = [];
+  
+  if (args.name) {
+    updates.name = sanitizeInput(args.name);
+    confirmParts.push(`name to "${updates.name}"`);
+  }
+  if (args.industry) {
+    updates.industry = sanitizeInput(args.industry);
+    confirmParts.push(`industry to ${updates.industry}`);
+  }
+  if (args.tier) {
+    updates.tier = args.tier;
+    confirmParts.push(`tier to ${args.tier}`);
+  }
+  if (args.strategyNotes) {
+    updates.strategyNotes = sanitizeInput(args.strategyNotes);
+    confirmParts.push(`strategy notes`);
+  }
+  
+  if (confirmParts.length === 0) {
+    return { success: false, error: "No changes specified" };
+  }
+  
+  return {
+    success: true,
+    requiresConfirmation: true,
+    confirmationMessage: `Update account "${existingAccount.name}": ${confirmParts.join(", ")}?`,
+    data: { action: "editAccount", accountId: args.accountId, updates }
+  };
+}
+
+async function recommendKPIs(
+  projectId: number, 
+  jobThemeId?: number, 
+  count: number = 5
+): Promise<ToolResult> {
+  const project = await storage.getProject(projectId);
+  if (!project) {
+    return { success: false, error: "Project not found" };
+  }
+  
+  const jobThemes = jobThemeId 
+    ? [await storage.getJobTheme(jobThemeId)].filter(Boolean)
+    : await storage.getJobThemes(projectId);
+  
+  if (jobThemes.length === 0) {
+    return { success: false, error: "No job themes found for KPI recommendations" };
+  }
+  
+  const primaryTheme = jobThemes[0];
+  
+  try {
+    const recommendations = await generateKPIRecommendations({
+      jobName: primaryTheme?.jobName || "",
+      capabilityName: primaryTheme?.capabilityName || "",
+      solutionArea: primaryTheme?.solutionArea || "DEVELOP",
+      companyName: project.companyName,
+      industry: project.sector || undefined
+    });
+    
+    return {
+      success: true,
+      data: {
+        recommendations: recommendations.slice(0, count).map((r, idx) => ({
+          rank: idx + 1,
+          kpiName: r.kpiName,
+          unit: r.unit,
+          definition: r.definition,
+          strategicRationale: r.strategicRationale,
+          achievabilityScore: r.achievabilityScore,
+          valueImpactScore: r.valueImpactScore,
+          kornFerryBenchmark: r.kornFerryBenchmark
+        }))
+      },
+      recommendations: recommendations.slice(0, count).map(r => ({
+        id: `kpi-${Date.now()}-${Math.random()}`,
+        type: "kpi" as const,
+        title: r.kpiName,
+        description: r.strategicRationale,
+        rationale: r.definition,
+        confidence: r.achievabilityScore / 10,
+        priority: r.valueImpactScore >= 7 ? "high" as const : r.valueImpactScore >= 4 ? "medium" as const : "low" as const,
+        suggestedAction: {
+          toolName: "createKPI",
+          toolArgs: {
+            jobThemeId: jobThemeId || jobThemes[0]?.id,
+            kpiName: r.kpiName,
+            unit: r.unit
+          },
+          confirmationMessage: `Create KPI "${r.kpiName}"?`
+        },
+        metadata: {
+          kornFerryBenchmark: r.kornFerryBenchmark,
+          industryBenchmark: r.industryBenchmark,
+          targetRecommendation: r.targetRecommendation
+        }
+      }))
+    };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: "Failed to generate KPI recommendations" 
+    };
+  }
+}
+
+async function recommendQuestions(
+  projectId: number,
+  methodology?: string,
+  topic?: string,
+  count: number = 5
+): Promise<ToolResult> {
+  const project = await storage.getProject(projectId);
+  if (!project) {
+    return { success: false, error: "Project not found" };
+  }
+  
+  const jobThemes = await storage.getJobThemes(projectId);
+  const dataPoints = await storage.getCompanyDataPoints(projectId);
+  
+  const capabilityQuestions = jobThemes.map(theme => ({
+    capability: theme.capabilityName || theme.jobName,
+    insights: dataPoints
+      .filter(dp => dp.relevantCapability === theme.capabilityName || dp.solutionArea === theme.solutionArea)
+      .slice(0, 3)
+      .map(dp => ({
+        label: dp.label,
+        value: dp.value,
+        relatedKPIs: dp.relatedKPIs || undefined
+      }))
+  })).filter(cq => cq.insights.length > 0);
+  
+  if (capabilityQuestions.length === 0) {
+    capabilityQuestions.push({
+      capability: topic || "General Discovery",
+      insights: [{ label: "Context", value: `Preparing discovery for ${project.companyName}` }]
+    });
+  }
+  
+  try {
+    const questionsMap = await generateDiscoveryQuestions(
+      project.companyName,
+      capabilityQuestions,
+      {
+        sector: project.sector,
+        industry: project.sector
+      }
+    );
+    
+    const allQuestions = Object.values(questionsMap).flat();
+    
+    const filtered = methodology && methodology !== "any"
+      ? allQuestions.filter(q => q.methodology?.toLowerCase().includes(methodology.toLowerCase()))
+      : allQuestions;
+    
+    return {
+      success: true,
+      data: {
+        questions: filtered.slice(0, count).map(q => ({
+          question: q.question,
+          questionType: q.questionType,
+          methodology: q.methodology,
+          methodologyStage: q.methodologyStage,
+          purpose: q.purpose,
+          relatedKPI: q.relatedKPI,
+          followUpHint: q.followUpHint
+        }))
+      }
+    };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: "Failed to generate discovery questions" 
+    };
+  }
+}
+
+async function recommendSuccessStories(
+  projectId: number,
+  industry?: string,
+  valuePillar?: string
+): Promise<ToolResult> {
+  const project = await storage.getProject(projectId);
+  if (!project) {
+    return { success: false, error: "Project not found" };
+  }
+  
+  const stories = await storage.getSuccessStoryLibrary();
+  const jobThemes = await storage.getJobThemes(projectId);
+  
+  let filteredStories = stories;
+  
+  if (industry) {
+    filteredStories = filteredStories.filter(s => 
+      s.industry?.toLowerCase().includes(industry.toLowerCase())
+    );
+  }
+  
+  if (valuePillar) {
+    filteredStories = filteredStories.filter(s => 
+      s.capabilityName?.toLowerCase().includes(valuePillar.toLowerCase())
+    );
+  }
+  
+  const scoredStories = filteredStories.map(story => {
+    let score = 0;
+    if (story.industry?.toLowerCase() === project.sector?.toLowerCase()) score += 2;
+    if (story.approvalStatus === "approved") score += 1;
+    jobThemes.forEach(theme => {
+      if (story.solutionArea === theme.solutionArea) score += 1;
+      if (story.capabilityName === theme.capabilityName) score += 1;
+    });
+    return { story, score };
+  }).sort((a, b) => b.score - a.score);
+  
+  return {
+    success: true,
+    data: {
+      stories: scoredStories.slice(0, 5).map(({ story, score }) => ({
+        id: story.id,
+        title: story.title,
+        clientIndustry: story.industry,
+        capabilityName: story.capabilityName,
+        results: story.results,
+        approved: story.approvalStatus === "approved",
+        relevanceScore: score,
+        solutionArea: story.solutionArea
+      }))
+    }
+  };
+}
+
+async function runDiscoverySetup(
+  projectId: number,
+  focusAreas?: string[]
+): Promise<ToolResult> {
+  const project = await storage.getProject(projectId);
+  if (!project) {
+    return { success: false, error: "Project not found" };
+  }
+  
+  const steps = [
+    { stepId: "step-1", description: "Run AI research on company", toolName: "companyResearch", status: "pending" as const },
+    { stepId: "step-2", description: "Generate discovery questions", toolName: "generateQuestions", status: "pending" as const },
+    { stepId: "step-3", description: "Create initial job themes", toolName: "createJobThemes", status: "pending" as const },
+    { stepId: "step-4", description: "Prepare meeting bundle", toolName: "prepareMeetingBundle", status: "pending" as const }
+  ];
+  
+  return {
+    success: true,
+    requiresConfirmation: true,
+    confirmationMessage: `Set up discovery for ${project.companyName}? This will run AI research, generate discovery questions, and prepare a meeting bundle.`,
+    data: {
+      action: "runDiscoverySetup",
+      projectId,
+      focusAreas: focusAreas || [],
+      steps
+    },
+    taskProgress: {
+      id: `discovery-setup-${projectId}-${Date.now()}`,
+      type: "workflow" as const,
+      name: "Discovery Setup",
+      description: `Complete discovery setup for ${project.companyName}`,
+      steps,
+      status: "pending" as const,
+      createdAt: new Date().toISOString()
+    }
+  };
+}
+
+async function runQBRPrep(
+  projectId: number,
+  reviewPeriod?: string,
+  audience?: string
+): Promise<ToolResult> {
+  const project = await storage.getProject(projectId);
+  if (!project) {
+    return { success: false, error: "Project not found" };
+  }
+  
+  const kpis = await storage.getAllJobThemeKPIsForProject(projectId);
+  const actuals = await storage.getAllKPIActualsForProject(projectId);
+  const jobThemes = await storage.getJobThemes(projectId);
+  
+  try {
+    const kpiProgress = kpis.map(kpi => {
+      const kpiActuals = actuals.filter(a => a.jobThemeKPIId === kpi.id);
+      const latestActual = kpiActuals.sort((a, b) => 
+        new Date(b.actualDate!).getTime() - new Date(a.actualDate!).getTime()
+      )[0];
+      
+      let trend: "improving" | "declining" | "stagnant" | "unknown" = "unknown";
+      if (kpiActuals.length >= 2) {
+        const prev = kpiActuals[1]?.actualValue;
+        const curr = latestActual?.actualValue;
+        if (prev && curr) {
+          const prevNum = parseFloat(prev);
+          const currNum = parseFloat(curr);
+          if (!isNaN(prevNum) && !isNaN(currNum)) {
+            trend = currNum > prevNum ? "improving" : currNum < prevNum ? "declining" : "stagnant";
+          }
+        }
+      }
+      
+      return {
+        kpiName: kpi.kpiName,
+        baseline: kpi.baselineValue || "",
+        target: kpi.targetValue || "",
+        actual: latestActual?.actualValue,
+        trend
+      };
+    });
+    
+    const agenda = await generateBusinessReviewAgenda({
+      companyName: project.companyName,
+      reviewType: "quarterly",
+      projectPhase: (project.currentPhase as "discovery" | "alignment" | "realisation") || "discovery",
+      kpiProgress,
+      discoveryInsights: jobThemes.map(t => t.jobName)
+    });
+    
+    const kpiSummary = kpis.map(kpi => {
+      const kpiActuals = actuals.filter(a => a.jobThemeKPIId === kpi.id);
+      const latestActual = kpiActuals.sort((a, b) => 
+        new Date(b.actualDate!).getTime() - new Date(a.actualDate!).getTime()
+      )[0];
+      
+      return {
+        kpiName: kpi.kpiName,
+        baseline: kpi.baselineValue,
+        target: kpi.targetValue,
+        current: latestActual?.actualValue,
+        status: latestActual ? "tracked" as const : "needs_data" as const
+      };
+    });
+    
+    return {
+      success: true,
+      data: {
+        reviewPeriod: reviewPeriod || "Current Quarter",
+        audience: audience || "executive",
+        company: project.companyName,
+        initiative: project.name,
+        kpiProgress: kpiSummary,
+        agenda,
+        suggestedHighlights: kpiSummary.filter(k => k.status === "tracked").slice(0, 3),
+        risks: kpiSummary.filter(k => k.status === "needs_data")
+      }
+    };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: "Failed to prepare QBR materials" 
+    };
+  }
+}
+
+async function runHandoffBundle(
+  projectId: number,
+  recipientRole: string,
+  includeFullHistory?: boolean
+): Promise<ToolResult> {
+  const project = await storage.getProject(projectId);
+  if (!project) {
+    return { success: false, error: "Project not found" };
+  }
+  
+  const jobThemes = await storage.getJobThemes(projectId);
+  const kpis = await storage.getAllJobThemeKPIsForProject(projectId);
+  const notes = await storage.getDiscoveryNotes(projectId);
+  const questions = await storage.getDiscoveryQuestions(projectId);
+  
+  const handoffPackets = await storage.getHandoffPackets(projectId);
+  const handoffPacket = handoffPackets[0] || null;
+  
+  return {
+    success: true,
+    requiresConfirmation: true,
+    confirmationMessage: `Create handoff bundle for ${recipientRole.toUpperCase()}? This will compile all confirmed commitments and key context for ${project.companyName}.`,
+    data: {
+      action: "runHandoffBundle",
+      projectId,
+      recipientRole,
+      bundle: {
+        company: project.companyName,
+        initiative: project.name,
+        phase: project.currentPhase,
+        handedOffTo: recipientRole,
+        confirmedCommitments: kpis.filter(k => k.commitmentStatus === "confirmed").map(k => ({
+          kpiName: k.kpiName,
+          target: k.targetValue,
+          baseline: k.baselineValue
+        })),
+        jobThemes: jobThemes.map(t => ({
+          name: t.jobName,
+          priority: t.priorityRank
+        })),
+        discoveryContext: includeFullHistory ? {
+          notes: notes?.freeformNotes,
+          questionsAsked: questions.filter(q => q.isAsked).length,
+          keyStakeholder: notes?.keyStakeholder
+        } : null,
+        existingHandoff: handoffPacket ? {
+          id: handoffPacket.id,
+          status: handoffPacket.status,
+          createdAt: handoffPacket.createdAt
+        } : null
+      }
+    }
+  };
+}
+
+async function navigateTo(args: {
+  action: string;
+  path?: string;
+  elementId?: string;
+  dialogType?: string;
+  dialogProps?: Record<string, any>;
+  description?: string;
+}): Promise<ToolResult> {
+  const navigationCommand: NavigationCommand = {
+    type: args.action as NavigationCommand["type"],
+    path: args.path,
+    elementId: args.elementId,
+    dialogType: args.dialogType,
+    dialogProps: args.dialogProps,
+    description: args.description || "Navigation"
+  };
+  
+  return {
+    success: true,
+    data: { navigation: navigationCommand },
+    navigationCommand
+  };
+}
+
+async function showInContext(
+  entityType: string,
+  entityId: number,
+  displayMode?: string
+): Promise<ToolResult> {
+  let entityData: any = null;
+  
+  switch (entityType) {
+    case "account":
+      const account = await storage.getAccount(entityId);
+      entityData = account ? {
+        id: account.id,
+        name: account.name,
+        industry: account.industry,
+        tier: account.tier,
+        healthScore: account.healthScore
+      } : null;
+      break;
+    
+    case "project":
+      const project = await storage.getProject(entityId);
+      entityData = project ? {
+        id: project.id,
+        name: project.name,
+        company: project.companyName,
+        phase: project.currentPhase,
+        status: project.status
+      } : null;
+      break;
+    
+    case "kpi":
+      const kpi = await storage.getJobThemeKPI(entityId);
+      entityData = kpi ? {
+        id: kpi.id,
+        name: kpi.kpiName,
+        unit: kpi.unit,
+        baseline: kpi.baselineValue,
+        target: kpi.targetValue
+      } : null;
+      break;
+    
+    case "jobTheme":
+      const theme = await storage.getJobTheme(entityId);
+      entityData = theme ? {
+        id: theme.id,
+        name: theme.jobName,
+        priority: theme.priorityRank,
+        solutionArea: theme.solutionArea
+      } : null;
+      break;
+    
+    case "successStory":
+      const story = await storage.getSuccessStoryLibraryItem(entityId);
+      entityData = story ? {
+        id: story.id,
+        title: story.title,
+        industry: story.industry,
+        results: story.results,
+        approved: story.approvalStatus === "approved"
+      } : null;
+      break;
+  }
+  
+  if (!entityData) {
+    return { success: false, error: `${entityType} not found` };
+  }
+  
+  return {
+    success: true,
+    data: {
+      entityType,
+      displayMode: displayMode || "card",
+      entity: entityData
+    }
   };
 }
 
