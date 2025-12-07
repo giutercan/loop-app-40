@@ -137,15 +137,15 @@ export function useVoiceSession(options: UseVoiceSessionOptions = {}): UseVoiceS
       };
       
       recognition.onend = () => {
-        if (isRecording) {
-          setIsRecording(false);
-          setIsProcessing(false);
-          
-          const transcript = transcriptRef.current.trim();
-          if (transcript && resolveRef.current) {
+        setIsRecording(false);
+        setIsProcessing(false);
+        
+        const transcript = transcriptRef.current.trim();
+        if (resolveRef.current) {
+          if (transcript) {
             onTranscript?.(transcript);
             resolveRef.current(transcript);
-          } else if (resolveRef.current) {
+          } else {
             resolveRef.current(null);
           }
           resolveRef.current = null;
@@ -160,7 +160,7 @@ export function useVoiceSession(options: UseVoiceSessionOptions = {}): UseVoiceS
       setError(errorMsg);
       onError?.(errorMsg);
     }
-  }, [onTranscript, onError, isRecording]);
+  }, [onTranscript, onError]);
 
   const stopRecording = useCallback(async (): Promise<string | null> => {
     return new Promise((resolve) => {
