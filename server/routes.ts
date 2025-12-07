@@ -8541,4 +8541,81 @@ Be concise but helpful. Use the user's context (current account, project, page) 
       res.status(500).json({ error: error.message });
     }
   });
+
+  // POST /api/companion/voice/transcribe - Speech-to-text using OpenAI Whisper
+  app.post("/api/companion/voice/transcribe", async (req, res) => {
+    try {
+      const contentType = req.headers['content-type'] || '';
+      
+      if (!contentType.includes('audio/')) {
+        return res.status(400).json({ error: "Expected audio content type" });
+      }
+      
+      const chunks: Buffer[] = [];
+      req.on('data', (chunk) => chunks.push(chunk));
+      req.on('end', async () => {
+        try {
+          const audioBuffer = Buffer.concat(chunks);
+          
+          if (audioBuffer.length === 0) {
+            return res.status(400).json({ error: "No audio data received" });
+          }
+          
+          const audioFile = new File([audioBuffer], 'audio.webm', { type: contentType });
+          
+          const transcription = await openai.audio.transcriptions.create({
+            file: audioFile,
+            model: "whisper-1",
+            language: "en"
+          });
+          
+          res.json({ 
+            text: transcription.text,
+            success: true 
+          });
+        } catch (error: any) {
+          console.error("Whisper transcription error:", error);
+          res.status(500).json({ error: error.message });
+        }
+      });
+    } catch (error: any) {
+      console.error("Error in voice transcribe:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/companion/voice/speak - Text-to-speech using OpenAI TTS
+  app.post("/api/companion/voice/speak", async (req, res) => {
+    try {
+      const requestSchema = z.object({
+        text: z.string().min(1).max(4096),
+        voice: z.enum(["alloy", "echo", "fable", "onyx", "nova", "shimmer"]).optional().default("nova")
+      });
+      
+      const parseResult = requestSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: "Invalid request body", details: parseResult.error });
+      }
+      
+      const { text, voice } = parseResult.data;
+      
+      const mp3Response = await openai.audio.speech.create({
+        model: "tts-1",
+        voice: voice,
+        input: text
+      });
+      
+      const arrayBuffer = await mp3Response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      
+      res.set({
+        'Content-Type': 'audio/mpeg',
+        'Content-Length': buffer.length.toString()
+      });
+      res.send(buffer);
+    } catch (error: any) {
+      console.error("Error in voice speak:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 }
