@@ -30,11 +30,7 @@ import {
   AlertTriangle,
   Play,
   ArrowRight,
-  Zap,
-  Mic,
-  MicOff,
-  Volume2,
-  Square
+  Zap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
@@ -43,7 +39,6 @@ import {
   type FormContext 
 } from "@/hooks/use-companion-presence";
 import { useProactiveInsights, type ProactiveInsight } from "@/hooks/use-proactive-insights";
-import { useVoiceSession } from "@/hooks/use-voice-session";
 import { AppHeader } from "@/components/AppHeader";
 
 interface Message {
@@ -228,19 +223,8 @@ function AICompanionPanel({ onSessionCreated }: AICompanionPanelProps) {
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [showInsights, setShowInsights] = useState(true);
-  const [voiceModeEnabled, setVoiceModeEnabled] = useState(false);
-  const [playingMessageId, setPlayingMessageId] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  
-  const handleVoiceTranscript = useCallback((text: string) => {
-    setInputValue(text);
-  }, []);
-  
-  const voiceSession = useVoiceSession({
-    onTranscript: handleVoiceTranscript,
-    voice: "nova",
-  });
   
   const currentPage = location;
   
@@ -297,10 +281,6 @@ function AICompanionPanel({ onSessionCreated }: AICompanionPanelProps) {
         setPendingConfirmation(data.pendingConfirmation);
       }
       setIsTyping(false);
-      
-      if (voiceModeEnabled && data.response) {
-        voiceSession.playAudio(data.response).catch(() => {});
-      }
     },
     onError: () => {
       setIsTyping(false);
@@ -353,13 +333,6 @@ function AICompanionPanel({ onSessionCreated }: AICompanionPanelProps) {
     }
   }, [isOpen]);
   
-  useEffect(() => {
-    if (!isOpen || !voiceModeEnabled) {
-      voiceSession.stopAudio();
-      setPlayingMessageId(null);
-    }
-  }, [isOpen, voiceModeEnabled]);
-  
   const handleSendMessage = () => {
     if (!inputValue.trim() || sendMessageMutation.isPending) return;
     
@@ -381,28 +354,6 @@ function AICompanionPanel({ onSessionCreated }: AICompanionPanelProps) {
     sendMessageMutation.mutate(action);
     setInputValue("");
     setIsTyping(true);
-  };
-  
-  const handleVoiceToggle = async () => {
-    if (voiceSession.isRecording) {
-      const transcript = await voiceSession.stopRecording();
-      if (transcript && transcript.trim()) {
-        setInputValue(transcript);
-      }
-    } else {
-      await voiceSession.startRecording();
-    }
-  };
-  
-  const handlePlayMessage = async (message: Message) => {
-    if (playingMessageId === message.id) {
-      voiceSession.stopAudio();
-      setPlayingMessageId(null);
-    } else {
-      setPlayingMessageId(message.id);
-      await voiceSession.playAudio(message.content);
-      setPlayingMessageId(null);
-    }
   };
   
   const messages = sessionData?.messages || [];
@@ -579,25 +530,9 @@ function AICompanionPanel({ onSessionCreated }: AICompanionPanelProps) {
                     )}
                   >
                     {msg.role === "assistant" && (
-                      <div className="flex items-center justify-between gap-1 mb-1">
-                        <div className="flex items-center gap-1">
-                          <Sparkles className="h-3 w-3 text-[#A3238E]" />
-                          <span className="text-xs font-medium text-[#A3238E]">AI</span>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
-                          onClick={() => handlePlayMessage(msg)}
-                          disabled={voiceSession.isPlaying && playingMessageId !== msg.id}
-                          data-testid={`button-play-message-${msg.id}`}
-                        >
-                          {playingMessageId === msg.id && voiceSession.isPlaying ? (
-                            <Square className="h-3 w-3" />
-                          ) : (
-                            <Volume2 className="h-3 w-3" />
-                          )}
-                        </Button>
+                      <div className="flex items-center gap-1 mb-1">
+                        <Sparkles className="h-3 w-3 text-[#A3238E]" />
+                        <span className="text-xs font-medium text-[#A3238E]">AI</span>
                       </div>
                     )}
                     <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
