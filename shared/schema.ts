@@ -1735,6 +1735,148 @@ export const toolExecutionSchema = z.object({
 export type ToolExecution = z.infer<typeof toolExecutionSchema>;
 
 // ============================================================================
+// AGENTIC COMPANION - Enhanced State and Capability Framework
+// ============================================================================
+
+// Tool capability categories for authorization and UX
+export const toolCapabilities = ["read", "write", "edit", "recommend", "workflow", "navigate"] as const;
+export type ToolCapability = typeof toolCapabilities[number];
+
+// Entity reference for context tracking
+export const entityReferenceSchema = z.object({
+  type: z.enum(["account", "project", "kpi", "jobTheme", "pillar", "businessReview", "handoffPacket"]),
+  id: z.number(),
+  name: z.string().optional(),
+  resolvedAt: z.string().optional(),
+});
+export type EntityReference = z.infer<typeof entityReferenceSchema>;
+
+// Task in the companion's task stack (for multi-step workflows)
+export const companionTaskSchema = z.object({
+  id: z.string(),
+  type: z.enum(["workflow", "recommendation", "edit", "query"]),
+  description: z.string(),
+  status: z.enum(["pending", "in_progress", "awaiting_confirmation", "completed", "failed"]),
+  steps: z.array(z.object({
+    stepId: z.string(),
+    description: z.string(),
+    toolName: z.string().optional(),
+    status: z.enum(["pending", "in_progress", "completed", "skipped", "failed"]),
+    result: z.any().optional(),
+  })).optional(),
+  createdAt: z.string(),
+  completedAt: z.string().optional(),
+});
+export type CompanionTask = z.infer<typeof companionTaskSchema>;
+
+// Working memory entry for conversational context
+export const workingMemoryEntrySchema = z.object({
+  key: z.string(),
+  value: z.any(),
+  source: z.enum(["user", "tool", "inference"]),
+  confidence: z.number().min(0).max(1).optional(),
+  expiresAt: z.string().optional(),
+});
+export type WorkingMemoryEntry = z.infer<typeof workingMemoryEntrySchema>;
+
+// Navigation command for directing user to specific screens
+export const navigationCommandSchema = z.object({
+  type: z.enum(["navigate", "highlight", "openDialog", "scrollTo", "focus"]),
+  path: z.string().optional(),
+  elementId: z.string().optional(),
+  dialogType: z.string().optional(),
+  dialogProps: z.record(z.any()).optional(),
+  description: z.string().optional(),
+});
+export type NavigationCommand = z.infer<typeof navigationCommandSchema>;
+
+// Proactive insight surfaced by the companion
+export const proactiveInsightSchema = z.object({
+  id: z.string(),
+  type: z.enum(["alert", "suggestion", "reminder", "milestone"]),
+  priority: z.enum(["low", "medium", "high", "critical"]),
+  title: z.string(),
+  description: z.string(),
+  relatedEntity: entityReferenceSchema.optional(),
+  suggestedAction: z.object({
+    label: z.string(),
+    toolName: z.string().optional(),
+    toolArgs: z.record(z.any()).optional(),
+    navigationPath: z.string().optional(),
+  }).optional(),
+  dismissedAt: z.string().optional(),
+  expiresAt: z.string().optional(),
+});
+export type ProactiveInsight = z.infer<typeof proactiveInsightSchema>;
+
+// Enhanced companion session state for persistent context
+export const companionSessionStateSchema = z.object({
+  // Current navigation context
+  currentRoute: z.string().optional(),
+  previousRoutes: z.array(z.string()).optional(),
+  
+  // Active entity references (what the user is currently working with)
+  activeEntities: z.array(entityReferenceSchema).optional(),
+  
+  // Task stack for multi-step workflows
+  taskStack: z.array(companionTaskSchema).optional(),
+  
+  // Working memory for conversational context
+  workingMemory: z.array(workingMemoryEntrySchema).optional(),
+  
+  // Pending navigation commands
+  pendingNavigation: navigationCommandSchema.optional(),
+  
+  // Proactive insights to surface
+  insights: z.array(proactiveInsightSchema).optional(),
+  
+  // User preferences inferred during session
+  inferredPreferences: z.record(z.any()).optional(),
+  
+  // Last sync timestamp for frontend state
+  lastSyncAt: z.string().optional(),
+});
+export type CompanionSessionState = z.infer<typeof companionSessionStateSchema>;
+
+// Recommendation result from AI analysis
+export const recommendationSchema = z.object({
+  id: z.string(),
+  type: z.enum(["kpi", "jobTheme", "question", "action", "successStory", "benchmark"]),
+  title: z.string(),
+  description: z.string(),
+  rationale: z.string(),
+  confidence: z.number().min(0).max(1),
+  priority: z.enum(["low", "medium", "high"]),
+  relatedEntity: entityReferenceSchema.optional(),
+  suggestedAction: z.object({
+    toolName: z.string(),
+    toolArgs: z.record(z.any()),
+    confirmationMessage: z.string(),
+  }).optional(),
+  metadata: z.record(z.any()).optional(),
+});
+export type Recommendation = z.infer<typeof recommendationSchema>;
+
+// Workflow definition for multi-step actions
+export const workflowDefinitionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  category: z.enum(["discovery", "alignment", "realisation", "handoff", "reporting"]),
+  steps: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    toolName: z.string(),
+    toolArgsTemplate: z.record(z.any()),
+    optional: z.boolean().optional(),
+    dependsOn: z.array(z.string()).optional(),
+  })),
+  requiredContext: z.array(z.enum(["accountId", "projectId", "jobThemeId", "kpiId"])),
+  estimatedDuration: z.string().optional(),
+});
+export type WorkflowDefinition = z.infer<typeof workflowDefinitionSchema>;
+
+// ============================================================================
 // ACCOUNT HUB - Aggregated view for Client Value Hub
 // ============================================================================
 
