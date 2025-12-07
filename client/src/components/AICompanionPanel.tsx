@@ -30,7 +30,11 @@ import {
   AlertTriangle,
   Play,
   ArrowRight,
-  Zap
+  Zap,
+  Mic,
+  MicOff,
+  Volume2,
+  Square
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
@@ -39,6 +43,7 @@ import {
   type FormContext 
 } from "@/hooks/use-companion-presence";
 import { useProactiveInsights, type ProactiveInsight } from "@/hooks/use-proactive-insights";
+import { useVoiceSession } from "@/hooks/use-voice-session";
 
 interface Message {
   id: number;
@@ -239,8 +244,19 @@ function AICompanionPanel({ onSessionCreated }: AICompanionPanelProps) {
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [showInsights, setShowInsights] = useState(true);
+  const [voiceModeEnabled, setVoiceModeEnabled] = useState(false);
+  const [playingMessageId, setPlayingMessageId] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  
+  const handleVoiceTranscript = useCallback((text: string) => {
+    setInputValue(text);
+  }, []);
+  
+  const voiceSession = useVoiceSession({
+    onTranscript: handleVoiceTranscript,
+    voice: "nova",
+  });
   
   const currentPage = location;
   
@@ -297,6 +313,10 @@ function AICompanionPanel({ onSessionCreated }: AICompanionPanelProps) {
         setPendingConfirmation(data.pendingConfirmation);
       }
       setIsTyping(false);
+      
+      if (voiceModeEnabled && data.response) {
+        voiceSession.playAudio(data.response).catch(() => {});
+      }
     },
     onError: () => {
       setIsTyping(false);
@@ -349,6 +369,13 @@ function AICompanionPanel({ onSessionCreated }: AICompanionPanelProps) {
     }
   }, [isOpen]);
   
+  useEffect(() => {
+    if (!isOpen || !voiceModeEnabled) {
+      voiceSession.stopAudio();
+      setPlayingMessageId(null);
+    }
+  }, [isOpen, voiceModeEnabled]);
+  
   const handleSendMessage = () => {
     if (!inputValue.trim() || sendMessageMutation.isPending) return;
     
@@ -370,6 +397,28 @@ function AICompanionPanel({ onSessionCreated }: AICompanionPanelProps) {
     sendMessageMutation.mutate(action);
     setInputValue("");
     setIsTyping(true);
+  };
+  
+  const handleVoiceToggle = async () => {
+    if (voiceSession.isRecording) {
+      const transcript = await voiceSession.stopRecording();
+      if (transcript && transcript.trim()) {
+        setInputValue(transcript);
+      }
+    } else {
+      await voiceSession.startRecording();
+    }
+  };
+  
+  const handlePlayMessage = async (message: Message) => {
+    if (playingMessageId === message.id) {
+      voiceSession.stopAudio();
+      setPlayingMessageId(null);
+    } else {
+      setPlayingMessageId(message.id);
+      await voiceSession.playAudio(message.content);
+      setPlayingMessageId(null);
+    }
   };
   
   const messages = sessionData?.messages || [];
@@ -432,6 +481,23 @@ function AICompanionPanel({ onSessionCreated }: AICompanionPanelProps) {
                   <p className="text-white/70 text-xs">AI-Powered Assistant</p>
                 </div>
               </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setVoiceModeEnabled(!voiceModeEnabled)}
+                className={cn(
+                  "h-8 px-2 text-white/80 hover:text-white hover:bg-white/10",
+                  voiceModeEnabled && "bg-white/20 text-white"
+                )}
+                data-testid="button-voice-mode-toggle"
+              >
+                {voiceModeEnabled ? (
+                  <Volume2 className="h-4 w-4 mr-1" />
+                ) : (
+                  <MicOff className="h-4 w-4 mr-1" />
+                )}
+                <span className="text-xs">{voiceModeEnabled ? "Voice On" : "Voice Off"}</span>
+              </Button>
             </div>
             <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2">
               <div className="h-2 w-2 rounded-full bg-[#009B77] animate-pulse" />
@@ -546,9 +612,25 @@ function AICompanionPanel({ onSessionCreated }: AICompanionPanelProps) {
                     )}
                   >
                     {msg.role === "assistant" && (
-                      <div className="flex items-center gap-1 mb-1">
-                        <Sparkles className="h-3 w-3 text-[#A3238E]" />
-                        <span className="text-xs font-medium text-[#A3238E]">AI</span>
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <div className="flex items-center gap-1">
+                          <Sparkles className="h-3 w-3 text-[#A3238E]" />
+                          <span className="text-xs font-medium text-[#A3238E]">AI</span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+                          onClick={() => handlePlayMessage(msg)}
+                          disabled={voiceSession.isPlaying && playingMessageId !== msg.id}
+                          data-testid={`button-play-message-${msg.id}`}
+                        >
+                          {playingMessageId === msg.id && voiceSession.isPlaying ? (
+                            <Square className="h-3 w-3" />
+                          ) : (
+                            <Volume2 className="h-3 w-3" />
+                          )}
+                        </Button>
                       </div>
                     )}
                     <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
@@ -622,17 +704,52 @@ function AICompanionPanel({ onSessionCreated }: AICompanionPanelProps) {
         <Separator />
         
         <div className="p-4">
+          {voiceSession.error && (
+            <div className="mb-2 p-2 bg-destructive/10 border border-destructive/20 rounded-md">
+              <p className="text-xs text-destructive">{voiceSession.error}</p>
+            </div>
+          )}
+          {voiceSession.isRecording && (
+            <div className="mb-2 p-2 bg-[#A3238E]/10 border border-[#A3238E]/20 rounded-md flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+              <p className="text-xs text-[#A3238E]">Recording... Click the mic to stop and send</p>
+            </div>
+          )}
+          {voiceSession.isProcessing && (
+            <div className="mb-2 p-2 bg-[#005971]/10 border border-[#005971]/20 rounded-md flex items-center gap-2">
+              <Loader2 className="h-3 w-3 animate-spin text-[#005971]" />
+              <p className="text-xs text-[#005971]">Processing speech...</p>
+            </div>
+          )}
           <div className="flex gap-2">
             <Input
               ref={inputRef}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask me anything..."
-              disabled={sendMessageMutation.isPending || !localSessionId}
+              placeholder={voiceSession.isRecording ? "Listening..." : "Ask me anything..."}
+              disabled={sendMessageMutation.isPending || !localSessionId || voiceSession.isRecording}
               className="flex-1"
               data-testid="input-companion-message"
             />
+            {voiceModeEnabled && (
+              <Button
+                onClick={handleVoiceToggle}
+                disabled={sendMessageMutation.isPending || !localSessionId || voiceSession.isProcessing}
+                size="icon"
+                variant={voiceSession.isRecording ? "default" : "outline"}
+                className={cn(
+                  voiceSession.isRecording && "bg-red-500 hover:bg-red-600 animate-pulse"
+                )}
+                data-testid="button-voice-record"
+              >
+                {voiceSession.isRecording ? (
+                  <MicOff className="h-4 w-4" />
+                ) : (
+                  <Mic className="h-4 w-4" />
+                )}
+              </Button>
+            )}
             <Button
               onClick={handleSendMessage}
               disabled={!inputValue.trim() || sendMessageMutation.isPending || !localSessionId}
@@ -648,7 +765,7 @@ function AICompanionPanel({ onSessionCreated }: AICompanionPanelProps) {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-2 text-center">
-            AI can make mistakes. Verify important information.
+            {voiceModeEnabled ? "Voice mode enabled - responses will be spoken aloud" : "AI can make mistakes. Verify important information."}
           </p>
         </div>
       </SheetContent>
