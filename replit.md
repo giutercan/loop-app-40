@@ -1,7 +1,7 @@
-# Korn Ferry Value Lifecycle Application
+# Korn Ferry Loop
 
 ## Overview
-A full-stack web application for Korn Ferry consultants to manage client engagements across Discovery, Alignment, and Realization phases. It integrates AI for company research and strategic insights, streamlines client tracking, enhances value case creation, and facilitates collaborative client interactions. The application aims to provide a comprehensive platform for managing the entire client engagement lifecycle, from initial research to value realization, with a focus on actionable insights and data-driven value cases. The platform is evolving into an account-centric architecture, enabling role-based views across the customer journey and supporting various teams like Sales, Consultants, Delivery, CSMs, and Client Sponsors in tracking promised versus delivered outcomes.
+**Korn Ferry Loop** is a full-stack web application for Korn Ferry consultants to manage client engagements across Discovery, Alignment, and Realization phases. The platform features **Loop Canvas**, a revolutionary single-page conversational AI interface where "Loop" (the AI assistant) handles all user interactions through natural language. It integrates AI for company research and strategic insights, streamlines client tracking, enhances value case creation, and facilitates collaborative client interactions. The application aims to provide a comprehensive platform for managing the entire client engagement lifecycle, from initial research to value realization, with a focus on actionable insights and data-driven value cases. The platform is evolving into an account-centric architecture, enabling role-based views across the customer journey and supporting various teams like Sales, Consultants, Delivery, CSMs, and Client Sponsors in tracking promised versus delivered outcomes.
 
 ## User Preferences
 - Consultants prefer strategic, actionable insights over basic company facts.

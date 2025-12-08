@@ -668,7 +668,7 @@ export default function CompanionCanvas() {
               <Sparkles className="h-4 w-4 text-white" />
             </div>
             <div>
-              <h1 className="text-white font-semibold">Companion Canvas</h1>
+              <h1 className="text-white font-semibold">Loop Canvas</h1>
               <p className="text-white/60 text-xs">Your AI-powered workspace</p>
             </div>
           </div>
@@ -709,9 +709,9 @@ export default function CompanionCanvas() {
                       <div className="h-20 w-20 mx-auto rounded-full bg-gradient-to-br from-secondary/10 to-ai/10 flex items-center justify-center mb-4">
                         <Bot className="h-10 w-10 text-secondary" />
                       </div>
-                      <h2 className="text-2xl font-bold text-foreground mb-2">Welcome to Companion Canvas</h2>
+                      <h2 className="text-2xl font-bold text-foreground mb-2">Welcome to Loop Canvas</h2>
                       <p className="text-muted-foreground max-w-md mx-auto">
-                        I'm your AI assistant. Just tell me what you'd like to do - I can create accounts, 
+                        I'm Loop, your AI assistant. Just tell me what you'd like to do - I can create accounts, 
                         manage initiatives, track KPIs, prepare for meetings, and guide you through workflows.
                       </p>
                     </div>
@@ -758,7 +758,7 @@ export default function CompanionCanvas() {
                               <div className="h-6 w-6 rounded-full bg-gradient-to-br from-secondary to-ai flex items-center justify-center">
                                 <Sparkles className="h-3 w-3 text-white" />
                               </div>
-                              <span className="text-xs font-medium text-ai">AI Assistant</span>
+                              <span className="text-xs font-medium text-ai">Loop</span>
                               {playingMessageId === msg.id && (
                                 <Badge variant="secondary" className="text-xs">
                                   <Volume2 className="h-3 w-3 mr-1 animate-pulse" /> Speaking
