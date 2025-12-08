@@ -229,7 +229,15 @@ function AICompanionPanel({ onSessionCreated }: AICompanionPanelProps) {
   const [isTyping, setIsTyping] = useState(false);
   const [showInsights, setShowInsights] = useState(true);
   const [voiceModeEnabled, setVoiceModeEnabled] = useState(false);
+  const [autoSpeakEnabled, setAutoSpeakEnabled] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('loop-auto-speak') === 'true';
+    }
+    return false;
+  });
   const [playingMessageId, setPlayingMessageId] = useState<number | null>(null);
+  const lastMessageCountRef = useRef<number>(0);
+  const hasInitializedRef = useRef<boolean>(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   
@@ -361,8 +369,45 @@ function AICompanionPanel({ onSessionCreated }: AICompanionPanelProps) {
       }
       setVoiceModeEnabled(false);
       setPlayingMessageId(null);
+      hasInitializedRef.current = false;
+      lastMessageCountRef.current = 0;
     }
   }, [isOpen]);
+  
+  const toggleAutoSpeak = useCallback(() => {
+    setAutoSpeakEnabled(prev => {
+      const newValue = !prev;
+      localStorage.setItem('loop-auto-speak', String(newValue));
+      if (!newValue) {
+        voiceSession.stopAudio();
+        setPlayingMessageId(null);
+      }
+      return newValue;
+    });
+  }, [voiceSession]);
+  
+  useEffect(() => {
+    const messages = sessionData?.messages || [];
+    const currentCount = messages.length;
+    
+    if (!hasInitializedRef.current && currentCount > 0) {
+      hasInitializedRef.current = true;
+      lastMessageCountRef.current = currentCount;
+      return;
+    }
+    
+    if (hasInitializedRef.current && autoSpeakEnabled && currentCount > lastMessageCountRef.current && currentCount > 0) {
+      const latestMessage = messages[messages.length - 1];
+      if (latestMessage && latestMessage.role === 'assistant' && latestMessage.content) {
+        setPlayingMessageId(latestMessage.id);
+        voiceSession.playAudio(latestMessage.content).finally(() => {
+          setPlayingMessageId(null);
+        });
+      }
+    }
+    
+    lastMessageCountRef.current = currentCount;
+  }, [sessionData?.messages, autoSpeakEnabled, voiceSession]);
   
   const handleVoiceToggle = async () => {
     if (voiceSession.isProcessing) return;
@@ -473,6 +518,25 @@ function AICompanionPanel({ onSessionCreated }: AICompanionPanelProps) {
                   <p className="text-white/70 text-xs">AI-Powered Assistant</p>
                 </div>
               </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleAutoSpeak}
+                className={cn(
+                  "h-8 w-8 rounded-full transition-colors",
+                  autoSpeakEnabled 
+                    ? "bg-white/30 text-white hover:bg-white/40" 
+                    : "bg-white/10 text-white/60 hover:bg-white/20 hover:text-white"
+                )}
+                data-testid="button-toggle-auto-speak"
+                title={autoSpeakEnabled ? "Voice responses on" : "Voice responses off"}
+              >
+                {autoSpeakEnabled ? (
+                  <Volume2 className="h-4 w-4" />
+                ) : (
+                  <Volume2 className="h-4 w-4 opacity-60" />
+                )}
+              </Button>
             </div>
             <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2">
               <div className="h-2 w-2 rounded-full bg-[#009B77] animate-pulse" />
