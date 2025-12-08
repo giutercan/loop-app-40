@@ -44,7 +44,7 @@ import {
   type FormContext 
 } from "@/hooks/use-companion-presence";
 import { useProactiveInsights, type ProactiveInsight } from "@/hooks/use-proactive-insights";
-import { AppHeader } from "@/components/AppHeader";
+import { AppHeader, LoopLogo } from "@/components/AppHeader";
 
 interface Message {
   id: number;
@@ -506,15 +506,15 @@ function AICompanionPanel({ onSessionCreated }: AICompanionPanelProps) {
         className="w-full sm:max-w-md p-0 flex flex-col bg-gradient-to-b from-background to-muted/20"
         data-testid="panel-companion"
       >
-        <SheetHeader className="px-4 py-3 border-b bg-gradient-to-r from-[#005971] to-[#A3238E]">
+        <SheetHeader className="px-4 py-3 border-b bg-gradient-to-r from-secondary to-ai">
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center">
-                  <Sparkles className="h-4 w-4 text-white" />
+                <div className="h-8 w-8 rounded-lg bg-white/10 backdrop-blur flex items-center justify-center border border-white/20">
+                  <LoopLogo className="h-5 w-5" useGradient />
                 </div>
                 <div>
-                  <SheetTitle className="text-white text-base font-semibold">The Loop</SheetTitle>
+                  <SheetTitle className="text-white text-base font-semibold">Loop</SheetTitle>
                   <p className="text-white/70 text-xs">AI-Powered Assistant</p>
                 </div>
               </div>
@@ -556,10 +556,10 @@ function AICompanionPanel({ onSessionCreated }: AICompanionPanelProps) {
             ) : messages.length === 0 ? (
               <div className="space-y-4">
                 <div className="text-center py-6">
-                  <div className="h-16 w-16 mx-auto rounded-full bg-gradient-to-r from-[#005971]/10 to-[#A3238E]/10 flex items-center justify-center mb-3">
-                    <Bot className="h-8 w-8 text-[#005971]" />
+                  <div className="h-16 w-16 mx-auto rounded-xl bg-gradient-to-r from-secondary/10 to-ai/10 flex items-center justify-center mb-3 border border-secondary/20">
+                    <LoopLogo className="h-10 w-10" useGradient />
                   </div>
-                  <h3 className="font-semibold text-foreground mb-1">Welcome to The Loop</h3>
+                  <h3 className="font-semibold text-foreground mb-1">Welcome to Loop</h3>
                   <p className="text-sm text-muted-foreground">
                     Your AI assistant for data insights, meeting prep, and KPI management.
                   </p>
