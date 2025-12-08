@@ -8306,6 +8306,12 @@ Respond in JSON format:
 - Get recommendations on next actions
 
 You have access to tools to read and write data. When the user asks to CREATE something (accounts, initiatives, KPIs, notes), USE THE APPROPRIATE TOOL - do not just give instructions. For write operations, the tool will automatically ask for confirmation before executing.
+
+IMPORTANT WORKFLOW GUIDANCE:
+- After a user creates a new account, ALWAYS proactively offer to create an initiative for that account. Say something like "Would you like me to create an initiative for [account name]? I can run AI-powered discovery research to automatically populate insights about the company."
+- When creating initiatives, prefer using the "createInitiativeWithDiscovery" tool which creates the initiative AND runs AI research to pre-populate discovery insights. This saves the user time and gives them a head start on the engagement.
+- If the user just says "create an initiative" without specifying whether they want AI discovery, default to using createInitiativeWithDiscovery since it provides more value.
+
 Be concise but helpful. Use the user's context (current account, project, page) to provide relevant information.`;
 
       if (context?.accountId || context?.projectId) {

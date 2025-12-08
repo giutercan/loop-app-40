@@ -5,7 +5,7 @@ import type {
   InsertDiscoveryNotes, ToolCapability, NavigationCommand, 
   Recommendation, CompanionTask, EntityReference, CompanionSessionState
 } from "@shared/schema";
-import { generateDiscoveryQuestions, generateKPIRecommendations, generateBusinessReviewAgenda, openai } from "./ai";
+import { generateDiscoveryQuestions, generateKPIRecommendations, generateBusinessReviewAgenda, openai, researchCompany } from "./ai";
 
 // Helper function for robust HTML/script sanitization (mirrors routes.ts)
 function sanitizeInput(input: string): string {
@@ -201,6 +201,22 @@ export const companionToolDefinitions: ToolDefinition[] = [
       required: ["accountId", "name"]
     },
     capability: "write",
+    requiresConfirmation: true
+  },
+  {
+    name: "createInitiativeWithDiscovery",
+    description: "Create a new initiative and automatically run AI-powered discovery research to pre-populate insights about the company. Use when user wants to create an initiative with AI-generated discovery data or when creating an initiative after account creation.",
+    parameters: {
+      type: "object",
+      properties: {
+        accountId: { type: "number", description: "The account ID to create the initiative under" },
+        name: { type: "string", description: "The initiative/project name" },
+        description: { type: "string", description: "Brief description of the initiative (optional)" },
+        discoveryTheme: { type: "string", description: "Focus theme for AI research (e.g., 'leadership development', 'talent acquisition')" }
+      },
+      required: ["accountId", "name"]
+    },
+    capability: "workflow",
     requiresConfirmation: true
   },
   {
@@ -504,6 +520,9 @@ export async function executeCompanionTool(
       case "createInitiative":
         return await createInitiative(args as { accountId: number; name: string; description?: string });
       
+      case "createInitiativeWithDiscovery":
+        return await createInitiativeWithDiscovery(args as { accountId: number; name: string; description?: string; discoveryTheme?: string });
+      
       case "createKPI":
         return await createKPI(args as { jobThemeId: number; kpiName: string; kpiType?: string; unit: string; baselineValue?: string; targetValue?: string; estimatedValuePerUnit?: number });
       
@@ -801,9 +820,11 @@ async function createAccount(args: {
     return { success: false, error: "Account name is required" };
   }
   
+  const sanitizedIndustry = args.industry ? sanitizeInput(args.industry) : "";
+  
   const accountData = {
     name: sanitizedName,
-    industry: args.industry ? sanitizeInput(args.industry) : "",
+    industry: sanitizedIndustry,
     tier: (args.tier as "enterprise" | "strategic" | "growth") || null,
     strategyNotes: args.strategyNotes ? sanitizeInput(args.strategyNotes) : null
   };
@@ -811,11 +832,14 @@ async function createAccount(args: {
   return {
     success: true,
     requiresConfirmation: true,
-    confirmationMessage: `Create new account "${sanitizedName}"${args.industry ? ` in ${args.industry}` : ""}?`,
+    confirmationMessage: `Create new account "${sanitizedName}"${sanitizedIndustry ? ` in ${sanitizedIndustry}` : ""}?`,
     data: {
       action: "createAccount",
       payload: accountData,
-      preview: `Account: ${sanitizedName}${args.tier ? ` (${args.tier})` : ""}`
+      preview: `Account: ${sanitizedName}${args.tier ? ` (${args.tier})` : ""}`,
+      suggestInitiativeCreation: true,
+      accountName: sanitizedName,
+      accountIndustry: sanitizedIndustry
     }
   };
 }
@@ -851,6 +875,47 @@ async function createInitiative(args: {
       action: "createInitiative",
       payload: initiativeData,
       preview: `Initiative: ${sanitizedName} (under ${account.name})`
+    }
+  };
+}
+
+async function createInitiativeWithDiscovery(args: {
+  accountId: number;
+  name: string;
+  description?: string;
+  discoveryTheme?: string;
+}): Promise<ToolResult> {
+  const sanitizedName = sanitizeInput(args.name);
+  if (!sanitizedName) {
+    return { success: false, error: "Initiative name is required" };
+  }
+  
+  const account = await storage.getAccount(args.accountId);
+  if (!account) {
+    return { success: false, error: "Account not found" };
+  }
+  
+  const initiativeData = {
+    accountId: args.accountId,
+    name: sanitizedName,
+    description: args.description ? sanitizeInput(args.description) : null,
+    status: "active",
+    currentPhase: "discovery"
+  };
+  
+  const discoveryTheme = args.discoveryTheme ? sanitizeInput(args.discoveryTheme) : null;
+  
+  return {
+    success: true,
+    requiresConfirmation: true,
+    confirmationMessage: `Create initiative "${sanitizedName}" under "${account.name}" and run AI discovery research${discoveryTheme ? ` focused on ${discoveryTheme}` : ''}? This will automatically populate insights about the company.`,
+    data: {
+      action: "createInitiativeWithDiscovery",
+      payload: initiativeData,
+      accountName: account.name,
+      accountIndustry: account.industry,
+      discoveryTheme,
+      preview: `Initiative: ${sanitizedName} (under ${account.name}) + AI Discovery`
     }
   };
 }
@@ -1670,6 +1735,63 @@ export async function confirmAndExecuteAction(
         // Payload is already sanitized in createInitiative tool
         const newProject = await storage.createProject(payload);
         return { success: true, data: { created: newProject, message: `Initiative "${newProject.name}" created successfully!` } };
+      
+      case "createInitiativeWithDiscovery":
+        // Create the initiative first
+        const initiativePayload = payload.payload || payload;
+        const newInitiative = await storage.createProject(initiativePayload);
+        
+        // Get account name for research
+        const accountName = payload.accountName || newInitiative.companyName || "Unknown Company";
+        const accountIndustry = payload.accountIndustry || "";
+        
+        // Run AI research
+        let researchResult = { dataPoints: [] as any[], headlines: [] as any[] };
+        try {
+          researchResult = await researchCompany(accountName, accountIndustry || undefined);
+          console.log(`[AI Discovery] Generated ${researchResult.dataPoints.length} insights for ${accountName}`);
+          
+          // Store the data points as company insights
+          for (const dataPoint of researchResult.dataPoints) {
+            await storage.createCompanyDataPoint({
+              projectId: newInitiative.id,
+              label: dataPoint.label,
+              value: dataPoint.value,
+              confidence: dataPoint.confidence || "medium",
+              source: dataPoint.source || "AI Research",
+              priorityScore: dataPoint.priorityScore || 3,
+              kornFerryPillar: dataPoint.kornFerryPillar || null,
+              solutionArea: dataPoint.solutionArea || null,
+              relatedKPIs: dataPoint.relatedKPIs || [],
+              relevantCapability: dataPoint.relevantCapability || null,
+              provenance: { source: "ai_generated", tool: "companion_discovery" }
+            });
+          }
+          
+          // Store headlines
+          for (const headline of researchResult.headlines) {
+            await storage.createHeadline({
+              projectId: newInitiative.id,
+              title: headline.title,
+              date: headline.date || null,
+              source: headline.source || null,
+              url: headline.url || null
+            });
+          }
+        } catch (researchError) {
+          console.error("[AI Discovery] Research failed:", researchError);
+          // Continue - initiative is still created even if research fails
+        }
+        
+        return { 
+          success: true, 
+          data: { 
+            created: newInitiative,
+            insightsGenerated: researchResult.dataPoints.length,
+            headlinesGenerated: researchResult.headlines.length,
+            message: `Initiative "${newInitiative.name}" created with ${researchResult.dataPoints.length} AI-generated insights!`
+          } 
+        };
       
       case "createKPI":
         // Payload is already sanitized in createKPI tool
