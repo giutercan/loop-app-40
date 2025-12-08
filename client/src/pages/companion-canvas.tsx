@@ -46,6 +46,7 @@ import {
 import { useVoiceSession } from "@/hooks/use-voice-session";
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
+import { LoopLogo } from "@/components/AppHeader";
 
 interface Message {
   id: number;
@@ -664,8 +665,8 @@ export default function CompanionCanvas() {
             </Button>
           </Link>
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center">
-              <Sparkles className="h-4 w-4 text-white" />
+            <div className="h-8 w-8 rounded-lg bg-white/20 flex items-center justify-center">
+              <LoopLogo className="h-5 w-5 text-white" />
             </div>
             <div>
               <h1 className="text-white font-semibold">Loop Canvas</h1>

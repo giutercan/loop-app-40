@@ -8129,7 +8129,7 @@ Respond in JSON format:
         projectId: z.number().optional(),
         userId: z.string().optional(),
         title: z.string().optional(),
-        contextType: z.enum(["global", "account", "initiative", "discovery", "alignment", "realisation"]).optional()
+        contextType: z.enum(["global", "account", "initiative", "discovery", "alignment", "realisation", "canvas"]).optional()
       });
       
       const parseResult = requestSchema.safeParse(req.body);
