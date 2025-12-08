@@ -543,21 +543,27 @@ export default function CompanionCanvas() {
     return false;
   });
   const [playingMessageId, setPlayingMessageId] = useState<number | null>(null);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const lastMessageCountRef = useRef<number>(0);
   const hasInitializedRef = useRef<boolean>(false);
+  const sendMessageRef = useRef<((text: string) => void) | null>(null);
   
   const handleVoiceTranscript = useCallback((text: string) => {
-    if (text.trim() && !sendMessageMutation.isPending) {
+    if (text.trim() && sendMessageRef.current) {
+      setInputValue(text);
       setIsTyping(true);
-      sendMessageMutation.mutate(text);
+      sendMessageRef.current(text);
     }
   }, []);
   
   const voiceSession = useVoiceSession({
     onTranscript: handleVoiceTranscript,
-    onError: (error) => console.error("Voice error:", error),
+    onError: (error) => {
+      console.error("Voice error:", error);
+      setVoiceError(error);
+    },
     voice: "nova"
   });
   
@@ -628,6 +634,13 @@ export default function CompanionCanvas() {
       queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
       queryClient.invalidateQueries({ queryKey: ['/api/accounts'] });
     }
+  });
+  
+  // Connect sendMessageRef to the mutation for voice transcript callback
+  useEffect(() => {
+    sendMessageRef.current = (text: string) => {
+      sendMessageMutation.mutate(text);
+    };
   });
   
   useEffect(() => {
@@ -981,6 +994,12 @@ export default function CompanionCanvas() {
                 {voiceSession.isRecording && (
                   <p className="text-xs text-center text-muted-foreground mt-2 animate-pulse">
                     Listening... Speak now
+                  </p>
+                )}
+                
+                {(voiceError || voiceSession.error) && (
+                  <p className="text-xs text-center text-destructive mt-2">
+                    {voiceError || voiceSession.error}
                   </p>
                 )}
               </div>
