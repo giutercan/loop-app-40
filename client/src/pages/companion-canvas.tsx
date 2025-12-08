@@ -65,8 +65,39 @@ interface ToolCall {
 }
 
 interface RichContent {
-  type: "account_card" | "initiative_card" | "kpi_list" | "action_buttons" | "progress" | "summary" | "meeting_prep" | "recommendations";
+  type: "account_card" | "initiative_card" | "kpi_list" | "action_buttons" | "progress" | "summary" | "meeting_prep" | "recommendations" | "accounts_list" | "initiatives_list";
   data: any;
+}
+
+// Convert tool results to rich content for inline display
+function deriveRichContentFromToolCalls(toolCalls?: ToolCall[]): RichContent | null {
+  if (!toolCalls || toolCalls.length === 0) return null;
+  
+  for (const tc of toolCalls) {
+    if (!tc.result?.success || !tc.result?.data) continue;
+    
+    switch (tc.name) {
+      case "getAccountSummary":
+      case "createAccount":
+        return { type: "account_card", data: tc.result.data };
+      case "getInitiativeSummary":
+      case "createInitiative":
+      case "createInitiativeWithDiscovery":
+        return { type: "initiative_card", data: tc.result.data };
+      case "listKPIs":
+        return { type: "kpi_list", data: tc.result.data };
+      case "listAccounts":
+        return { type: "accounts_list", data: tc.result.data };
+      case "listInitiatives":
+        return { type: "initiatives_list", data: tc.result.data };
+      case "prepareMeetingBundle":
+        return { type: "meeting_prep", data: tc.result.data };
+      case "recommendKPIs":
+      case "recommendNextAction":
+        return { type: "recommendations", data: tc.result.data };
+    }
+  }
+  return null;
 }
 
 interface PendingConfirmation {
@@ -250,19 +281,66 @@ function RichMessageContent({ content, onAction }: { content: RichContent; onAct
     case "kpi_list":
       return (
         <div className="space-y-2">
-          {content.data.map((kpi: any) => (
+          {Array.isArray(content.data) && content.data.map((kpi: any) => (
             <KPICard key={kpi.id} kpi={kpi} />
           ))}
         </div>
+      );
+    case "accounts_list":
+      return (
+        <div className="space-y-2">
+          {Array.isArray(content.data) && content.data.slice(0, 5).map((account: any) => (
+            <AccountCard key={account.id} account={account} />
+          ))}
+          {Array.isArray(content.data) && content.data.length > 5 && (
+            <p className="text-xs text-muted-foreground text-center">
+              +{content.data.length - 5} more accounts
+            </p>
+          )}
+        </div>
+      );
+    case "initiatives_list":
+      return (
+        <div className="space-y-2">
+          {Array.isArray(content.data) && content.data.slice(0, 5).map((initiative: any) => (
+            <InitiativeCard key={initiative.id} initiative={initiative} />
+          ))}
+          {Array.isArray(content.data) && content.data.length > 5 && (
+            <p className="text-xs text-muted-foreground text-center">
+              +{content.data.length - 5} more initiatives
+            </p>
+          )}
+        </div>
+      );
+    case "meeting_prep":
+      return (
+        <Card className="border-secondary/30 bg-secondary/5">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Calendar className="h-5 w-5 text-secondary" />
+              <h4 className="font-medium text-foreground">Meeting Preparation</h4>
+            </div>
+            {content.data?.talkingPoints && (
+              <div className="space-y-2">
+                {content.data.talkingPoints.slice(0, 3).map((point: string, i: number) => (
+                  <div key={i} className="flex items-start gap-2 text-sm">
+                    <ChevronRight className="h-4 w-4 text-secondary shrink-0 mt-0.5" />
+                    <span>{point}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       );
     case "action_buttons":
       return <ActionButtons actions={content.data} onAction={onAction} />;
     case "recommendations":
       return (
         <div className="space-y-2">
-          {content.data.map((rec: any) => (
+          {Array.isArray(content.data) && content.data.map((rec: any, i: number) => (
             <RecommendationCard 
-              key={rec.id} 
+              key={rec.id || i} 
               recommendation={rec} 
               onAccept={() => onAction(rec.prompt || `Apply recommendation: ${rec.title}`)}
             />
@@ -776,14 +854,17 @@ export default function CompanionCanvas() {
                           
                           <div className="text-sm whitespace-pre-wrap">{msg.content}</div>
                           
-                          {msg.richContent && (
-                            <div className="mt-3">
-                              <RichMessageContent 
-                                content={msg.richContent} 
-                                onAction={handleQuickAction} 
-                              />
-                            </div>
-                          )}
+                          {(() => {
+                            const richContent = msg.richContent || deriveRichContentFromToolCalls(msg.toolCalls);
+                            return richContent ? (
+                              <div className="mt-3">
+                                <RichMessageContent 
+                                  content={richContent} 
+                                  onAction={handleQuickAction} 
+                                />
+                              </div>
+                            ) : null;
+                          })()}
                         </div>
                       </div>
                     ))}
