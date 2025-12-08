@@ -1741,15 +1741,16 @@ export async function confirmAndExecuteAction(
         const initiativePayload = payload.payload || payload;
         const newInitiative = await storage.createProject(initiativePayload);
         
-        // Get account name for research
+        // Get account name and discovery theme for research
         const accountName = payload.accountName || newInitiative.companyName || "Unknown Company";
         const accountIndustry = payload.accountIndustry || "";
+        const discoveryTheme = payload.discoveryTheme || null;
         
-        // Run AI research
+        // Run AI research with theme focus
         let researchResult = { dataPoints: [] as any[], headlines: [] as any[] };
         try {
-          researchResult = await researchCompany(accountName, accountIndustry || undefined);
-          console.log(`[AI Discovery] Generated ${researchResult.dataPoints.length} insights for ${accountName}`);
+          researchResult = await researchCompany(accountName, accountIndustry || undefined, discoveryTheme || undefined);
+          console.log(`[AI Discovery] Generated ${researchResult.dataPoints.length} insights for ${accountName}${discoveryTheme ? ` (theme: ${discoveryTheme})` : ''}`);
           
           // Store the data points as company insights
           for (const dataPoint of researchResult.dataPoints) {

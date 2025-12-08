@@ -148,10 +148,16 @@ IMPORTANT:
   }
 }
 
-export async function researchCompany(companyName: string, sector?: string): Promise<CompanyResearchResult> {
+export async function researchCompany(companyName: string, sector?: string, discoveryTheme?: string): Promise<CompanyResearchResult> {
   const knowledgeBase = getSolutionSummary();
   
-  const prompt = `You are helping a Korn Ferry consultant prepare for a customer engagement with ${companyName}${sector ? ` (${sector} sector)` : ''}. 
+  const themeContext = discoveryTheme 
+    ? `\n\nDISCOVERY THEME FOCUS: "${discoveryTheme}"
+ALL insights MUST be directly relevant to this theme. Filter out insights that don't connect to ${discoveryTheme}. 
+Prioritize research angles that will help the consultant have meaningful conversations about ${discoveryTheme}.`
+    : '';
+  
+  const prompt = `You are helping a Korn Ferry consultant prepare for a customer engagement with ${companyName}${sector ? ` (${sector} sector)` : ''}.${themeContext}
 
 KORN FERRY SOLUTIONS & CAPABILITIES:
 ${knowledgeBase}
@@ -176,7 +182,7 @@ KORN FERRY CAPABILITIES (for auto-classification):
 9. Value Management / Client Success & Talent Suite - Technology platforms, talent systems
 
 CRITICAL: Provide ONLY the 8 MOST STRATEGIC insights. Quality over quantity. Each insight must be:
-- Directly actionable for a Korn Ferry engagement
+- Directly actionable for a Korn Ferry engagement${discoveryTheme ? `\n- HIGHLY RELEVANT to the discovery theme: "${discoveryTheme}"` : ''}
 - Tied to one of the 6 Solution Areas (ASSESS, DEVELOP, TRANSFORM, REWARD, COMMERCIAL, ANALYTICS)
 - Tagged with relevant KPIs from the knowledge base above
 - Auto-classified to the MOST RELEVANT Korn Ferry capability from the list above

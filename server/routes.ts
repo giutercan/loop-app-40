@@ -8289,6 +8289,18 @@ Respond in JSON format:
       // Get message history for context
       const history = await storage.getAiMessages(sessionId);
       
+      // Fetch project and account context for richer prompts
+      let projectContext: any = null;
+      let accountContext: any = null;
+      if (context?.projectId) {
+        projectContext = await storage.getProject(context.projectId);
+        if (projectContext?.accountId) {
+          accountContext = await storage.getAccount(projectContext.accountId);
+        }
+      } else if (context?.accountId) {
+        accountContext = await storage.getAccount(context.accountId);
+      }
+      
       // Save user message
       await storage.createAiMessage({
         sessionId,
@@ -8311,11 +8323,30 @@ IMPORTANT WORKFLOW GUIDANCE:
 - After a user creates a new account, ALWAYS proactively offer to create an initiative for that account. Say something like "Would you like me to create an initiative for [account name]? I can run AI-powered discovery research to automatically populate insights about the company."
 - When creating initiatives, prefer using the "createInitiativeWithDiscovery" tool which creates the initiative AND runs AI research to pre-populate discovery insights. This saves the user time and gives them a head start on the engagement.
 - If the user just says "create an initiative" without specifying whether they want AI discovery, default to using createInitiativeWithDiscovery since it provides more value.
+- ALWAYS ask for or use the discovery theme when creating initiatives. The discovery theme focuses all AI research and insights on the specific area (e.g., "leadership development", "talent acquisition", "succession planning").
 
 Be concise but helpful. Use the user's context (current account, project, page) to provide relevant information.`;
 
-      if (context?.accountId || context?.projectId) {
-        systemPrompt += `\n\nCurrent context: ${context.accountId ? `Account ID ${context.accountId}` : ''}${context.projectId ? ` Project ID ${context.projectId}` : ''}${context.currentPage ? ` on page ${context.currentPage}` : ''}`;
+      // Add rich context about current account and project
+      let contextDetails: string[] = [];
+      if (accountContext) {
+        contextDetails.push(`Account: "${accountContext.name}"${accountContext.industry ? ` (${accountContext.industry})` : ''}`);
+      }
+      if (projectContext) {
+        contextDetails.push(`Initiative: "${projectContext.name}"`);
+        if (projectContext.discoveryTheme) {
+          contextDetails.push(`Discovery Theme: "${projectContext.discoveryTheme}" - ALL suggestions, research, and insights should focus on this theme`);
+        }
+        if (projectContext.currentPhase) {
+          contextDetails.push(`Current Phase: ${projectContext.currentPhase}`);
+        }
+      }
+      if (context?.currentPage) {
+        contextDetails.push(`Current Page: ${context.currentPage}`);
+      }
+      
+      if (contextDetails.length > 0) {
+        systemPrompt += `\n\nCURRENT CONTEXT:\n${contextDetails.map(d => `- ${d}`).join('\n')}`;
       }
 
       // Build messages for OpenAI
