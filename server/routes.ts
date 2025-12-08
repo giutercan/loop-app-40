@@ -8269,7 +8269,8 @@ Respond in JSON format:
         context: z.object({
           accountId: z.number().optional(),
           projectId: z.number().optional(),
-          currentPage: z.string().optional()
+          currentPage: z.string().optional(),
+          canvasMode: z.boolean().optional()
         }).optional()
       });
       
@@ -8309,7 +8310,42 @@ Respond in JSON format:
       });
       
       // Build system prompt with context
-      let systemPrompt = `You are a helpful AI assistant for the Korn Ferry Value Lifecycle Platform. You help users:
+      const isCanvasMode = context?.canvasMode === true;
+      
+      let systemPrompt = isCanvasMode 
+        ? `You are a proactive AI companion for the Korn Ferry Value Lifecycle Platform. You are operating in "Canvas Mode" - a conversational interface where the user interacts with you as their primary way to use the platform.
+
+YOUR ROLE AS A COACH AND ASSISTANT:
+- Be proactive and guide the user through workflows naturally
+- Anticipate what they might need next and offer suggestions
+- Ask clarifying questions to understand their goals before acting
+- Provide coaching and recommendations based on best practices
+- Execute actions on their behalf when they confirm
+
+CAPABILITIES:
+- Create and manage accounts and initiatives
+- Run AI-powered discovery research
+- Track and update KPIs
+- Prepare meeting bundles and talking points
+- Navigate to different parts of the platform
+- Provide strategic recommendations
+
+WORKFLOW GUIDANCE:
+- When the user mentions a company name, offer to create an account and initiative for them
+- Always use "createInitiativeWithDiscovery" for new initiatives to pre-populate insights
+- After creating something, proactively suggest next steps
+- When discussing KPIs, offer to show current status or recommend improvements
+- For meeting prep, ask about the meeting type and provide tailored talking points
+
+CONVERSATION STYLE:
+- Be warm and professional, like a helpful colleague
+- Keep responses focused but thorough
+- Use bullet points for lists and recommendations
+- When showing data, summarize the key insights
+- Always end with a clear next step or question
+
+Be the user's trusted partner in managing their client engagements.`
+        : `You are a helpful AI assistant for the Korn Ferry Value Lifecycle Platform. You help users:
 - Create new accounts and initiatives/projects
 - Get summaries of accounts and initiatives
 - Prepare for client meetings
@@ -8456,10 +8492,58 @@ Be concise but helpful. Use the user's context (current account, project, page) 
       // Update session timestamp
       await storage.updateAiSession(sessionId, {});
 
+      // Build context update for canvas mode based on tool results
+      let contextUpdate: any = null;
+      if (isCanvasMode && toolResults.length > 0) {
+        for (const tr of toolResults) {
+          if (tr.result.success && tr.result.data) {
+            // Determine context update type based on tool used
+            if (tr.toolName === "getAccountSummary" || tr.toolName === "createAccount") {
+              contextUpdate = { 
+                type: "account", 
+                data: tr.result.data,
+                title: tr.result.data?.name || "Account"
+              };
+            } else if (tr.toolName === "getInitiativeSummary" || tr.toolName === "createInitiative" || tr.toolName === "createInitiativeWithDiscovery") {
+              contextUpdate = { 
+                type: "initiative", 
+                data: tr.result.data,
+                title: tr.result.data?.name || "Initiative"
+              };
+            } else if (tr.toolName === "listKPIs") {
+              contextUpdate = { 
+                type: "kpis", 
+                data: tr.result.data,
+                title: "KPIs"
+              };
+            } else if (tr.toolName === "prepareMeetingBundle") {
+              contextUpdate = { 
+                type: "meeting", 
+                data: tr.result.data,
+                title: "Meeting Prep"
+              };
+            } else if (tr.toolName === "listAccounts") {
+              contextUpdate = { 
+                type: "accounts", 
+                data: tr.result.data,
+                title: "All Accounts"
+              };
+            } else if (tr.toolName === "listInitiatives") {
+              contextUpdate = { 
+                type: "initiatives", 
+                data: tr.result.data,
+                title: "Initiatives"
+              };
+            }
+          }
+        }
+      }
+
       res.json({
         response: responseContent,
         toolResults: toolResults.length > 0 ? toolResults : undefined,
-        pendingConfirmation
+        pendingConfirmation,
+        contextUpdate
       });
     } catch (error: any) {
       console.error("Error in companion chat:", error);
