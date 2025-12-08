@@ -8494,9 +8494,17 @@ Be concise but helpful. Use the user's context (current account, project, page) 
 
       // Build context update for canvas mode based on tool results
       let contextUpdate: any = null;
-      if (isCanvasMode && toolResults.length > 0) {
+      let navigationCommand: any = null;
+      
+      if (toolResults.length > 0) {
         for (const tr of toolResults) {
-          if (tr.result.success && tr.result.data) {
+          // Extract navigation command if tool returned one
+          if (tr.result.navigationCommand) {
+            navigationCommand = tr.result.navigationCommand;
+          }
+          
+          // Build context updates for canvas mode
+          if (isCanvasMode && tr.result.success && tr.result.data) {
             // Determine context update type based on tool used
             if (tr.toolName === "getAccountSummary" || tr.toolName === "createAccount") {
               contextUpdate = { 
@@ -8543,7 +8551,8 @@ Be concise but helpful. Use the user's context (current account, project, page) 
         response: responseContent,
         toolResults: toolResults.length > 0 ? toolResults : undefined,
         pendingConfirmation,
-        contextUpdate
+        contextUpdate,
+        navigationCommand
       });
     } catch (error: any) {
       console.error("Error in companion chat:", error);

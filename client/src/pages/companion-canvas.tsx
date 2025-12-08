@@ -520,6 +520,12 @@ export default function CompanionCanvas() {
       if (data.contextUpdate) {
         setContextPanel(data.contextUpdate);
       }
+      if (data.navigationCommand) {
+        const nav = data.navigationCommand;
+        if (nav.type === "navigate" && nav.path) {
+          navigate(nav.path);
+        }
+      }
       setIsTyping(false);
     },
     onError: () => {

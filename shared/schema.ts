@@ -1677,7 +1677,7 @@ export const aiSessions = pgTable("ai_sessions", {
   
   // Context snapshot - what page/state the user was on
   contextType: text("context_type", { 
-    enum: ["global", "account", "initiative", "discovery", "alignment", "realisation"] 
+    enum: ["global", "account", "initiative", "discovery", "alignment", "realisation", "canvas"] 
   }).notNull().default("global"),
   contextSnapshot: jsonb("context_snapshot"), // Additional context data (page, filters, etc.)
   
