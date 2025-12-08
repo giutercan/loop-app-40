@@ -352,6 +352,115 @@ function RichMessageContent({ content, onAction }: { content: RichContent; onAct
   }
 }
 
+// Format AI message content with visual structure
+function FormattedMessage({ content }: { content: string }) {
+  const lines = content.split('\n');
+  const elements: JSX.Element[] = [];
+  let listItems: { text: string; numbered: boolean }[] = [];
+  let listStartIndex = 0;
+  
+  const renderList = (items: { text: string; numbered: boolean }[], startIdx: number) => {
+    if (items.length === 0) return;
+    const numbered = items[0].numbered;
+    elements.push(
+      <div key={`list-${startIdx}`} className="space-y-1.5 my-2">
+        {items.map((item, i) => (
+          <div key={`item-${startIdx}-${i}`} className="flex items-start gap-2">
+            {numbered ? (
+              <span className="text-xs font-semibold text-secondary bg-secondary/10 rounded-full h-5 w-5 flex items-center justify-center shrink-0 mt-0.5">
+                {i + 1}
+              </span>
+            ) : (
+              <ChevronRight className="h-4 w-4 text-secondary shrink-0 mt-0.5" />
+            )}
+            <span className="text-sm">{formatBold(item.text)}</span>
+          </div>
+        ))}
+      </div>
+    );
+  };
+  
+  // Simple bold formatting - just handle **text**
+  const formatBold = (text: string): JSX.Element => {
+    const parts: (string | JSX.Element)[] = [];
+    const regex = /\*\*([^*]+)\*\*/g;
+    let lastIndex = 0;
+    let match;
+    let keyIdx = 0;
+    
+    while ((match = regex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(text.slice(lastIndex, match.index));
+      }
+      parts.push(<strong key={keyIdx++} className="font-semibold">{match[1]}</strong>);
+      lastIndex = regex.lastIndex;
+    }
+    if (lastIndex < text.length) {
+      parts.push(text.slice(lastIndex));
+    }
+    return <>{parts.length > 0 ? parts : text}</>;
+  };
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    
+    // Check for list items
+    const bulletMatch = line.match(/^[-*]\s+(.+)$/);
+    const numberedMatch = line.match(/^\d+\.\s+(.+)$/);
+    
+    if (bulletMatch) {
+      if (listItems.length === 0) listStartIndex = i;
+      listItems.push({ text: bulletMatch[1], numbered: false });
+      continue;
+    }
+    
+    if (numberedMatch) {
+      if (listItems.length === 0) listStartIndex = i;
+      listItems.push({ text: numberedMatch[1], numbered: true });
+      continue;
+    }
+    
+    // Not a list item - flush any pending list
+    if (listItems.length > 0) {
+      renderList(listItems, listStartIndex);
+      listItems = [];
+    }
+    
+    // Skip empty lines
+    if (!line) continue;
+    
+    // Headers
+    if (line.startsWith('### ')) {
+      elements.push(
+        <h4 key={`h4-${i}`} className="font-semibold text-foreground text-sm mt-3 mb-1 flex items-center gap-2">
+          <div className="h-1.5 w-1.5 rounded-full bg-secondary" />
+          {line.slice(4)}
+        </h4>
+      );
+      continue;
+    }
+    
+    if (line.startsWith('## ')) {
+      elements.push(
+        <h3 key={`h3-${i}`} className="font-bold text-foreground mt-3 mb-2">{line.slice(3)}</h3>
+      );
+      continue;
+    }
+    
+    // Regular paragraph
+    elements.push(
+      <p key={`p-${i}`} className="text-sm leading-relaxed">{formatBold(line)}</p>
+    );
+  }
+  
+  // Flush remaining list items
+  if (listItems.length > 0) {
+    renderList(listItems, listStartIndex);
+  }
+  
+  return <div className="space-y-1">{elements}</div>;
+}
+
 function ContextPanel({ data }: { data: ContextPanelData }) {
   if (data.type === "empty") {
     return (
@@ -729,26 +838,37 @@ export default function CompanionCanvas() {
   
   const messages = sessionData?.messages || [];
   
-  const quickStarters = [
-    { 
-      label: "Show my accounts", 
-      prompt: "Show me all my accounts",
-      icon: Building2
+  // Organized quick starters by category
+  const quickStartCategories = [
+    {
+      title: "Plan",
+      description: "Research & strategize",
+      color: "from-secondary to-secondary/80",
+      actions: [
+        { label: "View all accounts", prompt: "Show me all my accounts with their health status", icon: Building2 },
+        { label: "Create new account", prompt: "I want to create a new account for a client", icon: PlusCircle },
+        { label: "Research a company", prompt: "Help me research a company for discovery", icon: Lightbulb },
+      ]
     },
-    { 
-      label: "Create new account", 
-      prompt: "I want to create a new account",
-      icon: PlusCircle
+    {
+      title: "Execute", 
+      description: "Take action & deliver",
+      color: "from-ai to-ai/80",
+      actions: [
+        { label: "Prepare for meeting", prompt: "Help me prepare talking points for a client meeting", icon: Calendar },
+        { label: "Create initiative", prompt: "I want to create a new initiative with AI discovery", icon: Zap },
+        { label: "Add discovery notes", prompt: "Help me capture key insights from a discovery session", icon: FileText },
+      ]
     },
-    { 
-      label: "Prepare for a meeting", 
-      prompt: "Help me prepare for a client meeting",
-      icon: Calendar
-    },
-    { 
-      label: "Review KPIs", 
-      prompt: "Show me KPIs that need attention",
-      icon: Target
+    {
+      title: "Measure",
+      description: "Track & optimize", 
+      color: "from-accent to-accent/80",
+      actions: [
+        { label: "Review KPIs", prompt: "Show me KPIs that need attention across all accounts", icon: Target },
+        { label: "Value summary", prompt: "Give me a summary of total value being delivered", icon: TrendingUp },
+        { label: "Health check", prompt: "Which accounts or initiatives need my attention today?", icon: BarChart3 },
+      ]
     }
   ];
   
@@ -814,21 +934,34 @@ export default function CompanionCanvas() {
                       </p>
                     </div>
                     
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       <p className="text-sm font-medium text-muted-foreground text-center">Get started with</p>
-                      <div className="grid grid-cols-2 gap-3">
-                        {quickStarters.map((action, i) => (
-                          <Button
-                            key={i}
-                            variant="outline"
-                            className="justify-start h-auto py-3 px-4 hover-elevate"
-                            onClick={() => handleQuickAction(action.prompt)}
-                            disabled={sendMessageMutation.isPending}
-                            data-testid={`button-quick-start-${i}`}
-                          >
-                            <action.icon className="h-5 w-5 mr-3 text-secondary" />
-                            <span>{action.label}</span>
-                          </Button>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {quickStartCategories.map((category, catIndex) => (
+                          <div key={catIndex} className="space-y-2">
+                            <div className={cn(
+                              "flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r",
+                              category.color
+                            )}>
+                              <span className="text-white font-semibold text-sm">{category.title}</span>
+                              <span className="text-white/70 text-xs">{category.description}</span>
+                            </div>
+                            <div className="space-y-2">
+                              {category.actions.map((action, actionIndex) => (
+                                <Button
+                                  key={actionIndex}
+                                  variant="outline"
+                                  className="w-full justify-start h-auto py-2.5 px-3 text-left"
+                                  onClick={() => handleQuickAction(action.prompt)}
+                                  disabled={sendMessageMutation.isPending}
+                                  data-testid={`button-quick-${category.title.toLowerCase()}-${actionIndex}`}
+                                >
+                                  <action.icon className="h-4 w-4 mr-2 text-muted-foreground shrink-0" />
+                                  <span className="text-sm">{action.label}</span>
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -865,7 +998,11 @@ export default function CompanionCanvas() {
                             </div>
                           )}
                           
-                          <div className="text-sm whitespace-pre-wrap">{msg.content}</div>
+                          {msg.role === "assistant" ? (
+                            <FormattedMessage content={msg.content} />
+                          ) : (
+                            <div className="text-sm whitespace-pre-wrap">{msg.content}</div>
+                          )}
                           
                           {(() => {
                             const richContent = msg.richContent || deriveRichContentFromToolCalls(msg.toolCalls);
