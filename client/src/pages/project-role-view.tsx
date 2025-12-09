@@ -2320,8 +2320,14 @@ export default function ProjectRoleView() {
         companyName: project?.companyName,
         theme: selectedDiscoveryTheme || "Leadership Development",
         contactRole: meetingContact.role,
+        contactName: meetingContact.name,
+        contactTitle: meetingContact.title,
+        contactInfluence: meetingContact.influence,
+        knownConcerns: meetingContact.knownConcerns,
+        meetingObjective: greenSheetEdits.objective || "",
+        desiredOutcome: greenSheetEdits.desiredOutcome || "",
         methodology: "all",
-        insights: [] // Could add discovery insights here
+        includeIntelligence: true
       });
       return response.json();
     },

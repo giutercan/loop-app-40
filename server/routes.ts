@@ -7510,7 +7510,37 @@ Respond in JSON format:
         return res.status(404).json({ error: "Project not found" });
       }
       
-      const { companyName, theme, contactRole, methodology, insights } = req.body;
+      const { 
+        companyName, 
+        theme, 
+        contactRole, 
+        contactName,
+        contactTitle,
+        contactInfluence,
+        knownConcerns,
+        meetingObjective,
+        desiredOutcome,
+        methodology, 
+        includeIntelligence 
+      } = req.body;
+      
+      // Fetch intelligence data if requested
+      let intelligenceContext = "";
+      if (includeIntelligence) {
+        const discoveryTheme = theme || project.discoveryTheme || "leadership";
+        const intelligence = await storage.getProjectIntelligence(projectId, discoveryTheme);
+        if (intelligence?.intelligenceData) {
+          const data = intelligence.intelligenceData as any;
+          // Extract key insights in a concise format
+          const keyFindings: string[] = [];
+          if (data.companyOverview) keyFindings.push(`Company Context: ${data.companyOverview}`);
+          if (data.strategicPriorities?.length) keyFindings.push(`Strategic Priorities: ${data.strategicPriorities.slice(0, 3).join(", ")}`);
+          if (data.challenges?.length) keyFindings.push(`Key Challenges: ${data.challenges.slice(0, 3).join(", ")}`);
+          if (data.competitivePosition) keyFindings.push(`Competitive Position: ${data.competitivePosition}`);
+          if (data.marketContext) keyFindings.push(`Market Context: ${data.marketContext}`);
+          intelligenceContext = keyFindings.join("\n");
+        }
+      }
       
       const methodologyGuide = {
         spin: `SPIN Selling methodology:
@@ -7533,29 +7563,48 @@ Use a variety of approaches to uncover needs, understand the buying process, and
       };
       
       const methodologyContext = methodologyGuide[methodology as keyof typeof methodologyGuide] || methodologyGuide.all;
-      const insightContext = insights?.length > 0 ? `Known insights about the company: ${insights.join(', ')}` : '';
       
-      const prompt = `You are an expert sales consultant helping prepare high-impact discovery questions.
+      // Build Green Sheet context
+      const greenSheetContext = [
+        contactName && contactTitle ? `Meeting Contact: ${contactName}, ${contactTitle}` : "",
+        contactRole ? `Buying Role: ${contactRole.replace('_', ' ')}` : "",
+        contactInfluence ? `Influence Level: ${contactInfluence}` : "",
+        knownConcerns ? `Known Concerns: ${knownConcerns}` : "",
+        meetingObjective ? `Meeting Objective: ${meetingObjective}` : "",
+        desiredOutcome ? `Desired Outcome: ${desiredOutcome}` : ""
+      ].filter(Boolean).join("\n");
+      
+      const prompt = `You are an expert Korn Ferry sales consultant helping prepare high-impact discovery questions.
 
+=== COMPANY CONTEXT ===
 Company: ${companyName || project.companyName}
-Theme: ${theme || 'Leadership Development'}
-${contactRole ? `Contact Role: ${contactRole.replace('_', ' ')}` : ''}
-${insightContext}
+Discovery Theme: ${theme || 'Leadership Development'}
 
+=== GREEN SHEET (Meeting Preparation) ===
+${greenSheetContext || "No specific meeting context provided"}
+
+=== INTELLIGENCE & RESEARCH ===
+${intelligenceContext || "No intelligence data available - use general industry knowledge"}
+
+=== SALES METHODOLOGY ===
 ${methodologyContext}
 
-Generate exactly 6 powerful, outcome-focused discovery questions. These questions should:
-1. Be specific to this company and theme
-2. Focus on uncovering business impact and value
-3. Help build a compelling case for change
-4. Move the conversation toward measurable outcomes
+=== YOUR TASK ===
+Generate exactly 6 powerful, outcome-focused discovery questions that:
+1. Directly reference the company's specific situation, challenges, or strategic priorities from the intelligence above
+2. Are tailored to the contact's role (${contactRole || 'decision maker'}) and concerns
+3. Align with the meeting objective: "${meetingObjective || 'Discovery and qualification'}"
+4. Help uncover measurable business outcomes and build urgency for change
+5. Use the specific language and context provided - don't be generic
+
+IMPORTANT: Questions MUST be specific to ${companyName || project.companyName} and reference actual intelligence/context provided above.
 
 For each question, provide:
-- question: The question itself (make it specific and provocative)
+- question: A specific, provocative question that references ${companyName || project.companyName}'s situation
 - methodology: Either "SPIN", "Miller Heiman", or "PSS"
-- stage: The specific stage within that methodology (e.g., "Problem" for SPIN, "Probing" for PSS)
-- outcome: What business outcome or KPI this question helps uncover (e.g., "Employee Retention", "Leadership Pipeline")
-- followUp: A follow-up question hint if they say something interesting
+- stage: The specific stage within that methodology
+- outcome: What business outcome/KPI this question helps uncover
+- followUp: A follow-up question hint
 
 ${methodology !== 'all' ? `Focus primarily on ${methodology === 'spin' ? 'SPIN Selling' : methodology === 'miller_heiman' ? 'Miller Heiman' : 'PSS'} methodology.` : 'Use a mix of all three methodologies.'}
 
