@@ -230,16 +230,18 @@ export const LAGGING_INDICATORS = {
     pillar: "grow",
     unit: "%",
     description: "Year-over-year revenue growth rate",
-    financialImpact: { type: "revenue", multiplier: 1.0 }
+    financialImpact: { type: "revenue", multiplier: 1.0 },
+    benchmarkRange: { low: 3, mid: 8, high: 15 }
   },
   revenue_per_employee: {
     id: "revenue_per_employee",
     name: "Revenue per Employee",
     category: "Financial Performance",
     pillar: "optimise",
-    unit: "$",
+    unit: "$K",
     description: "Total revenue divided by headcount",
-    financialImpact: { type: "productivity", multiplier: 1.0 }
+    financialImpact: { type: "productivity", multiplier: 1.0 },
+    benchmarkRange: { low: 150, mid: 250, high: 400 }
   },
   gross_margin: {
     id: "gross_margin",
@@ -248,7 +250,8 @@ export const LAGGING_INDICATORS = {
     pillar: "optimise",
     unit: "%",
     description: "Gross profit as percentage of revenue",
-    financialImpact: { type: "margin", multiplier: 1.0 }
+    financialImpact: { type: "margin", multiplier: 1.0 },
+    benchmarkRange: { low: 25, mid: 40, high: 60 }
   },
   
   // Cost & Efficiency
@@ -259,16 +262,18 @@ export const LAGGING_INDICATORS = {
     pillar: "optimise",
     unit: "$",
     description: "Total recruitment cost per successful hire",
-    financialImpact: { type: "cost_reduction", multiplier: 1.0 }
+    financialImpact: { type: "cost_reduction", multiplier: 1.0 },
+    benchmarkRange: { low: 8000, mid: 4500, high: 2500 }
   },
   turnover_cost: {
     id: "turnover_cost",
     name: "Turnover Cost",
     category: "Retention",
     pillar: "derisk",
-    unit: "$",
+    unit: "$K",
     description: "Total cost of employee turnover",
-    financialImpact: { type: "cost_avoidance", multiplier: 1.5 }
+    financialImpact: { type: "cost_avoidance", multiplier: 1.5 },
+    benchmarkRange: { low: 75, mid: 50, high: 25 }
   },
   training_roi: {
     id: "training_roi",
@@ -277,7 +282,8 @@ export const LAGGING_INDICATORS = {
     pillar: "optimise",
     unit: "%",
     description: "Return on investment for training programs",
-    financialImpact: { type: "roi", multiplier: 1.0 }
+    financialImpact: { type: "roi", multiplier: 1.0 },
+    benchmarkRange: { low: 50, mid: 150, high: 300 }
   },
   
   // Risk & Retention
@@ -288,7 +294,8 @@ export const LAGGING_INDICATORS = {
     pillar: "derisk",
     unit: "%",
     description: "Percentage of employees leaving voluntarily",
-    financialImpact: { type: "cost_avoidance", multiplier: 1.5 }
+    financialImpact: { type: "cost_avoidance", multiplier: 1.5 },
+    benchmarkRange: { low: 20, mid: 12, high: 6 }
   },
   regrettable_turnover_rate: {
     id: "regrettable_turnover_rate",
@@ -297,7 +304,8 @@ export const LAGGING_INDICATORS = {
     pillar: "derisk",
     unit: "%",
     description: "Turnover of high performers we wanted to keep",
-    financialImpact: { type: "cost_avoidance", multiplier: 2.0 }
+    financialImpact: { type: "cost_avoidance", multiplier: 2.0 },
+    benchmarkRange: { low: 15, mid: 8, high: 3 }
   },
   critical_role_vacancy_rate: {
     id: "critical_role_vacancy_rate",
@@ -306,7 +314,8 @@ export const LAGGING_INDICATORS = {
     pillar: "derisk",
     unit: "%",
     description: "Percentage of critical roles currently vacant",
-    financialImpact: { type: "risk", multiplier: 2.5 }
+    financialImpact: { type: "risk", multiplier: 2.5 },
+    benchmarkRange: { low: 15, mid: 8, high: 3 }
   },
   
   // Productivity & Performance
@@ -317,7 +326,8 @@ export const LAGGING_INDICATORS = {
     pillar: "optimise",
     unit: "index",
     description: "Output per employee relative to baseline",
-    financialImpact: { type: "productivity", multiplier: 1.0 }
+    financialImpact: { type: "productivity", multiplier: 1.0 },
+    benchmarkRange: { low: 80, mid: 100, high: 130 }
   },
   quality_of_hire: {
     id: "quality_of_hire",
@@ -326,7 +336,8 @@ export const LAGGING_INDICATORS = {
     pillar: "grow",
     unit: "score",
     description: "Performance rating of new hires at 12 months",
-    financialImpact: { type: "productivity", multiplier: 0.8 }
+    financialImpact: { type: "productivity", multiplier: 0.8 },
+    benchmarkRange: { low: 60, mid: 75, high: 90 }
   }
 } as const;
 

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
@@ -9,11 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Separator } from "@/components/ui/separator";
 import { 
   TrendingUp,
-  Gauge,
-  Shield,
-  Users,
   Target,
   ArrowRight,
   ChevronDown,
@@ -22,15 +20,16 @@ import {
   Loader2,
   Check,
   Edit2,
-  CheckCircle2,
-  Circle,
   BarChart3,
-  Zap,
   Lightbulb,
   Clock,
-  CheckCircle
+  CheckCircle,
+  Info,
+  Play,
+  Milestone,
+  ArrowUpRight
 } from "lucide-react";
-import type { Project, JobThemeKPI } from "@shared/schema";
+import type { Project } from "@shared/schema";
 import { 
   VALUE_PILLARS, 
   LEADING_INDICATORS, 
@@ -43,77 +42,68 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 
-// Pillar icons mapping
-const PILLAR_ICONS = {
-  grow: TrendingUp,
-  optimise: Gauge,
-  derisk: Shield,
-  strengthen: Users
-};
+// Outcome represents what the customer wants to achieve
+interface Outcome {
+  id: string;
+  name: string;
+  whyItMatters: string;
+  baseline: string | null;
+  target: string | null;
+  unit: string;
+  benchmarkRange?: { low: number; mid: number; high: number };
+  pillar: ValuePillarId;
+  category: string;
+  supportingMetrics: SupportingMetric[];
+  initiatives: Initiative[];
+}
 
-// Pillar colors for visual grouping
-const PILLAR_COLORS = {
-  grow: { bg: "bg-emerald-500/10", border: "border-emerald-500/20", text: "text-emerald-600", accent: "bg-emerald-500" },
-  optimise: { bg: "bg-blue-500/10", border: "border-blue-500/20", text: "text-blue-600", accent: "bg-blue-500" },
-  derisk: { bg: "bg-amber-500/10", border: "border-amber-500/20", text: "text-amber-600", accent: "bg-amber-500" },
-  strengthen: { bg: "bg-violet-500/10", border: "border-violet-500/20", text: "text-violet-600", accent: "bg-violet-500" }
-};
-
-// Customer-focused KPI with deliverables
-interface CustomerKPI {
+interface SupportingMetric {
   id: string;
   name: string;
   description: string;
-  pillar: ValuePillarId;
-  category: string;
   unit: string;
   benchmarkRange?: { low: number; mid: number; high: number };
-  type: "leading" | "lagging";
-  baseline: string | null;
-  target: string | null;
-  deliverables: Deliverable[];
-  isSelected: boolean;
 }
 
-interface Deliverable {
+interface Initiative {
   id: string;
-  title: string;
+  name: string;
   description: string;
   timeline: string;
   status: "planned" | "in_progress" | "completed";
 }
 
-// Map solution patterns to deliverables
-const SOLUTION_DELIVERABLES: Record<string, Deliverable[]> = {
+// Map solution patterns to initiatives
+const SOLUTION_INITIATIVES: Record<string, Initiative[]> = {
   leadership_development: [
-    { id: "ld1", title: "Leadership Assessment", description: "360° competency evaluation and gap analysis", timeline: "Month 1-2", status: "planned" },
-    { id: "ld2", title: "Executive Coaching", description: "1:1 coaching for senior leaders", timeline: "Month 2-12", status: "planned" },
-    { id: "ld3", title: "Development Program", description: "Cohort-based leadership development", timeline: "Month 3-12", status: "planned" },
-    { id: "ld4", title: "Succession Planning", description: "Critical role mapping and successor identification", timeline: "Month 4-8", status: "planned" }
+    { id: "ld1", name: "Leadership Assessment & Gap Analysis", description: "360° competency evaluation to identify development priorities", timeline: "Month 1-2", status: "planned" },
+    { id: "ld2", name: "Executive Coaching Program", description: "1:1 coaching for senior leaders to accelerate growth", timeline: "Month 2-12", status: "planned" },
+    { id: "ld3", name: "Leadership Development Cohort", description: "Cohort-based program building critical leadership capabilities", timeline: "Month 3-12", status: "planned" },
+    { id: "ld4", name: "Succession Planning Framework", description: "Critical role mapping and successor development paths", timeline: "Month 4-8", status: "planned" }
   ],
   sales_effectiveness: [
-    { id: "se1", title: "Sales Capability Assessment", description: "Evaluate current sales team competencies", timeline: "Month 1-2", status: "planned" },
-    { id: "se2", title: "Sales Methodology Training", description: "Implement proven sales frameworks", timeline: "Month 2-4", status: "planned" },
-    { id: "se3", title: "Coaching Infrastructure", description: "Manager coaching capability development", timeline: "Month 3-6", status: "planned" },
-    { id: "se4", title: "Performance Analytics", description: "Dashboard and metrics implementation", timeline: "Month 2-4", status: "planned" }
+    { id: "se1", name: "Sales Capability Diagnostic", description: "Evaluate current sales team competencies and gaps", timeline: "Month 1-2", status: "planned" },
+    { id: "se2", name: "Sales Methodology Implementation", description: "Deploy proven sales frameworks across the organization", timeline: "Month 2-4", status: "planned" },
+    { id: "se3", name: "Manager Coaching Capability", description: "Enable sales managers to coach their teams effectively", timeline: "Month 3-6", status: "planned" },
+    { id: "se4", name: "Performance Analytics Dashboard", description: "Real-time visibility into sales performance metrics", timeline: "Month 2-4", status: "planned" }
   ],
   org_transformation: [
-    { id: "ot1", title: "Organization Design", description: "Structure analysis and redesign", timeline: "Month 1-3", status: "planned" },
-    { id: "ot2", title: "Role Clarity Workshop", description: "Define accountabilities and decision rights", timeline: "Month 2-4", status: "planned" },
-    { id: "ot3", title: "Change Management", description: "Communication and adoption support", timeline: "Month 3-12", status: "planned" },
-    { id: "ot4", title: "Culture Alignment", description: "Values activation and behavior change", timeline: "Month 4-12", status: "planned" }
+    { id: "ot1", name: "Organization Design Review", description: "Structure analysis and redesign for strategic alignment", timeline: "Month 1-3", status: "planned" },
+    { id: "ot2", name: "Role Clarity & Accountabilities", description: "Define decision rights and eliminate overlaps", timeline: "Month 2-4", status: "planned" },
+    { id: "ot3", name: "Change Management Program", description: "Communication and adoption support for the transformation", timeline: "Month 3-12", status: "planned" },
+    { id: "ot4", name: "Culture Activation", description: "Align behaviors and values to new ways of working", timeline: "Month 4-12", status: "planned" }
   ],
   talent_acquisition: [
-    { id: "ta1", title: "Hiring Process Optimization", description: "Streamline recruitment workflow", timeline: "Month 1-2", status: "planned" },
-    { id: "ta2", title: "Assessment Integration", description: "Predictive hiring assessments", timeline: "Month 2-3", status: "planned" },
-    { id: "ta3", title: "Employer Branding", description: "EVP development and activation", timeline: "Month 2-4", status: "planned" },
-    { id: "ta4", title: "Onboarding Excellence", description: "New hire integration program", timeline: "Month 3-6", status: "planned" }
+    { id: "ta1", name: "Hiring Process Optimization", description: "Streamline recruitment workflow for speed and quality", timeline: "Month 1-2", status: "planned" },
+    { id: "ta2", name: "Predictive Assessment Integration", description: "Implement assessments that predict job success", timeline: "Month 2-3", status: "planned" },
+    { id: "ta3", name: "Employer Brand Development", description: "Create compelling EVP to attract top talent", timeline: "Month 2-4", status: "planned" },
+    { id: "ta4", name: "Onboarding Excellence Program", description: "Accelerate new hire productivity and retention", timeline: "Month 3-6", status: "planned" }
   ],
   rewards_optimization: [
-    { id: "ro1", title: "Compensation Benchmarking", description: "Market analysis and positioning", timeline: "Month 1-2", status: "planned" },
-    { id: "ro2", title: "Pay Structure Design", description: "Salary bands and progression paths", timeline: "Month 2-4", status: "planned" },
-    { id: "ro3", title: "Incentive Program", description: "Variable pay and recognition design", timeline: "Month 3-5", status: "planned" },
-    { id: "ro4", title: "Total Rewards Communication", description: "Employee value proposition messaging", timeline: "Month 4-6", status: "planned" }
+    { id: "ro1", name: "Market Compensation Benchmarking", description: "Understand competitive positioning in your market", timeline: "Month 1-2", status: "planned" },
+    { id: "ro2", name: "Pay Structure Redesign", description: "Create transparent salary bands and career paths", timeline: "Month 2-4", status: "planned" },
+    { id: "ro3", name: "Incentive Program Design", description: "Align variable pay with business outcomes", timeline: "Month 3-5", status: "planned" },
+    { id: "ro4", name: "Total Rewards Communication", description: "Help employees understand their full value package", timeline: "Month 4-6", status: "planned" }
   ]
 };
 
@@ -144,22 +134,19 @@ export default function AlignmentPage() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   
-  const [selectedKPI, setSelectedKPI] = useState<CustomerKPI | null>(null);
-  const [editingBaseline, setEditingBaseline] = useState(false);
-  const [editingTarget, setEditingTarget] = useState(false);
-  const [tempBaseline, setTempBaseline] = useState("");
-  const [tempTarget, setTempTarget] = useState("");
-  const [expandedDeliverables, setExpandedDeliverables] = useState(true);
-  const [expandedRecommendations, setExpandedRecommendations] = useState(true);
-  const [aiRecommendations, setAiRecommendations] = useState<Array<{
+  const [expandedOutcome, setExpandedOutcome] = useState<string | null>(null);
+  const [editingField, setEditingField] = useState<{ outcomeId: string; field: "baseline" | "target" } | null>(null);
+  const [tempValue, setTempValue] = useState("");
+  const [localOverrides, setLocalOverrides] = useState<Record<string, { baseline?: string; target?: string }>>({});
+  const [aiRecommendations, setAiRecommendations] = useState<Record<string, Array<{
     title: string;
     description: string;
     expectedImpact: string;
     timeline: string;
     confidence: "high" | "medium" | "low";
-    relatedSuccessPattern?: string;
     keyActivities: string[];
-  }>>([]);
+  }>>>({});
+  const [loadingRecommendations, setLoadingRecommendations] = useState<string | null>(null);
 
   const { data: project } = useQuery<Project>({
     queryKey: [`/api/projects/${projectId}`],
@@ -173,7 +160,6 @@ export default function AlignmentPage() {
   // Determine the solution pattern from finalized jobs
   const solutionPattern = useMemo(() => {
     if (!finalizedData?.jobs?.length) return "leadership_development";
-    // Look at the first job's capability or solution area to determine pattern
     const firstJob = finalizedData.jobs[0];
     const capName = firstJob.capabilityName?.toLowerCase() || "";
     const solArea = firstJob.solutionArea?.toLowerCase() || "";
@@ -186,114 +172,91 @@ export default function AlignmentPage() {
     return "leadership_development";
   }, [finalizedData]);
 
-  // Build customer KPIs from the solution pattern
-  const customerKPIs = useMemo<CustomerKPI[]>(() => {
+  // Build outcomes from solution pattern
+  const outcomes = useMemo<Outcome[]>(() => {
     const pattern = SOLUTION_VALUE_PATTERNS[solutionPattern as keyof typeof SOLUTION_VALUE_PATTERNS];
     if (!pattern) return [];
 
-    const kpis: CustomerKPI[] = [];
-    const deliverables = SOLUTION_DELIVERABLES[solutionPattern] || [];
+    const initiatives = SOLUTION_INITIATIVES[solutionPattern] || [];
+    const outcomeList: Outcome[] = [];
 
-    // Add leading indicators
-    pattern.recommendedKPIs.leading.forEach((kpiId) => {
-      const indicator = LEADING_INDICATORS[kpiId as keyof typeof LEADING_INDICATORS];
-      if (indicator) {
-        // Check if we have existing data from finalized jobs
-        const existingKpi = finalizedData?.jobs
-          ?.flatMap(j => j.kpis)
-          ?.find(k => k.kpiName.toLowerCase().includes(indicator.name.toLowerCase().split(" ")[0]));
-
-        kpis.push({
-          id: indicator.id,
-          name: indicator.name,
-          description: indicator.description,
-          pillar: indicator.pillar as ValuePillarId,
-          category: indicator.category,
-          unit: indicator.unit,
-          benchmarkRange: indicator.benchmarkRange,
-          type: "leading",
-          baseline: existingKpi?.baselineValue || null,
-          target: existingKpi?.targetValue || null,
-          deliverables: deliverables.slice(0, 2), // Associate first 2 deliverables with leading
-          isSelected: existingKpi?.isSelected ?? true
-        });
-      }
-    });
-
-    // Add lagging indicators
-    pattern.recommendedKPIs.lagging.forEach((kpiId) => {
+    // Primary outcomes from lagging indicators (these are what customers ultimately want)
+    pattern.recommendedKPIs.lagging.forEach((kpiId, index) => {
       const indicator = LAGGING_INDICATORS[kpiId as keyof typeof LAGGING_INDICATORS];
       if (indicator) {
         const existingKpi = finalizedData?.jobs
           ?.flatMap(j => j.kpis)
           ?.find(k => k.kpiName.toLowerCase().includes(indicator.name.toLowerCase().split(" ")[0]));
 
-        kpis.push({
+        // Get supporting metrics from leading indicators
+        const supportingMetrics: SupportingMetric[] = pattern.recommendedKPIs.leading
+          .slice(index * 2, index * 2 + 2)
+          .map(leadingId => {
+            const leading = LEADING_INDICATORS[leadingId as keyof typeof LEADING_INDICATORS];
+            if (!leading) return null;
+            return {
+              id: leading.id,
+              name: leading.name,
+              description: leading.description,
+              unit: leading.unit,
+              benchmarkRange: leading.benchmarkRange
+            };
+          })
+          .filter(Boolean) as SupportingMetric[];
+
+        outcomeList.push({
           id: indicator.id,
           name: indicator.name,
-          description: indicator.description,
-          pillar: indicator.pillar as ValuePillarId,
-          category: indicator.category,
-          unit: indicator.unit,
-          type: "lagging",
+          whyItMatters: indicator.description,
           baseline: existingKpi?.baselineValue || null,
           target: existingKpi?.targetValue || null,
-          deliverables: deliverables.slice(2), // Associate remaining deliverables with lagging
-          isSelected: existingKpi?.isSelected ?? true
+          unit: indicator.unit,
+          benchmarkRange: (indicator as any).benchmarkRange,
+          pillar: indicator.pillar as ValuePillarId,
+          category: indicator.category,
+          supportingMetrics,
+          initiatives: initiatives.slice(index * 2, index * 2 + 2).length > 0 
+            ? initiatives.slice(index * 2, index * 2 + 2) 
+            : initiatives.slice(0, 2)
         });
       }
     });
 
-    return kpis;
+    return outcomeList;
   }, [solutionPattern, finalizedData]);
 
-  // Group KPIs by pillar
-  const kpisByPillar = useMemo(() => {
-    const grouped: Record<ValuePillarId, CustomerKPI[]> = {
-      grow: [],
-      optimise: [],
-      derisk: [],
-      strengthen: []
-    };
-    customerKPIs.forEach(kpi => {
-      if (grouped[kpi.pillar]) {
-        grouped[kpi.pillar].push(kpi);
-      }
+  // Merge local overrides with computed outcomes
+  const mergedOutcomes = useMemo(() => {
+    return outcomes.map(outcome => {
+      const overrides = localOverrides[outcome.id];
+      if (!overrides) return outcome;
+      return {
+        ...outcome,
+        baseline: overrides.baseline ?? outcome.baseline,
+        target: overrides.target ?? outcome.target
+      };
     });
-    return grouped;
-  }, [customerKPIs]);
+  }, [outcomes, localOverrides]);
 
-  // Calculate metrics
-  const totalKPIs = customerKPIs.length;
-  const configuredKPIs = customerKPIs.filter(k => k.baseline && k.target).length;
-  const completionPercent = totalKPIs > 0 ? Math.round((configuredKPIs / totalKPIs) * 100) : 0;
+  // Calculate summary metrics
+  const configuredOutcomes = mergedOutcomes.filter(o => o.baseline && o.target).length;
+  const totalOutcomes = mergedOutcomes.length;
+  const completionPercent = totalOutcomes > 0 ? Math.round((configuredOutcomes / totalOutcomes) * 100) : 0;
 
-  // Auto-select first KPI on initial load
-  useEffect(() => {
-    if (!selectedKPI && customerKPIs.length > 0) {
-      setSelectedKPI(customerKPIs[0]);
-      setTempBaseline(customerKPIs[0].baseline || "");
-      setTempTarget(customerKPIs[0].target || "");
-    }
-  }, [customerKPIs.length]); // Only run when KPIs first become available
-
-  // Mutation to update KPI values (simulated - in real app would update job theme KPIs)
-  const updateKPIMutation = useMutation({
-    mutationFn: async ({ kpiId, data }: { kpiId: string; data: { baseline?: string; target?: string } }) => {
-      // In real implementation, this would update the job theme KPI
-      // For now, just simulate success
+  // Mutations
+  const updateOutcomeMutation = useMutation({
+    mutationFn: async ({ outcomeId, data }: { outcomeId: string; data: { baseline?: string; target?: string } }) => {
       return { success: true };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/alignment/finalized-jobs`] });
       toast({
-        title: "Value saved",
-        description: "Your outcome target has been updated.",
+        title: "Saved",
+        description: "Outcome value updated.",
       });
     }
   });
 
-  // Start tracking
   const startTrackingMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("PATCH", `/api/projects/${projectId}`, { currentPhase: "realisation" });
@@ -309,87 +272,82 @@ export default function AlignmentPage() {
     }
   });
 
-  // AI recommendations mutation
-  const getRecommendationsMutation = useMutation({
-    mutationFn: async (kpi: CustomerKPI) => {
+  const getAIRecommendations = async (outcome: Outcome) => {
+    setLoadingRecommendations(outcome.id);
+    try {
       const res = await apiRequest("POST", `/api/projects/${projectId}/kpi-value-cases`, {
-        kpiName: kpi.name,
-        kpiDescription: kpi.description,
-        pillar: VALUE_PILLARS[kpi.pillar].name,
-        category: kpi.category,
-        unit: kpi.unit,
-        baseline: kpi.baseline,
-        target: kpi.target,
-        benchmarkRange: kpi.benchmarkRange
+        kpiName: outcome.name,
+        kpiDescription: outcome.whyItMatters,
+        pillar: VALUE_PILLARS[outcome.pillar].name,
+        category: outcome.category,
+        unit: outcome.unit,
+        baseline: outcome.baseline,
+        target: outcome.target,
+        benchmarkRange: outcome.benchmarkRange
       });
-      return await res.json();
-    },
-    onSuccess: (data) => {
-      setAiRecommendations(data.recommendations || []);
+      const data = await res.json();
+      setAiRecommendations(prev => ({ ...prev, [outcome.id]: data.recommendations || [] }));
       toast({
         title: "Recommendations ready",
-        description: "AI has analyzed this outcome and generated value case recommendations.",
+        description: "AI has analyzed this outcome and suggested initiatives.",
       });
-    },
-    onError: (error: any) => {
+    } catch (error: any) {
       toast({
         title: "Could not generate recommendations",
         description: error.message || "Please try again later.",
         variant: "destructive"
       });
+    } finally {
+      setLoadingRecommendations(null);
     }
-  });
-
-  const handleSaveBaseline = () => {
-    if (selectedKPI && tempBaseline) {
-      updateKPIMutation.mutate({ kpiId: selectedKPI.id, data: { baseline: tempBaseline } });
-      setSelectedKPI({ ...selectedKPI, baseline: tempBaseline });
-    }
-    setEditingBaseline(false);
   };
 
-  const handleSaveTarget = () => {
-    if (selectedKPI && tempTarget) {
-      updateKPIMutation.mutate({ kpiId: selectedKPI.id, data: { target: tempTarget } });
-      setSelectedKPI({ ...selectedKPI, target: tempTarget });
+  const handleSaveValue = (outcome: Outcome, field: "baseline" | "target") => {
+    if (tempValue) {
+      // Update local state immediately for responsive UI
+      setLocalOverrides(prev => ({
+        ...prev,
+        [outcome.id]: {
+          ...prev[outcome.id],
+          [field]: tempValue
+        }
+      }));
+      // Also fire the mutation for persistence
+      updateOutcomeMutation.mutate({ 
+        outcomeId: outcome.id, 
+        data: { [field]: tempValue } 
+      });
     }
-    setEditingTarget(false);
+    setEditingField(null);
+    setTempValue("");
   };
 
   if (!project) {
-    return <div className="p-6">Loading project...</div>;
+    return <div className="p-6">Loading...</div>;
   }
 
   const patternInfo = SOLUTION_VALUE_PATTERNS[solutionPattern as keyof typeof SOLUTION_VALUE_PATTERNS];
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Clean Header */}
+    <div className="h-full flex flex-col bg-background">
+      {/* Header */}
       <motion.div 
-        className="border-b bg-background shrink-0"
+        className="border-b shrink-0"
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
       >
         <div className="px-6 py-4">
-          <div className="flex items-center justify-between gap-6">
-            <div className="flex items-center gap-6">
-              <div>
-                <div className="flex items-center gap-3">
-                  <h1 className="text-xl font-semibold tracking-tight">Customer Outcomes</h1>
-                  <div className="h-5 w-px bg-border" />
-                  <span className="text-sm text-muted-foreground">{project.companyName}</span>
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Define the outcomes that matter to your customer, then map deliverables to achieve them
-                </p>
-              </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-semibold">Outcome Alignment</h1>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Define what {project.companyName} wants to achieve and how we'll get there
+              </p>
             </div>
             <div className="flex items-center gap-3">
               <ShareAlignmentDialog projectId={projectId} />
-              {configuredKPIs > 0 && project.currentPhase === "alignment" && (
+              {configuredOutcomes > 0 && project.currentPhase === "alignment" && (
                 <Button 
-                  size="sm"
                   onClick={() => startTrackingMutation.mutate()}
                   disabled={startTrackingMutation.isPending}
                   data-testid="button-start-tracking"
@@ -397,9 +355,9 @@ export default function AlignmentPage() {
                   {startTrackingMutation.isPending ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   ) : (
-                    <ArrowRight className="h-4 w-4 mr-2" />
+                    <Play className="h-4 w-4 mr-2" />
                   )}
-                  Start Tracking
+                  Start Tracking Progress
                 </Button>
               )}
             </div>
@@ -407,484 +365,380 @@ export default function AlignmentPage() {
         </div>
       </motion.div>
 
-      {/* Summary Strip */}
-      <div className="border-b bg-muted/30 px-6 py-3">
+      {/* Executive Summary */}
+      <div className="px-6 py-4 border-b bg-muted/30">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="font-normal">
-                <Sparkles className="h-3 w-3 mr-1" />
-                {patternInfo?.name || "Value Framework"}
-              </Badge>
+            <div>
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">Focus Area</span>
+              <p className="font-medium">{patternInfo?.name || "Value Framework"}</p>
             </div>
-            <div className="h-4 w-px bg-border" />
-            <div className="flex items-center gap-4">
-              {Object.entries(VALUE_PILLARS).map(([key, pillar]) => {
-                const count = kpisByPillar[key as ValuePillarId]?.length || 0;
-                if (count === 0) return null;
-                const PillarIcon = PILLAR_ICONS[key as ValuePillarId];
-                const colors = PILLAR_COLORS[key as ValuePillarId];
-                return (
-                  <div key={key} className="flex items-center gap-1.5">
-                    <div className={`w-5 h-5 rounded flex items-center justify-center ${colors.bg}`}>
-                      <PillarIcon className={`h-3 w-3 ${colors.text}`} />
-                    </div>
-                    <span className="text-xs text-muted-foreground">{count}</span>
-                  </div>
-                );
-              })}
+            <Separator orientation="vertical" className="h-8" />
+            <div>
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">Outcomes Defined</span>
+              <p className="font-medium">{configuredOutcomes} of {totalOutcomes}</p>
             </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Configured</span>
-              <span className="text-sm font-medium">{configuredKPIs}/{totalKPIs}</span>
+            <Separator orientation="vertical" className="h-8" />
+            <div>
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">Readiness</span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <Progress value={completionPercent} className="w-20 h-2" />
+                <span className="text-sm font-medium">{completionPercent}%</span>
+              </div>
             </div>
-            <Progress value={completionPercent} className="w-24 h-2" />
           </div>
         </div>
       </div>
 
-      {/* Main Content - Two Panels */}
-      <div className="flex-1 overflow-hidden flex">
-        {/* Left Panel - KPI Navigator */}
-        <div className="w-80 shrink-0 border-r bg-muted/20 overflow-hidden flex flex-col">
-          <div className="px-4 py-3 border-b">
-            <h3 className="text-sm font-medium">Customer KPIs</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Outcomes your customer wants to achieve</p>
-          </div>
-          
-          <ScrollArea className="flex-1">
-            <div className="p-3 space-y-4">
-              {isLoading ? (
-                <div className="p-8 text-center">
-                  <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
-                </div>
-              ) : (
-                Object.entries(VALUE_PILLARS).map(([pillarKey, pillar]) => {
-                  const pillarKPIs = kpisByPillar[pillarKey as ValuePillarId];
-                  if (!pillarKPIs?.length) return null;
-                  
-                  const PillarIcon = PILLAR_ICONS[pillarKey as ValuePillarId];
-                  const colors = PILLAR_COLORS[pillarKey as ValuePillarId];
-                  
-                  return (
-                    <div key={pillarKey} className="space-y-2">
-                      {/* Pillar Header */}
-                      <div className={`flex items-center gap-2 px-2 py-1.5 rounded-md ${colors.bg}`}>
-                        <PillarIcon className={`h-3.5 w-3.5 ${colors.text}`} />
-                        <span className={`text-xs font-medium ${colors.text}`}>{pillar.name}</span>
-                        <span className={`text-xs ${colors.text} opacity-70`}>• {pillar.description}</span>
+      {/* Main Content */}
+      <ScrollArea className="flex-1">
+        <div className="p-6 space-y-6 max-w-4xl mx-auto">
+          {isLoading ? (
+            <div className="py-12 text-center">
+              <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+              <p className="text-sm text-muted-foreground mt-2">Loading outcomes...</p>
+            </div>
+          ) : mergedOutcomes.length === 0 ? (
+            <Card className="p-12 text-center">
+              <Target className="h-12 w-12 mx-auto text-muted-foreground/50" />
+              <h3 className="text-lg font-medium mt-4">No outcomes defined yet</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Complete the discovery phase to define customer outcomes
+              </p>
+            </Card>
+          ) : (
+            mergedOutcomes.map((outcome, index) => (
+              <motion.div
+                key={outcome.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+              >
+                <Card className="overflow-hidden">
+                  {/* Outcome Header - Always Visible */}
+                  <div 
+                    className="p-5 cursor-pointer hover:bg-muted/30 transition-colors"
+                    onClick={() => setExpandedOutcome(expandedOutcome === outcome.id ? null : outcome.id)}
+                    data-testid={`outcome-card-${outcome.id}`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="outline" className="text-xs">
+                            {VALUE_PILLARS[outcome.pillar].name}
+                          </Badge>
+                          <Badge variant="secondary" className="text-xs">
+                            {outcome.category}
+                          </Badge>
+                        </div>
+                        <h3 className="text-lg font-semibold">{outcome.name}</h3>
+                        <p className="text-sm text-muted-foreground mt-1">{outcome.whyItMatters}</p>
                       </div>
                       
-                      {/* KPI Items */}
-                      <div className="space-y-1 pl-1">
-                        {pillarKPIs.map((kpi) => {
-                          const isSelected = selectedKPI?.id === kpi.id;
-                          const isConfigured = kpi.baseline && kpi.target;
-                          
-                          return (
-                            <motion.button
-                              key={kpi.id}
-                              onClick={() => {
-                                setSelectedKPI(kpi);
-                                setTempBaseline(kpi.baseline || "");
-                                setTempTarget(kpi.target || "");
-                              }}
-                              className={`w-full text-left px-3 py-2.5 rounded-lg transition-all flex items-start gap-3 ${
-                                isSelected 
-                                  ? 'bg-primary text-primary-foreground' 
-                                  : 'hover:bg-background'
-                              }`}
-                              data-testid={`button-kpi-${kpi.id}`}
-                            >
-                              <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                                isSelected 
-                                  ? 'bg-primary-foreground/20' 
-                                  : isConfigured 
-                                    ? 'bg-emerald-500/10' 
-                                    : 'bg-muted'
-                              }`}>
-                                {isConfigured ? (
-                                  <CheckCircle2 className={`h-3 w-3 ${isSelected ? 'text-primary-foreground' : 'text-emerald-600'}`} />
-                                ) : (
-                                  <Circle className={`h-3 w-3 ${isSelected ? 'text-primary-foreground/60' : 'text-muted-foreground'}`} />
-                                )}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className={`text-sm font-medium leading-tight ${isSelected ? '' : 'text-foreground'}`}>
-                                  {kpi.name}
-                                </p>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <Badge 
-                                    variant="outline" 
-                                    className={`text-[10px] px-1.5 py-0 h-4 ${
-                                      isSelected ? 'border-primary-foreground/30 text-primary-foreground/80' : ''
-                                    }`}
-                                  >
-                                    {kpi.type === "leading" ? "Leading" : "Lagging"}
-                                  </Badge>
-                                  {kpi.deliverables.length > 0 && (
-                                    <span className={`text-[10px] ${isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-                                      {kpi.deliverables.length} deliverables
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </motion.button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </ScrollArea>
-        </div>
-
-        {/* Right Panel - KPI Detail */}
-        <div className="flex-1 overflow-hidden bg-background">
-          <ScrollArea className="h-full">
-            <div className="p-8 max-w-2xl">
-              <AnimatePresence mode="wait">
-                {!selectedKPI ? (
-                  <motion.div 
-                    key="empty"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="flex items-center justify-center h-[400px]"
-                  >
-                    <div className="text-center">
-                      <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-4">
-                        <Target className="w-8 h-8 text-muted-foreground/50" />
-                      </div>
-                      <p className="text-lg font-medium">Select an outcome</p>
-                      <p className="text-sm text-muted-foreground mt-1">Choose a KPI to set targets and view deliverables</p>
-                    </div>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key={selectedKPI.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
-                    className="space-y-6"
-                  >
-                    {/* KPI Header */}
-                    <div>
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-3">
-                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${PILLAR_COLORS[selectedKPI.pillar].bg}`}>
-                            {(() => {
-                              const PillarIcon = PILLAR_ICONS[selectedKPI.pillar];
-                              return <PillarIcon className={`h-5 w-5 ${PILLAR_COLORS[selectedKPI.pillar].text}`} />;
-                            })()}
-                          </div>
-                          <div>
-                            <h2 className="text-xl font-semibold">{selectedKPI.name}</h2>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Badge variant="outline" className="text-xs">
-                                {VALUE_PILLARS[selectedKPI.pillar].name}
-                              </Badge>
-                              <Badge variant="secondary" className="text-xs">
-                                {selectedKPI.type === "leading" ? "Leading Indicator" : "Lagging Indicator"}
-                              </Badge>
+                      {/* Quick Status */}
+                      <div className="flex items-center gap-4 shrink-0">
+                        <div className="text-right">
+                          <div className="flex items-center gap-3">
+                            <div>
+                              <span className="text-xs text-muted-foreground">Current</span>
+                              <p className="text-lg font-semibold">
+                                {outcome.baseline || "—"} 
+                                <span className="text-xs text-muted-foreground ml-1">{outcome.unit}</span>
+                              </p>
+                            </div>
+                            <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <span className="text-xs text-muted-foreground">Target</span>
+                              <p className="text-lg font-semibold text-primary">
+                                {outcome.target || "—"}
+                                <span className="text-xs text-primary/70 ml-1">{outcome.unit}</span>
+                              </p>
                             </div>
                           </div>
                         </div>
+                        <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${expandedOutcome === outcome.id ? 'rotate-180' : ''}`} />
                       </div>
-                      <p className="text-muted-foreground mt-3">{selectedKPI.description}</p>
                     </div>
+                  </div>
 
-                    {/* Benchmark Info */}
-                    {selectedKPI.benchmarkRange && (
-                      <Card className="border-dashed">
-                        <CardContent className="py-4">
-                          <div className="flex items-center gap-2 mb-3">
-                            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm font-medium">Industry Benchmarks</span>
+                  {/* Expanded Content */}
+                  <AnimatePresence>
+                    {expandedOutcome === outcome.id && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <div className="border-t">
+                          {/* Section 1: The Journey - Baseline to Target */}
+                          <div className="p-5 bg-muted/20">
+                            <div className="flex items-center gap-2 mb-4">
+                              <Target className="h-4 w-4 text-primary" />
+                              <h4 className="font-medium">The Journey</h4>
+                            </div>
+                            
+                            <div className="grid grid-cols-3 gap-4">
+                              {/* Baseline */}
+                              <Card className="border-muted">
+                                <CardHeader className="pb-2">
+                                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                                    Where We Are Now
+                                  </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                  {editingField?.outcomeId === outcome.id && editingField?.field === "baseline" ? (
+                                    <div className="flex items-center gap-2">
+                                      <Input
+                                        value={tempValue}
+                                        onChange={(e) => setTempValue(e.target.value)}
+                                        placeholder={`Value (${outcome.unit})`}
+                                        className="h-9"
+                                        autoFocus
+                                        data-testid="input-baseline"
+                                      />
+                                      <Button size="sm" onClick={() => handleSaveValue(outcome, "baseline")}>
+                                        <Check className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-2xl font-bold">
+                                        {outcome.baseline || "—"} 
+                                        <span className="text-sm text-muted-foreground ml-1">{outcome.unit}</span>
+                                      </span>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setTempValue(outcome.baseline || "");
+                                          setEditingField({ outcomeId: outcome.id, field: "baseline" });
+                                        }}
+                                        data-testid="button-edit-baseline"
+                                      >
+                                        <Edit2 className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  )}
+                                </CardContent>
+                              </Card>
+
+                              {/* Benchmark Context */}
+                              <Card className="border-secondary/20 bg-secondary/5">
+                                <CardHeader className="pb-2">
+                                  <CardTitle className="text-sm font-medium text-secondary">
+                                    Industry Benchmark
+                                  </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                  {outcome.benchmarkRange ? (
+                                    <div className="space-y-2">
+                                      <div className="flex justify-between text-sm">
+                                        <span className="text-muted-foreground">Low</span>
+                                        <span className="text-muted-foreground">Top Quartile</span>
+                                      </div>
+                                      <div className="relative h-2 bg-muted rounded-full overflow-hidden">
+                                        <div 
+                                          className="absolute left-0 h-full bg-gradient-to-r from-amber-400 via-emerald-400 to-emerald-600 rounded-full"
+                                          style={{ width: '100%' }}
+                                        />
+                                      </div>
+                                      <div className="flex justify-between text-xs">
+                                        <span>{outcome.benchmarkRange.low}{outcome.unit}</span>
+                                        <span className="font-medium text-emerald-600">{outcome.benchmarkRange.high}{outcome.unit}</span>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-muted-foreground">No benchmark data available</p>
+                                  )}
+                                </CardContent>
+                              </Card>
+
+                              {/* Target */}
+                              <Card className="border-primary/20 bg-primary/5">
+                                <CardHeader className="pb-2">
+                                  <CardTitle className="text-sm font-medium text-primary">
+                                    Where We Want To Be
+                                  </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                  {editingField?.outcomeId === outcome.id && editingField?.field === "target" ? (
+                                    <div className="flex items-center gap-2">
+                                      <Input
+                                        value={tempValue}
+                                        onChange={(e) => setTempValue(e.target.value)}
+                                        placeholder={`Target (${outcome.unit})`}
+                                        className="h-9"
+                                        autoFocus
+                                        data-testid="input-target"
+                                      />
+                                      <Button size="sm" onClick={() => handleSaveValue(outcome, "target")}>
+                                        <Check className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-2xl font-bold text-primary">
+                                        {outcome.target || "—"}
+                                        <span className="text-sm text-primary/70 ml-1">{outcome.unit}</span>
+                                      </span>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setTempValue(outcome.target || "");
+                                          setEditingField({ outcomeId: outcome.id, field: "target" });
+                                        }}
+                                        data-testid="button-edit-target"
+                                      >
+                                        <Edit2 className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  )}
+                                </CardContent>
+                              </Card>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-6">
-                            <div className="text-center">
-                              <p className="text-xs text-muted-foreground">Low</p>
-                              <p className="text-lg font-semibold text-muted-foreground">{selectedKPI.benchmarkRange.low}{selectedKPI.unit === "%" ? "%" : ""}</p>
-                            </div>
-                            <div className="flex-1 h-2 bg-gradient-to-r from-red-200 via-amber-200 to-emerald-200 rounded-full" />
-                            <div className="text-center">
-                              <p className="text-xs text-muted-foreground">Mid</p>
-                              <p className="text-lg font-semibold text-amber-600">{selectedKPI.benchmarkRange.mid}{selectedKPI.unit === "%" ? "%" : ""}</p>
-                            </div>
-                            <div className="flex-1 h-2 bg-gradient-to-r from-amber-200 to-emerald-200 rounded-full" />
-                            <div className="text-center">
-                              <p className="text-xs text-muted-foreground">High</p>
-                              <p className="text-lg font-semibold text-emerald-600">{selectedKPI.benchmarkRange.high}{selectedKPI.unit === "%" ? "%" : ""}</p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
 
-                    {/* Baseline & Target */}
-                    <div className="grid grid-cols-2 gap-4">
-                      {/* Baseline */}
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm font-medium text-muted-foreground">Current Baseline</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          {editingBaseline ? (
-                            <div className="flex items-center gap-2">
-                              <Input
-                                value={tempBaseline}
-                                onChange={(e) => setTempBaseline(e.target.value)}
-                                placeholder={`Enter value (${selectedKPI.unit})`}
-                                className="h-9"
-                                autoFocus
-                                data-testid="input-baseline"
-                              />
-                              <Button size="sm" onClick={handleSaveBaseline} data-testid="button-save-baseline">
-                                <Check className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-between">
-                              <span className="text-2xl font-bold">
-                                {selectedKPI.baseline || "—"} 
-                                <span className="text-sm text-muted-foreground ml-1">{selectedKPI.unit}</span>
-                              </span>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                onClick={() => {
-                                  setTempBaseline(selectedKPI.baseline || "");
-                                  setEditingBaseline(true);
-                                }}
-                                data-testid="button-edit-baseline"
-                              >
-                                <Edit2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-
-                      {/* Target */}
-                      <Card className="border-primary/20 bg-primary/5">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm font-medium text-primary">Target Outcome</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          {editingTarget ? (
-                            <div className="flex items-center gap-2">
-                              <Input
-                                value={tempTarget}
-                                onChange={(e) => setTempTarget(e.target.value)}
-                                placeholder={`Enter target (${selectedKPI.unit})`}
-                                className="h-9"
-                                autoFocus
-                                data-testid="input-target"
-                              />
-                              <Button size="sm" onClick={handleSaveTarget} data-testid="button-save-target">
-                                <Check className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-between">
-                              <span className="text-2xl font-bold text-primary">
-                                {selectedKPI.target || "—"}
-                                <span className="text-sm text-primary/70 ml-1">{selectedKPI.unit}</span>
-                              </span>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                onClick={() => {
-                                  setTempTarget(selectedKPI.target || "");
-                                  setEditingTarget(true);
-                                }}
-                                data-testid="button-edit-target"
-                              >
-                                <Edit2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    {/* Deliverables Section */}
-                    <Collapsible open={expandedDeliverables} onOpenChange={setExpandedDeliverables}>
-                      <Card>
-                        <CollapsibleTrigger asChild>
-                          <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <Zap className="h-4 w-4 text-secondary" />
-                                <CardTitle className="text-base">How We'll Achieve This</CardTitle>
-                                <Badge variant="secondary" className="ml-2">
-                                  {selectedKPI.deliverables.length} deliverables
-                                </Badge>
+                          {/* Section 2: How We'll Measure Success */}
+                          {outcome.supportingMetrics.length > 0 && (
+                            <div className="p-5 border-t">
+                              <div className="flex items-center gap-2 mb-4">
+                                <BarChart3 className="h-4 w-4 text-secondary" />
+                                <h4 className="font-medium">How We'll Measure Progress</h4>
+                                <span className="text-xs text-muted-foreground">(Leading Indicators)</span>
                               </div>
-                              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${expandedDeliverables ? 'rotate-180' : ''}`} />
+                              
+                              <div className="grid grid-cols-2 gap-3">
+                                {outcome.supportingMetrics.map((metric) => (
+                                  <div 
+                                    key={metric.id}
+                                    className="p-3 rounded-lg border bg-muted/30"
+                                  >
+                                    <div className="flex items-start justify-between">
+                                      <div>
+                                        <p className="font-medium text-sm">{metric.name}</p>
+                                        <p className="text-xs text-muted-foreground mt-0.5">{metric.description}</p>
+                                      </div>
+                                      {metric.benchmarkRange && (
+                                        <Badge variant="outline" className="text-[10px] shrink-0">
+                                          Top: {metric.benchmarkRange.high}{metric.unit}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                          </CardHeader>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <CardContent className="pt-0">
+                          )}
+
+                          {/* Section 3: How We'll Get There */}
+                          <div className="p-5 border-t">
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center gap-2">
+                                <Milestone className="h-4 w-4 text-primary" />
+                                <h4 className="font-medium">How We'll Get There</h4>
+                                <span className="text-xs text-muted-foreground">(Korn Ferry Initiatives)</span>
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  getAIRecommendations(outcome);
+                                }}
+                                disabled={loadingRecommendations === outcome.id}
+                                data-testid="button-get-recommendations"
+                              >
+                                {loadingRecommendations === outcome.id ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Analyzing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Sparkles className="h-4 w-4 mr-2" />
+                                    AI Suggestions
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                            
                             <div className="space-y-3">
-                              {selectedKPI.deliverables.map((deliverable, index) => (
-                                <motion.div
-                                  key={deliverable.id}
-                                  initial={{ opacity: 0, x: -10 }}
-                                  animate={{ opacity: 1, x: 0 }}
-                                  transition={{ delay: index * 0.05 }}
-                                  className="flex items-start gap-3 p-3 rounded-lg border bg-muted/30"
+                              {outcome.initiatives.map((initiative, idx) => (
+                                <div 
+                                  key={initiative.id}
+                                  className="flex items-start gap-3 p-3 rounded-lg border"
                                 >
-                                  <div className="w-6 h-6 rounded-full bg-secondary/10 flex items-center justify-center shrink-0 mt-0.5">
-                                    <span className="text-xs font-semibold text-secondary">{index + 1}</span>
+                                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                    <span className="text-xs font-semibold text-primary">{idx + 1}</span>
                                   </div>
                                   <div className="flex-1">
                                     <div className="flex items-start justify-between gap-2">
                                       <div>
-                                        <p className="font-medium text-sm">{deliverable.title}</p>
-                                        <p className="text-xs text-muted-foreground mt-0.5">{deliverable.description}</p>
+                                        <p className="font-medium text-sm">{initiative.name}</p>
+                                        <p className="text-xs text-muted-foreground mt-0.5">{initiative.description}</p>
                                       </div>
-                                      <Badge variant="outline" className="text-[10px] shrink-0">
-                                        {deliverable.timeline}
+                                      <Badge variant="secondary" className="text-[10px] shrink-0">
+                                        <Clock className="h-3 w-3 mr-1" />
+                                        {initiative.timeline}
                                       </Badge>
                                     </div>
                                   </div>
-                                </motion.div>
+                                </div>
                               ))}
                             </div>
-                          </CardContent>
-                        </CollapsibleContent>
-                      </Card>
-                    </Collapsible>
 
-                    {/* AI Recommendations Section */}
-                    <Card className="border-secondary/20">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-secondary/20 to-ai/20 flex items-center justify-center">
-                              <Lightbulb className="h-4 w-4 text-secondary" />
-                            </div>
-                            <div>
-                              <CardTitle className="text-base">AI Value Case Recommendations</CardTitle>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                Tailored initiatives to achieve this outcome
-                              </p>
-                            </div>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => getRecommendationsMutation.mutate(selectedKPI)}
-                            disabled={getRecommendationsMutation.isPending}
-                            data-testid="button-get-recommendations"
-                          >
-                            {getRecommendationsMutation.isPending ? (
-                              <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Analyzing...
-                              </>
-                            ) : (
-                              <>
-                                <Sparkles className="h-4 w-4 mr-2" />
-                                Get Recommendations
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      </CardHeader>
-                      
-                      {aiRecommendations.length > 0 && (
-                        <CardContent className="pt-0">
-                          <div className="space-y-4">
-                            {aiRecommendations.map((rec, index) => (
-                              <motion.div
-                                key={index}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.1 }}
-                                className="p-4 rounded-lg border bg-muted/30"
-                              >
-                                <div className="flex items-start justify-between gap-3 mb-2">
-                                  <div className="flex items-start gap-3">
-                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                                      rec.confidence === "high" ? "bg-emerald-500/10 text-emerald-600" :
-                                      rec.confidence === "medium" ? "bg-amber-500/10 text-amber-600" :
-                                      "bg-slate-500/10 text-slate-600"
-                                    }`}>
-                                      <CheckCircle className="h-3.5 w-3.5" />
-                                    </div>
-                                    <div>
-                                      <h4 className="font-medium text-sm">{rec.title}</h4>
-                                      <p className="text-xs text-muted-foreground mt-1">{rec.description}</p>
-                                    </div>
-                                  </div>
-                                  <Badge variant={
-                                    rec.confidence === "high" ? "default" :
-                                    rec.confidence === "medium" ? "secondary" : "outline"
-                                  } className="shrink-0 text-[10px]">
-                                    {rec.confidence} confidence
-                                  </Badge>
+                            {/* AI Recommendations */}
+                            {aiRecommendations[outcome.id]?.length > 0 && (
+                              <div className="mt-4 pt-4 border-t">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <Lightbulb className="h-4 w-4 text-amber-500" />
+                                  <span className="text-sm font-medium">AI Recommended Initiatives</span>
                                 </div>
-                                
-                                <div className="ml-9 space-y-2">
-                                  <div className="flex items-center gap-4 text-xs">
-                                    <div className="flex items-center gap-1.5 text-emerald-600">
-                                      <TrendingUp className="h-3.5 w-3.5" />
-                                      <span>{rec.expectedImpact}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 text-muted-foreground">
-                                      <Clock className="h-3.5 w-3.5" />
-                                      <span>{rec.timeline}</span>
-                                    </div>
-                                  </div>
-                                  
-                                  {rec.keyActivities.length > 0 && (
-                                    <Collapsible>
-                                      <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                                        <ChevronRight className="h-3 w-3 transition-transform [[data-state=open]>&]:rotate-90" />
-                                        Key activities ({rec.keyActivities.length})
-                                      </CollapsibleTrigger>
-                                      <CollapsibleContent className="mt-2">
-                                        <div className="space-y-1">
-                                          {rec.keyActivities.map((activity, actIdx) => (
-                                            <div key={actIdx} className="flex items-start gap-2 text-xs text-muted-foreground">
-                                              <span className="text-secondary">•</span>
-                                              <span>{activity}</span>
-                                            </div>
-                                          ))}
+                                <div className="space-y-3">
+                                  {aiRecommendations[outcome.id].map((rec, idx) => (
+                                    <div 
+                                      key={idx}
+                                      className="p-3 rounded-lg border border-amber-200/50 bg-amber-50/30 dark:bg-amber-950/10"
+                                    >
+                                      <div className="flex items-start justify-between gap-2 mb-2">
+                                        <div>
+                                          <p className="font-medium text-sm">{rec.title}</p>
+                                          <p className="text-xs text-muted-foreground mt-0.5">{rec.description}</p>
                                         </div>
-                                      </CollapsibleContent>
-                                    </Collapsible>
-                                  )}
-                                  
-                                  {rec.relatedSuccessPattern && (
-                                    <p className="text-[10px] text-muted-foreground italic">
-                                      Based on: {rec.relatedSuccessPattern}
-                                    </p>
-                                  )}
+                                        <Badge variant={rec.confidence === "high" ? "default" : "secondary"} className="text-[10px] shrink-0">
+                                          {rec.confidence}
+                                        </Badge>
+                                      </div>
+                                      <div className="flex items-center gap-4 text-xs mt-2">
+                                        <div className="flex items-center gap-1 text-emerald-600">
+                                          <ArrowUpRight className="h-3 w-3" />
+                                          <span>{rec.expectedImpact}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1 text-muted-foreground">
+                                          <Clock className="h-3 w-3" />
+                                          <span>{rec.timeline}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
                                 </div>
-                              </motion.div>
-                            ))}
+                              </div>
+                            )}
                           </div>
-                        </CardContent>
-                      )}
-                    </Card>
-
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </ScrollArea>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </Card>
+              </motion.div>
+            ))
+          )}
         </div>
-      </div>
+      </ScrollArea>
     </div>
   );
 }
