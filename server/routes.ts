@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "./storage";
-import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale, generateStrategicPillars, generateStorySuggestion, generateDiscoveryKpiSuggestions, enrichContactWithAI, openai, generateCompetitiveIntelligence } from "./ai";
+import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale, generateStrategicPillars, generateStorySuggestion, generateDiscoveryKpiSuggestions, enrichContactWithAI, openai, generateCompetitiveIntelligence, generateKPIValueCaseRecommendations } from "./ai";
 import { z } from "zod";
 import crypto from "crypto";
 import { OUTCOME_JOURNEY_TEMPLATES, type SolutionPatternId } from "@shared/value-frameworks";
@@ -1905,6 +1905,42 @@ export function registerRoutes(app: Express) {
     } catch (error: any) {
       console.error("[Value Case Recommendations] Error:", error);
       res.status(500).json({ error: error.message || "Failed to generate value case recommendations" });
+    }
+  });
+
+  // KPI-based Value Case Recommendations (AI-powered)
+  app.post("/api/projects/:projectId/kpi-value-cases", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const project = await storage.getProject(projectId);
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const { kpiName, kpiDescription, pillar, category, unit, baseline, target, benchmarkRange } = req.body;
+      
+      if (!kpiName || !kpiDescription || !pillar) {
+        return res.status(400).json({ error: "Missing required fields: kpiName, kpiDescription, pillar" });
+      }
+      
+      const recommendations = await generateKPIValueCaseRecommendations({
+        kpiName,
+        kpiDescription,
+        pillar,
+        category: category || "General",
+        unit: unit || "",
+        baseline,
+        target,
+        benchmarkRange,
+        companyName: project.companyName,
+        industry: project.sector || "General Business"
+      });
+      
+      res.json(recommendations);
+    } catch (error: any) {
+      console.error("[KPI Value Case Recommendations] Error:", error);
+      res.status(500).json({ error: error.message || "Failed to generate recommendations" });
     }
   });
 

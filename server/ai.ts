@@ -1280,6 +1280,116 @@ IMPORTANT:
 }
 
 // ============================
+// KPI-Based Value Case Recommendations
+// ============================
+
+const kpiValueCaseSchema = z.object({
+  recommendations: z.array(z.object({
+    title: z.string(),
+    description: z.string(),
+    expectedImpact: z.string(),
+    timeline: z.string(),
+    confidence: z.enum(["high", "medium", "low"]),
+    relatedSuccessPattern: z.string().optional(),
+    keyActivities: z.array(z.string()),
+  })).min(2).max(4),
+});
+
+export interface KPIValueCaseInput {
+  kpiName: string;
+  kpiDescription: string;
+  pillar: string;
+  category: string;
+  unit: string;
+  baseline?: string | null;
+  target?: string | null;
+  benchmarkRange?: { low: number; mid: number; high: number };
+  companyName: string;
+  industry: string;
+}
+
+export async function generateKPIValueCaseRecommendations(
+  input: KPIValueCaseInput
+): Promise<z.infer<typeof kpiValueCaseSchema>> {
+  const knowledgeBase = getSolutionSummary();
+  
+  const prompt = `You are a Korn Ferry consultant helping ${input.companyName} (${input.industry} industry) achieve a specific customer outcome.
+
+CUSTOMER OUTCOME (KPI):
+- Name: ${input.kpiName}
+- Description: ${input.kpiDescription}
+- Value Pillar: ${input.pillar}
+- Category: ${input.category}
+- Unit: ${input.unit}
+${input.baseline ? `- Current Baseline: ${input.baseline} ${input.unit}` : '- Baseline: Not yet measured'}
+${input.target ? `- Target: ${input.target} ${input.unit}` : '- Target: Not yet defined'}
+${input.benchmarkRange ? `- Industry Benchmarks: Low=${input.benchmarkRange.low}, Mid=${input.benchmarkRange.mid}, High=${input.benchmarkRange.high}` : ''}
+
+KORN FERRY SOLUTIONS & CAPABILITIES:
+${knowledgeBase}
+
+TASK: Generate 2-4 value case recommendations - specific initiatives that Korn Ferry can deliver to help the customer achieve this KPI outcome.
+
+REQUIREMENTS:
+1. Each recommendation should be a concrete, executable initiative
+2. Focus on CUSTOMER VALUE - what they will achieve, not what Korn Ferry will sell
+3. Include realistic timelines (typical ranges: 3-6 months for quick wins, 12-18 months for transformations)
+4. Confidence levels should reflect how well-proven the approach is
+5. Key activities should be specific and actionable
+
+Return JSON format:
+{
+  "recommendations": [
+    {
+      "title": "Initiative name focused on customer outcome",
+      "description": "2-3 sentences describing what this initiative delivers for the customer",
+      "expectedImpact": "Specific, quantified impact on the KPI (e.g., '15-25% improvement in retention rate')",
+      "timeline": "Realistic timeline (e.g., '6-9 months')",
+      "confidence": "high|medium|low",
+      "relatedSuccessPattern": "Brief reference to similar successful engagements",
+      "keyActivities": ["Activity 1", "Activity 2", "Activity 3"]
+    }
+  ]
+}
+
+IMPORTANT:
+- Focus on CUSTOMER OUTCOMES not Korn Ferry offerings
+- Be specific about expected impact on the KPI
+- Prioritize proven approaches with high confidence first
+- Include mix of quick wins and longer-term transformations`;
+
+  try {
+    console.log(`[AI KPI Value Cases] Generating recommendations for KPI: ${input.kpiName}`);
+    
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 1500,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error("AI returned empty response");
+    }
+    
+    const parsedContent = JSON.parse(content);
+    const validationResult = kpiValueCaseSchema.safeParse(parsedContent);
+    
+    if (!validationResult.success) {
+      console.error("[AI KPI Value Cases] Validation failed:", validationResult.error);
+      throw new Error("Invalid AI response structure");
+    }
+    
+    console.log(`[AI KPI Value Cases] Generated ${validationResult.data.recommendations.length} recommendations`);
+    return validationResult.data;
+  } catch (error) {
+    console.error("[AI KPI Value Cases] Error:", error);
+    throw error;
+  }
+}
+
+// ============================
 // AI Narrative Generation
 // ============================
 

@@ -25,7 +25,10 @@ import {
   CheckCircle2,
   Circle,
   BarChart3,
-  Zap
+  Zap,
+  Lightbulb,
+  Clock,
+  CheckCircle
 } from "lucide-react";
 import type { Project, JobThemeKPI } from "@shared/schema";
 import { 
@@ -147,6 +150,16 @@ export default function AlignmentPage() {
   const [tempBaseline, setTempBaseline] = useState("");
   const [tempTarget, setTempTarget] = useState("");
   const [expandedDeliverables, setExpandedDeliverables] = useState(true);
+  const [expandedRecommendations, setExpandedRecommendations] = useState(true);
+  const [aiRecommendations, setAiRecommendations] = useState<Array<{
+    title: string;
+    description: string;
+    expectedImpact: string;
+    timeline: string;
+    confidence: "high" | "medium" | "low";
+    relatedSuccessPattern?: string;
+    keyActivities: string[];
+  }>>([]);
 
   const { data: project } = useQuery<Project>({
     queryKey: [`/api/projects/${projectId}`],
@@ -293,6 +306,37 @@ export default function AlignmentPage() {
         description: "You can now track progress toward your outcomes.",
       });
       setLocation(`/projects/${projectId}/realisation`);
+    }
+  });
+
+  // AI recommendations mutation
+  const getRecommendationsMutation = useMutation({
+    mutationFn: async (kpi: CustomerKPI) => {
+      const res = await apiRequest("POST", `/api/projects/${projectId}/kpi-value-cases`, {
+        kpiName: kpi.name,
+        kpiDescription: kpi.description,
+        pillar: VALUE_PILLARS[kpi.pillar].name,
+        category: kpi.category,
+        unit: kpi.unit,
+        baseline: kpi.baseline,
+        target: kpi.target,
+        benchmarkRange: kpi.benchmarkRange
+      });
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      setAiRecommendations(data.recommendations || []);
+      toast({
+        title: "Recommendations ready",
+        description: "AI has analyzed this outcome and generated value case recommendations.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Could not generate recommendations",
+        description: error.message || "Please try again later.",
+        variant: "destructive"
+      });
     }
   });
 
@@ -719,6 +763,120 @@ export default function AlignmentPage() {
                         </CollapsibleContent>
                       </Card>
                     </Collapsible>
+
+                    {/* AI Recommendations Section */}
+                    <Card className="border-secondary/20">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-secondary/20 to-ai/20 flex items-center justify-center">
+                              <Lightbulb className="h-4 w-4 text-secondary" />
+                            </div>
+                            <div>
+                              <CardTitle className="text-base">AI Value Case Recommendations</CardTitle>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                Tailored initiatives to achieve this outcome
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => getRecommendationsMutation.mutate(selectedKPI)}
+                            disabled={getRecommendationsMutation.isPending}
+                            data-testid="button-get-recommendations"
+                          >
+                            {getRecommendationsMutation.isPending ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Analyzing...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="h-4 w-4 mr-2" />
+                                Get Recommendations
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      
+                      {aiRecommendations.length > 0 && (
+                        <CardContent className="pt-0">
+                          <div className="space-y-4">
+                            {aiRecommendations.map((rec, index) => (
+                              <motion.div
+                                key={index}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.1 }}
+                                className="p-4 rounded-lg border bg-muted/30"
+                              >
+                                <div className="flex items-start justify-between gap-3 mb-2">
+                                  <div className="flex items-start gap-3">
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                                      rec.confidence === "high" ? "bg-emerald-500/10 text-emerald-600" :
+                                      rec.confidence === "medium" ? "bg-amber-500/10 text-amber-600" :
+                                      "bg-slate-500/10 text-slate-600"
+                                    }`}>
+                                      <CheckCircle className="h-3.5 w-3.5" />
+                                    </div>
+                                    <div>
+                                      <h4 className="font-medium text-sm">{rec.title}</h4>
+                                      <p className="text-xs text-muted-foreground mt-1">{rec.description}</p>
+                                    </div>
+                                  </div>
+                                  <Badge variant={
+                                    rec.confidence === "high" ? "default" :
+                                    rec.confidence === "medium" ? "secondary" : "outline"
+                                  } className="shrink-0 text-[10px]">
+                                    {rec.confidence} confidence
+                                  </Badge>
+                                </div>
+                                
+                                <div className="ml-9 space-y-2">
+                                  <div className="flex items-center gap-4 text-xs">
+                                    <div className="flex items-center gap-1.5 text-emerald-600">
+                                      <TrendingUp className="h-3.5 w-3.5" />
+                                      <span>{rec.expectedImpact}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                      <Clock className="h-3.5 w-3.5" />
+                                      <span>{rec.timeline}</span>
+                                    </div>
+                                  </div>
+                                  
+                                  {rec.keyActivities.length > 0 && (
+                                    <Collapsible>
+                                      <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                                        <ChevronRight className="h-3 w-3 transition-transform [[data-state=open]>&]:rotate-90" />
+                                        Key activities ({rec.keyActivities.length})
+                                      </CollapsibleTrigger>
+                                      <CollapsibleContent className="mt-2">
+                                        <div className="space-y-1">
+                                          {rec.keyActivities.map((activity, actIdx) => (
+                                            <div key={actIdx} className="flex items-start gap-2 text-xs text-muted-foreground">
+                                              <span className="text-secondary">•</span>
+                                              <span>{activity}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </CollapsibleContent>
+                                    </Collapsible>
+                                  )}
+                                  
+                                  {rec.relatedSuccessPattern && (
+                                    <p className="text-[10px] text-muted-foreground italic">
+                                      Based on: {rec.relatedSuccessPattern}
+                                    </p>
+                                  )}
+                                </div>
+                              </motion.div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      )}
+                    </Card>
 
                   </motion.div>
                 )}
