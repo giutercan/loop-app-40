@@ -19,16 +19,22 @@ import {
   Swords,
   Zap,
   Users,
-  Building2
+  Building2,
+  Lightbulb,
+  BookOpen,
+  BarChart3,
+  Trophy
 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { CompetitiveIntelligence as CompetitiveIntelligenceType, CompetitiveSummary } from "@shared/schema";
+import { getThemeCompetitiveMapping, type ThemeCompetitiveMapping } from "@shared/knowledge";
 
 interface CompetitiveIntelligenceProps {
   projectId: number;
   companyName: string;
   solutionAreas?: string[];
+  discoveryTheme?: string;
 }
 
 const SOLUTION_AREA_COLORS: Record<string, string> = {
@@ -240,11 +246,161 @@ function SummaryCard({ summary }: SummaryCardProps) {
   );
 }
 
-export default function CompetitiveIntelligence({ projectId, companyName, solutionAreas }: CompetitiveIntelligenceProps) {
+// Theme-specific KF Playbook component
+function KFPlaybookCard({ themeMapping, companyName }: { themeMapping: ThemeCompetitiveMapping; companyName: string }) {
+  return (
+    <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent mb-6">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <BookOpen className="h-5 w-5 text-primary" />
+          KF Playbook: {themeMapping.themeName}
+        </CardTitle>
+        <CardDescription>Theme-specific positioning and proof points for {companyName}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div>
+              <h4 className="font-medium flex items-center gap-2 mb-2 text-sm uppercase tracking-wider text-primary">
+                <MessageSquare className="h-4 w-4" />
+                Opening Question
+              </h4>
+              <p className="text-sm italic bg-muted/50 p-3 rounded-lg border-l-4 border-primary">
+                "{themeMapping.kfPlaybook.openingQuestion}"
+              </p>
+            </div>
+            
+            <div>
+              <h4 className="font-medium flex items-center gap-2 mb-2 text-sm uppercase tracking-wider text-emerald-600">
+                <Trophy className="h-4 w-4" />
+                Proof Point
+              </h4>
+              <p className="text-sm bg-emerald-50 dark:bg-emerald-950/20 p-3 rounded-lg border-l-4 border-emerald-500">
+                {themeMapping.kfPlaybook.proofPoint}
+              </p>
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <h4 className="font-medium flex items-center gap-2 mb-2 text-sm uppercase tracking-wider text-blue-600">
+                <BarChart3 className="h-4 w-4" />
+                KPI Benchmark
+              </h4>
+              <p className="text-sm bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg border-l-4 border-blue-500">
+                {themeMapping.kfPlaybook.kpiBenchmark}
+              </p>
+            </div>
+            
+            <div>
+              <h4 className="font-medium flex items-center gap-2 mb-2 text-sm uppercase tracking-wider text-purple-600">
+                <Sparkles className="h-4 w-4" />
+                Success Story Hook
+              </h4>
+              <p className="text-sm bg-purple-50 dark:bg-purple-950/20 p-3 rounded-lg border-l-4 border-purple-500">
+                {themeMapping.kfPlaybook.successStoryHook}
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="grid md:grid-cols-2 gap-6 pt-4 border-t">
+          <div>
+            <h4 className="font-medium flex items-center gap-2 mb-3">
+              <Lightbulb className="h-4 w-4 text-amber-600" />
+              Buyer Signals to Listen For
+            </h4>
+            <ul className="space-y-2">
+              {themeMapping.buyerSignals.map((signal, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm">
+                  <span className="text-amber-500 mt-0.5">•</span>
+                  {signal}
+                </li>
+              ))}
+            </ul>
+          </div>
+          
+          <div>
+            <h4 className="font-medium flex items-center gap-2 mb-3">
+              <Target className="h-4 w-4 text-emerald-600" />
+              Key Win Themes
+            </h4>
+            <ul className="space-y-2">
+              {themeMapping.keyWinThemes.map((theme, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm">
+                  <TrendingUp className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                  {theme}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+        
+        {themeMapping.avoidThemes.length > 0 && (
+          <div className="pt-4 border-t">
+            <h4 className="font-medium flex items-center gap-2 mb-3">
+              <AlertTriangle className="h-4 w-4 text-rose-600" />
+              Avoid These Topics
+            </h4>
+            <ul className="space-y-2">
+              {themeMapping.avoidThemes.map((theme, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-rose-700 dark:text-rose-400">
+                  <span className="mt-0.5">•</span>
+                  {theme}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// Theme-specific battlecard component
+function ThemeBattleCards({ themeMapping }: { themeMapping: ThemeCompetitiveMapping }) {
+  return (
+    <div className="space-y-4">
+      <h3 className="font-semibold flex items-center gap-2">
+        <Swords className="h-5 w-5 text-amber-600" />
+        Theme-Specific Battle Cards
+      </h3>
+      <div className="grid gap-4">
+        {themeMapping.battleCards.map((card, i) => (
+          <Card key={i} className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+            <CardContent className="pt-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Badge className="bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-300">
+                  vs {card.competitorId.replace(/_/g, ' ')}
+                </Badge>
+                <Badge variant="outline" className="text-xs">
+                  {card.winTheme}
+                </Badge>
+              </div>
+              <div>
+                <span className="font-medium text-amber-700 dark:text-amber-400 text-sm">Scenario:</span>
+                <p className="text-sm text-muted-foreground mt-1">{card.scenario}</p>
+              </div>
+              <div>
+                <span className="font-medium text-emerald-700 dark:text-emerald-400 text-sm">KF Response:</span>
+                <p className="text-sm mt-1">{card.response}</p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function CompetitiveIntelligence({ projectId, companyName, solutionAreas, discoveryTheme }: CompetitiveIntelligenceProps) {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<string>("overview");
+  const [activeTab, setActiveTab] = useState<string>("playbook");
   
   const defaultAreas = solutionAreas || ["ASSESS", "DEVELOP", "TRANSFORM", "REWARD", "COMMERCIAL", "ANALYTICS"];
+  
+  // Get theme-specific competitive mapping
+  const themeMapping = discoveryTheme ? getThemeCompetitiveMapping(discoveryTheme) : undefined;
   
   const { data, isLoading, error } = useQuery<{
     positioning: CompetitiveIntelligenceType[];
@@ -356,7 +512,10 @@ export default function CompetitiveIntelligence({ projectId, companyName, soluti
             Competitive Intelligence
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            AI-powered competitive positioning for {companyName}
+            {themeMapping 
+              ? `Theme-specific positioning for ${themeMapping.themeName}` 
+              : `AI-powered competitive positioning for ${companyName}`
+            }
           </p>
         </div>
         <Button 
@@ -374,10 +533,20 @@ export default function CompetitiveIntelligence({ projectId, companyName, soluti
         </Button>
       </div>
       
-      {data.summary && <SummaryCard summary={data.summary} />}
-      
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList data-testid="tabs-competitive-intelligence">
+        <TabsList data-testid="tabs-competitive-intelligence" className="flex-wrap h-auto gap-1">
+          {themeMapping && (
+            <>
+              <TabsTrigger value="playbook" data-testid="tab-playbook">
+                <BookOpen className="h-4 w-4 mr-1" />
+                KF Playbook
+              </TabsTrigger>
+              <TabsTrigger value="battlecards" data-testid="tab-battlecards">
+                <Swords className="h-4 w-4 mr-1" />
+                Battle Cards
+              </TabsTrigger>
+            </>
+          )}
           <TabsTrigger value="overview" data-testid="tab-overview">All Competitors</TabsTrigger>
           {Object.keys(groupedByArea).map(area => (
             <TabsTrigger key={area} value={area} data-testid={`tab-${area.toLowerCase()}`}>
@@ -386,7 +555,20 @@ export default function CompetitiveIntelligence({ projectId, companyName, soluti
           ))}
         </TabsList>
         
+        {themeMapping && (
+          <>
+            <TabsContent value="playbook" className="mt-4">
+              <KFPlaybookCard themeMapping={themeMapping} companyName={companyName} />
+            </TabsContent>
+            
+            <TabsContent value="battlecards" className="mt-4">
+              <ThemeBattleCards themeMapping={themeMapping} />
+            </TabsContent>
+          </>
+        )}
+        
         <TabsContent value="overview" className="mt-4 space-y-4">
+          {data.summary && <SummaryCard summary={data.summary} />}
           {data.positioning?.map(competitor => (
             <CompetitorCard 
               key={`${competitor.competitorId}-${competitor.solutionArea}`} 

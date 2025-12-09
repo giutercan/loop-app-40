@@ -5717,14 +5717,15 @@ export default function ProjectRoleView() {
               <CompetitiveIntelligence
                 projectId={project.id}
                 companyName={project.companyName}
+                discoveryTheme={selectedDiscoveryTheme || undefined}
                 solutionAreas={selectedDiscoveryTheme ? 
                   (selectedDiscoveryTheme === "kf-full-search" 
                     ? ["ASSESS", "DEVELOP", "TRANSFORM", "REWARD", "COMMERCIAL", "ANALYTICS"]
                     : selectedDiscoveryTheme === "leadership" ? ["DEVELOP", "ASSESS"]
-                    : selectedDiscoveryTheme === "talent" ? ["ASSESS", "DEVELOP"]
+                    : selectedDiscoveryTheme === "talent-acquisition" ? ["ASSESS", "DEVELOP"]
                     : selectedDiscoveryTheme === "transformation" ? ["TRANSFORM", "ANALYTICS"]
                     : selectedDiscoveryTheme === "rewards" ? ["REWARD"]
-                    : selectedDiscoveryTheme === "commercial" ? ["COMMERCIAL"]
+                    : selectedDiscoveryTheme === "sales-effectiveness" ? ["COMMERCIAL"]
                     : ["ASSESS", "DEVELOP", "TRANSFORM"]
                   ) : undefined
                 }

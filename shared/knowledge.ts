@@ -1322,6 +1322,248 @@ export const COMPETITIVE_COMPARISONS: CompetitorComparison[] = [
   }
 ];
 
+// ============================================================================
+// DISCOVERY THEME COMPETITIVE INTELLIGENCE - Theme-specific positioning
+// ============================================================================
+
+export interface ThemeCompetitiveMapping {
+  themeId: string;
+  themeName: string;
+  primaryCompetitors: string[]; // Competitor IDs in priority order
+  kfDifferentiators: string[]; // Differentiator IDs most relevant
+  keyWinThemes: string[];
+  avoidThemes: string[];
+  buyerSignals: string[]; // What to listen for
+  kfPlaybook: {
+    openingQuestion: string;
+    proofPoint: string;
+    kpiBenchmark: string;
+    successStoryHook: string;
+  };
+  battleCards: Array<{
+    competitorId: string;
+    scenario: string;
+    response: string;
+    winTheme: string;
+  }>;
+}
+
+export const THEME_COMPETITIVE_MAPPINGS: ThemeCompetitiveMapping[] = [
+  {
+    themeId: "leadership",
+    themeName: "Leadership Development",
+    primaryCompetitors: ["mckinsey", "egon_zehnder", "heidrick", "gallup", "bts"],
+    kfDifferentiators: ["four-dimensions", "success-profiles", "global-delivery"],
+    keyWinThemes: [
+      "Assessment-led development with personalized journeys",
+      "70M+ assessments powering our predictive models",
+      "Measurable behavior change, not just training completion"
+    ],
+    avoidThemes: [
+      "Don't compete on brand cachet with McKinsey",
+      "Avoid price-based discussions - focus on ROI"
+    ],
+    buyerSignals: [
+      "Succession planning concerns or bench strength gaps",
+      "Leadership pipeline not keeping pace with growth",
+      "Previous leadership programs didn't stick",
+      "Need to prepare leaders for AI/digital transformation"
+    ],
+    kfPlaybook: {
+      openingQuestion: "How confident are you that your current leadership pipeline can deliver your 3-year strategy?",
+      proofPoint: "Organizations using our assessment-led development see 40% faster time-to-readiness for critical roles",
+      kpiBenchmark: "Best-in-class companies have 80%+ of critical roles with ready-now successors; typical is 50-60%",
+      successStoryHook: "We recently helped a Fortune 500 company accelerate 40 leaders to readiness in 12 months, achieving 85% retention of high-potentials"
+    },
+    battleCards: [
+      {
+        competitorId: "mckinsey",
+        scenario: "Client says McKinsey is also proposing leadership development",
+        response: "McKinsey brings excellent strategic perspective. The question is: how will they measure whether leaders actually changed? Our assessment-led approach creates personalized development journeys with measurable behavior change - we can show you the ROI.",
+        winTheme: "Measurement and personalization"
+      },
+      {
+        competitorId: "gallup",
+        scenario: "Client uses Gallup for engagement and is considering their leadership offerings",
+        response: "Strengths are one piece of the puzzle, but leading effectively requires more than knowing what you're good at. Our Four Dimensions approach - competencies, traits, drivers, AND experiences - gives a complete picture of leadership potential and development needs.",
+        winTheme: "Comprehensive vs. one-dimensional"
+      },
+      {
+        competitorId: "egon_zehnder",
+        scenario: "Egon Zehnder is involved in the executive search",
+        response: "We partner with Egon Zehnder on many engagements - they're excellent at executive search. For ongoing leadership development at scale, our global faculty of 500+ and proven development methodology can reach deeper into the organization.",
+        winTheme: "Scale and systematic development"
+      }
+    ]
+  },
+  {
+    themeId: "talent-acquisition",
+    themeName: "Talent Acquisition & Quality of Hire",
+    primaryCompetitors: ["shl", "mercer", "deloitte", "heidrick"],
+    kfDifferentiators: ["four-dimensions", "success-profiles", "predictive-validity"],
+    keyWinThemes: [
+      "Success Profiles that define 'what great looks like' for every role",
+      "Predictive assessments proven to improve quality of hire",
+      "End-to-end from profile to hire to development"
+    ],
+    avoidThemes: [
+      "Don't compete on assessment volume pricing",
+      "Avoid technology-only discussions - focus on outcomes"
+    ],
+    buyerSignals: [
+      "High early turnover or mis-hires in critical roles",
+      "Hiring managers complaining about candidate quality",
+      "Time-to-productivity too long for new hires",
+      "Diversity hiring goals not being met"
+    ],
+    kfPlaybook: {
+      openingQuestion: "If you could improve one thing about your hiring outcomes, what would have the biggest business impact?",
+      proofPoint: "Clients using Success Profiles and KF Assess see 25-40% improvement in quality of hire within 12 months",
+      kpiBenchmark: "Best-in-class Quality of Hire index: 75-85; typical is 55-65",
+      successStoryHook: "A global healthcare provider reduced first-year turnover from 35% to 18% by implementing our predictive hiring assessments - saving $4M annually"
+    },
+    battleCards: [
+      {
+        competitorId: "shl",
+        scenario: "Client is considering SHL for assessment",
+        response: "SHL has good assessment tools, but tools alone don't improve hiring. The question is: what are you assessing against? Our Success Profiles methodology ensures you're measuring what actually predicts success in YOUR roles - not just generic competencies.",
+        winTheme: "Role-specific prediction over generic assessment"
+      },
+      {
+        competitorId: "mercer",
+        scenario: "Mercer is proposing their assessment platform",
+        response: "Mercer acquired Mettl for digital assessment. Our assessment IP is built on 70M+ leadership assessments with proven predictive validity. More importantly, we connect assessment to development - so it's not just a selection gate but the start of a growth journey.",
+        winTheme: "Proprietary IP and development integration"
+      }
+    ]
+  },
+  {
+    themeId: "transformation",
+    themeName: "Organizational Transformation",
+    primaryCompetitors: ["mckinsey", "deloitte", "bts"],
+    kfDifferentiators: ["success-profiles", "global-delivery", "ai-ready-leader"],
+    keyWinThemes: [
+      "Structure + Talent: org design with capability building",
+      "M&A integration expertise - culture and leadership",
+      "Workforce planning with predictive analytics"
+    ],
+    avoidThemes: [
+      "Don't compete on pure strategy work",
+      "Avoid technology implementation discussions"
+    ],
+    buyerSignals: [
+      "Major restructuring or operating model change planned",
+      "M&A integration challenges or upcoming deal",
+      "Digital/AI transformation with people implications",
+      "Cost transformation that needs to protect capability"
+    ],
+    kfPlaybook: {
+      openingQuestion: "What's the biggest people-related risk to your transformation success?",
+      proofPoint: "70% of transformations fail due to people issues - our integrated approach addresses structure, capability, and culture together",
+      kpiBenchmark: "Top-quartile transformation success rate: 70%+; average is 30%",
+      successStoryHook: "We helped a Fortune 100 company complete a major digital transformation while improving engagement by 15 points - by building AI-ready leadership capabilities alongside the tech implementation"
+    },
+    battleCards: [
+      {
+        competitorId: "mckinsey",
+        scenario: "McKinsey is leading the transformation",
+        response: "We frequently partner with McKinsey - they bring excellent strategic frameworks. Where we add value is in the people dimension: ensuring the org design has the right talent strategy, leaders are equipped to drive change, and culture shifts actually happen.",
+        winTheme: "People execution complements strategy"
+      },
+      {
+        competitorId: "deloitte",
+        scenario: "Deloitte is proposing human capital consulting",
+        response: "Deloitte brings strong technology integration capabilities. For the people side - leadership readiness, cultural alignment, capability building - our depth in assessment and development ensures transformation sticks. We can show you how leaders are actually changing, not just that training was delivered.",
+        winTheme: "Measurable behavior change"
+      }
+    ]
+  },
+  {
+    themeId: "rewards",
+    themeName: "Total Rewards & Compensation",
+    primaryCompetitors: ["mercer", "deloitte"],
+    kfDifferentiators: ["compensation-data", "total-rewards"],
+    keyWinThemes: [
+      "World's largest compensation database - 30M+ incumbents",
+      "Total Rewards Optimization - maximize perceived value per dollar",
+      "Pay equity with root cause analysis"
+    ],
+    avoidThemes: [
+      "Don't compete on survey participation breadth alone",
+      "Avoid purely transactional benchmarking discussions"
+    ],
+    buyerSignals: [
+      "Compensation strategy review or pay philosophy concerns",
+      "Pay equity audit requirements or litigation risk",
+      "Executive compensation committee pressure",
+      "Talent retention linked to reward competitiveness"
+    ],
+    kfPlaybook: {
+      openingQuestion: "How confident are you that your total rewards spend is delivering maximum perceived value to employees?",
+      proofPoint: "Our Total Rewards Optimization approach has helped clients increase perceived reward value by 15-25% without increasing spend",
+      kpiBenchmark: "Best-in-class: Rewards spend as % of revenue 2-5% lower than competitors with equal or better engagement",
+      successStoryHook: "A technology client reallocated $50M in rewards spend based on our conjoint analysis - increasing employee perceived value while reducing total cost by 8%"
+    },
+    battleCards: [
+      {
+        competitorId: "mercer",
+        scenario: "Mercer is the incumbent for compensation data",
+        response: "Mercer has good data, but data alone doesn't optimize rewards. Our conjoint analysis reveals what employees actually value - often different from what HR assumes. We've helped clients reallocate spend to increase perceived value by 20% without increasing total cost.",
+        winTheme: "Optimization over benchmarking"
+      }
+    ]
+  },
+  {
+    themeId: "sales-effectiveness",
+    themeName: "Sales Effectiveness & Commercial Excellence",
+    primaryCompetitors: ["bts", "deloitte", "mckinsey"],
+    kfDifferentiators: ["kf-sell", "success-profiles", "compensation-data"],
+    keyWinThemes: [
+      "End-to-end sales transformation: hire, develop, compensate, retain",
+      "Sales competency assessment for hiring and development",
+      "Sales compensation design with behavioral economics"
+    ],
+    avoidThemes: [
+      "Don't compete on simulation/training alone",
+      "Avoid pure CRM/technology discussions"
+    ],
+    buyerSignals: [
+      "Sales productivity concerns or quota attainment issues",
+      "High sales turnover or difficulty hiring top performers",
+      "Sales compensation plan redesign needed",
+      "New go-to-market model requiring different sales capabilities"
+    ],
+    kfPlaybook: {
+      openingQuestion: "What would a 10% improvement in sales productivity be worth to your business?",
+      proofPoint: "Clients using KF Sell see average 15-20% improvement in sales productivity within 18 months",
+      kpiBenchmark: "Top-quartile sales teams: 80%+ quota attainment across team; typical is 55-65%",
+      successStoryHook: "We helped a B2B technology company improve quota attainment from 58% to 78% by implementing competency-based hiring, targeted development, and redesigned incentives"
+    },
+    battleCards: [
+      {
+        competitorId: "bts",
+        scenario: "BTS is proposing sales training with simulations",
+        response: "Simulations and training are important, but they're only part of the equation. KF Sell integrates hiring the right sales talent, developing the right capabilities, AND designing compensation that motivates the right behaviors. Training alone typically shows 10-15% improvement; our integrated approach delivers 20-30%.",
+        winTheme: "Integrated transformation over training"
+      }
+    ]
+  }
+];
+
+// Get theme-specific competitive mapping
+export function getThemeCompetitiveMapping(themeId: string): ThemeCompetitiveMapping | undefined {
+  return THEME_COMPETITIVE_MAPPINGS.find(m => m.themeId === themeId);
+}
+
+// Get competitors for a specific theme
+export function getCompetitorsByTheme(themeId: string): Competitor[] {
+  const mapping = getThemeCompetitiveMapping(themeId);
+  if (!mapping) return [];
+  return mapping.primaryCompetitors
+    .map(id => COMPETITORS.find(c => c.id === id))
+    .filter((c): c is Competitor => c !== undefined);
+}
+
 // Helper functions for competitive intelligence
 export function getCompetitorsBySolutionArea(solutionArea: string): Competitor[] {
   return COMPETITORS.filter(c => c.solutionAreas.includes(solutionArea));
