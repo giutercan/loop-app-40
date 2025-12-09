@@ -2237,6 +2237,12 @@ export default function ProjectRoleView() {
           knownConcerns: meetingContact.knownConcerns,
           decisionCriteria: meetingContact.decisionCriteria
         },
+        greenSheet: {
+          callObjective: greenSheetEdits.objective || "",
+          openingStatement: greenSheetEdits.openingStatement || "",
+          desiredOutcome: greenSheetEdits.desiredOutcome || "",
+          bestActionCommitment: greenSheetEdits.bestActionCommitment || ""
+        },
         discoveryTheme: selectedDiscoveryTheme || "General business consulting",
         successStories: stories || [],
         currentDraft: {
@@ -2253,7 +2259,8 @@ export default function ProjectRoleView() {
           callToAction: storyBuilderData.after.callToAction
         },
         fieldToSuggest,
-        phase
+        phase,
+        includeIntelligence: true
       });
       return response.json();
     },

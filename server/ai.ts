@@ -2967,6 +2967,13 @@ export interface StorySuggestionInput {
     knownConcerns?: string;
     decisionCriteria?: string;
   };
+  greenSheet?: {
+    callObjective?: string;
+    openingStatement?: string;
+    desiredOutcome?: string;
+    bestActionCommitment?: string;
+  };
+  intelligenceData?: any;
   successStories?: Array<{
     client: string;
     industry: string;
@@ -3049,6 +3056,27 @@ DISCOVERY INSIGHTS (Use these to ground your story in real company data):
 ${input.discoveryInsights.slice(0, 10).map(i => `- ${i.title}: ${i.content}${i.priority ? ` [Priority: ${i.priority}]` : ""}`).join("\n")}
 ` : "";
 
+  // Build Green Sheet context - CRITICAL FOR STORY FOCUS
+  const greenSheetContext = input.greenSheet ? [
+    input.greenSheet.callObjective ? `CALL OBJECTIVE: ${input.greenSheet.callObjective}` : "",
+    input.greenSheet.openingStatement ? `OPENING STATEMENT: ${input.greenSheet.openingStatement}` : "",
+    input.greenSheet.desiredOutcome ? `DESIRED OUTCOME: ${input.greenSheet.desiredOutcome}` : "",
+    input.greenSheet.bestActionCommitment ? `BEST ACTION COMMITMENT: ${input.greenSheet.bestActionCommitment}` : ""
+  ].filter(Boolean).join("\n") : "";
+
+  // Build Intelligence context - company research data
+  let intelligenceContext = "";
+  if (input.intelligenceData) {
+    const data = input.intelligenceData as any;
+    const keyFindings: string[] = [];
+    if (data.companyOverview) keyFindings.push(`Company Overview: ${data.companyOverview}`);
+    if (data.strategicPriorities?.length) keyFindings.push(`Strategic Priorities: ${data.strategicPriorities.slice(0, 3).join(", ")}`);
+    if (data.challenges?.length) keyFindings.push(`Key Challenges: ${data.challenges.slice(0, 3).join(", ")}`);
+    if (data.competitivePosition) keyFindings.push(`Competitive Position: ${data.competitivePosition}`);
+    if (data.marketContext) keyFindings.push(`Market Context: ${data.marketContext}`);
+    intelligenceContext = keyFindings.join("\n");
+  }
+
   const currentDraftContext = input.currentDraft ? `
 CURRENT DRAFT ELEMENTS:
 - Single Message: ${input.currentDraft.singleMessage || "(not yet defined)"}
@@ -3109,12 +3137,18 @@ Key principles:
 
   const prompt = `You are a master storyteller helping a Korn Ferry consultant craft a compelling narrative for a sales meeting.
 
-CONTEXT:
+=== GREEN SHEET (Meeting Preparation - USE THIS AS PRIMARY FOCUS) ===
+${greenSheetContext || "No Green Sheet data provided"}
+
+=== COMPANY INTELLIGENCE & RESEARCH ===
+${intelligenceContext || "No intelligence data available"}
+
+=== CONTEXT ===
 - Company: ${input.companyName}
 - Discovery Theme: ${input.discoveryTheme || "General business consulting"}
 ${input.companyContext ? `- Company Context: ${input.companyContext}` : ""}
 
-MEETING CONTACT:
+=== MEETING CONTACT ===
 ${input.meetingContact ? `- Name: ${input.meetingContact.name || "Unknown"}
 - Title: ${input.meetingContact.title || "Unknown"}
 - Known Concerns: ${input.meetingContact.knownConcerns || "Not specified"}
@@ -3126,6 +3160,11 @@ ${influenceContext ? `INFLUENCE LEVEL: ${influenceContext}` : ""}
 ${successStoriesContext}
 ${discoveryInsightsContext}
 ${currentDraftContext}
+
+IMPORTANT: Your story suggestions MUST:
+1. Align with the CALL OBJECTIVE and work toward the DESIRED OUTCOME
+2. Reference specific findings from the COMPANY INTELLIGENCE
+3. Be tailored to help achieve the BEST ACTION COMMITMENT
 
 ${phaseInstructions[input.phase]}
 

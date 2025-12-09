@@ -7456,12 +7456,14 @@ Respond in JSON format:
       
       const { 
         meetingContact, 
+        greenSheet,
         discoveryTheme, 
         discoveryInsights,
         successStories, 
         currentDraft, 
         fieldToSuggest, 
-        phase 
+        phase,
+        includeIntelligence 
       } = req.body;
       
       if (!fieldToSuggest || !phase) {
@@ -7481,12 +7483,24 @@ Respond in JSON format:
         }));
       }
       
+      // Fetch intelligence data if requested
+      let intelligenceData = null;
+      if (includeIntelligence) {
+        const themeForIntelligence = discoveryTheme || project.discoveryTheme || "leadership";
+        const intelligence = await storage.getProjectIntelligence(projectId, themeForIntelligence);
+        if (intelligence?.intelligenceData) {
+          intelligenceData = intelligence.intelligenceData;
+        }
+      }
+      
       const suggestion = await generateStorySuggestion({
         companyName: project.companyName,
         companyContext: project.sector ? `${project.sector} sector` : undefined,
         discoveryTheme,
         discoveryInsights: insightsForAi,
         meetingContact,
+        greenSheet,
+        intelligenceData,
         successStories,
         currentDraft,
         fieldToSuggest,
