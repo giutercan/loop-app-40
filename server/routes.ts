@@ -1249,6 +1249,345 @@ Be concise but comprehensive. Focus on strategic implications and actionable rec
     }
   });
 
+  // ============================================================================
+  // MEETING PROFILES - Adaptive meeting preparation with single/multi attendee
+  // ============================================================================
+  
+  // GET meeting profile for a project
+  app.get("/api/projects/:projectId/meeting-profile", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const profile = await storage.getMeetingProfile(projectId);
+      
+      if (!profile) {
+        return res.status(404).json({ error: "No meeting profile found" });
+      }
+      
+      res.json(profile);
+    } catch (error: any) {
+      console.error("[Get Meeting Profile] Error:", error);
+      res.status(500).json({ error: "Failed to get meeting profile" });
+    }
+  });
+  
+  // POST create or update meeting profile
+  app.post("/api/projects/:projectId/meeting-profile", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const project = await storage.getProject(projectId);
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const existing = await storage.getMeetingProfile(projectId);
+      
+      if (existing) {
+        // Update existing profile
+        const updated = await storage.updateMeetingProfile(existing.id, req.body);
+        return res.json(updated);
+      }
+      
+      // Create new profile
+      const profile = await storage.createMeetingProfile({
+        projectId,
+        ...req.body
+      });
+      
+      res.json(profile);
+    } catch (error: any) {
+      console.error("[Create/Update Meeting Profile] Error:", error);
+      res.status(500).json({ error: "Failed to save meeting profile" });
+    }
+  });
+  
+  // PATCH update specific fields of meeting profile
+  app.patch("/api/projects/:projectId/meeting-profile", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const existing = await storage.getMeetingProfile(projectId);
+      
+      if (!existing) {
+        return res.status(404).json({ error: "Meeting profile not found" });
+      }
+      
+      const updated = await storage.updateMeetingProfile(existing.id, req.body);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("[Update Meeting Profile] Error:", error);
+      res.status(500).json({ error: "Failed to update meeting profile" });
+    }
+  });
+  
+  // POST generate methodology questions for meeting
+  app.post("/api/projects/:projectId/meeting-profile/generate-questions", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const project = await storage.getProject(projectId);
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const profile = await storage.getMeetingProfile(projectId);
+      const discoveryTheme = project.discoveryTheme || "leadership";
+      
+      // Get intelligence data for context
+      const intelligence = await storage.getProjectIntelligence(projectId, discoveryTheme);
+      const intelligenceContext = intelligence?.intelligenceData ? JSON.stringify(intelligence.intelligenceData) : "";
+      
+      // Determine if single or multiple attendees
+      const mode = profile?.attendanceMode || "single";
+      const attendees = mode === "multiple" && profile?.participants 
+        ? profile.participants.map(p => `${p.name} (${p.title}, ${p.role}, ${p.influence} influence)`).join(", ")
+        : profile?.singleContact 
+          ? `${profile.singleContact.name} (${profile.singleContact.title}, ${profile.singleContact.role || "unknown role"})`
+          : "Unknown attendee";
+      
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are a Korn Ferry strategic sales consultant expert in Miller Heiman, SPIN Selling, and PSS methodologies.
+            
+Generate discovery questions for a ${discoveryTheme} engagement with ${project.companyName}.
+Meeting attendees: ${attendees}
+
+${intelligenceContext ? `Company Intelligence:\n${intelligenceContext}` : ""}
+
+Generate 8-12 questions tagged by methodology (SPIN, Miller Heiman, PSS) that:
+1. Are appropriate for the attendee roles and influence levels
+2. Uncover pain points, implications, and needs
+3. Align with the ${discoveryTheme} discovery theme
+4. Include follow-up hints for deeper exploration
+
+Return as JSON array with format:
+[
+  {
+    "id": "q1",
+    "question": "...",
+    "methodology": "SPIN" | "Miller Heiman" | "PSS",
+    "stage": "Situation" | "Problem" | "Implication" | "Need-Payoff" | "Concept" | "Impact" | "Proof" | "Opening" | "Probing" | "Supporting" | "Closing",
+    "targetRole": "economic_buyer" | "user_buyer" | "technical_buyer" | "coach" | "champion" | null,
+    "followUpHint": "...",
+    "isAsked": false
+  }
+]`
+          },
+          {
+            role: "user",
+            content: `Generate methodology-based discovery questions for this ${mode === "multiple" ? "multi-stakeholder" : "single-stakeholder"} meeting.`
+          }
+        ],
+        max_tokens: 2000,
+        temperature: 0.7,
+        response_format: { type: "json_object" }
+      });
+      
+      const content = response.choices[0].message.content || "{}";
+      let questions = [];
+      try {
+        const parsed = JSON.parse(content);
+        questions = Array.isArray(parsed) ? parsed : (parsed.questions || []);
+      } catch (e) {
+        console.error("[Generate Questions] Parse error:", e);
+        questions = [];
+      }
+      
+      // Save questions to meeting profile
+      if (profile) {
+        await storage.updateMeetingProfile(profile.id, { generatedQuestions: questions });
+      }
+      
+      res.json({ questions });
+    } catch (error: any) {
+      console.error("[Generate Meeting Questions] Error:", error);
+      res.status(500).json({ error: "Failed to generate questions" });
+    }
+  });
+  
+  // POST generate combined meeting story
+  app.post("/api/projects/:projectId/meeting-profile/generate-story", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const project = await storage.getProject(projectId);
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const profile = await storage.getMeetingProfile(projectId);
+      if (!profile) {
+        return res.status(404).json({ error: "Meeting profile not found. Set up attendees first." });
+      }
+      
+      const discoveryTheme = project.discoveryTheme || "leadership";
+      const intelligence = await storage.getProjectIntelligence(projectId, discoveryTheme);
+      const intelligenceContext = intelligence?.intelligenceData ? JSON.stringify(intelligence.intelligenceData) : "";
+      
+      const mode = profile.attendanceMode || "single";
+      
+      let attendeeContext = "";
+      if (mode === "multiple" && profile.participants && profile.participants.length > 0) {
+        attendeeContext = profile.participants.map(p => 
+          `- ${p.name} (${p.title}): Role: ${p.role}, Influence: ${p.influence}, Concerns: ${p.knownConcerns || "not specified"}, Preferred outcomes: ${p.preferredOutcomes || "not specified"}`
+        ).join("\n");
+      } else if (profile.singleContact) {
+        const c = profile.singleContact;
+        attendeeContext = `- ${c.name} (${c.title}): Role: ${c.role || "not specified"}, Influence: ${c.influence || "not specified"}, Concerns: ${c.knownConcerns || "not specified"}`;
+      }
+      
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are a Korn Ferry strategic sales consultant preparing a meeting narrative using Miller Heiman Strategic Selling methodology.
+
+Create a comprehensive meeting story that synthesizes what ALL stakeholders care about into a cohesive narrative.
+
+Company: ${project.companyName}
+Discovery Theme: ${discoveryTheme}
+Meeting Objective: ${profile.meetingObjective || "Discovery and value alignment"}
+
+Meeting Attendees:
+${attendeeContext || "Attendees not yet specified"}
+
+${intelligenceContext ? `Company Intelligence:\n${intelligenceContext}` : ""}
+
+Generate a meeting preparation package as JSON:
+{
+  "narrative": "A 2-3 paragraph narrative that tells a compelling story connecting all stakeholder interests",
+  "keyThemes": ["Theme that resonates across all attendees"],
+  "talkingPoints": [{"point": "Key message", "targetAudience": ["role1", "role2"]}],
+  "objectionHandling": [{"objection": "Likely pushback", "response": "Strategic response", "relevantTo": ["role"]}],
+  "agenda": [{"topic": "Discussion topic", "duration": "10 min", "leadWith": "Key angle"}],
+  "proofPoints": [{"claim": "Value statement", "evidence": "Supporting data", "resonatesWith": ["role"]}]
+}`
+          },
+          {
+            role: "user",
+            content: `Generate a combined meeting story for this ${mode === "multiple" ? "multi-stakeholder" : "single-stakeholder"} discovery meeting.`
+          }
+        ],
+        max_tokens: 2500,
+        temperature: 0.7,
+        response_format: { type: "json_object" }
+      });
+      
+      const content = response.choices[0].message.content || "{}";
+      let story = null;
+      try {
+        story = JSON.parse(content);
+        story.generatedAt = new Date().toISOString();
+      } catch (e) {
+        console.error("[Generate Story] Parse error:", e);
+        return res.status(500).json({ error: "Failed to parse generated story" });
+      }
+      
+      // Save story to meeting profile
+      await storage.updateMeetingProfile(profile.id, { combinedMeetingStory: story });
+      
+      res.json({ story });
+    } catch (error: any) {
+      console.error("[Generate Meeting Story] Error:", error);
+      res.status(500).json({ error: "Failed to generate meeting story" });
+    }
+  });
+  
+  // POST analyze meeting transcript
+  app.post("/api/projects/:projectId/meeting-profile/analyze-transcript", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const { transcript } = req.body;
+      
+      if (!transcript || typeof transcript !== 'string') {
+        return res.status(400).json({ error: "Transcript is required" });
+      }
+      
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const profile = await storage.getMeetingProfile(projectId);
+      if (!profile) {
+        return res.status(404).json({ error: "Meeting profile not found" });
+      }
+      
+      const discoveryTheme = project.discoveryTheme || "leadership";
+      
+      // Build attendee context for analysis
+      let attendeeContext = "";
+      if (profile.attendanceMode === "multiple" && profile.participants) {
+        attendeeContext = profile.participants.map(p => `${p.name} (${p.role})`).join(", ");
+      } else if (profile.singleContact) {
+        attendeeContext = `${profile.singleContact.name} (${profile.singleContact.role || "stakeholder"})`;
+      }
+      
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are a Korn Ferry strategic sales coach analyzing a meeting transcript.
+
+Company: ${project.companyName}
+Discovery Theme: ${discoveryTheme}
+Meeting Attendees: ${attendeeContext || "Not specified"}
+
+Analyze this transcript and provide:
+1. Executive summary of the meeting
+2. Key insights discovered
+3. Action items with owners
+4. Stakeholder sentiment analysis (per person if multiple)
+5. Coaching notes for the sales team (what went well, what to improve)
+6. Suggested follow-up questions
+
+Return as JSON:
+{
+  "summary": "2-3 sentence executive summary",
+  "keyInsights": ["Insight 1", "Insight 2"],
+  "actionItems": [{"item": "Action", "owner": "Who", "dueDate": "optional"}],
+  "stakeholderSentiment": {"PersonName": {"sentiment": "positive|neutral|cautious|concerned", "signals": ["What indicated this"]}},
+  "coachingNotes": [{"area": "Discovery Questions", "observation": "What happened", "suggestion": "How to improve"}],
+  "followUpQuestions": ["Question to ask in follow-up"]
+}`
+          },
+          {
+            role: "user",
+            content: `Analyze this meeting transcript:\n\n${transcript.substring(0, 15000)}`
+          }
+        ],
+        max_tokens: 3000,
+        temperature: 0.5,
+        response_format: { type: "json_object" }
+      });
+      
+      const content = response.choices[0].message.content || "{}";
+      let analysis = null;
+      try {
+        analysis = JSON.parse(content);
+        analysis.analyzedAt = new Date().toISOString();
+      } catch (e) {
+        console.error("[Analyze Transcript] Parse error:", e);
+        return res.status(500).json({ error: "Failed to parse analysis" });
+      }
+      
+      // Save transcript and analysis to meeting profile
+      await storage.updateMeetingProfile(profile.id, { 
+        transcript, 
+        transcriptAnalysis: analysis 
+      });
+      
+      res.json({ analysis });
+    } catch (error: any) {
+      console.error("[Analyze Transcript] Error:", error);
+      res.status(500).json({ error: "Failed to analyze transcript" });
+    }
+  });
+
   // AI Notes Enrichment
   app.post("/api/projects/:projectId/enrich-from-notes", async (req, res) => {
     try {

@@ -412,6 +412,115 @@ export const insertProjectIntelligenceSchema = createInsertSchema(projectIntelli
 export type InsertProjectIntelligence = z.infer<typeof insertProjectIntelligenceSchema>;
 export type ProjectIntelligence = typeof projectIntelligence.$inferSelect;
 
+// Meeting Profiles - Adaptive meeting preparation with single/multi attendee support
+export const meetingProfiles = pgTable("meeting_profiles", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  
+  // Mode selection: single attendee or multiple attendees
+  attendanceMode: text("attendance_mode", { enum: ["single", "multiple"] }).notNull().default("single"),
+  
+  // Meeting metadata
+  meetingTitle: text("meeting_title"),
+  meetingDate: timestamp("meeting_date"),
+  meetingObjective: text("meeting_objective"),
+  desiredOutcome: text("desired_outcome"),
+  
+  // Single attendee mode - simplified contact info
+  singleContact: jsonb("single_contact").$type<{
+    name: string;
+    title: string;
+    role: "economic_buyer" | "user_buyer" | "technical_buyer" | "coach" | "champion" | null;
+    influence: "high" | "medium" | "low" | null;
+    knownConcerns: string;
+    decisionCriteria: string;
+  }>(),
+  
+  // Multiple attendees mode - array of participants
+  participants: jsonb("participants").$type<Array<{
+    id: string;
+    name: string;
+    title: string;
+    role: "economic_buyer" | "user_buyer" | "technical_buyer" | "coach" | "champion";
+    influence: "high" | "medium" | "low";
+    knownConcerns: string;
+    preferredOutcomes: string;
+    personalRapport: string;
+    decisionCriteria: string;
+  }>>(),
+  
+  // AI-generated combined meeting story (synthesizes all attendees + intelligence)
+  combinedMeetingStory: jsonb("combined_meeting_story").$type<{
+    narrative: string;
+    keyThemes: string[];
+    talkingPoints: Array<{ point: string; targetAudience: string[] }>;
+    objectionHandling: Array<{ objection: string; response: string; relevantTo: string[] }>;
+    agenda: Array<{ topic: string; duration: string; leadWith: string }>;
+    proofPoints: Array<{ claim: string; evidence: string; resonatesWith: string[] }>;
+    generatedAt: string;
+  }>(),
+  
+  // Per-attendee story briefs (for multi-mode)
+  participantBriefs: jsonb("participant_briefs").$type<Record<string, {
+    personalizedOpener: string;
+    keyMessage: string;
+    anticipatedConcerns: string[];
+    tailoredProofPoints: string[];
+  }>>(),
+  
+  // Miller Heiman call planner
+  callPlanner: jsonb("call_planner").$type<{
+    openingStatement: string;
+    bestActionCommitment: string;
+    redFlags: string[];
+    strengthsToLeverage: string[];
+  }>(),
+  
+  // AI-generated methodology questions (adapted to attendee count + discovery theme)
+  generatedQuestions: jsonb("generated_questions").$type<Array<{
+    id: string;
+    question: string;
+    methodology: "SPIN" | "Miller Heiman" | "PSS";
+    stage: string;
+    targetRole?: string;
+    followUpHint: string;
+    response?: string;
+    isAsked: boolean;
+  }>>(),
+  
+  // Meeting transcript and AI analysis
+  transcript: text("transcript"),
+  transcriptAnalysis: jsonb("transcript_analysis").$type<{
+    summary: string;
+    keyInsights: string[];
+    actionItems: Array<{ item: string; owner: string; dueDate?: string }>;
+    stakeholderSentiment: Record<string, { sentiment: string; signals: string[] }>;
+    coachingNotes: Array<{ area: string; observation: string; suggestion: string }>;
+    followUpQuestions: string[];
+    analyzedAt: string;
+  }>(),
+  
+  // Archived participants (when switching from multi to single)
+  archivedParticipants: jsonb("archived_participants").$type<Array<{
+    id: string;
+    name: string;
+    title: string;
+    role: string;
+    archivedAt: string;
+  }>>(),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertMeetingProfileSchema = createInsertSchema(meetingProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertMeetingProfile = z.infer<typeof insertMeetingProfileSchema>;
+export type MeetingProfile = typeof meetingProfiles.$inferSelect;
+
 // Company Data Points with confidence and provenance
 export const companyDataPoints = pgTable("company_data_points", {
   id: serial("id").primaryKey(),

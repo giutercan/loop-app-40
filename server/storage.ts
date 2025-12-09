@@ -57,7 +57,8 @@ import type {
   HandoffPacket, InsertHandoffPacket,
   AiSession, InsertAiSession,
   AiMessage, InsertAiMessage,
-  ProjectIntelligence, InsertProjectIntelligence
+  ProjectIntelligence, InsertProjectIntelligence,
+  MeetingProfile, InsertMeetingProfile
 } from "@shared/schema";
 
 export interface IStorage {
@@ -395,6 +396,12 @@ export interface IStorage {
   getProjectIntelligence(projectId: number, discoveryTheme: string): Promise<ProjectIntelligence | undefined>;
   saveProjectIntelligence(intelligence: InsertProjectIntelligence): Promise<ProjectIntelligence>;
   updateProjectIntelligenceProbeHistory(id: number, probeHistory: ProjectIntelligence['probeHistory']): Promise<ProjectIntelligence | undefined>;
+  
+  // Meeting Profiles (adaptive meeting preparation)
+  getMeetingProfile(projectId: number): Promise<MeetingProfile | undefined>;
+  createMeetingProfile(profile: InsertMeetingProfile): Promise<MeetingProfile>;
+  updateMeetingProfile(id: number, profile: Partial<InsertMeetingProfile>): Promise<MeetingProfile | undefined>;
+  deleteMeetingProfile(id: number): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -2234,6 +2241,31 @@ export class DbStorage implements IStorage {
       .where(eq(schema.projectIntelligence.id, id))
       .returning();
     return updated;
+  }
+  
+  // Meeting Profiles (adaptive meeting preparation)
+  async getMeetingProfile(projectId: number): Promise<MeetingProfile | undefined> {
+    const result = await db.select().from(schema.meetingProfiles)
+      .where(eq(schema.meetingProfiles.projectId, projectId))
+      .limit(1);
+    return result[0];
+  }
+  
+  async createMeetingProfile(profile: InsertMeetingProfile): Promise<MeetingProfile> {
+    const [created] = await db.insert(schema.meetingProfiles).values(profile).returning();
+    return created;
+  }
+  
+  async updateMeetingProfile(id: number, profile: Partial<InsertMeetingProfile>): Promise<MeetingProfile | undefined> {
+    const [updated] = await db.update(schema.meetingProfiles)
+      .set({ ...profile, updatedAt: new Date() })
+      .where(eq(schema.meetingProfiles.id, id))
+      .returning();
+    return updated;
+  }
+  
+  async deleteMeetingProfile(id: number): Promise<void> {
+    await db.delete(schema.meetingProfiles).where(eq(schema.meetingProfiles.id, id));
   }
 }
 
