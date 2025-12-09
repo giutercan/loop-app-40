@@ -99,7 +99,8 @@ import {
   Send,
   Mic,
   Trash2,
-  Undo2
+  Undo2,
+  Edit2
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -1609,6 +1610,65 @@ export default function ProjectRoleView() {
   const [greenSheetInitialized, setGreenSheetInitialized] = useState(false);
   const [lastSavedGreenSheet, setLastSavedGreenSheet] = useState<string | null>(null);
   
+  // Adaptive Meeting Profile state (single vs multiple attendees)
+  type MeetingAttendee = {
+    id: string;
+    name: string;
+    title: string;
+    role: BuyingRole;
+    influence: InfluenceLevel;
+    knownConcerns: string;
+    preferredOutcomes: string;
+    personalRapport: string;
+    decisionCriteria: string;
+  };
+  
+  type CombinedMeetingStory = {
+    narrative: string;
+    keyThemes: string[];
+    talkingPoints: Array<{ point: string; targetAudience: string[] }>;
+    objectionHandling: Array<{ objection: string; response: string; relevantTo: string[] }>;
+    agenda: Array<{ topic: string; duration: string; leadWith: string }>;
+    proofPoints: Array<{ claim: string; evidence: string; resonatesWith: string[] }>;
+    generatedAt: string;
+  };
+  
+  type MeetingQuestion = {
+    id: string;
+    question: string;
+    methodology: "SPIN" | "Miller Heiman" | "PSS";
+    stage: string;
+    targetRole?: string;
+    followUpHint: string;
+    response?: string;
+    isAsked: boolean;
+  };
+  
+  type TranscriptAnalysis = {
+    summary: string;
+    keyInsights: string[];
+    actionItems: Array<{ item: string; owner: string; dueDate?: string }>;
+    stakeholderSentiment: Record<string, { sentiment: string; signals: string[] }>;
+    coachingNotes: Array<{ area: string; observation: string; suggestion: string }>;
+    followUpQuestions: string[];
+    analyzedAt: string;
+  };
+  
+  const [meetingMode, setMeetingMode] = useState<"single" | "multiple">("single");
+  const [meetingAttendees, setMeetingAttendees] = useState<MeetingAttendee[]>([]);
+  const [meetingObjective, setMeetingObjective] = useState("");
+  const [meetingDesiredOutcome, setMeetingDesiredOutcome] = useState("");
+  const [combinedMeetingStory, setCombinedMeetingStory] = useState<CombinedMeetingStory | null>(null);
+  const [meetingQuestions, setMeetingQuestions] = useState<MeetingQuestion[]>([]);
+  const [meetingTranscript, setMeetingTranscript] = useState("");
+  const [transcriptAnalysis, setTranscriptAnalysis] = useState<TranscriptAnalysis | null>(null);
+  const [meetingProfileLoaded, setMeetingProfileLoaded] = useState(false);
+  const [isGeneratingStory, setIsGeneratingStory] = useState(false);
+  const [isGeneratingMeetingQuestions, setIsGeneratingMeetingQuestions] = useState(false);
+  const [isAnalyzingTranscript, setIsAnalyzingTranscript] = useState(false);
+  const [showAddAttendeeDialog, setShowAddAttendeeDialog] = useState(false);
+  const [editingAttendee, setEditingAttendee] = useState<MeetingAttendee | null>(null);
+  
   // Mutation to save Green Sheet data
   const saveGreenSheetMutation = useMutation({
     mutationFn: async (data: { meetingContact: typeof meetingContact; callPlanner: typeof greenSheetEdits }) => {
@@ -1729,6 +1789,218 @@ export default function ProjectRoleView() {
       title: "Insights applied",
       description: "Contact fields have been updated with AI research."
     });
+  };
+  
+  // Meeting Profile API functions
+  const loadMeetingProfile = useCallback(async () => {
+    if (!projectId || meetingProfileLoaded) return;
+    try {
+      const response = await fetch(`/api/projects/${projectId}/meeting-profile`);
+      if (response.ok) {
+        const profile = await response.json();
+        setMeetingMode(profile.attendanceMode || "single");
+        setMeetingAttendees(profile.participants || []);
+        setMeetingObjective(profile.meetingObjective || "");
+        setMeetingDesiredOutcome(profile.desiredOutcome || "");
+        setCombinedMeetingStory(profile.combinedMeetingStory || null);
+        setMeetingQuestions(profile.generatedQuestions || []);
+        setMeetingTranscript(profile.transcript || "");
+        setTranscriptAnalysis(profile.transcriptAnalysis || null);
+        if (profile.singleContact) {
+          setMeetingContact(prev => ({
+            ...prev,
+            ...profile.singleContact
+          }));
+        }
+      }
+      setMeetingProfileLoaded(true);
+    } catch (error) {
+      console.error("Failed to load meeting profile:", error);
+      setMeetingProfileLoaded(true);
+    }
+  }, [projectId, meetingProfileLoaded]);
+  
+  // Save meeting profile mutation
+  const saveMeetingProfileMutation = useMutation({
+    mutationFn: async (data: {
+      attendanceMode: "single" | "multiple";
+      participants?: MeetingAttendee[];
+      singleContact?: typeof meetingContact;
+      meetingObjective?: string;
+      desiredOutcome?: string;
+      combinedMeetingStory?: CombinedMeetingStory | null;
+      generatedQuestions?: MeetingQuestion[];
+      transcript?: string;
+      transcriptAnalysis?: TranscriptAnalysis | null;
+    }) => {
+      return await apiRequest("POST", `/api/projects/${projectId}/meeting-profile`, data);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to save meeting profile",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Auto-save meeting profile when mode or attendees change
+  const meetingProfileSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  useEffect(() => {
+    if (!meetingProfileLoaded) return;
+    
+    if (meetingProfileSaveTimeoutRef.current) {
+      clearTimeout(meetingProfileSaveTimeoutRef.current);
+    }
+    
+    meetingProfileSaveTimeoutRef.current = setTimeout(() => {
+      saveMeetingProfileMutation.mutate({
+        attendanceMode: meetingMode,
+        participants: meetingAttendees,
+        singleContact: meetingMode === "single" ? meetingContact : undefined,
+        meetingObjective,
+        desiredOutcome: meetingDesiredOutcome,
+        combinedMeetingStory,
+        generatedQuestions: meetingQuestions,
+        transcript: meetingTranscript,
+        transcriptAnalysis
+      });
+    }, 2000);
+    
+    return () => {
+      if (meetingProfileSaveTimeoutRef.current) {
+        clearTimeout(meetingProfileSaveTimeoutRef.current);
+      }
+    };
+  }, [meetingMode, meetingAttendees, meetingContact, meetingObjective, meetingDesiredOutcome, meetingProfileLoaded]);
+  
+  // Load meeting profile when entering questions step
+  useEffect(() => {
+    if (discoveryStep === "questions" && !meetingProfileLoaded) {
+      loadMeetingProfile();
+    }
+  }, [discoveryStep, loadMeetingProfile, meetingProfileLoaded]);
+  
+  // Generate methodology questions for meeting profile
+  const generateMeetingQuestions = async () => {
+    setIsGeneratingMeetingQuestions(true);
+    try {
+      const response = await apiRequest("POST", `/api/projects/${projectId}/meeting-profile/generate-questions`, {});
+      const data = await response.json();
+      setMeetingQuestions(data.questions || []);
+      toast({
+        title: "Questions generated",
+        description: `Generated ${data.questions?.length || 0} methodology-based questions.`
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to generate questions",
+        description: "Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingMeetingQuestions(false);
+    }
+  };
+  
+  // Generate combined meeting story
+  const generateMeetingStory = async () => {
+    setIsGeneratingStory(true);
+    try {
+      const response = await apiRequest("POST", `/api/projects/${projectId}/meeting-profile/generate-story`, {});
+      const data = await response.json();
+      setCombinedMeetingStory(data.story || null);
+      toast({
+        title: "Meeting story generated",
+        description: "AI has created a combined narrative for all stakeholders."
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to generate story",
+        description: "Please ensure you have added meeting attendees.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingStory(false);
+    }
+  };
+  
+  // Analyze meeting transcript
+  const analyzeMeetingTranscript = async () => {
+    if (!meetingTranscript.trim()) {
+      toast({
+        title: "No transcript",
+        description: "Please paste or upload a meeting transcript first.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsAnalyzingTranscript(true);
+    try {
+      const response = await apiRequest("POST", `/api/projects/${projectId}/meeting-profile/analyze-transcript`, {
+        transcript: meetingTranscript
+      });
+      const data = await response.json();
+      setTranscriptAnalysis(data.analysis || null);
+      toast({
+        title: "Transcript analyzed",
+        description: "AI has generated insights and coaching from your meeting."
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to analyze transcript",
+        description: "Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsAnalyzingTranscript(false);
+    }
+  };
+  
+  // Add new attendee
+  const addAttendee = (attendee: Omit<MeetingAttendee, "id">) => {
+    const newAttendee: MeetingAttendee = {
+      ...attendee,
+      id: `att-${Date.now()}`
+    };
+    setMeetingAttendees(prev => [...prev, newAttendee]);
+    setShowAddAttendeeDialog(false);
+  };
+  
+  // Update attendee
+  const updateAttendee = (id: string, updates: Partial<MeetingAttendee>) => {
+    setMeetingAttendees(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+  };
+  
+  // Remove attendee
+  const removeAttendee = (id: string) => {
+    setMeetingAttendees(prev => prev.filter(a => a.id !== id));
+  };
+  
+  // Handle mode switch
+  const handleModeSwitch = (newMode: "single" | "multiple") => {
+    if (newMode === "single" && meetingAttendees.length > 0) {
+      // Switching from multiple to single - archive attendees
+      toast({
+        title: "Switching to single attendee mode",
+        description: `${meetingAttendees.length} attendees will be archived.`
+      });
+    }
+    setMeetingMode(newMode);
+    if (newMode === "multiple" && meetingAttendees.length === 0 && meetingContact.name) {
+      // Convert single contact to first attendee
+      addAttendee({
+        name: meetingContact.name,
+        title: meetingContact.title,
+        role: meetingContact.role || "user_buyer",
+        influence: meetingContact.influence || "medium",
+        knownConcerns: meetingContact.knownConcerns,
+        preferredOutcomes: "",
+        personalRapport: meetingContact.personalRapport,
+        decisionCriteria: meetingContact.decisionCriteria
+      });
+    }
   };
   
   // Role-based coaching guidance
@@ -6130,7 +6402,38 @@ export default function ProjectRoleView() {
                 </CardHeader>
                 <CollapsibleContent>
                   <CardContent className="pt-6 space-y-6">
-                    {/* Meeting Contact Context - Key Green Sheet Element */}
+                    {/* Meeting Mode Toggle - Single vs Multiple Attendees */}
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-5 h-5 text-emerald-600" />
+                        <span className="font-medium text-sm text-emerald-800">Meeting Type</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant={meetingMode === "single" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setMeetingMode("single")}
+                          className={meetingMode === "single" ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+                          data-testid="button-single-attendee"
+                        >
+                          <UserCircle className="w-4 h-4 mr-1.5" />
+                          Single Attendee
+                        </Button>
+                        <Button
+                          variant={meetingMode === "multiple" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setMeetingMode("multiple")}
+                          className={meetingMode === "multiple" ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+                          data-testid="button-multiple-attendees"
+                        >
+                          <Users className="w-4 h-4 mr-1.5" />
+                          Multiple Attendees
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Single Attendee Mode - Original Contact Form */}
+                    {meetingMode === "single" && (
                     <div className="p-4 rounded-xl border-2 border-emerald-500/20 bg-white/50">
                       <div className="flex items-center justify-between mb-4">
                         <h4 className="font-semibold text-sm flex items-center gap-2 text-emerald-800">
@@ -6261,6 +6564,204 @@ export default function ProjectRoleView() {
                         </div>
                       </div>
                     </div>
+                    )}
+
+                    {/* Multiple Attendees Mode - Attendee Roster */}
+                    {meetingMode === "multiple" && (
+                    <div className="p-4 rounded-xl border-2 border-emerald-500/20 bg-white/50 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold text-sm flex items-center gap-2 text-emerald-800">
+                          <Users className="w-5 h-5" />
+                          Meeting Attendees ({meetingAttendees.length})
+                          <span className="text-xs font-normal text-muted-foreground">(Add all stakeholders)</span>
+                        </h4>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10"
+                          onClick={() => {
+                            setEditingAttendee(null);
+                            setShowAddAttendeeDialog(true);
+                          }}
+                          data-testid="button-add-attendee"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          Add Attendee
+                        </Button>
+                      </div>
+
+                      {/* Attendee List */}
+                      {meetingAttendees.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground" data-testid="empty-attendees-state">
+                          <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                          <p className="text-sm">No attendees added yet</p>
+                          <p className="text-xs mt-1">Add stakeholders to generate a combined meeting story</p>
+                        </div>
+                      ) : (
+                        <div className="grid gap-3 md:grid-cols-2" data-testid="attendees-list">
+                          {meetingAttendees.map((attendee, index) => (
+                            <div
+                              key={`attendee-${index}`}
+                              className="p-3 rounded-lg border bg-white flex items-start justify-between gap-3"
+                              data-testid={`card-attendee-${index}`}
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-sm truncate" data-testid={`text-attendee-name-${index}`}>{attendee.name}</div>
+                                <div className="text-xs text-muted-foreground truncate" data-testid={`text-attendee-title-${index}`}>{attendee.title}</div>
+                                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                  <Badge variant="secondary" className="text-xs" data-testid={`badge-attendee-role-${index}`}>
+                                    {attendee.role?.replace("_", " ") || "Unknown Role"}
+                                  </Badge>
+                                  <Badge variant="outline" className="text-xs" data-testid={`badge-attendee-influence-${index}`}>
+                                    {attendee.influence || "Unknown"} Influence
+                                  </Badge>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => {
+                                    setEditingAttendee({ ...attendee, id: `idx-${index}` });
+                                    setShowAddAttendeeDialog(true);
+                                  }}
+                                  data-testid={`button-edit-attendee-${index}`}
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-red-500 hover:text-red-600"
+                                  onClick={() => {
+                                    setMeetingAttendees(prev => prev.filter((_, i) => i !== index));
+                                  }}
+                                  data-testid={`button-remove-attendee-${index}`}
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Generate Combined Story Button */}
+                      {meetingAttendees.length >= 2 && (
+                        <div className="pt-2">
+                          <Button
+                            className="w-full gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                            onClick={generateMeetingStory}
+                            disabled={isGeneratingStory}
+                            data-testid="button-generate-combined-story"
+                          >
+                            {isGeneratingStory ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Synthesizing Stakeholder Perspectives...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="w-4 h-4" />
+                                Generate Combined Meeting Story
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* Combined Meeting Story Display */}
+                      {combinedMeetingStory && (
+                        <div className="mt-4 p-4 rounded-lg bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <BookOpen className="w-5 h-5 text-purple-600" />
+                              <h5 className="font-semibold text-purple-800">Combined Meeting Story</h5>
+                            </div>
+                            <Badge variant="outline" className="text-xs text-purple-600 border-purple-300">
+                              Generated {new Date(combinedMeetingStory.generatedAt).toLocaleDateString()}
+                            </Badge>
+                          </div>
+                          
+                          <div className="space-y-4" data-testid="combined-story-content">
+                            {/* Main Narrative */}
+                            {combinedMeetingStory.narrative && (
+                            <div>
+                              <Label className="text-xs text-purple-600 font-medium">Narrative</Label>
+                              <p className="text-sm mt-1 whitespace-pre-wrap leading-relaxed" data-testid="text-story-narrative">{combinedMeetingStory.narrative}</p>
+                            </div>
+                            )}
+
+                            {/* Key Themes */}
+                            {(combinedMeetingStory.keyThemes ?? []).length > 0 && (
+                              <div>
+                                <Label className="text-xs text-purple-600 font-medium">Key Themes</Label>
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                  {(combinedMeetingStory.keyThemes ?? []).map((theme, i) => (
+                                    <Badge key={i} className="bg-purple-100 text-purple-700 border-purple-200" data-testid={`badge-theme-${i}`}>{theme}</Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Talking Points */}
+                            {(combinedMeetingStory.talkingPoints ?? []).length > 0 && (
+                              <div>
+                                <Label className="text-xs text-purple-600 font-medium">Talking Points</Label>
+                                <div className="space-y-2 mt-2">
+                                  {(combinedMeetingStory.talkingPoints ?? []).map((tp, i) => (
+                                    <div key={i} className="p-2 rounded bg-white/60 border border-purple-100" data-testid={`card-talking-point-${i}`}>
+                                      <p className="text-sm font-medium">{tp.point}</p>
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        For: {(tp.targetAudience ?? []).join(", ")}
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Suggested Agenda */}
+                            {(combinedMeetingStory.agenda ?? []).length > 0 && (
+                              <div>
+                                <Label className="text-xs text-purple-600 font-medium">Suggested Agenda</Label>
+                                <div className="space-y-2 mt-2">
+                                  {(combinedMeetingStory.agenda ?? []).map((item, i) => (
+                                    <div key={i} className="flex items-center gap-3 p-2 rounded bg-white/60 border border-purple-100" data-testid={`card-agenda-${i}`}>
+                                      <Badge variant="outline" className="text-[10px] shrink-0">{item.duration}</Badge>
+                                      <div className="flex-1">
+                                        <p className="text-sm font-medium">{item.topic}</p>
+                                        <p className="text-xs text-muted-foreground">{item.leadWith}</p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Objection Handling */}
+                            {(combinedMeetingStory.objectionHandling ?? []).length > 0 && (
+                              <Collapsible>
+                                <CollapsibleTrigger className="flex items-center gap-2 text-xs text-purple-600 font-medium hover:text-purple-800" data-testid="trigger-objection-handling">
+                                  <ChevronRight className="w-3 h-3" />
+                                  Objection Handling ({(combinedMeetingStory.objectionHandling ?? []).length})
+                                </CollapsibleTrigger>
+                                <CollapsibleContent className="space-y-2 mt-2">
+                                  {(combinedMeetingStory.objectionHandling ?? []).map((obj, i) => (
+                                    <div key={i} className="p-2 rounded bg-orange-50 border border-orange-200" data-testid={`card-objection-${i}`}>
+                                      <p className="text-sm font-medium text-orange-800">{obj.objection}</p>
+                                      <p className="text-sm mt-1 text-orange-700">{obj.response}</p>
+                                    </div>
+                                  ))}
+                                </CollapsibleContent>
+                              </Collapsible>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    )}
                     
                     {/* Editable Call Framework */}
                     <div className="grid gap-4 lg:grid-cols-2">
@@ -9422,6 +9923,129 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 Apply Insights to Green Sheet
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add/Edit Attendee Dialog for Multiple Attendees Mode */}
+      <Dialog open={showAddAttendeeDialog} onOpenChange={(open) => {
+        if (!open) {
+          setEditingAttendee(null);
+        }
+        setShowAddAttendeeDialog(open);
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserCircle className="w-5 h-5 text-emerald-600" />
+              {editingAttendee ? "Edit Attendee" : "Add Meeting Attendee"}
+            </DialogTitle>
+            <DialogDescription>
+              Add stakeholder details to generate a comprehensive meeting story.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Name *</Label>
+                <Input
+                  placeholder="e.g., Sarah Chen"
+                  value={editingAttendee?.name || ""}
+                  onChange={(e) => setEditingAttendee(prev => prev ? { ...prev, name: e.target.value } : { id: `temp-${Date.now()}`, name: e.target.value, title: "", role: undefined, influence: undefined, knownConcerns: "", personalRapport: "" })}
+                  className="h-9"
+                  data-testid="input-attendee-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Title</Label>
+                <Input
+                  placeholder="e.g., VP of People"
+                  value={editingAttendee?.title || ""}
+                  onChange={(e) => setEditingAttendee(prev => prev ? { ...prev, title: e.target.value } : null)}
+                  className="h-9"
+                  data-testid="input-attendee-title"
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Buying Role</Label>
+                <Select
+                  value={editingAttendee?.role || undefined}
+                  onValueChange={(v) => setEditingAttendee(prev => prev ? { ...prev, role: v as any } : null)}
+                >
+                  <SelectTrigger className="h-9" data-testid="select-attendee-role">
+                    <SelectValue placeholder="Select role..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="economic_buyer">Economic Buyer</SelectItem>
+                    <SelectItem value="user_buyer">User Buyer</SelectItem>
+                    <SelectItem value="technical_buyer">Technical Buyer</SelectItem>
+                    <SelectItem value="coach">Coach</SelectItem>
+                    <SelectItem value="champion">Champion</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Influence Level</Label>
+                <Select
+                  value={editingAttendee?.influence || undefined}
+                  onValueChange={(v) => setEditingAttendee(prev => prev ? { ...prev, influence: v as any } : null)}
+                >
+                  <SelectTrigger className="h-9" data-testid="select-attendee-influence">
+                    <SelectValue placeholder="Influence..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="high">High - Key Decision Maker</SelectItem>
+                    <SelectItem value="medium">Medium - Strong Influencer</SelectItem>
+                    <SelectItem value="low">Low - Stakeholder</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Known Concerns / Priorities</Label>
+              <Textarea
+                placeholder="What do you know about their current challenges?"
+                value={editingAttendee?.knownConcerns || ""}
+                onChange={(e) => setEditingAttendee(prev => prev ? { ...prev, knownConcerns: e.target.value } : null)}
+                className="min-h-[60px] text-sm"
+                data-testid="input-attendee-concerns"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 mt-4">
+            <Button variant="outline" onClick={() => {
+              setEditingAttendee(null);
+              setShowAddAttendeeDialog(false);
+            }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (editingAttendee?.name) {
+                  const indexMatch = editingAttendee.id?.match(/^idx-(\d+)$/);
+                  if (indexMatch) {
+                    const existingIndex = parseInt(indexMatch[1], 10);
+                    setMeetingAttendees(prev => prev.map((a, i) => i === existingIndex ? { ...editingAttendee, id: undefined } : a));
+                  } else {
+                    setMeetingAttendees(prev => [...prev, { ...editingAttendee, id: undefined }]);
+                  }
+                  setEditingAttendee(null);
+                  setShowAddAttendeeDialog(false);
+                }
+              }}
+              disabled={!editingAttendee?.name}
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+              data-testid="button-save-attendee"
+            >
+              <CheckCircle className="w-4 h-4" />
+              {editingAttendee?.id?.startsWith("idx-") ? "Update Attendee" : "Add Attendee"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
