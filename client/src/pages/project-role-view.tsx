@@ -6979,6 +6979,33 @@ export default function ProjectRoleView() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
+                      variant="default"
+                      className="gap-2 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-700"
+                      onClick={() => {
+                        const phase = activeStoryPhase === "test" ? "after" : activeStoryPhase;
+                        setAiSuggestionLoading("all");
+                        storySuggestionMutation.mutate({ 
+                          fieldToSuggest: "all", 
+                          phase: phase as "before" | "during" | "after",
+                          stories: [] 
+                        });
+                      }}
+                      disabled={aiSuggestionLoading !== null || activeStoryPhase === "test"}
+                      data-testid="button-generate-all-story"
+                    >
+                      {aiSuggestionLoading === "all" ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4" />
+                          Generate All ({activeStoryPhase === "test" ? "After" : activeStoryPhase.toUpperCase()})
+                        </>
+                      )}
+                    </Button>
+                    <Button
                       variant="outline"
                       onClick={() => {
                         const content = `
