@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "./storage";
-import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale, generateStrategicPillars, generateStorySuggestion, generateDiscoveryKpiSuggestions, enrichContactWithAI, openai, generateCompetitiveIntelligence, generateKPIValueCaseRecommendations } from "./ai";
+import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale, generateStrategicPillars, generateStorySuggestion, generateDiscoveryKpiSuggestions, enrichContactWithAI, openai, generateCompetitiveIntelligence, generateKPIValueCaseRecommendations, generateLiveIntelligence } from "./ai";
 import { z } from "zod";
 import crypto from "crypto";
 import { OUTCOME_JOURNEY_TEMPLATES, type SolutionPatternId } from "@shared/value-frameworks";
@@ -1109,6 +1109,39 @@ export function registerRoutes(app: Express) {
     } catch (error: any) {
       res.status(500).json({ 
         error: "An unexpected error occurred",
+        details: error.message 
+      });
+    }
+  });
+
+  // Live Company Intelligence (theme-based)
+  app.post("/api/projects/:projectId/live-intelligence", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const { discoveryTheme } = req.body;
+      
+      if (!discoveryTheme || typeof discoveryTheme !== 'string') {
+        return res.status(400).json({ error: "Discovery theme is required" });
+      }
+
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      console.log(`[Live Intelligence] Generating for ${project.companyName} with theme: ${discoveryTheme}`);
+      
+      const intelligence = await generateLiveIntelligence(
+        project.companyName,
+        discoveryTheme,
+        project.sector || undefined
+      );
+
+      res.json(intelligence);
+    } catch (error: any) {
+      console.error("[Live Intelligence] Error:", error);
+      res.status(500).json({ 
+        error: "Failed to generate live intelligence",
         details: error.message 
       });
     }

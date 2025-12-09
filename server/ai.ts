@@ -36,6 +36,164 @@ interface CompanyResearchResult {
   }>;
 }
 
+export interface LiveIntelligenceResult {
+  companyOverview: {
+    description: string;
+    industry: string;
+    headquarters: string;
+    employeeCount: string;
+    revenue: string;
+    founded: string;
+  };
+  recentNews: Array<{
+    date: string;
+    headline: string;
+    source: string;
+    summary: string;
+    relevance: "high" | "medium" | "low";
+    opportunityType?: string;
+  }>;
+  competitors: Array<{
+    name: string;
+    description: string;
+    competitivePosition: string;
+  }>;
+  strategicInsights: Array<{
+    title: string;
+    insight: string;
+    kfOpportunity: string;
+    potentialValue: string;
+    relevantCapability: string;
+  }>;
+  keyPeople: Array<{
+    name: string;
+    title: string;
+    relevance: string;
+  }>;
+  themeSpecificInsights: {
+    opportunitySignal: string;
+    howWeHelp: string[];
+    potentialValue: string;
+    keyQuestions: string[];
+  };
+  generatedAt: string;
+}
+
+export async function generateLiveIntelligence(
+  companyName: string,
+  discoveryTheme: string,
+  sector?: string
+): Promise<LiveIntelligenceResult> {
+  const knowledgeBase = getSolutionSummary();
+  
+  const themeDescriptions: Record<string, string> = {
+    "leadership": "Leadership Development - Executive development, succession planning, leadership pipelines",
+    "talent": "Talent Acquisition - Recruitment strategy, quality of hire, employer branding",
+    "transformation": "Organizational Transformation - Restructuring, M&A integration, operating model design",
+    "rewards": "Total Rewards - Compensation strategy, pay equity, executive compensation",
+    "commercial": "Sales Effectiveness - Sales force effectiveness, go-to-market strategy, revenue growth",
+    "kf-full-search": "Full Discovery - Comprehensive analysis across all Korn Ferry solution areas"
+  };
+  
+  const themeDescription = themeDescriptions[discoveryTheme] || discoveryTheme;
+
+  const prompt = `You are a Korn Ferry business intelligence analyst researching ${companyName}${sector ? ` (${sector} sector)` : ''} for a sales discovery conversation.
+
+DISCOVERY THEME: ${themeDescription}
+
+Your research must be:
+1. CURRENT and ACCURATE - use your knowledge of this company up to your training date
+2. SPECIFIC to ${companyName} - not generic industry information
+3. FOCUSED on the discovery theme: ${themeDescription}
+4. ACTIONABLE for a Korn Ferry consultant preparing for a client meeting
+
+KORN FERRY CAPABILITIES:
+${knowledgeBase}
+
+Return your response in this exact JSON structure:
+{
+  "companyOverview": {
+    "description": "2-3 sentence description of what the company does",
+    "industry": "Primary industry",
+    "headquarters": "City, Country",
+    "employeeCount": "Approximate number (e.g., '150,000+')",
+    "revenue": "Approximate annual revenue (e.g., '$50B+')",
+    "founded": "Year founded"
+  },
+  "recentNews": [
+    {
+      "date": "Month YYYY",
+      "headline": "News headline relevant to ${themeDescription}",
+      "source": "Source name",
+      "summary": "1-2 sentence summary focusing on people/talent implications",
+      "relevance": "high|medium|low",
+      "opportunityType": "Type of opportunity (e.g., 'Leadership Transition', 'Restructuring')"
+    }
+  ],
+  "competitors": [
+    {
+      "name": "Competitor name",
+      "description": "Brief description",
+      "competitivePosition": "How they compare on talent/people strategy"
+    }
+  ],
+  "strategicInsights": [
+    {
+      "title": "Brief insight title",
+      "insight": "2-3 sentence strategic insight about their people/talent challenges",
+      "kfOpportunity": "How Korn Ferry can help",
+      "potentialValue": "Estimated deal size (e.g., '$1-3M')",
+      "relevantCapability": "Specific KF capability"
+    }
+  ],
+  "keyPeople": [
+    {
+      "name": "Executive name",
+      "title": "Their title",
+      "relevance": "Why they matter for this engagement"
+    }
+  ],
+  "themeSpecificInsights": {
+    "opportunitySignal": "Key signal indicating opportunity in ${themeDescription}",
+    "howWeHelp": ["Specific way KF can help #1", "Specific way #2", "Specific way #3"],
+    "potentialValue": "Total potential value estimate",
+    "keyQuestions": ["Discovery question #1", "Discovery question #2", "Discovery question #3"]
+  }
+}
+
+IMPORTANT:
+- Provide 3-5 recent news items focused on people/leadership/talent topics
+- Provide 3-4 main competitors
+- Provide 4-5 strategic insights relevant to the theme
+- Provide 3-5 key executives (CHRO, CEO, relevant C-suite)
+- All information should be as accurate as possible based on your knowledge
+- Focus on REAL information about ${companyName}, not hypothetical scenarios`;
+
+  try {
+    console.log(`[Live Intelligence] Generating for ${companyName} with theme: ${discoveryTheme}`);
+    
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 8192,
+    });
+
+    const content = response.choices[0]?.message?.content || "{}";
+    console.log(`[Live Intelligence] Response received: ${content.length} characters`);
+    
+    const result = JSON.parse(content);
+    
+    return {
+      ...result,
+      generatedAt: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error("[Live Intelligence] Error:", error);
+    throw new Error("Failed to generate live company intelligence");
+  }
+}
+
 export async function followUpResearch(
   companyName: string, 
   question: string, 

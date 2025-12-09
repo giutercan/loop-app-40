@@ -1394,6 +1394,91 @@ export default function ProjectRoleView() {
     url: string;
   }[]>([]);
   
+  // Live Intelligence data (replaces demo data)
+  interface LiveIntelligenceData {
+    companyOverview: {
+      description: string;
+      industry: string;
+      headquarters: string;
+      employeeCount: string;
+      revenue: string;
+      founded: string;
+    };
+    recentNews: Array<{
+      date: string;
+      headline: string;
+      source: string;
+      summary: string;
+      relevance: "high" | "medium" | "low";
+      opportunityType?: string;
+    }>;
+    competitors: Array<{
+      name: string;
+      description: string;
+      competitivePosition: string;
+    }>;
+    strategicInsights: Array<{
+      title: string;
+      insight: string;
+      kfOpportunity: string;
+      potentialValue: string;
+      relevantCapability: string;
+    }>;
+    keyPeople: Array<{
+      name: string;
+      title: string;
+      relevance: string;
+    }>;
+    themeSpecificInsights: {
+      opportunitySignal: string;
+      howWeHelp: string[];
+      potentialValue: string;
+      keyQuestions: string[];
+    };
+    generatedAt: string;
+  }
+  
+  const [liveIntelligence, setLiveIntelligence] = useState<LiveIntelligenceData | null>(null);
+  const [isLoadingIntelligence, setIsLoadingIntelligence] = useState(false);
+  const [intelligenceError, setIntelligenceError] = useState<string | null>(null);
+  
+  // Mutation to fetch live intelligence
+  const fetchLiveIntelligenceMutation = useMutation({
+    mutationFn: async (discoveryTheme: string) => {
+      const res = await apiRequest("POST", `/api/projects/${projectId}/live-intelligence`, { discoveryTheme });
+      return await res.json() as LiveIntelligenceData;
+    },
+    onSuccess: (data) => {
+      setLiveIntelligence(data);
+      setIsLoadingIntelligence(false);
+      setIntelligenceError(null);
+    },
+    onError: (error: any) => {
+      console.error("Failed to fetch live intelligence:", error);
+      setIsLoadingIntelligence(false);
+      setIntelligenceError(error.message || "Failed to generate company intelligence");
+      toast({ 
+        title: "Intelligence Generation Failed", 
+        description: "Could not fetch live company data. Please try again.", 
+        variant: "destructive" 
+      });
+    }
+  });
+  
+  // Auto-fetch intelligence when moving to intelligence step
+  useEffect(() => {
+    if (discoveryStep === "intelligence" && selectedDiscoveryTheme && !liveIntelligence && !isLoadingIntelligence && !intelligenceError) {
+      setIsLoadingIntelligence(true);
+      fetchLiveIntelligenceMutation.mutate(selectedDiscoveryTheme);
+    }
+  }, [discoveryStep, selectedDiscoveryTheme, liveIntelligence, isLoadingIntelligence, intelligenceError]);
+  
+  // Reset intelligence when theme changes
+  useEffect(() => {
+    setLiveIntelligence(null);
+    setIntelligenceError(null);
+  }, [selectedDiscoveryTheme]);
+  
   const [narrativeCanvasInitialized, setNarrativeCanvasInitialized] = useState(false);
   const [lastSavedNarrative, setLastSavedNarrative] = useState<string | null>(null);
   
@@ -5326,82 +5411,7 @@ export default function ProjectRoleView() {
           const selectedTheme = discoveryThemes.find(t => t.id === selectedDiscoveryTheme);
           const isFullSearch = selectedDiscoveryTheme === "kf-full-search";
           const sfData = generateSimulatedSalesforceData(project.companyName);
-          const marketIntel = generateMarketIntelligence(project.companyName, selectedDiscoveryTheme || undefined);
           const blueSheet = generateBlueSheetData(project.companyName);
-          
-          // For full search, generate OPPORTUNITY-focused content grouped by theme
-          const opportunityData = isFullSearch ? {
-            leadership: {
-              opportunitySignal: "Leadership Pipeline Gap Identified",
-              articles: [
-                { headline: `${project.companyName} CEO Announces Succession Planning Initiative`, date: "Nov 25, 2024", source: "Business Wire", summary: "New CEO transition planned for 2026 - accelerating leadership pipeline development", opportunityType: "Succession Planning" },
-                { headline: `${project.companyName} Reports 40% Executive Turnover`, date: "Nov 20, 2024", source: "HR Executive", summary: "CHRO cites leadership bench weakness as critical priority", opportunityType: "Leadership Gap" }
-              ],
-              howWeHelp: [
-                "Leadership assessment to identify ready-now successors",
-                "Acceleration programs for high-potential leaders", 
-                "Executive coaching for new role transitions",
-                "Succession planning methodology and tools"
-              ],
-              potentialValue: "$2-5M"
-            },
-            talent: {
-              opportunitySignal: "Hiring Quality & Retention Challenges",
-              articles: [
-                { headline: `${project.companyName} Struggles with 35% First-Year Turnover`, date: "Nov 22, 2024", source: "TechCrunch", summary: "Quality of hire concerns driving search for better assessment approach", opportunityType: "Retention Crisis" },
-                { headline: `${project.companyName} Plans 500-Person Hiring Wave`, date: "Nov 18, 2024", source: "Wall Street Journal", summary: "Expansion requires scalable, predictive hiring process", opportunityType: "Scale Hiring" }
-              ],
-              howWeHelp: [
-                "Success Profiles defining what great looks like",
-                "Predictive assessments reducing mis-hires by 50%",
-                "Interview training for hiring managers",
-                "Candidate experience optimization"
-              ],
-              potentialValue: "$1-3M"
-            },
-            transformation: {
-              opportunitySignal: "Organizational Restructuring Underway",
-              articles: [
-                { headline: `${project.companyName} Announces $500M Cost Reduction Program`, date: "Nov 23, 2024", source: "Reuters", summary: "Major restructuring to create leaner, more agile operating model", opportunityType: "Restructuring" },
-                { headline: `${project.companyName} Acquires Competitor - Integration Begins`, date: "Nov 19, 2024", source: "Harvard Business Review", summary: "M&A integration requiring organization design and culture alignment", opportunityType: "M&A Integration" }
-              ],
-              howWeHelp: [
-                "Organization design for new operating model",
-                "Workforce planning and right-sizing",
-                "Culture integration and change management",
-                "Leadership alignment on new structure"
-              ],
-              potentialValue: "$3-8M"
-            },
-            rewards: {
-              opportunitySignal: "Compensation & Retention Under Pressure",
-              articles: [
-                { headline: `${project.companyName} Faces Pay Equity Lawsuit`, date: "Nov 21, 2024", source: "Compensation Today", summary: "Class action alleging gender pay disparities - urgent need for analysis", opportunityType: "Pay Equity" },
-                { headline: `${project.companyName} Losing Top Talent to Competitors`, date: "Nov 17, 2024", source: "Forbes", summary: "Executive compensation review needed to stay competitive", opportunityType: "Retention" }
-              ],
-              howWeHelp: [
-                "Pay equity analysis and remediation planning",
-                "Market competitive benchmarking",
-                "Executive compensation redesign",
-                "Total rewards strategy optimization"
-              ],
-              potentialValue: "$1-2M"
-            },
-            commercial: {
-              opportunitySignal: "Revenue Growth & Sales Performance",
-              articles: [
-                { headline: `${project.companyName} Misses Q3 Revenue Target by 15%`, date: "Nov 24, 2024", source: "Industry Week", summary: "Sales underperformance driving urgent commercial effectiveness review", opportunityType: "Sales Performance" },
-                { headline: `${project.companyName} Expands into 5 New Markets`, date: "Nov 16, 2024", source: "Sales Management", summary: "Go-to-market transformation needed for new territories", opportunityType: "GTM Expansion" }
-              ],
-              howWeHelp: [
-                "Sales force effectiveness assessment",
-                "Sales talent profiling and development",
-                "Incentive compensation redesign",
-                "Sales methodology implementation"
-              ],
-              potentialValue: "$2-4M"
-            }
-          } : null;
 
           const themeLabels: Record<string, { name: string; color: string; icon: any }> = {
             leadership: { name: "Leadership Development", color: "blue", icon: Users },
@@ -5411,357 +5421,331 @@ export default function ProjectRoleView() {
             commercial: { name: "Sales Effectiveness", color: "rose", icon: TrendingUp }
           };
           
+          // Loading state
+          if (isLoadingIntelligence) {
+            return (
+              <Card className="border-primary/20">
+                <CardContent className="py-16 text-center">
+                  <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Gathering Live Intelligence</h3>
+                  <p className="text-muted-foreground">Researching {project.companyName} for {selectedTheme?.label || selectedDiscoveryTheme}...</p>
+                  <p className="text-sm text-muted-foreground mt-2">This may take 10-20 seconds</p>
+                </CardContent>
+              </Card>
+            );
+          }
+          
+          // Error state
+          if (intelligenceError) {
+            return (
+              <Card className="border-destructive/20">
+                <CardContent className="py-12 text-center">
+                  <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Intelligence Generation Failed</h3>
+                  <p className="text-muted-foreground mb-4">{intelligenceError}</p>
+                  <Button 
+                    onClick={() => {
+                      setIntelligenceError(null);
+                      setIsLoadingIntelligence(true);
+                      fetchLiveIntelligenceMutation.mutate(selectedDiscoveryTheme || "");
+                    }}
+                    data-testid="button-retry-intelligence"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Try Again
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          }
+          
+          // No data yet
+          if (!liveIntelligence) {
+            return (
+              <Card className="border-primary/20">
+                <CardContent className="py-12 text-center">
+                  <Sparkles className="w-12 h-12 text-primary mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Ready to Generate Intelligence</h3>
+                  <p className="text-muted-foreground mb-4">Click below to fetch live company data for {project.companyName}</p>
+                  <Button 
+                    onClick={() => {
+                      setIsLoadingIntelligence(true);
+                      fetchLiveIntelligenceMutation.mutate(selectedDiscoveryTheme || "");
+                    }}
+                    data-testid="button-generate-intelligence"
+                  >
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Generate Live Intelligence
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          }
+          
+          // Live data available - render it
           return (
             <>
-              {/* Recent News & Press - Different display for Full Search vs Focused */}
-              {isFullSearch ? (
-                <Card className="border-primary/20">
-                  <CardHeader className="bg-gradient-to-r from-primary/5 to-blue-500/5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <Building2 className="w-5 h-5 text-primary" />
-                        </div>
-                        <div>
-                          <CardTitle>Korn Ferry Opportunity Intelligence</CardTitle>
-                          <CardDescription>AI-identified opportunities mapped to Korn Ferry solutions</CardDescription>
-                        </div>
+              {/* Company Overview Card */}
+              <Card className="border-primary/20 mb-4">
+                <CardHeader className="bg-gradient-to-r from-primary/5 to-blue-500/5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Building2 className="w-5 h-5 text-primary" />
                       </div>
-                      <Badge className="bg-primary/10 text-primary border-primary/20">Full Search Active</Badge>
+                      <div>
+                        <CardTitle>{project.companyName} - Live Intelligence</CardTitle>
+                        <CardDescription>AI-powered research for {selectedTheme?.label || selectedDiscoveryTheme}</CardDescription>
+                      </div>
                     </div>
-                  </CardHeader>
-                  <CardContent className="pt-6">
-                    <div className="space-y-6">
-                      {Object.entries(opportunityData!).map(([themeKey, data]) => {
-                        const themeMeta = themeLabels[themeKey];
-                        const ThemeIcon = themeMeta.icon;
-                        const colorClasses: Record<string, string> = {
-                          blue: "border-blue-500/30 bg-blue-500/5",
-                          purple: "border-purple-500/30 bg-purple-500/5",
-                          emerald: "border-emerald-500/30 bg-emerald-500/5",
-                          amber: "border-amber-500/30 bg-amber-500/5",
-                          rose: "border-rose-500/30 bg-rose-500/5"
-                        };
-                        const iconColors: Record<string, string> = {
-                          blue: "text-blue-600",
-                          purple: "text-purple-600",
-                          emerald: "text-emerald-600",
-                          amber: "text-amber-600",
-                          rose: "text-rose-600"
-                        };
-                        const bgColors: Record<string, string> = {
-                          blue: "bg-blue-600",
-                          purple: "bg-purple-600",
-                          emerald: "bg-emerald-600",
-                          amber: "bg-amber-600",
-                          rose: "bg-rose-600"
-                        };
-                        return (
-                          <div key={themeKey} className={`rounded-xl border-2 overflow-hidden ${colorClasses[themeMeta.color]}`}>
-                            {/* Header with opportunity signal */}
-                            <div className={`px-4 py-3 ${bgColors[themeMeta.color]} text-white`}>
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <ThemeIcon className="w-5 h-5" />
-                                  <div>
-                                    <h4 className="font-bold text-sm">{themeMeta.name}</h4>
-                                    <p className="text-xs opacity-90">{data.opportunitySignal}</p>
-                                  </div>
-                                </div>
-                                <Badge className="bg-white/20 text-white border-white/30 text-xs">
-                                  Est. {data.potentialValue}
-                                </Badge>
-                              </div>
-                            </div>
-                            
-                            <div className="p-4">
-                              {/* Evidence from news */}
-                              <div className="mb-4">
-                                <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                                  Opportunity Evidence
-                                </h5>
-                                <div className="space-y-2">
-                                  {data.articles.map((article, idx) => (
-                                    <div key={idx} className="p-3 rounded-lg bg-background border hover-elevate">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <Badge variant="outline" className="text-xs">{article.opportunityType}</Badge>
-                                        <span className="text-xs text-muted-foreground">{article.date} • {article.source}</span>
-                                      </div>
-                                      <p className="text-sm font-medium">{article.headline}</p>
-                                      <p className="text-xs text-muted-foreground mt-1">{article.summary}</p>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                              
-                              {/* How Korn Ferry helps */}
-                              <div className={`p-3 rounded-lg ${colorClasses[themeMeta.color]}`}>
-                                <h5 className="text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1">
-                                  <Sparkles className={`w-3 h-3 ${iconColors[themeMeta.color]}`} />
-                                  How Korn Ferry Helps
-                                </h5>
-                                <ul className="space-y-1">
-                                  {data.howWeHelp.map((item, idx) => (
-                                    <li key={idx} className="text-sm flex items-start gap-2">
-                                      <CheckCircle className={`w-4 h-4 ${iconColors[themeMeta.color]} mt-0.5 flex-shrink-0`} />
-                                      {item}
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Live Data
+                      </Badge>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          setLiveIntelligence(null);
+                          setIsLoadingIntelligence(true);
+                          fetchLiveIntelligenceMutation.mutate(selectedDiscoveryTheme || "");
+                        }}
+                        data-testid="button-refresh-intelligence"
+                      >
+                        <RefreshCw className="w-3 h-3 mr-1" />
+                        Refresh
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                    <div className="p-3 rounded-lg bg-muted/50">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Industry</p>
+                      <p className="text-sm font-medium">{liveIntelligence.companyOverview.industry}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-muted/50">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Headquarters</p>
+                      <p className="text-sm font-medium">{liveIntelligence.companyOverview.headquarters}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-muted/50">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Employees</p>
+                      <p className="text-sm font-medium">{liveIntelligence.companyOverview.employeeCount}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-muted/50">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Revenue</p>
+                      <p className="text-sm font-medium">{liveIntelligence.companyOverview.revenue}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-muted/50 md:col-span-2">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Overview</p>
+                      <p className="text-sm">{liveIntelligence.companyOverview.description}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* Theme-Specific Opportunity Card */}
+              <Card className="border-primary/20 mb-4">
+                <CardHeader className="bg-gradient-to-r from-purple-500/10 to-blue-500/10">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                      <Target className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        Opportunity Signal
+                        <Badge className="bg-purple-500/10 text-purple-600">{liveIntelligence.themeSpecificInsights.potentialValue}</Badge>
+                      </CardTitle>
+                      <CardDescription>{liveIntelligence.themeSpecificInsights.opportunitySignal}</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-primary" />
+                        How Korn Ferry Can Help
+                      </h4>
+                      <ul className="space-y-2">
+                        {liveIntelligence.themeSpecificInsights.howWeHelp.map((item, idx) => (
+                          <li key={idx} className="text-sm flex items-start gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                        <HelpCircle className="w-4 h-4 text-blue-500" />
+                        Key Discovery Questions
+                      </h4>
+                      <ul className="space-y-2">
+                        {liveIntelligence.themeSpecificInsights.keyQuestions.map((q, idx) => (
+                          <li key={idx} className="text-sm p-2 rounded bg-blue-500/5 border border-blue-500/20">
+                            {q}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* Recent News */}
+              <Card className="border-primary/20 mb-4">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <Newspaper className="w-5 h-5 text-primary" />
+                    <CardTitle>Recent News & Developments</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {liveIntelligence.recentNews.map((news, idx) => (
+                      <div key={idx} className={`p-3 rounded-lg border ${
+                        news.relevance === 'high' ? 'border-red-500/30 bg-red-500/5' : 
+                        news.relevance === 'medium' ? 'border-amber-500/30 bg-amber-500/5' : 
+                        'border-muted bg-muted/30'
+                      }`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{news.headline}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{news.summary}</p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <Badge variant="outline" className="text-xs">{news.source}</Badge>
+                              <span className="text-xs text-muted-foreground">{news.date}</span>
+                              {news.opportunityType && (
+                                <Badge className="text-xs bg-primary/10 text-primary">{news.opportunityType}</Badge>
+                              )}
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card className="border-amber-500/20">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center gap-2">
-                        <Newspaper className="w-5 h-5 text-amber-600" />
-                        Recent News & Press
-                      </CardTitle>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">{selectedTheme?.name}</Badge>
-                        <Badge variant="outline" className="text-amber-600 border-amber-500/30 bg-amber-500/5">
-                          AI Monitored
-                        </Badge>
+                          <Badge variant="outline" className={`text-xs shrink-0 ${
+                            news.relevance === 'high' ? 'text-red-600 border-red-500/30' : 
+                            news.relevance === 'medium' ? 'text-amber-600 border-amber-500/30' : 
+                            'text-muted-foreground'
+                          }`}>
+                            {news.relevance}
+                          </Badge>
+                        </div>
                       </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* Strategic Insights */}
+              <Card className="border-primary/20 mb-4">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <Lightbulb className="w-5 h-5 text-amber-500" />
+                    <CardTitle>Strategic Insights</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {liveIntelligence.strategicInsights.map((insight, idx) => (
+                      <div key={idx} className="p-4 rounded-lg border bg-card hover-elevate">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <h4 className="text-sm font-semibold">{insight.title}</h4>
+                          <Badge className="text-xs bg-green-500/10 text-green-600 shrink-0">{insight.potentialValue}</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-3">{insight.insight}</p>
+                        <div className="p-2 rounded bg-primary/5 border border-primary/20">
+                          <p className="text-xs font-medium text-primary">{insight.kfOpportunity}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{insight.relevantCapability}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* Key Executives & Competitors */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <Card className="border-primary/20">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <Users className="w-5 h-5 text-blue-500" />
+                      <CardTitle className="text-base">Key Executives</CardTitle>
                     </div>
-                    <CardDescription>Latest company news filtered by {selectedTheme?.name || "selected theme"}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {marketIntel.recentNews.map((news, idx) => (
-                        <div 
-                          key={idx} 
-                          className={`p-3 rounded-lg border hover-elevate ${news.relevance === "high" ? "border-amber-500/30 bg-amber-500/5" : ""}`}
-                          data-testid={`card-news-${idx}`}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="text-xs text-muted-foreground">{news.date}</span>
-                                <span className="text-xs text-muted-foreground">•</span>
-                                <a 
-                                  href={news.sourceUrl} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="text-xs font-medium text-primary hover:underline flex items-center gap-1"
-                                  data-testid={`link-news-source-${idx}`}
-                                >
-                                  {news.source}
-                                  <ExternalLink className="w-3 h-3" />
-                                </a>
-                                {news.relevance === "high" && (
-                                  <Badge className="text-xs bg-amber-500/10 text-amber-700 border-amber-500/20">
-                                    High Relevance
-                                  </Badge>
-                                )}
-                              </div>
-                              <a 
-                                href={news.sourceUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="block"
-                                data-testid={`link-news-${idx}`}
-                              >
-                                <h4 className="font-semibold text-sm mb-1 hover:text-primary cursor-pointer">{news.headline}</h4>
-                              </a>
-                              <p className="text-xs text-muted-foreground">{news.summary}</p>
-                            </div>
-                            <a 
-                              href={news.sourceUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="hover:text-primary"
-                            >
-                              <ExternalLink className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                            </a>
-                          </div>
+                      {liveIntelligence.keyPeople.map((person, idx) => (
+                        <div key={idx} className="p-3 rounded-lg border bg-muted/30">
+                          <p className="text-sm font-medium">{person.name}</p>
+                          <p className="text-xs text-muted-foreground">{person.title}</p>
+                          <p className="text-xs text-blue-600 mt-1">{person.relevance}</p>
                         </div>
                       ))}
                     </div>
                   </CardContent>
                 </Card>
-              )}
-
-              {/* Annual Report & Earnings Insights */}
-              <div className="grid gap-6 md:grid-cols-2">
-                {/* Annual Report Highlights */}
-                <Card className="border-blue-500/20">
+                
+                <Card className="border-primary/20">
                   <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center gap-2">
-                        <FileText className="w-5 h-5 text-blue-600" />
-                        Annual Report
-                      </CardTitle>
-                      <Badge variant="outline" className="text-xs">{marketIntel.annualReportHighlights.fiscalYear}</Badge>
+                    <div className="flex items-center gap-3">
+                      <Building2 className="w-5 h-5 text-purple-500" />
+                      <CardTitle className="text-base">Key Competitors</CardTitle>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/20">
-                        <p className="text-xs text-muted-foreground">Revenue</p>
-                        <p className="font-bold">{marketIntel.annualReportHighlights.revenue}</p>
-                      </div>
-                      <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/20">
-                        <p className="text-xs text-muted-foreground">Headcount</p>
-                        <p className="font-bold">{marketIntel.annualReportHighlights.headcount}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <h5 className="text-xs font-semibold text-muted-foreground mb-2">STRATEGIC PRIORITIES</h5>
-                      <ul className="space-y-1">
-                        {marketIntel.annualReportHighlights.strategicPriorities.map((priority, idx) => (
-                          <li key={idx} className="text-sm flex items-start gap-2">
-                            <Target className="w-3 h-3 text-blue-600 mt-1 flex-shrink-0" />
-                            {priority}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div>
-                      <h5 className="text-xs font-semibold text-muted-foreground mb-2">HR INITIATIVES</h5>
-                      <ul className="space-y-1">
-                        {marketIntel.annualReportHighlights.hrInitiatives.map((initiative, idx) => (
-                          <li key={idx} className="text-sm flex items-start gap-2">
-                            <Users className="w-3 h-3 text-purple-600 mt-1 flex-shrink-0" />
-                            {initiative}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Earnings Call Insights */}
-                <Card className="border-emerald-500/20">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center gap-2">
-                        <BarChart3 className="w-5 h-5 text-emerald-600" />
-                        Earnings Call
-                      </CardTitle>
-                      <Badge variant="outline" className="text-xs">{marketIntel.earningsCallInsights.quarter}</Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <h5 className="text-xs font-semibold text-muted-foreground mb-2">CEO QUOTES</h5>
-                      <div className="space-y-2">
-                        {marketIntel.earningsCallInsights.ceoQuotes.map((quote, idx) => (
-                          <div key={idx} className="p-2 rounded bg-emerald-500/5 border-l-2 border-emerald-500 text-sm italic">
-                            "{quote}"
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <h5 className="text-xs font-semibold text-muted-foreground mb-2">TALENT MENTIONS</h5>
-                      <ul className="space-y-1">
-                        {marketIntel.earningsCallInsights.talentMentions.map((mention, idx) => (
-                          <li key={idx} className="text-sm flex items-start gap-2">
-                            <CheckCircle className="w-3 h-3 text-emerald-600 mt-1 flex-shrink-0" />
-                            {mention}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div>
-                      <h5 className="text-xs font-semibold text-muted-foreground mb-2">CHALLENGES DISCUSSED</h5>
-                      <ul className="space-y-1">
-                        {marketIntel.earningsCallInsights.challengesDiscussed.map((challenge, idx) => (
-                          <li key={idx} className="text-sm flex items-start gap-2">
-                            <AlertTriangle className="w-3 h-3 text-amber-600 mt-1 flex-shrink-0" />
-                            {challenge}
-                          </li>
-                        ))}
-                      </ul>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {liveIntelligence.competitors.map((comp, idx) => (
+                        <div key={idx} className="p-3 rounded-lg border bg-muted/30">
+                          <p className="text-sm font-medium">{comp.name}</p>
+                          <p className="text-xs text-muted-foreground">{comp.description}</p>
+                          <p className="text-xs text-purple-600 mt-1">{comp.competitivePosition}</p>
+                        </div>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
               </div>
+              
+              {/* Generated timestamp */}
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-xs text-muted-foreground">
+                  Intelligence generated: {new Date(liveIntelligence.generatedAt).toLocaleString()}
+                </p>
+              </div>
 
-              {/* Industry Trends & Opportunities */}
-              <Card className="border-purple-500/20">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-purple-600" />
-                    Industry Trends & Korn Ferry Opportunities
-                  </CardTitle>
-                  <CardDescription>Market dynamics and how to position our solutions • Highlights match your selected theme</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {marketIntel.industryTrends.map((trend, idx) => {
-                      const isFullSearch = selectedDiscoveryTheme === "kf-full-search";
-                      const matchesTheme = isFullSearch || (selectedDiscoveryTheme && trend.themes.includes(selectedDiscoveryTheme));
-                      const currentTheme = discoveryThemes.find(t => t.id === selectedDiscoveryTheme);
-                      
-                      return (
-                        <div 
-                          key={idx} 
-                          className={`p-4 rounded-lg border hover-elevate transition-all ${
-                            matchesTheme 
-                              ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20" 
-                              : ""
-                          }`}
-                          data-testid={`card-trend-${idx}`}
-                        >
-                          <div className="flex items-start justify-between gap-2 mb-2">
-                            <h4 className="font-semibold text-sm flex items-center gap-2">
-                              <Lightbulb className={`w-4 h-4 ${matchesTheme ? "text-primary" : "text-purple-600"}`} />
-                              {trend.trend}
-                            </h4>
-                            {matchesTheme && (
-                              <Badge className="bg-primary/10 text-primary border-primary/20 text-xs flex-shrink-0">
-                                <CheckCircle className="w-3 h-3 mr-1" />
-                                {isFullSearch ? "Relevant" : currentTheme?.name}
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex items-start gap-2">
-                              <span className="text-xs font-medium text-muted-foreground w-16">Impact:</span>
-                              <span className="flex-1">{trend.impact}</span>
-                            </div>
-                            <div className={`flex items-start gap-2 p-2 rounded ${
-                              matchesTheme 
-                                ? "bg-primary/10 border border-primary/30" 
-                                : "bg-purple-500/5 border border-purple-500/20"
-                            }`}>
-                              <Sparkles className={`w-3 h-3 mt-1 ${matchesTheme ? "text-primary" : "text-purple-600"}`} />
-                              <span className={`flex-1 font-medium ${matchesTheme ? "text-primary" : "text-purple-700"}`}>{trend.opportunity}</span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Competitive Intelligence Section */}
+              <CompetitiveIntelligence
+                projectId={project.id}
+                companyName={project.companyName}
+                solutionAreas={selectedDiscoveryTheme ? 
+                  (selectedDiscoveryTheme === "kf-full-search" 
+                    ? ["ASSESS", "DEVELOP", "TRANSFORM", "REWARD", "COMMERCIAL", "ANALYTICS"]
+                    : selectedDiscoveryTheme === "leadership" ? ["DEVELOP", "ASSESS"]
+                    : selectedDiscoveryTheme === "talent" ? ["ASSESS", "DEVELOP"]
+                    : selectedDiscoveryTheme === "transformation" ? ["TRANSFORM", "ANALYTICS"]
+                    : selectedDiscoveryTheme === "rewards" ? ["REWARD"]
+                    : selectedDiscoveryTheme === "commercial" ? ["COMMERCIAL"]
+                    : ["ASSESS", "DEVELOP", "TRANSFORM"]
+                  ) : undefined
+                }
+              />
 
-              {/* CRM Pipeline & Opportunities - Condensed Collapsible View */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                      <Database className="w-5 h-5 text-blue-600" />
-                      Salesforce Pipeline
-                    </CardTitle>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-xs">Demo Data</Badge>
-                      <span className="text-lg font-bold text-primary">
-                        ${(sfData.opportunities.reduce((sum, o) => sum + o.amount, 0) / 1000000).toFixed(2)}M
-                      </span>
-                    </div>
-                  </div>
-                  <CardDescription>{sfData.opportunities.length} active opportunities • Click to expand details</CardDescription>
-                </CardHeader>
+              {/* Navigation for Intelligence Step */}
+              <div className="flex justify-between">
+                <Button variant="outline" onClick={() => setDiscoveryStep("theme-select")} data-testid="button-back-to-theme">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to Theme
+                </Button>
+                <Button onClick={() => setDiscoveryStep("questions")} data-testid="button-next-to-questions">
+                  Continue to Client Interaction
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </div>
+            </>
+          );
+        })()}
+
+        {/* OLD_DEMO_CODE_BLOCK_B */}
                 <CardContent>
                   <div className="space-y-3">
                     {sfData.opportunities.map((opp) => {
@@ -6032,18 +6016,6 @@ export default function ProjectRoleView() {
                   ) : undefined
                 }
               />
-
-              {/* Navigation for Intelligence Step */}
-              <div className="flex justify-between">
-                <Button variant="outline" onClick={() => setDiscoveryStep("theme-select")} data-testid="button-back-to-theme">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Theme
-                </Button>
-                <Button onClick={() => setDiscoveryStep("questions")} data-testid="button-next-to-questions">
-                  Continue to Client Interaction
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </div>
             </>
           );
         })()}
