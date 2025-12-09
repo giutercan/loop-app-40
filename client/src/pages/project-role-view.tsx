@@ -1441,8 +1441,14 @@ export default function ProjectRoleView() {
   const [liveIntelligence, setLiveIntelligence] = useState<LiveIntelligenceData | null>(null);
   const [isLoadingIntelligence, setIsLoadingIntelligence] = useState(false);
   const [intelligenceError, setIntelligenceError] = useState<string | null>(null);
+  const [intelligenceIsSaved, setIntelligenceIsSaved] = useState(false);
   
-  // Mutation to fetch live intelligence
+  // Probe chat state
+  const [probeQuestion, setProbeQuestion] = useState("");
+  const [probeHistory, setProbeHistory] = useState<Array<{role: "user" | "assistant"; content: string; timestamp: string}>>([]);
+  const [isProbing, setIsProbing] = useState(false);
+  
+  // Mutation to fetch live intelligence (generate new)
   const fetchLiveIntelligenceMutation = useMutation({
     mutationFn: async (discoveryTheme: string) => {
       const res = await apiRequest("POST", `/api/projects/${projectId}/live-intelligence`, { discoveryTheme });
@@ -1452,6 +1458,8 @@ export default function ProjectRoleView() {
       setLiveIntelligence(data);
       setIsLoadingIntelligence(false);
       setIntelligenceError(null);
+      setIntelligenceIsSaved(true); // Auto-saved on backend
+      setProbeHistory([]); // Reset probe history for new generation
     },
     onError: (error: any) => {
       console.error("Failed to fetch live intelligence:", error);
@@ -1465,18 +1473,66 @@ export default function ProjectRoleView() {
     }
   });
   
-  // Auto-fetch intelligence when moving to intelligence step
-  useEffect(() => {
-    if (discoveryStep === "intelligence" && selectedDiscoveryTheme && !liveIntelligence && !isLoadingIntelligence && !intelligenceError) {
-      setIsLoadingIntelligence(true);
-      fetchLiveIntelligenceMutation.mutate(selectedDiscoveryTheme);
+  // Mutation to probe the intelligence (ask follow-up questions)
+  const probeIntelligenceMutation = useMutation({
+    mutationFn: async ({ theme, question }: { theme: string; question: string }) => {
+      const res = await apiRequest("POST", `/api/projects/${projectId}/intelligence/${theme}/probe`, { question });
+      return await res.json() as { question: string; answer: string; timestamp: string };
+    },
+    onSuccess: (data) => {
+      setProbeHistory(prev => [
+        ...prev,
+        { role: "user" as const, content: data.question, timestamp: data.timestamp },
+        { role: "assistant" as const, content: data.answer, timestamp: data.timestamp }
+      ]);
+      setProbeQuestion("");
+      setIsProbing(false);
+    },
+    onError: (error: any) => {
+      console.error("Failed to probe intelligence:", error);
+      setIsProbing(false);
+      toast({ 
+        title: "Question Failed", 
+        description: "Could not process your question. Please try again.", 
+        variant: "destructive" 
+      });
     }
+  });
+  
+  // Auto-fetch intelligence when moving to intelligence step (try loading saved first)
+  useEffect(() => {
+    const loadIntelligence = async () => {
+      if (discoveryStep === "intelligence" && selectedDiscoveryTheme && !liveIntelligence && !isLoadingIntelligence && !intelligenceError) {
+        setIsLoadingIntelligence(true);
+        
+        // Try to load saved intelligence first
+        try {
+          const savedRes = await fetch(`/api/projects/${projectId}/intelligence/${selectedDiscoveryTheme}`);
+          if (savedRes.ok) {
+            const savedData = await savedRes.json();
+            setLiveIntelligence(savedData as LiveIntelligenceData);
+            setIntelligenceIsSaved(true);
+            setProbeHistory(savedData.probeHistory || []);
+            setIsLoadingIntelligence(false);
+            return;
+          }
+        } catch (e) {
+          // No saved intelligence, generate new
+        }
+        
+        // No saved intelligence found, generate new
+        fetchLiveIntelligenceMutation.mutate(selectedDiscoveryTheme);
+      }
+    };
+    loadIntelligence();
   }, [discoveryStep, selectedDiscoveryTheme, liveIntelligence, isLoadingIntelligence, intelligenceError]);
   
   // Reset intelligence when theme changes
   useEffect(() => {
     setLiveIntelligence(null);
     setIntelligenceError(null);
+    setIntelligenceIsSaved(false);
+    setProbeHistory([]);
   }, [selectedDiscoveryTheme]);
   
   const [narrativeCanvasInitialized, setNarrativeCanvasInitialized] = useState(false);
@@ -5730,9 +5786,90 @@ export default function ProjectRoleView() {
                   ) : undefined
                 }
               />
+              
+              {/* Probe Intelligence Chat Box */}
+              {intelligenceIsSaved && (
+                <Card className="mt-6 border-purple-200 bg-gradient-to-br from-purple-50/50 to-background">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <MessageSquare className="w-5 h-5 text-purple-600" />
+                      Ask Follow-up Questions
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Probe deeper into the intelligence. Ask questions about strategy, challenges, opportunities, or anything else you'd like to explore.
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Probe History */}
+                    {probeHistory.length > 0 && (
+                      <div className="space-y-3 max-h-64 overflow-y-auto border rounded-lg p-3 bg-background">
+                        {probeHistory.map((msg, idx) => (
+                          <div 
+                            key={idx} 
+                            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                          >
+                            <div 
+                              className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
+                                msg.role === "user" 
+                                  ? "bg-purple-600 text-white" 
+                                  : "bg-muted"
+                              }`}
+                            >
+                              <p className="whitespace-pre-wrap">{msg.content}</p>
+                              <p className="text-xs opacity-60 mt-1">
+                                {new Date(msg.timestamp).toLocaleTimeString()}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Input Area */}
+                    <div className="flex gap-2">
+                      <Input
+                        value={probeQuestion}
+                        onChange={(e) => setProbeQuestion(e.target.value)}
+                        placeholder="e.g., What are the main leadership challenges they're facing?"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && probeQuestion.trim() && !isProbing && selectedDiscoveryTheme) {
+                            setIsProbing(true);
+                            probeIntelligenceMutation.mutate({ theme: selectedDiscoveryTheme, question: probeQuestion.trim() });
+                          }
+                        }}
+                        disabled={isProbing}
+                        data-testid="input-probe-question"
+                        className="flex-1"
+                      />
+                      <Button
+                        onClick={() => {
+                          if (probeQuestion.trim() && selectedDiscoveryTheme) {
+                            setIsProbing(true);
+                            probeIntelligenceMutation.mutate({ theme: selectedDiscoveryTheme, question: probeQuestion.trim() });
+                          }
+                        }}
+                        disabled={!probeQuestion.trim() || isProbing}
+                        data-testid="button-submit-probe"
+                      >
+                        {isProbing ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Thinking...
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-4 h-4 mr-2" />
+                            Ask
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Navigation for Intelligence Step */}
-              <div className="flex justify-between">
+              <div className="flex justify-between mt-6">
                 <Button variant="outline" onClick={() => setDiscoveryStep("theme-select")} data-testid="button-back-to-theme">
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Back to Theme

@@ -383,6 +383,35 @@ export const insertProjectSchema = createInsertSchema(projects).omit({
 export type InsertProject = z.infer<typeof insertProjectSchema>;
 export type Project = typeof projects.$inferSelect;
 
+// Project Intelligence - Persisted AI-generated company research for Discovery workflow
+export const projectIntelligence = pgTable("project_intelligence", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  discoveryTheme: text("discovery_theme").notNull(), // Theme ID (e.g., "leadership", "talent-acquisition")
+  
+  // AI-generated intelligence data (stored as raw JSON to match LiveIntelligenceResult from ai.ts)
+  intelligenceData: jsonb("intelligence_data").$type<Record<string, any>>().notNull(),
+  
+  // Probe conversation history (optional)
+  probeHistory: jsonb("probe_history").$type<Array<{
+    role: "user" | "assistant";
+    content: string;
+    timestamp: string;
+  }>>(),
+  
+  // Metadata
+  generatedAt: timestamp("generated_at").defaultNow().notNull(),
+  regeneratedAt: timestamp("regenerated_at"),
+  generatedBy: text("generated_by"), // User who triggered generation
+});
+
+export const insertProjectIntelligenceSchema = createInsertSchema(projectIntelligence).omit({
+  id: true,
+  generatedAt: true,
+});
+export type InsertProjectIntelligence = z.infer<typeof insertProjectIntelligenceSchema>;
+export type ProjectIntelligence = typeof projectIntelligence.$inferSelect;
+
 // Company Data Points with confidence and provenance
 export const companyDataPoints = pgTable("company_data_points", {
   id: serial("id").primaryKey(),

@@ -1137,6 +1137,13 @@ export function registerRoutes(app: Express) {
         project.sector || undefined
       );
 
+      // Auto-save the intelligence to database for persistence
+      await storage.saveProjectIntelligence({
+        projectId,
+        discoveryTheme,
+        intelligenceData: intelligence as Record<string, any>
+      });
+      
       res.json(intelligence);
     } catch (error: any) {
       console.error("[Live Intelligence] Error:", error);
@@ -1144,6 +1151,101 @@ export function registerRoutes(app: Express) {
         error: "Failed to generate live intelligence",
         details: error.message 
       });
+    }
+  });
+  
+  // GET saved intelligence (load from database)
+  app.get("/api/projects/:projectId/intelligence/:theme", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const { theme } = req.params;
+      
+      const saved = await storage.getProjectIntelligence(projectId, theme);
+      if (!saved) {
+        return res.status(404).json({ error: "No saved intelligence found for this theme" });
+      }
+      
+      // Return in same format as live intelligence
+      res.json({
+        ...saved.intelligenceData,
+        generatedAt: saved.regeneratedAt?.toISOString() || saved.generatedAt.toISOString(),
+        savedId: saved.id,
+        probeHistory: saved.probeHistory || []
+      });
+    } catch (error: any) {
+      console.error("[Load Intelligence] Error:", error);
+      res.status(500).json({ error: "Failed to load saved intelligence" });
+    }
+  });
+  
+  // POST probe the intelligence (ask follow-up questions)
+  app.post("/api/projects/:projectId/intelligence/:theme/probe", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const { theme } = req.params;
+      const { question } = req.body;
+      
+      if (!question || typeof question !== 'string') {
+        return res.status(400).json({ error: "Question is required" });
+      }
+      
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Get existing intelligence for context
+      const saved = await storage.getProjectIntelligence(projectId, theme);
+      if (!saved) {
+        return res.status(404).json({ error: "No saved intelligence found. Generate intelligence first." });
+      }
+      
+      // Build context from saved intelligence
+      const intelligenceContext = JSON.stringify(saved.intelligenceData, null, 2);
+      
+      // Call OpenAI to answer the probe question
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are a Korn Ferry strategic consultant assistant. You have access to detailed intelligence about ${project.companyName} that was gathered for a ${theme} discovery engagement.
+
+Use this intelligence to answer the user's follow-up questions with strategic, actionable insights relevant to Korn Ferry's consulting capabilities.
+
+Intelligence Context:
+${intelligenceContext}
+
+Be concise but comprehensive. Focus on strategic implications and actionable recommendations for the engagement.`
+          },
+          {
+            role: "user",
+            content: question
+          }
+        ],
+        max_tokens: 1000,
+        temperature: 0.7
+      });
+      
+      const answer = response.choices[0].message.content || "Unable to generate response.";
+      
+      // Save the probe to history
+      const probeHistory = saved.probeHistory || [];
+      const newEntry = [
+        { role: "user" as const, content: question, timestamp: new Date().toISOString() },
+        { role: "assistant" as const, content: answer, timestamp: new Date().toISOString() }
+      ];
+      
+      await storage.updateProjectIntelligenceProbeHistory(saved.id, [...probeHistory, ...newEntry]);
+      
+      res.json({
+        question,
+        answer,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      console.error("[Probe Intelligence] Error:", error);
+      res.status(500).json({ error: "Failed to process probe question" });
     }
   });
 

@@ -56,7 +56,8 @@ import type {
   KpiCommitment, InsertKpiCommitment,
   HandoffPacket, InsertHandoffPacket,
   AiSession, InsertAiSession,
-  AiMessage, InsertAiMessage
+  AiMessage, InsertAiMessage,
+  ProjectIntelligence, InsertProjectIntelligence
 } from "@shared/schema";
 
 export interface IStorage {
@@ -389,6 +390,11 @@ export interface IStorage {
   getAiMessages(sessionId: string): Promise<AiMessage[]>;
   createAiMessage(message: InsertAiMessage): Promise<AiMessage>;
   deleteAiMessages(sessionId: string): Promise<void>;
+  
+  // Project Intelligence (persisted AI research)
+  getProjectIntelligence(projectId: number, discoveryTheme: string): Promise<ProjectIntelligence | undefined>;
+  saveProjectIntelligence(intelligence: InsertProjectIntelligence): Promise<ProjectIntelligence>;
+  updateProjectIntelligenceProbeHistory(id: number, probeHistory: ProjectIntelligence['probeHistory']): Promise<ProjectIntelligence | undefined>;
 }
 
 export class DbStorage implements IStorage {
@@ -2190,6 +2196,44 @@ export class DbStorage implements IStorage {
   
   async deleteAiMessages(sessionId: string): Promise<void> {
     await db.delete(schema.aiMessages).where(eq(schema.aiMessages.sessionId, sessionId));
+  }
+  
+  // Project Intelligence (persisted AI research)
+  async getProjectIntelligence(projectId: number, discoveryTheme: string): Promise<ProjectIntelligence | undefined> {
+    const result = await db.select().from(schema.projectIntelligence)
+      .where(and(
+        eq(schema.projectIntelligence.projectId, projectId),
+        eq(schema.projectIntelligence.discoveryTheme, discoveryTheme)
+      ))
+      .limit(1);
+    return result[0];
+  }
+  
+  async saveProjectIntelligence(intelligence: InsertProjectIntelligence): Promise<ProjectIntelligence> {
+    // Upsert: if exists for this project+theme, update; otherwise insert
+    const existing = await this.getProjectIntelligence(intelligence.projectId, intelligence.discoveryTheme);
+    if (existing) {
+      const [updated] = await db.update(schema.projectIntelligence)
+        .set({
+          ...intelligence,
+          regeneratedAt: new Date()
+        })
+        .where(eq(schema.projectIntelligence.id, existing.id))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(schema.projectIntelligence).values(intelligence).returning();
+    return created;
+  }
+  
+  async updateProjectIntelligenceProbeHistory(id: number, probeHistory: ProjectIntelligence['probeHistory']): Promise<ProjectIntelligence | undefined> {
+    // Only update probeHistory field - this uses a specific SQL UPDATE that only touches this column
+    // Drizzle's .set() only generates SET statements for explicitly provided fields
+    const [updated] = await db.update(schema.projectIntelligence)
+      .set({ probeHistory })
+      .where(eq(schema.projectIntelligence.id, id))
+      .returning();
+    return updated;
   }
 }
 
