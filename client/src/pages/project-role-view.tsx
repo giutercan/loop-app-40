@@ -6660,6 +6660,75 @@ export default function ProjectRoleView() {
                         </div>
                       )}
 
+                      {/* Green Sheet - Call Framework (SOURCE FOR AI GENERATION) */}
+                      {meetingAttendees.length >= 2 && (
+                        <div className="p-4 rounded-lg bg-emerald-50 border border-emerald-200 space-y-4 mt-4">
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-5 h-5 text-emerald-600" />
+                            <h5 className="font-semibold text-emerald-800">Green Sheet - Meeting Framework</h5>
+                            <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-300">Context for AI</Badge>
+                          </div>
+                          <div className="grid gap-4 lg:grid-cols-2">
+                            <div className="space-y-4">
+                              <div className="space-y-2">
+                                <Label className="text-xs font-semibold flex items-center gap-1">
+                                  <Target className="w-3 h-3 text-emerald-600" />
+                                  Call Objective
+                                </Label>
+                                <Textarea 
+                                  placeholder={callPlanner.objective}
+                                  value={greenSheetEdits.objective || callPlanner.objective}
+                                  onChange={(e) => setGreenSheetEdits(prev => ({ ...prev, objective: e.target.value }))}
+                                  className="min-h-[70px] text-sm bg-white border-emerald-300 focus:border-emerald-500"
+                                  data-testid="input-call-objective-multi"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-xs font-semibold flex items-center gap-1">
+                                  <CheckCircle className="w-3 h-3 text-emerald-600" />
+                                  Desired Outcome / Commitment
+                                </Label>
+                                <Textarea 
+                                  placeholder={callPlanner.desiredOutcome}
+                                  value={greenSheetEdits.desiredOutcome || callPlanner.desiredOutcome}
+                                  onChange={(e) => setGreenSheetEdits(prev => ({ ...prev, desiredOutcome: e.target.value }))}
+                                  className="min-h-[70px] text-sm bg-white border-emerald-300 focus:border-emerald-500"
+                                  data-testid="input-desired-outcome-multi"
+                                />
+                              </div>
+                            </div>
+                            <div className="space-y-4">
+                              <div className="space-y-2">
+                                <Label className="text-xs font-semibold flex items-center gap-1">
+                                  <MessageCircle className="w-3 h-3 text-emerald-600" />
+                                  Your Opening Statement
+                                </Label>
+                                <Textarea 
+                                  placeholder={callPlanner.openingStatement}
+                                  value={greenSheetEdits.openingStatement || callPlanner.openingStatement}
+                                  onChange={(e) => setGreenSheetEdits(prev => ({ ...prev, openingStatement: e.target.value }))}
+                                  className="min-h-[70px] text-sm bg-white border-emerald-300 focus:border-emerald-500"
+                                  data-testid="input-opening-statement-multi"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-xs font-semibold flex items-center gap-1">
+                                  <ArrowRight className="w-3 h-3 text-emerald-600" />
+                                  Best Action Commitment
+                                </Label>
+                                <Textarea 
+                                  placeholder="What specific next step or commitment will you ask for?"
+                                  value={greenSheetEdits.bestActionCommitment}
+                                  onChange={(e) => setGreenSheetEdits(prev => ({ ...prev, bestActionCommitment: e.target.value }))}
+                                  className="min-h-[70px] text-sm bg-white border-emerald-300 focus:border-emerald-500"
+                                  data-testid="input-best-action-multi"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Generate Combined Story Button */}
                       {meetingAttendees.length >= 2 && (
                         <div className="pt-2">
