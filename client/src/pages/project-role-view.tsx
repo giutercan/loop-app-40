@@ -126,6 +126,7 @@ import { UnifiedJourneyTimeline } from "@/components/UnifiedJourneyTimeline";
 import CompetitiveIntelligence from "@/components/CompetitiveIntelligence";
 import KpiOutcomeSelector from "@/components/KpiOutcomeSelector";
 import { JOURNEY_LOOP_STAGES, UNIFIED_JOURNEY_PHASES, createUnifiedJourney } from "@shared/value-frameworks";
+import { VoiceCommandOverlay, FloatingVoiceButton } from "@/components/VoiceCommandOverlay";
 
 type Role = "sales" | "consultant" | "delivery" | "csm" | "client_sponsor";
 
@@ -1668,6 +1669,79 @@ export default function ProjectRoleView() {
   const [isAnalyzingTranscript, setIsAnalyzingTranscript] = useState(false);
   const [showAddAttendeeDialog, setShowAddAttendeeDialog] = useState(false);
   const [editingAttendee, setEditingAttendee] = useState<MeetingAttendee | null>(null);
+  
+  const [isVoiceCommandOpen, setIsVoiceCommandOpen] = useState(false);
+  const [voiceTargetField, setVoiceTargetField] = useState<string | undefined>();
+  
+  const voiceCommandFields = [
+    { id: "objective", label: "Call Objective", category: "greensheet" as const, icon: Target },
+    { id: "openingStatement", label: "Opening Statement", category: "greensheet" as const, icon: MessageCircle },
+    { id: "desiredOutcome", label: "Desired Outcome", category: "greensheet" as const, icon: CheckCircle },
+    { id: "bestActionCommitment", label: "Best Action", category: "greensheet" as const, icon: ArrowRight },
+    { id: "singleMessage", label: "Single Message", category: "story" as const, icon: MessageSquare },
+    { id: "startingHook", label: "Starting Hook", category: "story" as const, icon: Zap },
+    { id: "heroCharacter", label: "Hero/Characters", category: "story" as const, icon: User },
+    { id: "openingLine", label: "Opening Line", category: "story" as const, icon: Play },
+    { id: "turningPoint", label: "Turning Point", category: "story" as const, icon: TrendingUp },
+    { id: "momentOfMeaning", label: "Moment of Meaning", category: "story" as const, icon: Sparkles },
+    { id: "explicitTakeaway", label: "Takeaway", category: "story" as const, icon: Lightbulb },
+    { id: "callToAction", label: "Call to Action", category: "story" as const, icon: Target },
+  ];
+  
+  const handleVoiceTranscript = useCallback((transcript: string, targetField?: string) => {
+    if (transcript.startsWith("__PHASE__")) {
+      const phase = transcript.replace("__PHASE__", "") as "before" | "during" | "after";
+      setActiveStoryPhase(phase);
+      return;
+    }
+    
+    let fieldUpdated = false;
+    
+    if (targetField) {
+      if (["objective", "openingStatement", "desiredOutcome", "bestActionCommitment"].includes(targetField)) {
+        setGreenSheetEdits(prev => ({ ...prev, [targetField]: transcript }));
+        fieldUpdated = true;
+      } else if (["singleMessage", "startingHook", "heroCharacter", "evidenceToReference", "emotionalReaction"].includes(targetField)) {
+        setStoryBuilderData(prev => ({
+          ...prev,
+          before: { ...prev.before, [targetField]: transcript }
+        }));
+        fieldUpdated = true;
+      } else if (["openingLine", "turningPoint", "keyDataPoints"].includes(targetField)) {
+        setStoryBuilderData(prev => ({
+          ...prev,
+          during: { ...prev.during, [targetField]: transcript }
+        }));
+        fieldUpdated = true;
+      } else if (["momentOfMeaning", "explicitTakeaway", "callToAction"].includes(targetField)) {
+        setStoryBuilderData(prev => ({
+          ...prev,
+          after: { ...prev.after, [targetField]: transcript }
+        }));
+        fieldUpdated = true;
+      }
+      
+      if (fieldUpdated) {
+        toast({
+          title: "Voice input added",
+          description: `Added to ${voiceCommandFields.find(f => f.id === targetField)?.label || targetField}`,
+        });
+      } else {
+        toast({
+          title: "Field not recognized",
+          description: `Could not find field: ${targetField}. Transcript: ${transcript.slice(0, 30)}...`,
+          variant: "destructive",
+        });
+      }
+    } else {
+      toast({
+        title: "Transcript captured",
+        description: transcript.slice(0, 50) + (transcript.length > 50 ? "..." : ""),
+      });
+    }
+    
+    setIsVoiceCommandOpen(false);
+  }, [toast]);
   
   // Mutation to save Green Sheet data
   const saveGreenSheetMutation = useMutation({
@@ -6849,9 +6923,20 @@ export default function ProjectRoleView() {
                     <div className="grid gap-4 lg:grid-cols-2">
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <Label className="text-xs font-semibold flex items-center gap-1">
-                            <Target className="w-3 h-3 text-emerald-600" />
-                            Call Objective
+                          <Label className="text-xs font-semibold flex items-center justify-between">
+                            <span className="flex items-center gap-1">
+                              <Target className="w-3 h-3 text-emerald-600" />
+                              Call Objective
+                            </span>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6 text-primary hover:text-primary/80"
+                              onClick={() => { setVoiceTargetField("objective"); setIsVoiceCommandOpen(true); }}
+                              data-testid="button-voice-objective"
+                            >
+                              <Mic className="w-3 h-3" />
+                            </Button>
                           </Label>
                           <Textarea 
                             placeholder={callPlanner.objective}
@@ -6862,9 +6947,20 @@ export default function ProjectRoleView() {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-xs font-semibold flex items-center gap-1">
-                            <CheckCircle className="w-3 h-3 text-emerald-600" />
-                            Desired Outcome / Commitment
+                          <Label className="text-xs font-semibold flex items-center justify-between">
+                            <span className="flex items-center gap-1">
+                              <CheckCircle className="w-3 h-3 text-emerald-600" />
+                              Desired Outcome / Commitment
+                            </span>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6 text-primary hover:text-primary/80"
+                              onClick={() => { setVoiceTargetField("desiredOutcome"); setIsVoiceCommandOpen(true); }}
+                              data-testid="button-voice-outcome"
+                            >
+                              <Mic className="w-3 h-3" />
+                            </Button>
                           </Label>
                           <Textarea 
                             placeholder={callPlanner.desiredOutcome}
@@ -6877,9 +6973,20 @@ export default function ProjectRoleView() {
                       </div>
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <Label className="text-xs font-semibold flex items-center gap-1">
-                            <MessageCircle className="w-3 h-3 text-emerald-600" />
-                            Your Opening Statement
+                          <Label className="text-xs font-semibold flex items-center justify-between">
+                            <span className="flex items-center gap-1">
+                              <MessageCircle className="w-3 h-3 text-emerald-600" />
+                              Your Opening Statement
+                            </span>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6 text-primary hover:text-primary/80"
+                              onClick={() => { setVoiceTargetField("openingStatement"); setIsVoiceCommandOpen(true); }}
+                              data-testid="button-voice-opening"
+                            >
+                              <Mic className="w-3 h-3" />
+                            </Button>
                           </Label>
                           <Textarea 
                             placeholder={callPlanner.openingStatement}
@@ -6890,9 +6997,20 @@ export default function ProjectRoleView() {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-xs font-semibold flex items-center gap-1">
-                            <ArrowRight className="w-3 h-3 text-emerald-600" />
-                            Best Action Commitment (What you'll ask for)
+                          <Label className="text-xs font-semibold flex items-center justify-between">
+                            <span className="flex items-center gap-1">
+                              <ArrowRight className="w-3 h-3 text-emerald-600" />
+                              Best Action Commitment (What you'll ask for)
+                            </span>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6 text-primary hover:text-primary/80"
+                              onClick={() => { setVoiceTargetField("bestActionCommitment"); setIsVoiceCommandOpen(true); }}
+                              data-testid="button-voice-commitment"
+                            >
+                              <Mic className="w-3 h-3" />
+                            </Button>
                           </Label>
                           <Textarea 
                             placeholder="What specific next step or commitment will you ask for at the end of this call?"
@@ -7095,17 +7213,28 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                             <span className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">1</span>
                             <Label className="font-medium">What's the single (provocative) message?</Label>
                           </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleAiSuggestWithStories("singleMessage", [])}
-                            disabled={aiSuggestionLoading === "singleMessage"}
-                            className="text-primary h-7"
-                            data-testid="button-ai-single-message"
-                          >
-                            {aiSuggestionLoading === "singleMessage" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                            <span className="ml-1 text-xs">Coach</span>
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => { setVoiceTargetField("singleMessage"); setIsVoiceCommandOpen(true); }}
+                              className="text-primary h-7 w-7"
+                              data-testid="button-voice-single-message"
+                            >
+                              <Mic className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleAiSuggestWithStories("singleMessage", [])}
+                              disabled={aiSuggestionLoading === "singleMessage"}
+                              className="text-primary h-7"
+                              data-testid="button-ai-single-message"
+                            >
+                              {aiSuggestionLoading === "singleMessage" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                              <span className="ml-1 text-xs">Coach</span>
+                            </Button>
+                          </div>
                         </div>
                         <p className="text-xs text-muted-foreground mb-2 italic">
                           What is the one idea you need them to remember? Can you express it in one sentence?
@@ -7169,17 +7298,28 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                             <span className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">3</span>
                             <Label className="font-medium">What's the right starting hook?</Label>
                           </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleAiSuggestWithStories("startingHook", [])}
-                            disabled={aiSuggestionLoading === "startingHook"}
-                            className="text-primary h-7"
-                            data-testid="button-ai-hook"
-                          >
-                            {aiSuggestionLoading === "startingHook" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                            <span className="ml-1 text-xs">Coach</span>
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => { setVoiceTargetField("startingHook"); setIsVoiceCommandOpen(true); }}
+                              className="text-primary h-7 w-7"
+                              data-testid="button-voice-hook"
+                            >
+                              <Mic className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleAiSuggestWithStories("startingHook", [])}
+                              disabled={aiSuggestionLoading === "startingHook"}
+                              className="text-primary h-7"
+                              data-testid="button-ai-hook"
+                            >
+                              {aiSuggestionLoading === "startingHook" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                              <span className="ml-1 text-xs">Coach</span>
+                            </Button>
+                          </div>
                         </div>
                         <p className="text-xs text-muted-foreground mb-2 italic">
                           A moment of high tension. A provocative question. A vivid scene ("Picture this…"). A surprising fact or reversal…
@@ -7727,17 +7867,28 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                             <span className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold">3</span>
                             <Label className="font-medium">Call to Action</Label>
                           </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleAiSuggestWithStories("callToAction", [])}
-                            disabled={aiSuggestionLoading === "callToAction"}
-                            className="text-primary h-7"
-                            data-testid="button-ai-cta"
-                          >
-                            {aiSuggestionLoading === "callToAction" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                            <span className="ml-1 text-xs">Coach</span>
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => { setVoiceTargetField("callToAction"); setIsVoiceCommandOpen(true); }}
+                              className="text-primary h-7 w-7"
+                              data-testid="button-voice-cta"
+                            >
+                              <Mic className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleAiSuggestWithStories("callToAction", [])}
+                              disabled={aiSuggestionLoading === "callToAction"}
+                              className="text-primary h-7"
+                              data-testid="button-ai-cta"
+                            >
+                              {aiSuggestionLoading === "callToAction" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                              <span className="ml-1 text-xs">Coach</span>
+                            </Button>
+                          </div>
                         </div>
                         <p className="text-xs text-muted-foreground mb-2 italic">
                           What's the next step you want them to take?
@@ -10984,6 +11135,21 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
           )}
         </DialogContent>
       </Dialog>
+      
+      {/* Voice Command System */}
+      <FloatingVoiceButton 
+        onClick={() => setIsVoiceCommandOpen(true)} 
+        isActive={isVoiceCommandOpen}
+      />
+      
+      <VoiceCommandOverlay
+        isOpen={isVoiceCommandOpen}
+        onClose={() => setIsVoiceCommandOpen(false)}
+        onTranscript={handleVoiceTranscript}
+        currentPhase={activeStoryPhase}
+        availableFields={voiceCommandFields}
+        activeField={voiceTargetField}
+      />
     </div>
   );
 }
