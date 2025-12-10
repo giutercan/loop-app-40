@@ -26,6 +26,14 @@ The AI strategy focuses on strategic and actionable insights, with data sorted b
 - **AI**: OpenAI GPT-4o
 - **Storage**: In-memory storage (MemStorage)
 
+## Recent Changes (December 2024)
+- **Unified Strategy-to-Outcomes Workflow**: StrategicAlignmentSelector is now the single entry point for outcome creation in Design Outcomes stage. AI generates outcomes based on selected strategies, creating them as drafts that flow through draft → proposed → confirmed workflow.
+- **Narrative Outcome Display**: Replaced 3-column grid layout with storytelling format - outcomes grouped by Value Pillars (Grow, Optimise, De-risk, Strengthen) with "We will..." narrative presentation.
+- **Enhanced Pipeline Visualization**: Header shows total value, pipeline status counts (Draft/Review/Confirmed), and visual progress bar.
+- **Collapsible Outcomes in Progress**: Draft and pending review items now in collapsible section for cleaner view.
+- **AI Schema Validation**: Zod transform normalizes invalid achievability values (e.g., "medium-high" → "medium").
+- **"Copy Client Link" placeholder**: Shows "Coming Soon" toast until shareable link feature is fully implemented.
+
 ## External Dependencies
 - **OpenAI GPT-4o**: Used for all AI-powered functionalities, including research, insight generation, recommendations, narrative creation, and industry baselines.
 - **Clearout API**: Provides real-time company name autocomplete with logos.
