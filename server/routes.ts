@@ -7146,6 +7146,67 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
     }
   });
   
+  // POST /api/projects/:id/strategic-recommendations - Generate AI-powered organizational strategies
+  app.post("/api/projects/:id/strategic-recommendations", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const project = await storage.getProject(id);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const account = project.accountId ? await storage.getAccount(project.accountId) : null;
+      const synthesis = (project as any).discoverySynthesis;
+      
+      // Import and call the strategic recommendations function
+      const { generateStrategicRecommendations } = await import("./ai");
+      const result = await generateStrategicRecommendations({
+        companyName: project.companyName || account?.name || "Unknown Company",
+        industry: project.sector || account?.industry || undefined,
+        discoveryTheme: (project as any).discoveryTheme,
+        discoverySynthesis: synthesis || undefined,
+        accountContext: account ? {
+          recentNews: (account as any).recentNews || [],
+          competitivePosition: (account as any).competitivePosition,
+          businessChallenges: (account as any).businessChallenges || []
+        } : undefined
+      });
+      
+      // Cache strategies on project
+      await storage.updateProject(id, {
+        strategicRecommendations: {
+          ...result,
+          generatedAt: new Date().toISOString()
+        }
+      } as any);
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Strategic Recommendations] Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // GET /api/projects/:id/strategic-recommendations - Get cached strategic recommendations
+  app.get("/api/projects/:id/strategic-recommendations", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const project = await storage.getProject(id);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const cached = (project as any).strategicRecommendations;
+      if (cached) {
+        res.json(cached);
+      } else {
+        res.status(404).json({ error: "No strategic recommendations available. Generate them first." });
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
   // POST /api/projects/:id/outcome-recommendations - Generate AI-powered outcome recommendations
   app.post("/api/projects/:id/outcome-recommendations", async (req, res) => {
     try {

@@ -125,7 +125,7 @@ import { useDemoMode } from "@/demo/DemoModeContext";
 import { JourneyLoopVisualizer } from "@/components/JourneyLoopVisualizer";
 import { UnifiedJourneyTimeline } from "@/components/UnifiedJourneyTimeline";
 import CompetitiveIntelligence from "@/components/CompetitiveIntelligence";
-import KpiOutcomeSelector from "@/components/KpiOutcomeSelector";
+import { StrategicAlignmentSelector } from "@/components/StrategicAlignmentSelector";
 import { JOURNEY_LOOP_STAGES, UNIFIED_JOURNEY_PHASES, createUnifiedJourney } from "@shared/value-frameworks";
 import { VoiceCommandOverlay, FloatingVoiceButton } from "@/components/VoiceCommandOverlay";
 
@@ -3862,46 +3862,19 @@ export default function ProjectRoleView() {
 
     return (
       <div className="space-y-6">
-        {/* KPI-First Outcome Selector */}
-        <KpiOutcomeSelector
+        {/* Strategic Alignment - AI-Generated Organizational Strategies */}
+        <StrategicAlignmentSelector
           projectId={projectId}
           companyName={project?.companyName}
-          discoveryTheme={(() => {
-            const themeMap: Record<string, string> = {
-              "leadership": "Leadership Development",
-              "talent-acquisition": "Talent Acquisition",
-              "engagement": "Employee Engagement",
-              "sales-effectiveness": "Sales Transformation",
-              "transformation": "Organizational Design",
-              "rewards": "Total Rewards",
-              "succession": "Succession Planning",
-              "culture": "Culture Transformation",
-              "kf-full-search": "Leadership Development"
-            };
-            return themeMap[selectedDiscoveryTheme || ""] || undefined;
-          })()}
-          solutionAreas={selectedDiscoveryTheme ? 
-            (selectedDiscoveryTheme === "kf-full-search" 
-              ? ["ASSESS", "DEVELOP", "TRANSFORM", "REWARD", "COMMERCIAL", "ANALYTICS"]
-              : selectedDiscoveryTheme === "leadership" ? ["DEVELOP", "ASSESS"]
-              : selectedDiscoveryTheme === "talent-acquisition" ? ["ASSESS", "DEVELOP"]
-              : selectedDiscoveryTheme === "transformation" ? ["TRANSFORM", "ANALYTICS"]
-              : selectedDiscoveryTheme === "rewards" ? ["REWARD"]
-              : selectedDiscoveryTheme === "sales-effectiveness" ? ["COMMERCIAL"]
-              : ["ASSESS", "DEVELOP", "TRANSFORM"]
-            ) : []
-          }
-          onKpisSelected={(kpiIds) => {
-            console.log("Selected KPIs:", kpiIds);
+          industry={project?.sector || undefined}
+          onStrategiesSelected={(strategies) => {
+            console.log("Selected Strategies:", strategies);
           }}
-          onOutcomesSelected={(outcomes) => {
-            console.log("Selected Outcomes with timelines:", outcomes);
-          }}
-          onVisionComplete={(vision) => {
-            console.log("Vision complete:", vision);
+          onComplete={(data) => {
+            console.log("Strategic alignment complete:", data);
             toast({
-              title: "Value Vision Finalized",
-              description: `${vision.kpis.length} strategic goals and ${vision.outcomes.length} outcomes ready for commitment.`
+              title: "Strategic Priorities Confirmed",
+              description: `${data.strategies.length} strategic priorities confirmed and ready for outcome generation.`
             });
           }}
         />

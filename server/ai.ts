@@ -3632,6 +3632,174 @@ Return your analysis in JSON format:
 }
 
 // ============================================================================
+// STRATEGIC RECOMMENDATIONS - AI-generated organizational strategies
+// ============================================================================
+
+export interface StrategicRecommendationInput {
+  companyName: string;
+  industry?: string;
+  discoveryTheme?: string;
+  discoverySynthesis?: any;
+  accountContext?: {
+    recentNews?: string[];
+    competitivePosition?: string;
+    businessChallenges?: string[];
+  };
+}
+
+export interface OrganizationalStrategy {
+  id: string;
+  strategyName: string;
+  strategyDescription: string;
+  strategicCategory: "growth" | "transformation" | "talent" | "culture" | "operations" | "leadership";
+  businessRationale: string;
+  expectedOutcomes: string[];
+  timeframe: "short_term" | "medium_term" | "long_term";
+  complexityLevel: "low" | "medium" | "high";
+  priority: "high" | "medium" | "low";
+  industryRelevance: string;
+  successIndicators: string[];
+}
+
+export interface StrategicRecommendationsResult {
+  strategies: OrganizationalStrategy[];
+  executiveSummary: string;
+  industryContext: string;
+  recommendedFocus: string;
+}
+
+const organizationalStrategySchema = z.object({
+  id: z.string(),
+  strategyName: z.string(),
+  strategyDescription: z.string(),
+  strategicCategory: z.enum(["growth", "transformation", "talent", "culture", "operations", "leadership"]),
+  businessRationale: z.string(),
+  expectedOutcomes: z.array(z.string()),
+  timeframe: z.enum(["short_term", "medium_term", "long_term"]),
+  complexityLevel: z.enum(["low", "medium", "high"]),
+  priority: z.enum(["high", "medium", "low"]),
+  industryRelevance: z.string(),
+  successIndicators: z.array(z.string())
+});
+
+const strategicRecommendationsResultSchema = z.object({
+  strategies: z.array(organizationalStrategySchema),
+  executiveSummary: z.string(),
+  industryContext: z.string(),
+  recommendedFocus: z.string()
+});
+
+export async function generateStrategicRecommendations(input: StrategicRecommendationInput): Promise<StrategicRecommendationsResult> {
+  const { companyName, industry, discoveryTheme, discoverySynthesis, accountContext } = input;
+  
+  const discoveryContext = discoverySynthesis ? `
+DISCOVERY INSIGHTS:
+${discoverySynthesis.whatWeLearned?.keyThemes?.map((t: any) => 
+  `- ${t.theme}: ${t.insight}`
+).join('\n') || 'No themes available'}
+
+OPPORTUNITIES IDENTIFIED:
+${discoverySynthesis.businessImplications?.opportunities?.map((o: any) => 
+  `- ${o.title}: ${o.description}`
+).join('\n') || 'None identified yet'}
+` : '';
+
+  const accountContextStr = accountContext ? `
+ACCOUNT CONTEXT:
+${accountContext.recentNews?.length ? `Recent News: ${accountContext.recentNews.join('; ')}` : ''}
+${accountContext.competitivePosition ? `Competitive Position: ${accountContext.competitivePosition}` : ''}
+${accountContext.businessChallenges?.length ? `Known Challenges: ${accountContext.businessChallenges.join('; ')}` : ''}
+` : '';
+
+  const prompt = `You are a senior organizational strategy consultant. Based on the company and industry context below, generate strategic recommendations for organizational initiatives that would drive meaningful business outcomes.
+
+COMPANY: ${companyName}
+INDUSTRY: ${industry || 'Not specified'}
+${discoveryTheme ? `FOCUS AREA: ${discoveryTheme}` : ''}
+${discoveryContext}
+${accountContextStr}
+
+Generate 4-6 strategic organizational recommendations. Each strategy should be:
+1. Specific to this company's industry and likely business context
+2. Focused on organizational effectiveness, talent, leadership, or culture
+3. Aligned with common challenges in their industry
+4. Actionable within 6-18 months
+
+STRATEGIC CATEGORIES:
+- growth: Revenue expansion, market penetration, new business models
+- transformation: Digital transformation, operating model changes, process redesign
+- talent: Workforce planning, talent acquisition, skills development
+- culture: Values alignment, employee engagement, organizational identity
+- operations: Efficiency, cost optimization, supply chain, shared services
+- leadership: Executive development, succession planning, leadership pipeline
+
+TIMEFRAMES:
+- short_term: 3-6 months
+- medium_term: 6-12 months  
+- long_term: 12-18 months
+
+Return your recommendations in this JSON format:
+{
+  "strategies": [
+    {
+      "id": "strat_1",
+      "strategyName": "Build High-Potential Leadership Pipeline",
+      "strategyDescription": "Establish a structured program to identify, develop, and retain high-potential leaders at director and VP levels to address succession gaps and support growth objectives.",
+      "strategicCategory": "leadership",
+      "businessRationale": "Why this strategy matters specifically for this company/industry",
+      "expectedOutcomes": ["Outcome 1", "Outcome 2", "Outcome 3"],
+      "timeframe": "medium_term",
+      "complexityLevel": "medium",
+      "priority": "high",
+      "industryRelevance": "How this applies to their specific industry context",
+      "successIndicators": ["Indicator 1", "Indicator 2", "Indicator 3"]
+    }
+  ],
+  "executiveSummary": "2-3 sentence executive summary of the strategic recommendations",
+  "industryContext": "Brief description of industry trends and challenges informing these recommendations",
+  "recommendedFocus": "Which 1-2 strategies should be prioritized first and why"
+}
+
+Guidelines:
+- Be specific to the company's industry context
+- Focus on people, organization, and leadership strategies
+- Avoid generic recommendations - tailor to their likely situation
+- Balance quick wins with transformational initiatives
+- Consider interdependencies between strategies`;
+
+  try {
+    console.log(`[AI Strategic Recommendations] Generating for ${companyName}`);
+    
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 4000,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    
+    if (!content) {
+      throw new Error("AI returned empty response");
+    }
+    
+    const parsedContent = JSON.parse(content);
+    
+    const validationResult = strategicRecommendationsResultSchema.safeParse(parsedContent);
+    if (!validationResult.success) {
+      console.error("[AI Strategic Recommendations] Validation failed:", validationResult.error);
+      throw new Error(`AI strategic recommendations validation failed: ${validationResult.error.message}`);
+    }
+    
+    console.log(`[AI Strategic Recommendations] Success! Generated ${validationResult.data.strategies.length} strategies for ${companyName}`);
+    return validationResult.data;
+  } catch (error) {
+    console.error("[AI Strategic Recommendations] Error:", error);
+    throw error;
+  }
+}
+
+// ============================================================================
 // OUTCOME RECOMMENDATIONS - AI-powered recommendations from discovery synthesis
 // ============================================================================
 

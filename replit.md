@@ -32,7 +32,14 @@ The system is built on a robust architecture leveraging AI and a structured work
 - **Role-Based Workspaces**: 
   - **Sales Workspace (4-Stage Journey)**: 
     - **Discover**: Theme-driven AI research with methodology-tagged questions (SPIN, Miller Heiman, PSS), interactive call builder, and Green Sheet
-    - **Design Outcomes** (internal): Purple gradient header with "Internal" badge, outcome selection with AI recommendations, success stories - workspace for drafting and refining value outcomes before client sharing
+    - **Design Outcomes** (internal): Purple gradient header with "Internal" badge, AI-generated organizational strategies with StrategicAlignmentSelector component, outcome selection with AI recommendations, success stories - workspace for drafting and refining value outcomes before client sharing
+- **Strategic Alignment Selector**: New AI-powered component that generates company/industry-specific organizational strategies (growth, transformation, talent, culture, operations, leadership). Features include:
+  - AI-generated strategies via `/api/projects/:id/strategic-recommendations` endpoint
+  - Strategy cards with category badges, timeframes (3-6mo, 6-12mo, 12-18mo), and priority levels
+  - Expandable details showing business rationale, industry relevance, expected outcomes, and success indicators
+  - Custom strategy addition via dialog
+  - Multi-select with "Select High Priority" quick action
+  - Replaces the previous KPI-based selector with company-specific organizational strategies
     - **Client Alignment** (shareable): Blue gradient header with "Shareable" badge, Copy Client Link and Send to Client buttons, outcome status metrics (Shared, Confirmed, Awaiting Review) - client-facing collaboration portal
     - **Handoff**: Auto-populated confirmed commitments, Select All, bundle creation for CSM transfer
   - **Sales Workflow Progress**: Visual sidebar with stage completion indicators showing progress across all 4 stages
