@@ -509,14 +509,9 @@ function AICompanionPanel({ onSessionCreated }: AICompanionPanelProps) {
         <SheetHeader className="px-4 py-3 border-b bg-gradient-to-r from-secondary to-ai">
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg bg-white/10 backdrop-blur flex items-center justify-center border border-white/20">
-                  <LoopLogo className="h-5 w-5" useGradient />
-                </div>
-                <div>
-                  <SheetTitle className="text-white text-base font-semibold">Loop</SheetTitle>
-                  <p className="text-white/70 text-xs">AI-Powered Assistant</p>
-                </div>
+              <div>
+                <SheetTitle className="text-white text-base font-semibold">Loop</SheetTitle>
+                <p className="text-white/70 text-xs">AI-Powered Assistant</p>
               </div>
               <Button
                 variant="ghost"

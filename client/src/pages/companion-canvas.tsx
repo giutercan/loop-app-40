@@ -881,14 +881,9 @@ export default function CompanionCanvas() {
               <Home className="h-5 w-5" />
             </Button>
           </Link>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-white/10 backdrop-blur flex items-center justify-center border border-white/20">
-              <LoopLogo className="h-6 w-6" useGradient />
-            </div>
-            <div>
-              <h1 className="text-white font-semibold text-lg">Loop Canvas</h1>
-              <p className="text-white/60 text-xs">Your AI-powered workspace</p>
-            </div>
+          <div>
+            <h1 className="text-white font-semibold text-lg">Loop Canvas</h1>
+            <p className="text-white/60 text-xs">Your AI-powered workspace</p>
           </div>
         </div>
         
