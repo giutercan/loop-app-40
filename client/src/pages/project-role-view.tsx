@@ -1450,30 +1450,6 @@ export default function ProjectRoleView() {
   const [probeHistory, setProbeHistory] = useState<Array<{role: "user" | "assistant"; content: string; timestamp: string}>>([]);
   const [isProbing, setIsProbing] = useState(false);
   
-  // Mutation to fetch live intelligence (generate new)
-  const fetchLiveIntelligenceMutation = useMutation({
-    mutationFn: async (discoveryTheme: string) => {
-      const res = await apiRequest("POST", `/api/projects/${projectId}/live-intelligence`, { discoveryTheme });
-      return await res.json() as LiveIntelligenceData;
-    },
-    onSuccess: (data) => {
-      setLiveIntelligence(data);
-      setIsLoadingIntelligence(false);
-      setIntelligenceError(null);
-      setIntelligenceIsSaved(true); // Auto-saved on backend
-      setProbeHistory([]); // Reset probe history for new generation
-    },
-    onError: (error: any) => {
-      console.error("Failed to fetch live intelligence:", error);
-      setIsLoadingIntelligence(false);
-      setIntelligenceError(error.message || "Failed to generate company intelligence");
-      toast({ 
-        title: "Intelligence Generation Failed", 
-        description: "Could not fetch live company data. Please try again.", 
-        variant: "destructive" 
-      });
-    }
-  });
   
   // Mutation to probe the intelligence (ask follow-up questions)
   const probeIntelligenceMutation = useMutation({
@@ -1501,8 +1477,36 @@ export default function ProjectRoleView() {
     }
   });
   
-  // Track which theme's intelligence is currently loaded
+  // Track which theme's intelligence is currently loaded and if user triggered refresh
   const loadedIntelligenceThemeRef = useRef<string | null>(null);
+  const isManualRefreshRef = useRef(false);
+  
+  // Mutation to fetch live intelligence (generate new)
+  const fetchLiveIntelligenceMutation = useMutation({
+    mutationFn: async (discoveryTheme: string) => {
+      const res = await apiRequest("POST", `/api/projects/${projectId}/live-intelligence`, { discoveryTheme });
+      return await res.json() as LiveIntelligenceData;
+    },
+    onSuccess: (data) => {
+      setLiveIntelligence(data);
+      setIsLoadingIntelligence(false);
+      setIntelligenceError(null);
+      setIntelligenceIsSaved(true);
+      setProbeHistory([]);
+      isManualRefreshRef.current = false;
+    },
+    onError: (error: any) => {
+      console.error("Failed to fetch live intelligence:", error);
+      setIsLoadingIntelligence(false);
+      setIntelligenceError(error.message || "Failed to generate company intelligence");
+      isManualRefreshRef.current = false;
+      toast({ 
+        title: "Intelligence Generation Failed", 
+        description: "Could not fetch live company data. Please try again.", 
+        variant: "destructive" 
+      });
+    }
+  });
   
   // Auto-fetch intelligence when moving to intelligence step (try loading saved first)
   useEffect(() => {
@@ -1512,7 +1516,7 @@ export default function ProjectRoleView() {
         return;
       }
       
-      // Skip if already loading or have an error
+      // Skip if already loading (manual refresh or other operation in progress)
       if (isLoadingIntelligence) {
         return;
       }
@@ -1522,7 +1526,12 @@ export default function ProjectRoleView() {
         return;
       }
       
-      // If theme changed, reset the loaded theme tracker
+      // Skip if user is manually refreshing - let the mutation handle it
+      if (isManualRefreshRef.current) {
+        return;
+      }
+      
+      // If theme changed, reset state and track the new theme
       if (loadedIntelligenceThemeRef.current !== selectedDiscoveryTheme) {
         loadedIntelligenceThemeRef.current = selectedDiscoveryTheme;
         setLiveIntelligence(null);
@@ -5939,6 +5948,7 @@ export default function ProjectRoleView() {
                         variant="outline" 
                         size="sm"
                         onClick={() => {
+                          isManualRefreshRef.current = true;
                           setLiveIntelligence(null);
                           setIsLoadingIntelligence(true);
                           fetchLiveIntelligenceMutation.mutate(selectedDiscoveryTheme || "");
