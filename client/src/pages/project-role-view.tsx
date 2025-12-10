@@ -4129,6 +4129,180 @@ export default function ProjectRoleView() {
             </CardContent>
           </Card>
 
+          {/* Deliverables Journey Timeline - Combined Sales to Delivery View */}
+          {(commitments as any[]).length > 0 && (
+            <Card data-testid="deliverables-journey-timeline">
+              <CardHeader className="pb-4">
+                <div className="flex items-start justify-between flex-wrap gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-violet-500/20 flex items-center justify-center">
+                      <Layers className="w-6 h-6 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl">Deliverables Journey</CardTitle>
+                      <CardDescription className="mt-1">
+                        Combined Sales to Delivery timeline for all outcomes
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                    <div className="text-center px-2">
+                      <p className="text-xl font-bold">{(commitments as any[]).length}</p>
+                      <p className="text-xs text-muted-foreground">Total</p>
+                    </div>
+                    <div className="w-px h-8 bg-border" />
+                    <div className="text-center px-2">
+                      <p className="text-xl font-bold text-emerald-600">${((confirmedValue + proposedValue + draftValue) / 1000000).toFixed(2)}M</p>
+                      <p className="text-xs text-muted-foreground">Value</p>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Journey Phase Headers */}
+                <div className="grid grid-cols-4 gap-2 text-center text-xs font-medium mb-2">
+                  <div className="text-muted-foreground">Outcome</div>
+                  <div className="flex items-center justify-center gap-1 text-blue-600">
+                    <Zap className="w-3 h-3" />
+                    <span>Near Term</span>
+                    <span className="text-muted-foreground">(0-3mo)</span>
+                  </div>
+                  <div className="flex items-center justify-center gap-1 text-violet-600">
+                    <TrendingUp className="w-3 h-3" />
+                    <span>Build Momentum</span>
+                    <span className="text-muted-foreground">(3-9mo)</span>
+                  </div>
+                  <div className="flex items-center justify-center gap-1 text-emerald-600">
+                    <Trophy className="w-3 h-3" />
+                    <span>Realize Value</span>
+                    <span className="text-muted-foreground">(9-18mo)</span>
+                  </div>
+                </div>
+                
+                {/* Deliverables Rows */}
+                <div className="space-y-2">
+                  {(commitments as any[]).map((c: any) => {
+                    const status = c.status || 'draft';
+                    const journeyTemplate = OUTCOME_JOURNEY_TEMPLATES[c.solutionPattern as SolutionPatternId];
+                    const timeline = journeyTemplate?.typicalTimeline || "";
+                    
+                    let monthOrder: number;
+                    if (timeline) {
+                      monthOrder = parseInt(timeline.match(/\d+/)?.[0] || "6");
+                    } else {
+                      monthOrder = status === 'draft' ? 2 : status === 'proposed' ? 5 : 10;
+                    }
+                    
+                    const statusColor = status === 'confirmed' 
+                      ? 'bg-emerald-500' 
+                      : status === 'proposed' 
+                        ? 'bg-blue-500' 
+                        : 'bg-muted-foreground/50';
+                    
+                    const statusBg = status === 'confirmed'
+                      ? 'bg-emerald-500/10 border-emerald-500/30'
+                      : status === 'proposed'
+                        ? 'bg-blue-500/10 border-blue-500/30'
+                        : 'bg-muted/50 border-muted-foreground/20';
+                    
+                    const currentPhase = monthOrder <= 3 ? 'near_term' : monthOrder <= 9 ? 'build_momentum' : 'realize_value';
+                    const kfOffering = c.provenance?.kfOffering;
+                    const sourceStrategy = c.provenance?.kornFerrySolution || c.provenance?.sourceStrategy;
+                    
+                    return (
+                      <div key={c.id} className={`grid grid-cols-4 gap-2 p-3 rounded-lg border ${statusBg}`} data-testid={`deliverable-row-${c.id}`}>
+                        {/* Outcome Info */}
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className={`w-2 h-2 rounded-full ${statusColor} shrink-0`} />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium truncate" title={c.name}>{c.name}</p>
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {sourceStrategy && (
+                                <Badge className="bg-primary/10 text-primary border-primary/30 text-[9px] px-1" title={`Strategy: ${sourceStrategy}`}>
+                                  <Target className="w-2.5 h-2.5 mr-0.5" />
+                                  {sourceStrategy.length > 20 ? sourceStrategy.substring(0, 20) + '...' : sourceStrategy}
+                                </Badge>
+                              )}
+                              {kfOffering && (
+                                <Badge className="bg-violet-500/10 text-violet-600 border-violet-500/30 text-[9px] px-1">
+                                  {kfOffering.name}
+                                </Badge>
+                              )}
+                              {getValuePillarBadge(c.valuePillar)}
+                              {c.estimatedAnnualValue && (
+                                <span className="text-[10px] text-muted-foreground">${(c.estimatedAnnualValue / 1000).toFixed(0)}K</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Near Term Phase */}
+                        <div className="flex items-center justify-center">
+                          {currentPhase === 'near_term' ? (
+                            <div className="w-full h-2 rounded-full bg-blue-500 relative">
+                              <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-blue-500 border-2 border-background flex items-center justify-center">
+                                <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className={`w-full h-2 rounded-full ${monthOrder > 3 ? 'bg-blue-500/30' : 'bg-muted'}`} />
+                          )}
+                        </div>
+                        
+                        {/* Build Momentum Phase */}
+                        <div className="flex items-center justify-center">
+                          {currentPhase === 'build_momentum' ? (
+                            <div className="w-full h-2 rounded-full bg-violet-500 relative">
+                              <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-violet-500 border-2 border-background flex items-center justify-center">
+                                <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className={`w-full h-2 rounded-full ${monthOrder > 9 ? 'bg-violet-500/30' : currentPhase === 'near_term' ? 'bg-muted' : 'bg-muted'}`} />
+                          )}
+                        </div>
+                        
+                        {/* Realize Value Phase */}
+                        <div className="flex items-center justify-center">
+                          {currentPhase === 'realize_value' ? (
+                            <div className="w-full h-2 rounded-full bg-emerald-500 relative">
+                              <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-background flex items-center justify-center">
+                                <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="w-full h-2 rounded-full bg-muted" />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                {/* Journey Legend */}
+                <div className="flex items-center justify-center gap-6 pt-4 border-t text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                    <span>Confirmed</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded-full bg-blue-500" />
+                    <span>In Review</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded-full bg-muted-foreground/50" />
+                    <span>Draft</span>
+                  </div>
+                  <div className="w-px h-4 bg-border" />
+                  <div className="flex items-center gap-1.5">
+                    <ArrowRight className="w-3 h-3" />
+                    <span>Sales → Delivery Journey</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Value Story Section - Confirmed Outcomes Grouped by Pillar */}
           {confirmedCommitments.length > 0 && (
             <Card>
