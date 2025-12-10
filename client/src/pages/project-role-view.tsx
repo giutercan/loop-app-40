@@ -101,7 +101,8 @@ import {
   Mic,
   Trash2,
   Undo2,
-  Edit2
+  Edit2,
+  ArrowRightCircle
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -4568,9 +4569,9 @@ export default function ProjectRoleView() {
             </Card>
           )}
 
-          {/* Outcomes in Progress - Collapsible Section */}
+          {/* Enhanced Outcomes in Progress - Full-width cards with journey loops */}
           <Card>
-            <Collapsible defaultOpen={draftCommitments.length + proposedCommitments.length < 10}>
+            <Collapsible defaultOpen={true}>
               <CardHeader className="pb-3">
                 <CollapsibleTrigger asChild>
                   <div className="flex items-center justify-between cursor-pointer group">
@@ -4585,197 +4586,345 @@ export default function ProjectRoleView() {
                   </div>
                 </CollapsibleTrigger>
                 <CardDescription>
-                  Draft and pending review outcomes - expand to manage
+                  Draft and pending outcomes - refine details before client alignment and handoff
                 </CardDescription>
               </CardHeader>
               <CollapsibleContent>
-                <CardContent className="pt-0">
-                  <div className="grid gap-6 lg:grid-cols-2">
-                    {/* Draft Outcomes */}
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 pb-2 border-b">
-                        <FileText className="w-4 h-4 text-muted-foreground" />
-                        <span className="font-medium text-sm">Draft</span>
-                        <Badge variant="secondary" className="ml-auto">{draftCommitments.length}</Badge>
-                      </div>
-                      {draftCommitments.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center py-4">No draft outcomes</p>
-                      ) : (
-                        <div className="space-y-2 max-h-96 overflow-y-auto">
-                          {draftCommitments.map((c: any) => {
-                            const journeyTemplate = getJourneyData(c);
-                            const kfOffering = c.provenance?.kfOffering;
-                            const kfRecommendation = c.provenance?.kfRecommendation;
-                            return (
-                              <div key={c.id} className="p-3 rounded-lg border hover-elevate" data-testid={`commitment-draft-${c.id}`}>
-                                <div className="flex items-start justify-between mb-2">
-                                  <h4 className="font-medium text-sm flex-1 min-w-0 truncate">{c.name}</h4>
-                                  <div className="flex flex-wrap gap-1 items-center ml-2">
-                                    {(c.provenance?.source === "ai_generated" || c.provenance?.source === "strategic_alignment") && (
-                                      <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/30 text-[10px] px-1.5">
-                                        <Sparkles className="w-3 h-3" />
-                                      </Badge>
-                                    )}
-                                    {kfOffering && (
-                                      <Badge className="bg-violet-500/10 text-violet-600 border-violet-500/30 text-[10px] px-1.5">
-                                        <Briefcase className="w-3 h-3 mr-0.5" />
-                                        {kfOffering.name}
-                                      </Badge>
-                                    )}
-                                    {getValuePillarBadge(c.valuePillar)}
-                                  </div>
-                                </div>
-                                
-                                {/* KF Recommendation snippet */}
-                                {kfRecommendation && (
-                                  <p className="text-[11px] text-muted-foreground mb-2 line-clamp-2 italic">
-                                    {kfRecommendation}
-                                  </p>
-                                )}
-                                
-                                <div className="flex items-center flex-wrap gap-2 text-xs text-muted-foreground mb-3">
-                                  {c.baselineValue !== null && c.targetValue !== null && (
-                                    <span>{c.baselineValue} → {c.targetValue} {c.kpiUnit || ""}</span>
-                                  )}
-                                  {c.estimatedAnnualValue && (
-                                    <span className="text-violet-600 font-medium">
-                                      ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr
-                                    </span>
-                                  )}
-                                </div>
-                                
-                                <div className="flex gap-2">
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    className="flex-1"
-                                    onClick={() => setEditingCommitment(c)}
-                                    data-testid={`button-edit-commitment-${c.id}`}
-                                  >
-                                    Edit
-                                  </Button>
-                                  <Button 
-                                    size="sm" 
-                                    className="flex-1"
-                                    onClick={() => submitForReviewMutation.mutate(c.id)}
-                                    disabled={submitForReviewMutation.isPending}
-                                    data-testid={`button-submit-review-${c.id}`}
-                                  >
-                                    Submit
-                                  </Button>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
+                <CardContent className="pt-0 space-y-6">
+                  {/* Combined list of all outcomes in progress with rich details */}
+                  {[...draftCommitments, ...proposedCommitments].length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Activity className="w-10 h-10 mx-auto mb-3 opacity-50" />
+                      <p className="text-sm">No outcomes in progress</p>
+                      <p className="text-xs mt-1">Use Strategy Selection above to generate AI-powered outcomes</p>
                     </div>
-
-                    {/* Pending Review Outcomes */}
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 pb-2 border-b">
-                        <Clock className="w-4 h-4 text-blue-600" />
-                        <span className="font-medium text-sm">Pending Review</span>
-                        <Badge className="ml-auto bg-blue-500/10 text-blue-600">{proposedCommitments.length}</Badge>
-                      </div>
-                      {proposedCommitments.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center py-4">No outcomes pending review</p>
-                      ) : (
-                        <div className="space-y-2 max-h-96 overflow-y-auto">
-                          {proposedCommitments.map((c: any) => {
-                            const journeyTemplate = getJourneyData(c);
-                            const kfOffering = c.provenance?.kfOffering;
-                            return (
-                              <div key={c.id} className="p-3 rounded-lg border border-blue-500/20 bg-blue-500/5" data-testid={`commitment-review-${c.id}`}>
-                                <div className="flex items-start justify-between mb-2">
+                  ) : (
+                    <div className="space-y-4">
+                      {[...draftCommitments, ...proposedCommitments].map((c: any) => {
+                        const journeyTemplate = getJourneyData(c);
+                        const kfOffering = c.provenance?.kfOffering;
+                        const kfSolution = c.provenance?.kornFerrySolution;
+                        const kfRecommendation = c.provenance?.kfRecommendation;
+                        const whyMatters = c.provenance?.whyMatters;
+                        const howKFHelps = c.provenance?.howKFHelps;
+                        const benchmark = c.provenance?.benchmark;
+                        const isDraft = c.status === 'draft';
+                        
+                        const hasAIContext = whyMatters || howKFHelps;
+                        const hasBenchmark = benchmark && (benchmark.industryMedian || benchmark.industryHigh);
+                        const hasJourneyData = journeyTemplate && Array.isArray(journeyTemplate.phases) && journeyTemplate.phases.length > 0;
+                        const hasExpandableContent = hasAIContext || hasBenchmark || hasJourneyData;
+                        
+                        return (
+                          <Collapsible key={c.id} defaultOpen={false}>
+                            <div 
+                              className={`rounded-lg border transition-all ${
+                                isDraft 
+                                  ? 'border-muted hover-elevate' 
+                                  : 'border-blue-500/30 bg-blue-500/5'
+                              }`}
+                              data-testid={`outcome-progress-${c.id}`}
+                            >
+                              {/* Header Row - Always visible */}
+                              <div className="p-4">
+                                <div className="flex items-start justify-between gap-4 mb-3">
                                   <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                      <Badge variant="outline" className="text-[10px] px-1.5 shrink-0 bg-blue-500/10 border-blue-500/30">
-                                        #{c.id}
+                                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                                      <Badge 
+                                        variant="outline" 
+                                        className={`text-[10px] px-1.5 shrink-0 ${
+                                          isDraft ? 'bg-muted' : 'bg-blue-500/10 border-blue-500/30 text-blue-600'
+                                        }`}
+                                      >
+                                        {isDraft ? 'Draft' : 'Pending Review'}
                                       </Badge>
-                                      <h4 className="font-medium text-sm truncate" title={c.name}>{c.name}</h4>
-                                      {kfOffering && (
-                                        <Badge className="bg-violet-500/10 text-violet-600 border-violet-500/30 text-[10px] px-1.5">
-                                          <Briefcase className="w-3 h-3 mr-0.5" />
-                                          {kfOffering.name}
+                                      {(c.provenance?.source === "ai_generated" || c.provenance?.source === "strategic_alignment") && (
+                                        <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/30 text-[10px] px-1.5">
+                                          <Sparkles className="w-3 h-3 mr-0.5" />
+                                          AI Generated
                                         </Badge>
                                       )}
+                                      {getValuePillarBadge(c.valuePillar)}
+                                    </div>
+                                    <h4 className="font-semibold text-base">{c.name}</h4>
+                                    {c.outcomeStatement && (
+                                      <p className="text-sm text-muted-foreground mt-1">{c.outcomeStatement}</p>
+                                    )}
+                                  </div>
+                                  
+                                  {/* Actions */}
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    {isDraft ? (
+                                      <>
+                                        <Button 
+                                          size="sm" 
+                                          variant="outline"
+                                          onClick={() => setEditingCommitment(c)}
+                                          data-testid={`button-edit-outcome-${c.id}`}
+                                        >
+                                          <Pencil className="w-3.5 h-3.5 mr-1" />
+                                          Edit
+                                        </Button>
+                                        <Button 
+                                          size="sm"
+                                          onClick={() => submitForReviewMutation.mutate(c.id)}
+                                          disabled={submitForReviewMutation.isPending}
+                                          data-testid={`button-submit-outcome-${c.id}`}
+                                        >
+                                          <Send className="w-3.5 h-3.5 mr-1" />
+                                          Submit for Review
+                                        </Button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Button 
+                                          size="sm" 
+                                          variant="outline"
+                                          onClick={() => revertToDraftMutation.mutate(c.id)}
+                                          disabled={revertToDraftMutation.isPending}
+                                          data-testid={`button-revert-outcome-${c.id}`}
+                                        >
+                                          <Undo2 className="w-3.5 h-3.5 mr-1" />
+                                          Back to Draft
+                                        </Button>
+                                        <Button 
+                                          size="sm"
+                                          className="bg-emerald-600 hover:bg-emerald-700"
+                                          onClick={() => confirmCommitmentMutation.mutate(c.id)}
+                                          disabled={confirmCommitmentMutation.isPending}
+                                          data-testid={`button-confirm-outcome-${c.id}`}
+                                        >
+                                          <Check className="w-3.5 h-3.5 mr-1" />
+                                          Confirm
+                                        </Button>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                {/* Key Metrics Row */}
+                                <div className="flex flex-wrap items-center gap-4 text-sm">
+                                  {/* Baseline → Target */}
+                                  {(c.baselineValue || c.targetValue) && (
+                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted/50">
+                                      <BarChart3 className="w-4 h-4 text-muted-foreground" />
+                                      <span className="text-muted-foreground">Baseline:</span>
+                                      <span className="font-medium">{c.baselineValue || '—'}</span>
+                                      <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                                      <span className="text-muted-foreground">Target:</span>
+                                      <span className="font-medium text-emerald-600">{c.targetValue || '—'}</span>
+                                      {c.kpiUnit && <span className="text-muted-foreground">{c.kpiUnit}</span>}
+                                    </div>
+                                  )}
+                                  
+                                  {/* Estimated Value */}
+                                  {c.estimatedAnnualValue && (
+                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-violet-500/10">
+                                      <DollarSign className="w-4 h-4 text-violet-600" />
+                                      <span className="font-semibold text-violet-600">
+                                        ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr
+                                      </span>
+                                    </div>
+                                  )}
+                                  
+                                  {/* KF Solution */}
+                                  {(kfSolution || kfOffering?.name) && (
+                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-primary/10">
+                                      <Briefcase className="w-4 h-4 text-primary" />
+                                      <span className="text-sm font-medium text-primary">
+                                        {kfOffering?.name || kfSolution}
+                                      </span>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Timeline */}
+                                  {journeyTemplate?.typicalTimeline && (
+                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-blue-500/10">
+                                      <Calendar className="w-4 h-4 text-blue-600" />
+                                      <span className="text-sm text-blue-600">{journeyTemplate.typicalTimeline}</span>
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                {/* Expand button for journey details - only show if there's content */}
+                                {hasExpandableContent && (
+                                  <CollapsibleTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="mt-3 w-full justify-between text-muted-foreground">
+                                      <span className="flex items-center gap-2">
+                                        <RefreshCw className="w-4 h-4" />
+                                        View Delivery Journey & Handoff Details
+                                      </span>
+                                      <ChevronDown className="w-4 h-4" />
+                                    </Button>
+                                  </CollapsibleTrigger>
+                                )}
+                              </div>
+                              
+                              {/* Expandable Journey Details - only render if there's content */}
+                              {hasExpandableContent && <CollapsibleContent>
+                                <div className="px-4 pb-4 pt-0 border-t">
+                                  <div className="pt-4 space-y-4">
+                                    {/* Value Story for Handoff - Only show if AI-generated */}
+                                    {(whyMatters || howKFHelps) && (
+                                      <div className="grid gap-4 md:grid-cols-2">
+                                        {whyMatters && (
+                                          <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                                            <div className="flex items-center gap-2 mb-2">
+                                              <Lightbulb className="w-4 h-4 text-amber-600" />
+                                              <span className="text-xs font-semibold text-amber-700 uppercase">Why This Matters</span>
+                                            </div>
+                                            <p className="text-sm">{whyMatters}</p>
+                                          </div>
+                                        )}
+                                        {howKFHelps && (
+                                          <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                                            <div className="flex items-center gap-2 mb-2">
+                                              <Briefcase className="w-4 h-4 text-primary" />
+                                              <span className="text-xs font-semibold text-primary uppercase">How Korn Ferry Helps</span>
+                                            </div>
+                                            <p className="text-sm">{howKFHelps}</p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                    
+                                    {/* Industry Benchmark - Only show if data exists */}
+                                    {benchmark && (benchmark.industryMedian || benchmark.industryHigh) && (
+                                      <div className="p-3 rounded-lg bg-muted/50 border">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <TrendingUp className="w-4 h-4 text-muted-foreground" />
+                                          <span className="text-xs font-semibold uppercase text-muted-foreground">Industry Benchmark</span>
+                                          {benchmark.source && (
+                                            <span className="text-[10px] text-muted-foreground ml-auto">Source: {benchmark.source}</span>
+                                          )}
+                                        </div>
+                                        <div className="flex gap-6 text-sm">
+                                          {benchmark.industryLow && (
+                                            <div>
+                                              <span className="text-muted-foreground">Low: </span>
+                                              <span className="font-medium">{benchmark.industryLow}</span>
+                                            </div>
+                                          )}
+                                          {benchmark.industryMedian && (
+                                            <div>
+                                              <span className="text-muted-foreground">Median: </span>
+                                              <span className="font-semibold text-blue-600">{benchmark.industryMedian}</span>
+                                            </div>
+                                          )}
+                                          {benchmark.industryHigh && (
+                                            <div>
+                                              <span className="text-muted-foreground">High: </span>
+                                              <span className="font-medium text-emerald-600">{benchmark.industryHigh}</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Journey Loop Visualization - Only show if solution pattern exists */}
+                                    {journeyTemplate && journeyTemplate.phases && journeyTemplate.phases.length > 0 && (
+                                      <div className="space-y-4">
+                                        <div className="flex items-center gap-2">
+                                          <RefreshCw className="w-4 h-4 text-primary" />
+                                          <span className="text-sm font-semibold">Delivery Journey Loop</span>
+                                          <Badge variant="outline" className="text-xs">
+                                            {journeyTemplate.phases.length} phases
+                                          </Badge>
+                                        </div>
+                                        
+                                        {/* Interactive Loop Visualizer */}
+                                        <JourneyLoopVisualizer
+                                          outcomeName={c.name || 'Outcome'}
+                                          solutionPattern={c.solutionPattern}
+                                          quickWins={journeyTemplate.quickWins || []}
+                                          kpis={[]}
+                                          isCompact={true}
+                                        />
+                                        
+                                        {/* Quick Wins Preview */}
+                                        {Array.isArray(journeyTemplate.quickWins) && journeyTemplate.quickWins.length > 0 && (
+                                          <div>
+                                            <div className="flex items-center gap-2 mb-2">
+                                              <Zap className="w-4 h-4 text-amber-500" />
+                                              <span className="text-xs font-semibold uppercase text-amber-600">Quick Wins (Early Value)</span>
+                                            </div>
+                                            <div className="grid gap-2 md:grid-cols-3">
+                                              {journeyTemplate.quickWins.slice(0, 3).map((qw: any, idx: number) => (
+                                                <div key={idx} className="p-2 rounded-md border bg-amber-500/5 border-amber-500/20">
+                                                  <p className="text-xs font-medium">{qw.title || 'Quick Win'}</p>
+                                                  <p className="text-[10px] text-muted-foreground">{qw.timeline || ''}</p>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                        
+                                        {/* Key Milestones Preview */}
+                                        {Array.isArray(journeyTemplate.milestones) && journeyTemplate.milestones.length > 0 && (
+                                          <div>
+                                            <div className="flex items-center gap-2 mb-2">
+                                              <Flag className="w-4 h-4 text-violet-500" />
+                                              <span className="text-xs font-semibold uppercase text-violet-600">Key Milestones for Delivery</span>
+                                            </div>
+                                            <div className="flex gap-2 overflow-x-auto pb-1">
+                                              {journeyTemplate.milestones.slice(0, 4).map((m: any, idx: number) => (
+                                                <div key={idx} className="flex-shrink-0 px-3 py-2 rounded-md border bg-violet-500/5 border-violet-500/20">
+                                                  {m.targetWeek && (
+                                                    <div className="flex items-center gap-1 mb-1">
+                                                      <Badge className="bg-violet-500 text-white text-[9px] px-1">
+                                                        Week {m.targetWeek}
+                                                      </Badge>
+                                                    </div>
+                                                  )}
+                                                  <p className="text-xs font-medium">{m.title || 'Milestone'}</p>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                    
+                                    {/* Handoff Summary for Delivery Team - Always show */}
+                                    <div className="p-4 rounded-lg bg-gradient-to-r from-emerald-500/10 to-blue-500/10 border border-emerald-500/20">
+                                      <div className="flex items-center gap-2 mb-3">
+                                        <ArrowRightCircle className="w-5 h-5 text-emerald-600" />
+                                        <span className="font-semibold text-emerald-700">Handoff Summary for Delivery</span>
+                                      </div>
+                                      <div className="grid gap-3 md:grid-cols-3 text-sm">
+                                        <div>
+                                          <span className="text-xs text-muted-foreground block mb-1">Success Metric</span>
+                                          <span className="font-medium">
+                                            {c.baselineValue && c.targetValue 
+                                              ? `${c.baselineValue} → ${c.targetValue}${c.kpiUnit ? ` ${c.kpiUnit}` : ''}`
+                                              : c.targetValue 
+                                                ? `Target: ${c.targetValue}${c.kpiUnit ? ` ${c.kpiUnit}` : ''}`
+                                                : 'To be defined'}
+                                          </span>
+                                        </div>
+                                        <div>
+                                          <span className="text-xs text-muted-foreground block mb-1">Target Timeline</span>
+                                          <span className="font-medium">
+                                            {journeyTemplate?.typicalTimeline || c.targetDate || 'To be scheduled'}
+                                          </span>
+                                        </div>
+                                        <div>
+                                          <span className="text-xs text-muted-foreground block mb-1">Delivery Approach</span>
+                                          <span className="font-medium">
+                                            {kfSolution || kfOffering?.name || c.solutionPattern || 'To be determined'}
+                                          </span>
+                                        </div>
+                                      </div>
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-1 ml-2">
-                                    {(c.provenance?.source === "ai_generated" || c.provenance?.source === "strategic_alignment") && (
-                                      <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/30 text-[10px] px-1.5">
-                                        <Sparkles className="w-3 h-3" />
-                                      </Badge>
-                                    )}
-                                    {getValuePillarBadge(c.valuePillar)}
-                                  </div>
                                 </div>
-                                
-                                <div className="flex items-center flex-wrap gap-2 text-xs text-muted-foreground mb-3">
-                                  {c.baselineValue !== null && c.targetValue !== null && (
-                                    <span className="flex items-center gap-1">
-                                      <Target className="w-3 h-3" />
-                                      {c.baselineValue} → {c.targetValue} {c.kpiUnit || ""}
-                                    </span>
-                                  )}
-                                  {c.estimatedAnnualValue && (
-                                    <span className="text-violet-600 font-medium">
-                                      ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr
-                                    </span>
-                                  )}
-                                </div>
-                                
-                                <div className="flex gap-2">
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline"
-                                    className="flex-1"
-                                    onClick={() => revertToDraftMutation.mutate(c.id)}
-                                    disabled={revertToDraftMutation.isPending}
-                                    data-testid={`button-revert-pending-${c.id}`}
-                                  >
-                                    <Undo2 className="w-3 h-3 mr-1" />
-                                    Draft
-                                  </Button>
-                                  <Button 
-                                    size="sm" 
-                                    className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-                                    onClick={() => confirmCommitmentMutation.mutate(c.id)}
-                                    disabled={confirmCommitmentMutation.isPending}
-                                    data-testid={`button-confirm-commitment-${c.id}`}
-                                  >
-                                    <Check className="w-3.5 h-3.5 mr-1" />
-                                    Confirm
-                                  </Button>
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-8 w-8"
-                                    onClick={() => setEditingCommitment(c)}
-                                    title="Edit"
-                                    data-testid={`button-edit-pending-${c.id}`}
-                                  >
-                                    <Pencil className="w-3.5 h-3.5" />
-                                  </Button>
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-8 w-8 text-destructive hover:text-destructive"
-                                    onClick={() => deleteCommitmentMutation.mutate(c.id)}
-                                    title="Delete"
-                                    data-testid={`button-delete-pending-${c.id}`}
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </Button>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
+                              </CollapsibleContent>}
+                            </div>
+                          </Collapsible>
+                        );
+                      })}
                     </div>
-                  </div>
+                  )}
                 </CardContent>
               </CollapsibleContent>
             </Collapsible>
