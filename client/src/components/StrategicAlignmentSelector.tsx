@@ -483,6 +483,14 @@ export function StrategicAlignmentSelector({
     onSuccess: (data) => {
       setOutcomes(data.outcomes);
       setSelectedOutcomes(new Set(data.outcomes.map(o => o.id)));
+      
+      saveSelectionMutation.mutate({
+        generatedOutcomesData: {
+          outcomes: data.outcomes,
+          selectedOutcomeIds: data.outcomes.map(o => o.id),
+        },
+        status: "outcomes_generated",
+      });
     },
   });
 

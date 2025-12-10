@@ -8543,11 +8543,29 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => {
-                        toast({ 
-                          title: "Coming Soon", 
-                          description: "Client portal sharing will be available in a future update." 
-                        });
+                      onClick={async () => {
+                        try {
+                          const response = await apiRequest("POST", `/api/projects/${projectId}/portal/share`, {
+                            portalTitle: `${project?.companyName} Collaboration Portal`,
+                            welcomeMessage: `Welcome to your strategic collaboration portal. Review the proposed strategies and outcomes, and share your feedback.`,
+                            portalSections: { overview: true, strategies: true, outcomes: true, progress: true },
+                          });
+                          const data = await response.json();
+                          if (data.shareUrl) {
+                            const fullUrl = `${window.location.origin}${data.shareUrl}`;
+                            await navigator.clipboard.writeText(fullUrl);
+                            toast({ 
+                              title: "Link Copied!", 
+                              description: "Client portal link has been copied to your clipboard." 
+                            });
+                          }
+                        } catch (error) {
+                          toast({ 
+                            variant: "destructive",
+                            title: "Failed to generate link", 
+                            description: "Please try again." 
+                          });
+                        }
                       }}
                       data-testid="btn-copy-client-link"
                     >
