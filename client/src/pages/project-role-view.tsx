@@ -253,7 +253,13 @@ interface EnhancedOpportunity extends SalesforceOpportunity {
   }[];
 }
 
-function generateSimulatedSalesforceData(companyName: string): { opportunities: EnhancedOpportunity[]; contacts: SalesforceContact[]; crossOpportunityInfluences: { name: string; title: string; role: string; opportunities: string[]; }[] } {
+function generateSimulatedSalesforceData(companyName: string): { 
+  opportunities: EnhancedOpportunity[]; 
+  contacts: SalesforceContact[]; 
+  crossOpportunityInfluences: { name: string; title: string; role: string; opportunities: string[]; }[];
+  dealHistory: { id: string; name: string; amount: number; closeDate: string; status: "won" | "lost"; competitor?: string; winLossReason: string; }[];
+  competitorStats: Record<string, { wins: number; losses: number; deals: string[] }>;
+} {
   const stages = ["Qualification", "Needs Analysis", "Proposal", "Negotiation", "Closed Won"];
   const titles = ["CHRO", "VP HR", "Head of Talent", "CFO", "CEO", "VP L&D", "Director Comp & Benefits"];
   const roles: SalesforceContact["role"][] = ["economic_buyer", "user_buyer", "technical_buyer", "coach", "champion"];
@@ -434,7 +440,95 @@ function generateSimulatedSalesforceData(companyName: string): { opportunities: 
   
   const crossOpportunityInfluences = Object.values(influenceCount).filter(ic => ic.opportunities.length > 1);
   
-  return { opportunities, contacts, crossOpportunityInfluences };
+  // Historical deals with win/loss status and competitors
+  const dealHistory: { 
+    id: string; 
+    name: string; 
+    amount: number; 
+    closeDate: string; 
+    status: "won" | "lost"; 
+    competitor?: string; 
+    winLossReason: string;
+  }[] = [
+    {
+      id: "HIST-001",
+      name: `${companyName} - Executive Coaching Program`,
+      amount: 420000,
+      closeDate: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      status: "won",
+      competitor: "DDI",
+      winLossReason: "Strong executive relationships and proven coaching methodology"
+    },
+    {
+      id: "HIST-002",
+      name: `${companyName} - Succession Planning Assessment`,
+      amount: 280000,
+      closeDate: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      status: "won",
+      competitor: "Heidrick & Struggles",
+      winLossReason: "Comprehensive assessment tools and industry benchmarks"
+    },
+    {
+      id: "HIST-003",
+      name: `${companyName} - Sales Force Transformation`,
+      amount: 650000,
+      closeDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      status: "lost",
+      competitor: "McKinsey",
+      winLossReason: "Lost on price; McKinsey offered bundled consulting services"
+    },
+    {
+      id: "HIST-004",
+      name: `${companyName} - Culture Assessment`,
+      amount: 150000,
+      closeDate: new Date(Date.now() - 540 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      status: "won",
+      winLossReason: "No competitor - sole source based on prior relationship"
+    },
+    {
+      id: "HIST-005",
+      name: `${companyName} - Compensation Benchmarking`,
+      amount: 95000,
+      closeDate: new Date(Date.now() - 730 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      status: "lost",
+      competitor: "Mercer",
+      winLossReason: "Lost due to Mercer's deeper compensation data in their specific industry"
+    }
+  ];
+
+  // Aggregate competitor win/loss record
+  const competitorStats: Record<string, { wins: number; losses: number; deals: string[] }> = {};
+  dealHistory.forEach(deal => {
+    if (deal.competitor) {
+      if (!competitorStats[deal.competitor]) {
+        competitorStats[deal.competitor] = { wins: 0, losses: 0, deals: [] };
+      }
+      if (deal.status === "won") {
+        competitorStats[deal.competitor].wins++;
+      } else {
+        competitorStats[deal.competitor].losses++;
+      }
+      competitorStats[deal.competitor].deals.push(deal.name);
+    }
+  });
+
+  // Also track competitors in current opportunities (from red flags)
+  opportunities.forEach(opp => {
+    opp.redFlags.forEach(flag => {
+      if (flag.toLowerCase().includes("competitor")) {
+        const match = flag.match(/\(([^)]+)\)/);
+        if (match) {
+          const compName = match[1];
+          if (!competitorStats[compName]) {
+            competitorStats[compName] = { wins: 0, losses: 0, deals: [] };
+          }
+          competitorStats[compName].deals.push(opp.name + " (current)");
+        }
+      }
+    });
+  });
+  
+  return { opportunities, contacts, crossOpportunityInfluences, dealHistory, competitorStats };
 }
 
 interface MarketIntelligence {
@@ -1450,6 +1544,7 @@ export default function ProjectRoleView() {
   const [probeQuestion, setProbeQuestion] = useState("");
   const [probeHistory, setProbeHistory] = useState<Array<{role: "user" | "assistant"; content: string; timestamp: string}>>([]);
   const [isProbing, setIsProbing] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   
   
   // Mutation to probe the intelligence (ask follow-up questions)
@@ -6174,341 +6269,355 @@ export default function ProjectRoleView() {
                 }
               />
               
-              {/* Miller Heiman: High Win Deals Section */}
-              <Card className="border-amber-200 bg-gradient-to-br from-amber-50/30 to-background mt-4">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                        <TrendingUp className="w-5 h-5 text-amber-600" />
+              {/* Salesforce Opportunities - Collapsible */}
+              <Collapsible 
+                open={!collapsedSections['salesforce-opps']} 
+                onOpenChange={(open) => setCollapsedSections(prev => ({...prev, 'salesforce-opps': !open}))}
+                className="mt-4"
+              >
+                <Card className="border-blue-200 bg-gradient-to-br from-blue-50/30 to-background">
+                  <CollapsibleTrigger asChild>
+                    <CardHeader className="cursor-pointer hover-elevate">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                            <Briefcase className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <CardTitle className="flex items-center gap-2">
+                              Salesforce Opportunities
+                              <Badge className="bg-blue-500/10 text-blue-700 border-blue-500/20 text-xs">{sfData.opportunities.length} Active</Badge>
+                            </CardTitle>
+                            <CardDescription>Current and pipeline opportunities for this account</CardDescription>
+                          </div>
+                        </div>
+                        {collapsedSections['salesforce-opps'] ? <ChevronRight className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                       </div>
-                      <div>
-                        <CardTitle className="flex items-center gap-2">
-                          High Win Deals
-                          <Badge className="bg-amber-500/10 text-amber-700 border-amber-500/20 text-xs">Miller Heiman</Badge>
-                        </CardTitle>
-                        <CardDescription>Strategic opportunities with Blue Sheet analysis</CardDescription>
-                      </div>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {sfData.opportunities.filter(opp => opp.probability >= 40).map((opp) => (
-                      <div key={opp.id} className="border rounded-lg overflow-hidden">
-                        <div className="p-4 bg-muted/30">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <h4 className="font-semibold text-sm">{opp.name}</h4>
-                                <Badge variant="outline" className="text-xs">{opp.stage}</Badge>
-                              </div>
-                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                <span className="flex items-center gap-1">
-                                  <DollarSign className="w-3 h-3" />
-                                  ${(opp.amount / 1000).toFixed(0)}K
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <Target className="w-3 h-3" />
-                                  {opp.probability}% probability
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <Calendar className="w-3 h-3" />
-                                  Close: {opp.closeDate}
-                                </span>
-                              </div>
-                            </div>
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button variant="outline" size="sm" className="bg-blue-50 border-blue-200 text-blue-700">
-                                  <FileText className="w-3 h-3 mr-1" />
-                                  Blue Sheet
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                                <DialogHeader>
-                                  <DialogTitle className="flex items-center gap-2">
-                                    <FileText className="w-5 h-5 text-blue-600" />
-                                    Blue Sheet: {opp.name}
-                                  </DialogTitle>
-                                  <DialogDescription>Miller Heiman Strategic Selling Analysis</DialogDescription>
-                                </DialogHeader>
-                                <div className="space-y-4 pt-4">
-                                  <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
-                                    <h5 className="text-sm font-semibold text-blue-800 mb-1">Single Sales Objective</h5>
-                                    <p className="text-sm text-blue-700">{opp.blueSheet.singleSalesObjective}</p>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-3">
-                                    <div className="p-3 rounded-lg border bg-muted/30">
-                                      <h5 className="text-xs font-semibold uppercase text-muted-foreground mb-1">Ideal Customer Profile</h5>
-                                      <p className="text-sm">{opp.blueSheet.idealCustomerProfile}</p>
-                                    </div>
-                                    <div className="p-3 rounded-lg border bg-muted/30">
-                                      <h5 className="text-xs font-semibold uppercase text-muted-foreground mb-1">Competitive Advantage</h5>
-                                      <p className="text-sm">{opp.blueSheet.competitiveAdvantage}</p>
-                                    </div>
-                                  </div>
-                                  <div className="p-3 rounded-lg border bg-amber-50 border-amber-200">
-                                    <h5 className="text-xs font-semibold uppercase text-amber-700 mb-1">Minimum Acceptable Outcome</h5>
-                                    <p className="text-sm text-amber-800">{opp.blueSheet.minAcceptableOutcome}</p>
-                                  </div>
-                                  
-                                  <div>
-                                    <h5 className="text-sm font-semibold mb-2">Red Flags</h5>
-                                    <div className="space-y-2">
-                                      {opp.redFlags.map((flag, idx) => (
-                                        <div key={idx} className="flex items-start gap-2 p-2 rounded bg-red-50 border border-red-200">
-                                          <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
-                                          <p className="text-sm text-red-700">{flag}</p>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                  
-                                  <div>
-                                    <h5 className="text-sm font-semibold mb-2">Green Flags</h5>
-                                    <div className="space-y-2">
-                                      {opp.greenFlags.map((flag, idx) => (
-                                        <div key={idx} className="flex items-start gap-2 p-2 rounded bg-green-50 border border-green-200">
-                                          <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
-                                          <p className="text-sm text-green-700">{flag}</p>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                  
-                                  <div>
-                                    <h5 className="text-sm font-semibold mb-2">Action Plan</h5>
-                                    <div className="space-y-2">
-                                      {opp.actionPlan.map((action, idx) => (
-                                        <div key={idx} className="flex items-center gap-3 p-2 rounded border bg-muted/30">
-                                          <Badge variant="outline" className={`shrink-0 ${
-                                            action.priority === "high" ? "border-red-300 text-red-600" :
-                                            action.priority === "medium" ? "border-amber-300 text-amber-600" :
-                                            "border-gray-300 text-gray-600"
-                                          }`}>
-                                            {action.priority}
-                                          </Badge>
-                                          <div className="flex-1">
-                                            <p className="text-sm font-medium">{action.action}</p>
-                                            <p className="text-xs text-muted-foreground">Owner: {action.owner} | Due: {action.dueDate}</p>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
+                    </CardHeader>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <CardContent className="pt-0">
+                      <div className="space-y-3">
+                        {sfData.opportunities.map((opp) => (
+                          <div key={opp.id} className="border rounded-lg p-3 bg-muted/20">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                  <h4 className="font-semibold text-sm">{opp.name}</h4>
+                                  <Badge variant="outline" className={`text-xs ${
+                                    opp.stage === "Closed Won" ? "border-green-300 text-green-700" :
+                                    opp.stage === "Negotiation" || opp.stage === "Proposal" ? "border-blue-300 text-blue-700" :
+                                    "border-gray-300 text-gray-700"
+                                  }`}>{opp.stage}</Badge>
                                 </div>
-                              </DialogContent>
-                            </Dialog>
+                                <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+                                  <span className="flex items-center gap-1">
+                                    <DollarSign className="w-3 h-3" />
+                                    ${(opp.amount / 1000).toFixed(0)}K
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <Target className="w-3 h-3" />
+                                    {opp.probability}%
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <User className="w-3 h-3" />
+                                    {opp.owner}
+                                  </span>
+                                </div>
+                              </div>
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button variant="outline" size="sm" className="bg-blue-50 border-blue-200 text-blue-700">
+                                    <FileText className="w-3 h-3 mr-1" />
+                                    Blue Sheet
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                                  <DialogHeader>
+                                    <DialogTitle className="flex items-center gap-2">
+                                      <FileText className="w-5 h-5 text-blue-600" />
+                                      Blue Sheet: {opp.name}
+                                    </DialogTitle>
+                                    <DialogDescription>Miller Heiman Strategic Selling Analysis</DialogDescription>
+                                  </DialogHeader>
+                                  <div className="space-y-4 pt-4">
+                                    <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+                                      <h5 className="text-sm font-semibold text-blue-800 mb-1">Single Sales Objective</h5>
+                                      <p className="text-sm text-blue-700">{opp.blueSheet.singleSalesObjective}</p>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div className="p-3 rounded-lg border bg-muted/30">
+                                        <h5 className="text-xs font-semibold uppercase text-muted-foreground mb-1">Ideal Customer Profile</h5>
+                                        <p className="text-sm">{opp.blueSheet.idealCustomerProfile}</p>
+                                      </div>
+                                      <div className="p-3 rounded-lg border bg-muted/30">
+                                        <h5 className="text-xs font-semibold uppercase text-muted-foreground mb-1">Competitive Advantage</h5>
+                                        <p className="text-sm">{opp.blueSheet.competitiveAdvantage}</p>
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <h5 className="text-sm font-semibold mb-2">Red Flags</h5>
+                                      <div className="space-y-2">
+                                        {opp.redFlags.map((flag, idx) => (
+                                          <div key={idx} className="flex items-start gap-2 p-2 rounded bg-red-50 border border-red-200">
+                                            <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+                                            <p className="text-sm text-red-700">{flag}</p>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <h5 className="text-sm font-semibold mb-2">Green Flags</h5>
+                                      <div className="space-y-2">
+                                        {opp.greenFlags.map((flag, idx) => (
+                                          <div key={idx} className="flex items-start gap-2 p-2 rounded bg-green-50 border border-green-200">
+                                            <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
+                                            <p className="text-sm text-green-700">{flag}</p>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+
+              {/* Side by Side: Common Buying Influences + Competitor Win/Loss - Collapsible */}
+              <Collapsible 
+                open={!collapsedSections['insights-panel']} 
+                onOpenChange={(open) => setCollapsedSections(prev => ({...prev, 'insights-panel': !open}))}
+                className="mt-4"
+              >
+                <Card className="border-purple-200 bg-gradient-to-br from-purple-50/30 to-background">
+                  <CollapsibleTrigger asChild>
+                    <CardHeader className="cursor-pointer hover-elevate">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                            <Users className="w-5 h-5 text-purple-600" />
+                          </div>
+                          <div>
+                            <CardTitle className="flex items-center gap-2">
+                              Account Insights
+                              <Badge className="bg-purple-500/10 text-purple-700 border-purple-500/20 text-xs">Miller Heiman</Badge>
+                            </CardTitle>
+                            <CardDescription>Key stakeholders across deals & competitive win/loss record</CardDescription>
+                          </div>
+                        </div>
+                        {collapsedSections['insights-panel'] ? <ChevronRight className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                      </div>
+                    </CardHeader>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <CardContent className="pt-0">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {/* Common Buying Influences */}
+                        <div className="border rounded-lg p-4 bg-muted/20">
+                          <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                            <Users className="w-4 h-4 text-purple-600" />
+                            Common Buying Influences
+                            <Badge variant="outline" className="text-xs">{sfData.crossOpportunityInfluences.length} contacts</Badge>
+                          </h4>
+                          <p className="text-xs text-muted-foreground mb-3">Stakeholders appearing in 2+ opportunities</p>
+                          {sfData.crossOpportunityInfluences.length > 0 ? (
+                            <div className="space-y-2">
+                              {sfData.crossOpportunityInfluences.map((influence, idx) => (
+                                <div key={idx} className="p-2 rounded border bg-background">
+                                  <div className="flex items-center justify-between gap-2 mb-1">
+                                    <span className="font-medium text-sm">{influence.name}</span>
+                                    <Badge variant="outline" className={`text-xs ${
+                                      influence.role === "economic_buyer" ? "border-amber-300 text-amber-700" :
+                                      influence.role === "champion" ? "border-purple-300 text-purple-700" :
+                                      "border-blue-300 text-blue-700"
+                                    }`}>
+                                      {influence.role.replace('_', ' ')}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">{influence.title}</p>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Appears in: {influence.opportunities.length} deals
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground italic">No contacts appear in multiple opportunities</p>
+                          )}
+                        </div>
+
+                        {/* Competitor Win/Loss Record */}
+                        <div className="border rounded-lg p-4 bg-muted/20">
+                          <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                            <Shield className="w-4 h-4 text-rose-600" />
+                            Competitor Win/Loss Record
+                          </h4>
+                          <p className="text-xs text-muted-foreground mb-3">Historical performance against competitors</p>
+                          <div className="space-y-2">
+                            {Object.entries(sfData.competitorStats).map(([competitor, stats], idx) => {
+                              const total = stats.wins + stats.losses;
+                              const winRate = total > 0 ? Math.round((stats.wins / total) * 100) : 0;
+                              return (
+                                <div key={idx} className="p-2 rounded border bg-background">
+                                  <div className="flex items-center justify-between gap-2 mb-1">
+                                    <span className="font-medium text-sm">{competitor}</span>
+                                    <div className="flex items-center gap-2">
+                                      <Badge className={`text-xs ${
+                                        winRate >= 50 ? "bg-green-100 text-green-700 border-green-200" : 
+                                        "bg-red-100 text-red-700 border-red-200"
+                                      }`}>
+                                        {winRate}% win rate
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                    <span className="flex items-center gap-1">
+                                      <CheckCircle className="w-3 h-3 text-green-500" />
+                                      {stats.wins} won
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <AlertCircle className="w-3 h-3 text-red-500" />
+                                      {stats.losses} lost
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground mt-1 truncate">
+                                    Deals: {stats.deals.slice(0, 2).join(', ')}{stats.deals.length > 2 ? '...' : ''}
+                                  </p>
+                                </div>
+                              );
+                            })}
                           </div>
                           
-                          <div className="mt-3 grid grid-cols-2 gap-2">
-                            <div>
-                              <p className="text-xs font-medium text-red-600 mb-1">Red Flags ({opp.redFlags.length})</p>
-                              <p className="text-xs text-muted-foreground truncate">{opp.redFlags[0]}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs font-medium text-green-600 mb-1">Green Flags ({opp.greenFlags.length})</p>
-                              <p className="text-xs text-muted-foreground truncate">{opp.greenFlags[0]}</p>
+                          {/* Deal History Summary */}
+                          <div className="mt-3 pt-3 border-t">
+                            <h5 className="text-xs font-semibold uppercase text-muted-foreground mb-2">Recent Deal History</h5>
+                            <div className="space-y-1">
+                              {sfData.dealHistory.slice(0, 3).map((deal, idx) => (
+                                <div key={idx} className="flex items-center justify-between text-xs">
+                                  <span className="truncate flex-1 mr-2">{deal.name.replace(project?.companyName + ' - ', '')}</span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-muted-foreground">${(deal.amount / 1000).toFixed(0)}K</span>
+                                    <Badge className={`text-xs ${
+                                      deal.status === "won" ? "bg-green-100 text-green-700 border-green-200" : 
+                                      "bg-red-100 text-red-700 border-red-200"
+                                    }`}>
+                                      {deal.status}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-              
-              {/* Miller Heiman: Buying Influences Table */}
-              <Card className="border-purple-200 bg-gradient-to-br from-purple-50/30 to-background mt-4">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                      <Users className="w-5 h-5 text-purple-600" />
-                    </div>
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        Buying Influences
-                        <Badge className="bg-purple-500/10 text-purple-700 border-purple-500/20 text-xs">Miller Heiman</Badge>
-                      </CardTitle>
-                      <CardDescription>Key stakeholders and their buying roles across opportunities</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted/50">
-                        <tr>
-                          <th className="text-left p-3 font-medium">Name</th>
-                          <th className="text-left p-3 font-medium">Title</th>
-                          <th className="text-left p-3 font-medium">Role</th>
-                          <th className="text-left p-3 font-medium">Influence</th>
-                          <th className="text-left p-3 font-medium">Rating</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {blueSheet.buyingInfluences.map((buyer, idx) => (
-                          <tr key={idx} className="border-t">
-                            <td className="p-3 font-medium">{buyer.name.split(' (')[0]}</td>
-                            <td className="p-3 text-muted-foreground">{buyer.name.includes('(') ? buyer.name.split('(')[1].replace(')', '') : buyer.type}</td>
-                            <td className="p-3">
-                              <Badge variant="outline" className={`text-xs ${
-                                buyer.type === "Economic Buyer" ? "border-amber-300 text-amber-700" :
-                                buyer.type === "User Buyer" ? "border-blue-300 text-blue-700" :
-                                buyer.type === "Technical Buyer" ? "border-gray-300 text-gray-700" :
-                                "border-purple-300 text-purple-700"
-                              }`}>
-                                {buyer.type}
-                              </Badge>
-                            </td>
-                            <td className="p-3">
-                              <Badge className={`text-xs ${
-                                buyer.rating === "G" ? "bg-green-100 text-green-700 border-green-200" :
-                                buyer.rating === "Y" ? "bg-amber-100 text-amber-700 border-amber-200" :
-                                "bg-red-100 text-red-700 border-red-200"
-                              }`}>
-                                {buyer.rating === "G" ? "Growth" : buyer.rating === "Y" ? "Even Keel" : "Trouble"}
-                              </Badge>
-                            </td>
-                            <td className="p-3 text-xs text-muted-foreground">{buyer.action}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              {/* Miller Heiman: Past Competitors */}
-              <Card className="border-rose-200 bg-gradient-to-br from-rose-50/30 to-background mt-4">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-rose-500/10 flex items-center justify-center">
-                      <Shield className="w-5 h-5 text-rose-600" />
-                    </div>
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        Competitive Landscape
-                        <Badge className="bg-rose-500/10 text-rose-700 border-rose-500/20 text-xs">Miller Heiman</Badge>
-                      </CardTitle>
-                      <CardDescription>Known competitors and recommended counter-strategies</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {blueSheet.competition.map((comp, idx) => (
-                      <div key={idx} className="p-4 rounded-lg border bg-muted/30">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-semibold text-sm">{comp.competitor}</h4>
-                              <Badge variant="outline" className="text-xs border-rose-200 text-rose-700">{comp.position}</Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground mt-2">{comp.strategy}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  <div className="mt-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
-                    <h5 className="text-sm font-semibold text-blue-800 mb-2 flex items-center gap-2">
-                      <Lightbulb className="w-4 h-4" />
-                      Strengths to Leverage
-                    </h5>
-                    <ul className="space-y-1">
-                      {blueSheet.strengthsLeverage.map((strength, idx) => (
-                        <li key={idx} className="text-sm text-blue-700 flex items-start gap-2">
-                          <CheckCircle className="w-3 h-3 mt-1 shrink-0" />
-                          {strength}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              {/* Probe Intelligence Chat Box */}
-              {intelligenceIsSaved && (
-                <Card className="mt-6 border-purple-200 bg-gradient-to-br from-purple-50/50 to-background">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <MessageSquare className="w-5 h-5 text-purple-600" />
-                      Ask Follow-up Questions
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      Probe deeper into the intelligence. Ask questions about strategy, challenges, opportunities, or anything else you'd like to explore.
-                    </p>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Probe History */}
-                    {probeHistory.length > 0 && (
-                      <div className="space-y-3 max-h-64 overflow-y-auto border rounded-lg p-3 bg-background">
-                        {probeHistory.map((msg, idx) => (
-                          <div 
-                            key={idx} 
-                            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                          >
-                            <div 
-                              className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
-                                msg.role === "user" 
-                                  ? "bg-purple-600 text-white" 
-                                  : "bg-muted"
-                              }`}
-                            >
-                              <p className="whitespace-pre-wrap">{msg.content}</p>
-                              <p className="text-xs opacity-60 mt-1">
-                                {new Date(msg.timestamp).toLocaleTimeString()}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    
-                    {/* Input Area */}
-                    <div className="flex gap-2">
-                      <Input
-                        value={probeQuestion}
-                        onChange={(e) => setProbeQuestion(e.target.value)}
-                        placeholder="e.g., What are the main leadership challenges they're facing?"
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && probeQuestion.trim() && !isProbing && selectedDiscoveryTheme) {
-                            setIsProbing(true);
-                            probeIntelligenceMutation.mutate({ theme: selectedDiscoveryTheme, question: probeQuestion.trim() });
-                          }
-                        }}
-                        disabled={isProbing}
-                        data-testid="input-probe-question"
-                        className="flex-1"
-                      />
-                      <Button
-                        onClick={() => {
-                          if (probeQuestion.trim() && selectedDiscoveryTheme) {
-                            setIsProbing(true);
-                            probeIntelligenceMutation.mutate({ theme: selectedDiscoveryTheme, question: probeQuestion.trim() });
-                          }
-                        }}
-                        disabled={!probeQuestion.trim() || isProbing}
-                        data-testid="button-submit-probe"
-                      >
-                        {isProbing ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Thinking...
-                          </>
-                        ) : (
-                          <>
-                            <Send className="w-4 h-4 mr-2" />
-                            Ask
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </CardContent>
+                    </CardContent>
+                  </CollapsibleContent>
                 </Card>
+              </Collapsible>
+              
+              {/* Probe Intelligence Chat Box - Collapsible */}
+              {intelligenceIsSaved && (
+                <Collapsible 
+                  open={!collapsedSections['probe-chat']} 
+                  onOpenChange={(open) => setCollapsedSections(prev => ({...prev, 'probe-chat': !open}))}
+                  className="mt-4"
+                >
+                  <Card className="border-purple-200 bg-gradient-to-br from-purple-50/50 to-background">
+                    <CollapsibleTrigger asChild>
+                      <CardHeader className="pb-3 cursor-pointer hover-elevate">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle className="flex items-center gap-2 text-lg">
+                              <MessageSquare className="w-5 h-5 text-purple-600" />
+                              Ask Follow-up Questions
+                              {probeHistory.length > 0 && (
+                                <Badge variant="outline" className="text-xs">{probeHistory.length} messages</Badge>
+                              )}
+                            </CardTitle>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Probe deeper into the intelligence
+                            </p>
+                          </div>
+                          {collapsedSections['probe-chat'] ? <ChevronRight className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                        </div>
+                      </CardHeader>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="space-y-4 pt-0">
+                        {/* Probe History */}
+                        {probeHistory.length > 0 && (
+                          <div className="space-y-3 max-h-64 overflow-y-auto border rounded-lg p-3 bg-background">
+                            {probeHistory.map((msg, idx) => (
+                              <div 
+                                key={idx} 
+                                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                              >
+                                <div 
+                                  className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
+                                    msg.role === "user" 
+                                      ? "bg-purple-600 text-white" 
+                                      : "bg-muted"
+                                  }`}
+                                >
+                                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                                  <p className="text-xs opacity-60 mt-1">
+                                    {new Date(msg.timestamp).toLocaleTimeString()}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* Input Area */}
+                        <div className="flex gap-2">
+                          <Input
+                            value={probeQuestion}
+                            onChange={(e) => setProbeQuestion(e.target.value)}
+                            placeholder="e.g., What are the main leadership challenges they're facing?"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && probeQuestion.trim() && !isProbing && selectedDiscoveryTheme) {
+                                setIsProbing(true);
+                                probeIntelligenceMutation.mutate({ theme: selectedDiscoveryTheme, question: probeQuestion.trim() });
+                              }
+                            }}
+                            disabled={isProbing}
+                            data-testid="input-probe-question"
+                            className="flex-1"
+                          />
+                          <Button
+                            onClick={() => {
+                              if (probeQuestion.trim() && selectedDiscoveryTheme) {
+                                setIsProbing(true);
+                                probeIntelligenceMutation.mutate({ theme: selectedDiscoveryTheme, question: probeQuestion.trim() });
+                              }
+                            }}
+                            disabled={!probeQuestion.trim() || isProbing}
+                            data-testid="button-submit-probe"
+                          >
+                            {isProbing ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Thinking...
+                              </>
+                            ) : (
+                              <>
+                                <Send className="w-4 h-4 mr-2" />
+                                Ask
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
               )}
 
               {/* Navigation for Intelligence Step */}
