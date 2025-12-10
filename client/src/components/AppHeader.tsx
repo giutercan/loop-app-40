@@ -95,7 +95,6 @@ export function AppHeader() {
             onClick={() => navigate("/accounts")}
             data-testid="link-header-logo"
           >
-            <LoopLogoBrand className="w-9 h-9" />
             <div className="hidden sm:flex flex-col leading-none">
               <span className="font-semibold text-foreground text-sm">Korn Ferry</span>
               <span className="text-xs font-semibold bg-gradient-to-r from-secondary via-accent to-ai bg-clip-text text-transparent">Loop</span>
