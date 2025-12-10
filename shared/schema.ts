@@ -1323,6 +1323,33 @@ export const alignmentShareLinks = pgTable("alignment_share_links", {
   expiresAt: timestamp("expires_at"), // Optional: link expiration
   createdAt: timestamp("created_at").defaultNow().notNull(),
   lastAccessedAt: timestamp("last_accessed_at"), // Track when customer last viewed
+  
+  // Portal section permissions - which sections client can access
+  portalSections: jsonb("portal_sections").$type<{
+    overview: boolean;
+    strategies: boolean;
+    outcomes: boolean;
+    progress: boolean;
+  }>(),
+  // Portal customization
+  welcomeMessage: text("welcome_message"), // Custom welcome message for client
+  portalTitle: text("portal_title"), // Custom portal title
+  // Client interaction tracking
+  clientComments: jsonb("client_comments").$type<Array<{
+    id: string;
+    section: string;
+    itemId: string;
+    comment: string;
+    createdAt: string;
+    customerName: string;
+  }>>(),
+  clientApprovals: jsonb("client_approvals").$type<Array<{
+    section: string;
+    itemId: string;
+    approved: boolean;
+    approvedAt: string;
+    customerName: string;
+  }>>(),
 });
 
 export const insertAlignmentShareLinkSchema = createInsertSchema(alignmentShareLinks).omit({

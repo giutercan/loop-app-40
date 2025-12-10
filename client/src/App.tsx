@@ -13,6 +13,7 @@ import Realization from "@/pages/realisation";
 import Dashboard from "@/pages/dashboard";
 import Questionnaire from "@/pages/questionnaire";
 import SharedAlignment from "@/pages/shared-alignment";
+import CustomerPortal from "@/pages/customer-portal";
 import AccountsDashboard from "@/pages/accounts";
 import AccountValueSpine from "@/pages/account-value-spine";
 import AccountHub from "@/pages/account-hub";
@@ -95,6 +96,7 @@ function Router() {
       <Route path="/projects/:id/dashboard" component={DashboardWithLayout} />
       <Route path="/questionnaire/:token" component={Questionnaire} />
       <Route path="/shared/alignment/:token" component={SharedAlignment} />
+      <Route path="/portal/:token" component={CustomerPortal} />
       <Route path="/presentation" component={Presentation} />
       <Route path="/companion" component={CompanionCanvas} />
       <Route component={NotFound} />

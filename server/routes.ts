@@ -6043,6 +6043,248 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
       res.status(500).json({ error: error.message || "Failed to revoke share link" });
     }
   });
+
+  // ============================================================================
+  // CUSTOMER PORTAL API - Full collaboration portal for clients
+  // ============================================================================
+
+  // Get customer portal data by share token
+  app.get("/api/portal/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      
+      const shareLink = await storage.getAlignmentShareLinkByToken(token);
+      if (!shareLink) {
+        return res.status(404).json({ error: "Portal link not found" });
+      }
+      
+      if (shareLink.status !== "active") {
+        return res.status(403).json({ error: "This portal link has been revoked" });
+      }
+      if (shareLink.expiresAt && new Date(shareLink.expiresAt) < new Date()) {
+        return res.status(403).json({ error: "This portal link has expired" });
+      }
+      
+      await storage.updateAlignmentShareLink(shareLink.id, {
+        lastAccessedAt: new Date()
+      });
+      
+      const project = await storage.getProject(shareLink.projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const strategySelection = await storage.getStrategySelection(shareLink.projectId);
+      const strategies = strategySelection?.selectedStrategiesData?.strategies || [];
+      const outcomes = strategySelection?.generatedOutcomesData?.outcomes || [];
+      
+      const commitments = await storage.getKpiCommitments(shareLink.projectId);
+      
+      res.json({
+        project: {
+          id: project.id,
+          name: project.name,
+          companyName: project.companyName,
+          companyLogoUrl: project.companyLogoUrl,
+          sector: project.sector,
+        },
+        strategies,
+        outcomes,
+        commitments: commitments.map(c => ({
+          id: c.id,
+          commitmentTitle: c.commitmentTitle,
+          commitmentDescription: c.commitmentDescription,
+          status: c.status,
+          valuePillar: c.valuePillar,
+          baselineValue: c.baselineValue,
+          targetValue: c.targetValue,
+          metricUnit: c.metricUnit,
+        })),
+        permissions: shareLink.permissions,
+        customerName: shareLink.customerName,
+        welcomeMessage: shareLink.welcomeMessage,
+        portalTitle: shareLink.portalTitle,
+        portalSections: shareLink.portalSections || { overview: true, strategies: true, outcomes: true, progress: true },
+        clientComments: shareLink.clientComments || [],
+        clientApprovals: shareLink.clientApprovals || [],
+      });
+    } catch (error: any) {
+      console.error("Error fetching customer portal:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch portal data" });
+    }
+  });
+
+  // Add comment to portal item
+  app.post("/api/portal/:token/comment", async (req, res) => {
+    try {
+      const { token } = req.params;
+      const { section, itemId, comment, customerName } = req.body;
+      
+      const shareLink = await storage.getAlignmentShareLinkByToken(token);
+      if (!shareLink) {
+        return res.status(404).json({ error: "Portal link not found" });
+      }
+      
+      if (shareLink.status !== "active") {
+        return res.status(403).json({ error: "This portal link has been revoked" });
+      }
+      if (shareLink.permissions === "view") {
+        return res.status(403).json({ error: "You do not have permission to comment" });
+      }
+      
+      const existingComments = shareLink.clientComments || [];
+      const newComment = {
+        id: `comment_${Date.now()}`,
+        section: sanitizeInput(section),
+        itemId: sanitizeInput(itemId),
+        comment: sanitizeInput(comment),
+        createdAt: new Date().toISOString(),
+        customerName: sanitizeInput(customerName) || "Anonymous",
+      };
+      
+      await storage.updateAlignmentShareLink(shareLink.id, {
+        clientComments: [...existingComments, newComment] as any,
+      });
+      
+      res.json({ success: true, comment: newComment });
+    } catch (error: any) {
+      console.error("Error adding portal comment:", error);
+      res.status(500).json({ error: error.message || "Failed to add comment" });
+    }
+  });
+
+  // Approve portal item
+  app.post("/api/portal/:token/approve", async (req, res) => {
+    try {
+      const { token } = req.params;
+      const { section, itemId, customerName } = req.body;
+      
+      const shareLink = await storage.getAlignmentShareLinkByToken(token);
+      if (!shareLink) {
+        return res.status(404).json({ error: "Portal link not found" });
+      }
+      
+      if (shareLink.status !== "active") {
+        return res.status(403).json({ error: "This portal link has been revoked" });
+      }
+      if (shareLink.permissions === "view") {
+        return res.status(403).json({ error: "You do not have permission to approve items" });
+      }
+      
+      const existingApprovals = shareLink.clientApprovals || [];
+      const existingIndex = existingApprovals.findIndex(
+        a => a.section === section && a.itemId === itemId
+      );
+      
+      const newApproval = {
+        section: sanitizeInput(section),
+        itemId: sanitizeInput(itemId),
+        approved: true,
+        approvedAt: new Date().toISOString(),
+        customerName: sanitizeInput(customerName) || "Anonymous",
+      };
+      
+      let updatedApprovals;
+      if (existingIndex >= 0) {
+        updatedApprovals = [...existingApprovals];
+        updatedApprovals[existingIndex] = newApproval;
+      } else {
+        updatedApprovals = [...existingApprovals, newApproval];
+      }
+      
+      await storage.updateAlignmentShareLink(shareLink.id, {
+        clientApprovals: updatedApprovals as any,
+      });
+      
+      res.json({ success: true, approval: newApproval });
+    } catch (error: any) {
+      console.error("Error adding portal approval:", error);
+      res.status(500).json({ error: error.message || "Failed to add approval" });
+    }
+  });
+
+  // Create/update portal share link for a project
+  app.post("/api/projects/:projectId/portal/share", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const { 
+        customerName, 
+        customerEmail, 
+        expiresInDays, 
+        portalTitle, 
+        welcomeMessage,
+        portalSections 
+      } = req.body;
+      
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const existingLink = await storage.getAlignmentShareLink(projectId);
+      
+      if (existingLink && existingLink.status === "active") {
+        const updated = await storage.updateAlignmentShareLink(existingLink.id, {
+          customerName: customerName ? sanitizeInput(customerName) : existingLink.customerName,
+          customerEmail: customerEmail ? sanitizeInput(customerEmail) : existingLink.customerEmail,
+          portalTitle: portalTitle ? sanitizeInput(portalTitle) : existingLink.portalTitle,
+          welcomeMessage: welcomeMessage ? sanitizeInput(welcomeMessage) : existingLink.welcomeMessage,
+          portalSections: portalSections || existingLink.portalSections,
+        });
+        
+        return res.json({
+          shareLink: updated,
+          shareUrl: `/portal/${updated?.shareToken}`,
+        });
+      }
+      
+      const shareToken = `portal_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+      const expiresAt = expiresInDays 
+        ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000)
+        : null;
+      
+      const newLink = await storage.createAlignmentShareLink({
+        projectId,
+        shareToken,
+        customerName: customerName ? sanitizeInput(customerName) : null,
+        customerEmail: customerEmail ? sanitizeInput(customerEmail) : null,
+        permissions: "edit",
+        status: "active",
+        expiresAt,
+        portalTitle: portalTitle ? sanitizeInput(portalTitle) : "Collaboration Portal",
+        welcomeMessage: welcomeMessage ? sanitizeInput(welcomeMessage) : null,
+        portalSections: portalSections || { overview: true, strategies: true, outcomes: true, progress: true },
+      });
+      
+      res.json({
+        shareLink: newLink,
+        shareUrl: `/portal/${newLink.shareToken}`,
+      });
+    } catch (error: any) {
+      console.error("Error creating portal share link:", error);
+      res.status(500).json({ error: error.message || "Failed to create portal link" });
+    }
+  });
+
+  // Get existing portal share link for a project
+  app.get("/api/projects/:projectId/portal/share", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const shareLink = await storage.getAlignmentShareLink(projectId);
+      
+      if (!shareLink) {
+        return res.json({ shareLink: null });
+      }
+      
+      res.json({
+        shareLink,
+        shareUrl: `/portal/${shareLink.shareToken}`,
+      });
+    } catch (error: any) {
+      console.error("Error fetching portal share link:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch share link" });
+    }
+  });
   
   // Dashboard Layouts - User-configurable widget arrangements
   app.get("/api/projects/:projectId/dashboard-layout", async (req, res) => {
