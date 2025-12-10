@@ -4349,7 +4349,14 @@ const strategyOutcomeSchema = z.object({
     source: z.string()
   }),
   valuePillar: z.enum(["grow", "optimise", "derisk", "strengthen"]),
-  achievability: z.enum(["high", "medium", "low"]),
+  achievability: z.string().transform((val) => {
+    const lower = val.toLowerCase();
+    if (lower.includes("high") && lower.includes("medium")) return "high";
+    if (lower.includes("medium") && lower.includes("low")) return "medium";
+    if (lower.includes("high")) return "high";
+    if (lower.includes("low")) return "low";
+    return "medium";
+  }).pipe(z.enum(["high", "medium", "low"])),
   businessImpact: z.string(),
   kornFerrySolution: z.string()
 });
