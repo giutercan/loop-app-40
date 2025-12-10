@@ -27,6 +27,10 @@ The AI strategy focuses on strategic and actionable insights, with data sorted b
 - **Storage**: In-memory storage (MemStorage)
 
 ## Recent Changes (December 2024)
+- **Strategy Selection Persistence**: Added `strategySelections` database table to persist strategy choices and generated outcomes per project. Enables restoring state when users return, with handoff confirmation gate before delivery handoff.
+  - Database table: `strategySelections` with JSONB fields for `selectedStrategiesData` and `generatedOutcomesData`
+  - API routes: GET/POST/PATCH `/api/projects/:projectId/strategy-selection`
+  - Frontend: Auto-restores saved selections on mount, persists on confirm, handoff confirmation dialog
 - **Unified Strategy-to-Outcomes Workflow**: StrategicAlignmentSelector is now the single entry point for outcome creation in Design Outcomes stage. AI generates outcomes based on selected strategies, creating them as drafts that flow through draft → proposed → confirmed workflow.
 - **Narrative Outcome Display**: Replaced 3-column grid layout with storytelling format - outcomes grouped by Value Pillars (Grow, Optimise, De-risk, Strengthen) with "We will..." narrative presentation.
 - **Enhanced Pipeline Visualization**: Header shows total value, pipeline status counts (Draft/Review/Confirmed), and visual progress bar.

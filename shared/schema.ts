@@ -1745,6 +1745,46 @@ export const insertKpiCommitmentSchema = createInsertSchema(kpiCommitments).omit
 export type InsertKpiCommitment = z.infer<typeof insertKpiCommitmentSchema>;
 export type KpiCommitment = typeof kpiCommitments.$inferSelect;
 
+// Strategy Selections - Persisted strategy choices and generated outcomes per project
+export const strategySelections = pgTable("strategy_selections", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  
+  // AI-generated strategies (full list from AI)
+  generatedStrategies: jsonb("generated_strategies"), // Array of strategy objects
+  
+  // User-selected strategy IDs
+  selectedStrategyIds: text("selected_strategy_ids").array(), // Array of strategy IDs user chose
+  
+  // AI-generated outcomes based on selected strategies
+  generatedOutcomes: jsonb("generated_outcomes"), // Array of outcome objects
+  
+  // User-selected outcome IDs for handoff
+  selectedOutcomeIds: text("selected_outcome_ids").array(), // Array of outcome IDs user confirmed
+  
+  // Workflow state
+  status: text("status", { 
+    enum: ["draft", "strategies_selected", "outcomes_generated", "outcomes_confirmed", "ready_for_handoff"] 
+  }).notNull().default("draft"),
+  
+  // Timestamps
+  strategiesGeneratedAt: timestamp("strategies_generated_at"),
+  strategiesSelectedAt: timestamp("strategies_selected_at"),
+  outcomesGeneratedAt: timestamp("outcomes_generated_at"),
+  outcomesConfirmedAt: timestamp("outcomes_confirmed_at"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertStrategySelectionSchema = createInsertSchema(strategySelections).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertStrategySelection = z.infer<typeof insertStrategySelectionSchema>;
+export type StrategySelection = typeof strategySelections.$inferSelect;
+
 // Handoff Packets - Bundle of commitments transferred from Sales to CSM
 export const handoffPackets = pgTable("handoff_packets", {
   id: serial("id").primaryKey(),

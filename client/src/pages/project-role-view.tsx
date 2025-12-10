@@ -3885,44 +3885,41 @@ export default function ProjectRoleView() {
               "Talent Acquisition": "talent_acquisition",
               "Recruiting Strategy": "talent_acquisition",
               "Assessment & Selection": "talent_acquisition",
-              "Compensation & Benefits": "total_rewards",
-              "Total Rewards": "total_rewards",
-              "Pay & Benefits": "total_rewards",
+              "Compensation & Benefits": "rewards_optimization",
+              "Total Rewards": "rewards_optimization",
+              "Pay & Benefits": "rewards_optimization",
               "Organization Design": "org_transformation",
               "Organization Transformation": "org_transformation",
               "Change Management": "org_transformation",
-              "Workforce Planning": "workforce_planning",
-              "Strategic Workforce Planning": "workforce_planning",
-              "Succession Planning": "succession_planning",
-              "Succession Management": "succession_planning",
-              "Employee Engagement": "culture_engagement",
-              "Culture Transformation": "culture_engagement",
-              "Culture & Engagement": "culture_engagement",
-              "Diversity & Inclusion": "dei_transformation",
-              "DEI": "dei_transformation",
-              "DEI Transformation": "dei_transformation",
+              "Workforce Planning": "org_transformation",
+              "Strategic Workforce Planning": "org_transformation",
+              "Succession Planning": "leadership_development",
+              "Succession Management": "leadership_development",
+              "Employee Engagement": "org_transformation",
+              "Culture Transformation": "org_transformation",
+              "Culture & Engagement": "org_transformation",
+              "Diversity & Inclusion": "org_transformation",
+              "DEI": "org_transformation",
+              "DEI Transformation": "org_transformation",
             };
             
             let successCount = 0;
             for (const outcome of data.outcomes) {
               try {
-                const baselineStr = outcome.kpiDetails.suggestedBaseline;
-                const targetStr = outcome.kpiDetails.suggestedTarget;
-                const baselineValue = parseFloat(baselineStr.replace(/[^0-9.-]/g, '')) || null;
-                const targetValue = parseFloat(targetStr.replace(/[^0-9.-]/g, '')) || null;
+                const baselineStr = outcome.kpiDetails?.suggestedBaseline || "";
+                const targetStr = outcome.kpiDetails?.suggestedTarget || "";
                 
                 const solutionPattern = kornFerrySolutionToPattern[outcome.kornFerrySolution] || null;
                 
                 await createCommitmentMutation.mutateAsync({
-                  name: outcome.outcomeName,
-                  description: outcome.outcomeDescription,
-                  kpiUnit: outcome.kpiDetails.unit,
-                  baselineValue,
-                  targetValue,
+                  commitmentTitle: outcome.outcomeName,
+                  commitmentDescription: outcome.outcomeDescription,
+                  metricUnit: outcome.kpiDetails?.unit || "",
+                  baselineValue: baselineStr,
+                  targetValue: targetStr,
                   valuePillar: outcome.valuePillar,
                   solutionPattern,
                   status: "draft",
-                  definedBy: "Strategic Alignment",
                   outcomeStatement: outcome.businessImpact,
                   provenance: {
                     source: "strategic_alignment",

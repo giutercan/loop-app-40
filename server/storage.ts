@@ -54,6 +54,7 @@ import type {
   EvidenceArtefact, InsertEvidenceArtefact,
   AccountHub, LifecyclePhase,
   KpiCommitment, InsertKpiCommitment,
+  StrategySelection, InsertStrategySelection,
   HandoffPacket, InsertHandoffPacket,
   AiSession, InsertAiSession,
   AiMessage, InsertAiMessage,
@@ -350,6 +351,11 @@ export interface IStorage {
   createKpiCommitment(commitment: InsertKpiCommitment): Promise<KpiCommitment>;
   updateKpiCommitment(id: number, commitment: Partial<InsertKpiCommitment>): Promise<KpiCommitment | undefined>;
   deleteKpiCommitment(id: number): Promise<void>;
+  
+  // Strategy Selections (persisted strategy choices and outcomes per project)
+  getStrategySelection(projectId: number): Promise<StrategySelection | undefined>;
+  createStrategySelection(selection: InsertStrategySelection): Promise<StrategySelection>;
+  updateStrategySelection(projectId: number, selection: Partial<InsertStrategySelection>): Promise<StrategySelection | undefined>;
   
   // Handoff Packets (Sales to CSM transfer)
   getHandoffPackets(projectId: number): Promise<HandoffPacket[]>;
@@ -2037,6 +2043,26 @@ export class DbStorage implements IStorage {
   
   async deleteKpiCommitment(id: number): Promise<void> {
     await db.delete(schema.kpiCommitments).where(eq(schema.kpiCommitments.id, id));
+  }
+  
+  // Strategy Selections
+  async getStrategySelection(projectId: number): Promise<StrategySelection | undefined> {
+    const results = await db.select().from(schema.strategySelections)
+      .where(eq(schema.strategySelections.projectId, projectId));
+    return results[0];
+  }
+  
+  async createStrategySelection(selection: InsertStrategySelection): Promise<StrategySelection> {
+    const results = await db.insert(schema.strategySelections).values(selection).returning();
+    return results[0];
+  }
+  
+  async updateStrategySelection(projectId: number, selection: Partial<InsertStrategySelection>): Promise<StrategySelection | undefined> {
+    const results = await db.update(schema.strategySelections)
+      .set({ ...selection, updatedAt: new Date() })
+      .where(eq(schema.strategySelections.projectId, projectId))
+      .returning();
+    return results[0];
   }
   
   // Handoff Packets

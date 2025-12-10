@@ -7998,6 +7998,78 @@ Respond in JSON format:
   });
   
   // ============================================================================
+  // STRATEGY SELECTIONS API - Persisted strategy choices and outcomes
+  // ============================================================================
+  
+  // GET /api/projects/:projectId/strategy-selection - Get strategy selection for a project
+  app.get("/api/projects/:projectId/strategy-selection", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const selection = await storage.getStrategySelection(projectId);
+      
+      if (!selection) {
+        return res.status(404).json({ error: "No strategy selection found for this project" });
+      }
+      
+      res.json(selection);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // POST /api/projects/:projectId/strategy-selection - Create or update strategy selection
+  app.post("/api/projects/:projectId/strategy-selection", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      
+      // Check if selection already exists
+      const existing = await storage.getStrategySelection(projectId);
+      
+      if (existing) {
+        // Update existing selection
+        const updated = await storage.updateStrategySelection(projectId, {
+          ...req.body,
+          updatedAt: new Date(),
+        });
+        return res.json(updated);
+      } else {
+        // Create new selection
+        const selection = await storage.createStrategySelection({
+          projectId,
+          ...req.body,
+        });
+        return res.status(201).json(selection);
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // PATCH /api/projects/:projectId/strategy-selection - Update strategy selection
+  app.patch("/api/projects/:projectId/strategy-selection", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      
+      // Check if selection exists
+      const existing = await storage.getStrategySelection(projectId);
+      
+      if (!existing) {
+        // Create new selection if it doesn't exist
+        const selection = await storage.createStrategySelection({
+          projectId,
+          ...req.body,
+        });
+        return res.status(201).json(selection);
+      }
+      
+      const updated = await storage.updateStrategySelection(projectId, req.body);
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // ============================================================================
   // KPI COMMITMENTS API - Sales-defined deliverables with customer
   // ============================================================================
   

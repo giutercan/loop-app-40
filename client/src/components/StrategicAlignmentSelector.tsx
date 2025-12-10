@@ -369,6 +369,8 @@ export function StrategicAlignmentSelector({
   const [confirmedStrategies, setConfirmedStrategies] = useState<OrganizationalStrategy[]>([]);
   const [outcomes, setOutcomes] = useState<StrategyOutcome[]>([]);
   const [selectedOutcomes, setSelectedOutcomes] = useState<Set<string>>(new Set());
+  const [showHandoffConfirmation, setShowHandoffConfirmation] = useState(false);
+  const [hasRestoredFromSaved, setHasRestoredFromSaved] = useState(false);
   const [customStrategyForm, setCustomStrategyForm] = useState({
     name: "",
     description: "",
@@ -381,6 +383,76 @@ export function StrategicAlignmentSelector({
     queryKey: ["/api/projects", projectId, "strategic-recommendations"],
     retry: false,
   });
+
+  const { data: savedSelection } = useQuery<{
+    id: number;
+    projectId: number;
+    selectedStrategiesData: {
+      strategies: OrganizationalStrategy[];
+      selectedIds: string[];
+      customStrategies: OrganizationalStrategy[];
+    } | null;
+    generatedOutcomesData: {
+      outcomes: StrategyOutcome[];
+      selectedOutcomeIds: string[];
+    } | null;
+    handoffConfirmed: boolean;
+    status: string;
+  }>({
+    queryKey: ["/api/projects", projectId, "strategy-selection"],
+    retry: false,
+  });
+
+  const saveSelectionMutation = useMutation({
+    mutationFn: async (data: {
+      selectedStrategiesData?: {
+        strategies: OrganizationalStrategy[];
+        selectedIds: string[];
+        customStrategies: OrganizationalStrategy[];
+      };
+      generatedOutcomesData?: {
+        outcomes: StrategyOutcome[];
+        selectedOutcomeIds: string[];
+      };
+      handoffConfirmed?: boolean;
+      status?: string;
+    }) => {
+      const response = await apiRequest("POST", `/api/projects/${projectId}/strategy-selection`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "strategy-selection"] });
+    },
+  });
+
+  useEffect(() => {
+    if (savedSelection && !hasRestoredFromSaved && savedSelection.selectedStrategiesData) {
+      const { strategies, selectedIds, customStrategies: savedCustom } = savedSelection.selectedStrategiesData;
+      
+      if (savedCustom?.length > 0) {
+        setCustomStrategies(savedCustom);
+      }
+      
+      if (selectedIds?.length > 0) {
+        setSelectedStrategies(new Set(selectedIds));
+        const confirmed = strategies.filter((s: OrganizationalStrategy) => selectedIds.includes(s.id));
+        if (confirmed.length > 0) {
+          setConfirmedStrategies(confirmed);
+        }
+      }
+
+      if (savedSelection.generatedOutcomesData) {
+        const { outcomes: savedOutcomes, selectedOutcomeIds } = savedSelection.generatedOutcomesData;
+        if (savedOutcomes?.length > 0) {
+          setOutcomes(savedOutcomes);
+          setSelectedOutcomes(new Set(selectedOutcomeIds || savedOutcomes.map((o: StrategyOutcome) => o.id)));
+          setPhase("outcomes");
+        }
+      }
+
+      setHasRestoredFromSaved(true);
+    }
+  }, [savedSelection, hasRestoredFromSaved]);
 
   const generateMutation = useMutation({
     mutationFn: async () => {
@@ -489,6 +561,15 @@ export function StrategicAlignmentSelector({
     setConfirmedStrategies(selected);
     setPhase("outcomes");
     generateOutcomesMutation.mutate(selected);
+    
+    saveSelectionMutation.mutate({
+      selectedStrategiesData: {
+        strategies: allStrategies,
+        selectedIds: Array.from(selectedStrategies),
+        customStrategies: customStrategies,
+      },
+      status: "strategies_confirmed",
+    });
   };
 
   const toggleOutcome = (outcomeId: string) => {
@@ -501,8 +582,33 @@ export function StrategicAlignmentSelector({
     setSelectedOutcomes(newSelected);
   };
 
+  const handleSaveOutcomes = () => {
+    saveSelectionMutation.mutate({
+      generatedOutcomesData: {
+        outcomes: outcomes,
+        selectedOutcomeIds: Array.from(selectedOutcomes),
+      },
+      status: "outcomes_selected",
+    });
+  };
+
   const handleComplete = () => {
+    setShowHandoffConfirmation(true);
+  };
+
+  const handleConfirmHandoff = () => {
     const selectedOutcomesList = outcomes.filter(o => selectedOutcomes.has(o.id));
+    
+    saveSelectionMutation.mutate({
+      generatedOutcomesData: {
+        outcomes: outcomes,
+        selectedOutcomeIds: Array.from(selectedOutcomes),
+      },
+      handoffConfirmed: true,
+      status: "handoff_confirmed",
+    });
+    
+    setShowHandoffConfirmation(false);
     onComplete?.({ strategies: confirmedStrategies, outcomes: selectedOutcomesList });
   };
 
@@ -855,6 +961,65 @@ export function StrategicAlignmentSelector({
             <Button variant="outline" onClick={() => setShowAddCustom(false)} data-testid="button-cancel-custom-strategy">Cancel</Button>
             <Button onClick={addCustomStrategy} disabled={!customStrategyForm.name.trim()} data-testid="button-save-custom-strategy">
               Add Strategy
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showHandoffConfirmation} onOpenChange={setShowHandoffConfirmation}>
+        <DialogContent data-testid="dialog-handoff-confirmation" className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+              Confirm Handoff to Delivery
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              You are about to finalize these outcomes and hand them off to the Delivery team. 
+              This action will mark the following as confirmed:
+            </p>
+            
+            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Selected Strategies</span>
+                <Badge variant="outline">{confirmedStrategies.length}</Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Selected Outcomes</span>
+                <Badge variant="outline">{selectedOutcomes.size}</Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Total Estimated Value</span>
+                <Badge className="bg-emerald-100 text-emerald-700">
+                  <DollarSign className="w-3 h-3 mr-1" />
+                  Ready for tracking
+                </Badge>
+              </div>
+            </div>
+
+            <div className="border rounded-lg p-3 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                <strong>Important:</strong> Once confirmed, outcomes will be created as KPI commitments 
+                and will be visible to the Delivery team for tracking and realization.
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowHandoffConfirmation(false)} 
+              data-testid="button-cancel-handoff"
+            >
+              Go Back
+            </Button>
+            <Button 
+              onClick={handleConfirmHandoff} 
+              className="bg-emerald-600 hover:bg-emerald-700"
+              data-testid="button-confirm-handoff"
+            >
+              <CheckCircle2 className="w-4 h-4 mr-2" />
+              Confirm Handoff
             </Button>
           </DialogFooter>
         </DialogContent>
