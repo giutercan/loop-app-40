@@ -1501,41 +1501,58 @@ export default function ProjectRoleView() {
     }
   });
   
+  // Track which theme's intelligence is currently loaded
+  const loadedIntelligenceThemeRef = useRef<string | null>(null);
+  
   // Auto-fetch intelligence when moving to intelligence step (try loading saved first)
   useEffect(() => {
     const loadIntelligence = async () => {
-      if (discoveryStep === "intelligence" && selectedDiscoveryTheme && !liveIntelligence && !isLoadingIntelligence && !intelligenceError) {
-        setIsLoadingIntelligence(true);
-        
-        // Try to load saved intelligence first
-        try {
-          const savedRes = await fetch(`/api/projects/${projectId}/intelligence/${selectedDiscoveryTheme}`);
-          if (savedRes.ok) {
-            const savedData = await savedRes.json();
-            setLiveIntelligence(savedData as LiveIntelligenceData);
-            setIntelligenceIsSaved(true);
-            setProbeHistory(savedData.probeHistory || []);
-            setIsLoadingIntelligence(false);
-            return;
-          }
-        } catch (e) {
-          // No saved intelligence, generate new
-        }
-        
-        // No saved intelligence found, generate new
-        fetchLiveIntelligenceMutation.mutate(selectedDiscoveryTheme);
+      // Only load if we're on the intelligence step and have a theme
+      if (discoveryStep !== "intelligence" || !selectedDiscoveryTheme) {
+        return;
       }
+      
+      // Skip if already loading or have an error
+      if (isLoadingIntelligence) {
+        return;
+      }
+      
+      // Skip if we already have intelligence for this theme
+      if (liveIntelligence && loadedIntelligenceThemeRef.current === selectedDiscoveryTheme) {
+        return;
+      }
+      
+      // If theme changed, reset the loaded theme tracker
+      if (loadedIntelligenceThemeRef.current !== selectedDiscoveryTheme) {
+        loadedIntelligenceThemeRef.current = selectedDiscoveryTheme;
+        setLiveIntelligence(null);
+        setIntelligenceError(null);
+        setIntelligenceIsSaved(false);
+        setProbeHistory([]);
+      }
+      
+      setIsLoadingIntelligence(true);
+      
+      // Try to load saved intelligence first
+      try {
+        const savedRes = await fetch(`/api/projects/${projectId}/intelligence/${selectedDiscoveryTheme}`);
+        if (savedRes.ok) {
+          const savedData = await savedRes.json();
+          setLiveIntelligence(savedData as LiveIntelligenceData);
+          setIntelligenceIsSaved(true);
+          setProbeHistory(savedData.probeHistory || []);
+          setIsLoadingIntelligence(false);
+          return;
+        }
+      } catch (e) {
+        // No saved intelligence, will show prompt to generate
+      }
+      
+      // No saved intelligence found - show prompt instead of auto-generating
+      setIsLoadingIntelligence(false);
     };
     loadIntelligence();
-  }, [discoveryStep, selectedDiscoveryTheme, liveIntelligence, isLoadingIntelligence, intelligenceError]);
-  
-  // Reset intelligence when theme changes
-  useEffect(() => {
-    setLiveIntelligence(null);
-    setIntelligenceError(null);
-    setIntelligenceIsSaved(false);
-    setProbeHistory([]);
-  }, [selectedDiscoveryTheme]);
+  }, [discoveryStep, selectedDiscoveryTheme, projectId]);
   
   const [narrativeCanvasInitialized, setNarrativeCanvasInitialized] = useState(false);
   const [lastSavedNarrative, setLastSavedNarrative] = useState<string | null>(null);
@@ -6145,6 +6162,262 @@ export default function ProjectRoleView() {
                   ) : undefined
                 }
               />
+              
+              {/* Miller Heiman: High Win Deals Section */}
+              <Card className="border-amber-200 bg-gradient-to-br from-amber-50/30 to-background mt-4">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                        <TrendingUp className="w-5 h-5 text-amber-600" />
+                      </div>
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          High Win Deals
+                          <Badge className="bg-amber-500/10 text-amber-700 border-amber-500/20 text-xs">Miller Heiman</Badge>
+                        </CardTitle>
+                        <CardDescription>Strategic opportunities with Blue Sheet analysis</CardDescription>
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {sfData.opportunities.filter(opp => opp.probability >= 40).map((opp) => (
+                      <div key={opp.id} className="border rounded-lg overflow-hidden">
+                        <div className="p-4 bg-muted/30">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="font-semibold text-sm">{opp.name}</h4>
+                                <Badge variant="outline" className="text-xs">{opp.stage}</Badge>
+                              </div>
+                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                  <DollarSign className="w-3 h-3" />
+                                  ${(opp.amount / 1000).toFixed(0)}K
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Target className="w-3 h-3" />
+                                  {opp.probability}% probability
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="w-3 h-3" />
+                                  Close: {opp.closeDate}
+                                </span>
+                              </div>
+                            </div>
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="outline" size="sm" className="bg-blue-50 border-blue-200 text-blue-700">
+                                  <FileText className="w-3 h-3 mr-1" />
+                                  Blue Sheet
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                                <DialogHeader>
+                                  <DialogTitle className="flex items-center gap-2">
+                                    <FileText className="w-5 h-5 text-blue-600" />
+                                    Blue Sheet: {opp.name}
+                                  </DialogTitle>
+                                  <DialogDescription>Miller Heiman Strategic Selling Analysis</DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4 pt-4">
+                                  <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+                                    <h5 className="text-sm font-semibold text-blue-800 mb-1">Single Sales Objective</h5>
+                                    <p className="text-sm text-blue-700">{opp.blueSheet.singleSalesObjective}</p>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <div className="p-3 rounded-lg border bg-muted/30">
+                                      <h5 className="text-xs font-semibold uppercase text-muted-foreground mb-1">Ideal Customer Profile</h5>
+                                      <p className="text-sm">{opp.blueSheet.idealCustomerProfile}</p>
+                                    </div>
+                                    <div className="p-3 rounded-lg border bg-muted/30">
+                                      <h5 className="text-xs font-semibold uppercase text-muted-foreground mb-1">Competitive Advantage</h5>
+                                      <p className="text-sm">{opp.blueSheet.competitiveAdvantage}</p>
+                                    </div>
+                                  </div>
+                                  <div className="p-3 rounded-lg border bg-amber-50 border-amber-200">
+                                    <h5 className="text-xs font-semibold uppercase text-amber-700 mb-1">Minimum Acceptable Outcome</h5>
+                                    <p className="text-sm text-amber-800">{opp.blueSheet.minAcceptableOutcome}</p>
+                                  </div>
+                                  
+                                  <div>
+                                    <h5 className="text-sm font-semibold mb-2">Red Flags</h5>
+                                    <div className="space-y-2">
+                                      {opp.redFlags.map((flag, idx) => (
+                                        <div key={idx} className="flex items-start gap-2 p-2 rounded bg-red-50 border border-red-200">
+                                          <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+                                          <p className="text-sm text-red-700">{flag}</p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                  
+                                  <div>
+                                    <h5 className="text-sm font-semibold mb-2">Green Flags</h5>
+                                    <div className="space-y-2">
+                                      {opp.greenFlags.map((flag, idx) => (
+                                        <div key={idx} className="flex items-start gap-2 p-2 rounded bg-green-50 border border-green-200">
+                                          <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
+                                          <p className="text-sm text-green-700">{flag}</p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                  
+                                  <div>
+                                    <h5 className="text-sm font-semibold mb-2">Action Plan</h5>
+                                    <div className="space-y-2">
+                                      {opp.actionPlan.map((action, idx) => (
+                                        <div key={idx} className="flex items-center gap-3 p-2 rounded border bg-muted/30">
+                                          <Badge variant="outline" className={`shrink-0 ${
+                                            action.priority === "high" ? "border-red-300 text-red-600" :
+                                            action.priority === "medium" ? "border-amber-300 text-amber-600" :
+                                            "border-gray-300 text-gray-600"
+                                          }`}>
+                                            {action.priority}
+                                          </Badge>
+                                          <div className="flex-1">
+                                            <p className="text-sm font-medium">{action.action}</p>
+                                            <p className="text-xs text-muted-foreground">Owner: {action.owner} | Due: {action.dueDate}</p>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                          </div>
+                          
+                          <div className="mt-3 grid grid-cols-2 gap-2">
+                            <div>
+                              <p className="text-xs font-medium text-red-600 mb-1">Red Flags ({opp.redFlags.length})</p>
+                              <p className="text-xs text-muted-foreground truncate">{opp.redFlags[0]}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-medium text-green-600 mb-1">Green Flags ({opp.greenFlags.length})</p>
+                              <p className="text-xs text-muted-foreground truncate">{opp.greenFlags[0]}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* Miller Heiman: Buying Influences Table */}
+              <Card className="border-purple-200 bg-gradient-to-br from-purple-50/30 to-background mt-4">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                      <Users className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        Buying Influences
+                        <Badge className="bg-purple-500/10 text-purple-700 border-purple-500/20 text-xs">Miller Heiman</Badge>
+                      </CardTitle>
+                      <CardDescription>Key stakeholders and their buying roles across opportunities</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="text-left p-3 font-medium">Name</th>
+                          <th className="text-left p-3 font-medium">Title</th>
+                          <th className="text-left p-3 font-medium">Role</th>
+                          <th className="text-left p-3 font-medium">Influence</th>
+                          <th className="text-left p-3 font-medium">Rating</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {blueSheet.buyingInfluences.map((buyer, idx) => (
+                          <tr key={idx} className="border-t">
+                            <td className="p-3 font-medium">{buyer.name.split(' (')[0]}</td>
+                            <td className="p-3 text-muted-foreground">{buyer.name.includes('(') ? buyer.name.split('(')[1].replace(')', '') : buyer.type}</td>
+                            <td className="p-3">
+                              <Badge variant="outline" className={`text-xs ${
+                                buyer.type === "Economic Buyer" ? "border-amber-300 text-amber-700" :
+                                buyer.type === "User Buyer" ? "border-blue-300 text-blue-700" :
+                                buyer.type === "Technical Buyer" ? "border-gray-300 text-gray-700" :
+                                "border-purple-300 text-purple-700"
+                              }`}>
+                                {buyer.type}
+                              </Badge>
+                            </td>
+                            <td className="p-3">
+                              <Badge className={`text-xs ${
+                                buyer.rating === "G" ? "bg-green-100 text-green-700 border-green-200" :
+                                buyer.rating === "Y" ? "bg-amber-100 text-amber-700 border-amber-200" :
+                                "bg-red-100 text-red-700 border-red-200"
+                              }`}>
+                                {buyer.rating === "G" ? "Growth" : buyer.rating === "Y" ? "Even Keel" : "Trouble"}
+                              </Badge>
+                            </td>
+                            <td className="p-3 text-xs text-muted-foreground">{buyer.action}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* Miller Heiman: Past Competitors */}
+              <Card className="border-rose-200 bg-gradient-to-br from-rose-50/30 to-background mt-4">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-rose-500/10 flex items-center justify-center">
+                      <Shield className="w-5 h-5 text-rose-600" />
+                    </div>
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        Competitive Landscape
+                        <Badge className="bg-rose-500/10 text-rose-700 border-rose-500/20 text-xs">Miller Heiman</Badge>
+                      </CardTitle>
+                      <CardDescription>Known competitors and recommended counter-strategies</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {blueSheet.competition.map((comp, idx) => (
+                      <div key={idx} className="p-4 rounded-lg border bg-muted/30">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-semibold text-sm">{comp.competitor}</h4>
+                              <Badge variant="outline" className="text-xs border-rose-200 text-rose-700">{comp.position}</Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-2">{comp.strategy}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="mt-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
+                    <h5 className="text-sm font-semibold text-blue-800 mb-2 flex items-center gap-2">
+                      <Lightbulb className="w-4 h-4" />
+                      Strengths to Leverage
+                    </h5>
+                    <ul className="space-y-1">
+                      {blueSheet.strengthsLeverage.map((strength, idx) => (
+                        <li key={idx} className="text-sm text-blue-700 flex items-start gap-2">
+                          <CheckCircle className="w-3 h-3 mt-1 shrink-0" />
+                          {strength}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </CardContent>
+              </Card>
               
               {/* Probe Intelligence Chat Box */}
               {intelligenceIsSaved && (

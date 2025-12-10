@@ -106,16 +106,22 @@ export default function NewProject() {
         status: "active",
         accountId: data.accountId || null,
       });
-      if (!res.ok) throw new Error("Failed to create project");
       return await res.json();
     },
     onSuccess: (project) => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"], refetchType: "active" });
+      if (project.accountId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/accounts", project.accountId, "projects"], refetchType: "active" });
+      }
       toast({
-        title: "Project Created",
-        description: `Successfully created project for ${project.companyName}`,
+        title: "Initiative Created",
+        description: `Successfully created initiative for ${project.companyName}`,
       });
-      setLocation(`/projects/${project.id}/discovery`);
+      if (project.accountId) {
+        setLocation(`/accounts/${project.accountId}/sales`);
+      } else {
+        setLocation(`/projects/${project.id}/discovery`);
+      }
     },
     onError: (error: Error) => {
       toast({
@@ -174,11 +180,11 @@ export default function NewProject() {
               </div>
             </Link>
             
-            <Link href="/projects">
+            <Link href="/accounts">
               <div className="inline-flex">
-                <Button variant="outline" size="lg" data-testid="button-back-to-projects">
+                <Button variant="outline" size="lg" data-testid="button-back-to-accounts">
                   <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Projects
+                  Back to Accounts
                 </Button>
               </div>
             </Link>
@@ -196,7 +202,7 @@ export default function NewProject() {
                 <Building2 className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <h1 className="text-4xl font-bold tracking-tight">Create New Project</h1>
+                <h1 className="text-4xl font-bold tracking-tight">Create New Initiative</h1>
                 <p className="text-muted-foreground">Start a new client engagement</p>
               </div>
             </div>
@@ -205,7 +211,7 @@ export default function NewProject() {
           {/* Form Card */}
           <Card>
             <CardHeader>
-              <CardTitle>Project Details</CardTitle>
+              <CardTitle>Initiative Details</CardTitle>
               <CardDescription>
                 Enter the client company information to begin your discovery process
               </CardDescription>
@@ -248,7 +254,7 @@ export default function NewProject() {
                           </SelectContent>
                         </Select>
                         <FormDescription>
-                          Link this project to a client account for organized tracking
+                          Link this initiative to a client account for organized tracking
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -412,7 +418,7 @@ export default function NewProject() {
                   />
 
                   <div className="flex gap-4 pt-4">
-                    <Link href="/projects" className="flex-1">
+                    <Link href="/accounts" className="flex-1">
                       <Button
                         type="button"
                         variant="outline"
@@ -426,7 +432,7 @@ export default function NewProject() {
                       type="submit"
                       className="flex-1"
                       disabled={createProjectMutation.isPending}
-                      data-testid="button-create-project"
+                      data-testid="button-create-initiative"
                     >
                       {createProjectMutation.isPending ? (
                         <>
@@ -436,7 +442,7 @@ export default function NewProject() {
                       ) : (
                         <>
                           <Building2 className="w-4 h-4 mr-2" />
-                          Create Project
+                          Create Initiative
                         </>
                       )}
                     </Button>

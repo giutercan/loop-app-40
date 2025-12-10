@@ -536,7 +536,7 @@ function AccountCard({
             />
           )}
 
-          {/* Projects List */}
+          {/* Initiatives List */}
           {projects.length > 0 ? (
             <Collapsible open={isExpanded} onOpenChange={() => toggleAccountExpanded(account.id)}>
               <CollapsibleTrigger asChild>
@@ -587,7 +587,7 @@ function AccountCard({
                       className="rounded-lg border bg-muted/30 p-3 space-y-3"
                       data-testid={`project-row-${project.id}`}
                     >
-                      {/* Project Name */}
+                      {/* Initiative Name */}
                       <div className="flex items-center gap-2 min-w-0">
                         <Layers className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                         <span className="text-sm font-medium truncate">{project.name}</span>
