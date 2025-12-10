@@ -3923,10 +3923,16 @@ export default function ProjectRoleView() {
                   solutionPattern,
                   status: "draft",
                   definedBy: "Strategic Alignment",
+                  outcomeStatement: outcome.businessImpact,
                   provenance: {
                     source: "strategic_alignment",
                     strategyId: outcome.strategyId,
                     kornFerrySolution: outcome.kornFerrySolution,
+                    kfOffering: (outcome as any).kfOffering,
+                    kfRecommendation: (outcome as any).kfRecommendation,
+                    whyMatters: (outcome as any).whyMatters,
+                    howKFHelps: (outcome as any).howKFHelps,
+                    benchmark: outcome.benchmark,
                     generatedAt: new Date().toISOString(),
                   },
                 });
@@ -4189,84 +4195,191 @@ export default function ProjectRoleView() {
                       <div className="space-y-3">
                         {pillarOutcomes.map((c: any) => {
                           const journeyTemplate = getJourneyData(c);
+                          const kfOffering = c.provenance?.kfOffering;
+                          const kfRecommendation = c.provenance?.kfRecommendation;
+                          const whyMatters = c.provenance?.whyMatters;
+                          const howKFHelps = c.provenance?.howKFHelps;
+                          const benchmark = c.provenance?.benchmark;
+                          
                           return (
-                            <div 
-                              key={c.id} 
-                              className="p-3 rounded-lg bg-background border hover-elevate cursor-pointer"
-                              onClick={() => setViewingJourneyId(c.id)}
-                              data-testid={`commitment-confirmed-${c.id}`}
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <Badge variant="outline" className={`text-[10px] px-1.5 shrink-0 ${colors.icon} ${colors.border}`}>
-                                      #{c.id}
-                                    </Badge>
-                                    <h4 className="font-medium text-sm truncate">{c.name}</h4>
-                                    {c.provenance?.source === "ai_generated" && (
-                                      <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/30 text-[10px] px-1.5 shrink-0">
-                                        <Sparkles className="w-3 h-3" />
+                            <Collapsible key={c.id}>
+                              <div 
+                                className="p-3 rounded-lg bg-background border hover-elevate"
+                                data-testid={`commitment-confirmed-${c.id}`}
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                      <Badge variant="outline" className={`text-[10px] px-1.5 shrink-0 ${colors.icon} ${colors.border}`}>
+                                        #{c.id}
                                       </Badge>
+                                      <h4 className="font-medium text-sm">{c.name}</h4>
+                                      {kfOffering && (
+                                        <Badge className="bg-violet-500/10 text-violet-600 border-violet-500/30 text-[10px] px-1.5 shrink-0">
+                                          <Briefcase className="w-3 h-3 mr-1" />
+                                          {kfOffering.name}
+                                        </Badge>
+                                      )}
+                                      {(c.provenance?.source === "ai_generated" || c.provenance?.source === "strategic_alignment") && (
+                                        <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/30 text-[10px] px-1.5 shrink-0">
+                                          <Sparkles className="w-3 h-3" />
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    
+                                    <div className="flex items-center flex-wrap gap-3 text-xs mb-2">
+                                      {c.baselineValue !== null && c.targetValue !== null && (
+                                        <span className="flex items-center gap-1 text-muted-foreground">
+                                          <Target className="w-3 h-3" />
+                                          {c.baselineValue} → {c.targetValue} {c.kpiUnit || ""}
+                                        </span>
+                                      )}
+                                      {c.estimatedAnnualValue && (
+                                        <span className={`font-medium ${colors.text}`}>
+                                          ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr
+                                        </span>
+                                      )}
+                                      {journeyTemplate && (
+                                        <span className="flex items-center gap-1 text-muted-foreground">
+                                          <Layers className="w-3 h-3" />
+                                          {journeyTemplate.phases.length} phases
+                                        </span>
+                                      )}
+                                    </div>
+                                    
+                                    {/* KF Recommendation - Always visible */}
+                                    {kfRecommendation && (
+                                      <div className="text-xs p-2 rounded bg-violet-500/5 border border-violet-500/20 mb-2">
+                                        <span className="font-medium text-violet-600">KF Recommendation:</span>{" "}
+                                        <span className="text-muted-foreground">{kfRecommendation}</span>
+                                      </div>
                                     )}
                                   </div>
                                   
-                                  <div className="flex items-center flex-wrap gap-3 text-xs">
-                                    {c.baselineValue !== null && c.targetValue !== null && (
-                                      <span className="flex items-center gap-1 text-muted-foreground">
-                                        <Target className="w-3 h-3" />
-                                        {c.baselineValue} → {c.targetValue} {c.kpiUnit || ""}
-                                      </span>
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    {getHealthStatusBadge(c.healthStatus)}
+                                    {(whyMatters || howKFHelps || benchmark) && (
+                                      <CollapsibleTrigger asChild>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-7 w-7"
+                                          title="View KF details"
+                                        >
+                                          <ChevronDown className="w-3.5 h-3.5" />
+                                        </Button>
+                                      </CollapsibleTrigger>
                                     )}
-                                    {c.estimatedAnnualValue && (
-                                      <span className={`font-medium ${colors.text}`}>
-                                        ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr
-                                      </span>
-                                    )}
-                                    {journeyTemplate && (
-                                      <span className="flex items-center gap-1 text-muted-foreground">
-                                        <Layers className="w-3 h-3" />
-                                        {journeyTemplate.phases.length} phases
-                                      </span>
-                                    )}
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-7 w-7"
+                                      onClick={(e) => { e.stopPropagation(); setViewingJourneyId(c.id); }}
+                                      title="View journey"
+                                      data-testid={`button-view-journey-${c.id}`}
+                                    >
+                                      <Eye className="w-3.5 h-3.5" />
+                                    </Button>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-7 w-7"
+                                      onClick={(e) => { e.stopPropagation(); setEditingCommitment(c); }}
+                                      title="Edit outcome"
+                                      data-testid={`button-edit-confirmed-${c.id}`}
+                                    >
+                                      <Pencil className="w-3.5 h-3.5" />
+                                    </Button>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-7 w-7"
+                                      onClick={(e) => { e.stopPropagation(); revertToDraftMutation.mutate(c.id); }}
+                                      disabled={revertToDraftMutation.isPending}
+                                      title="Revert to draft"
+                                      data-testid={`button-revert-confirmed-${c.id}`}
+                                    >
+                                      <Undo2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-7 w-7 text-destructive hover:text-destructive"
+                                      onClick={(e) => { e.stopPropagation(); deleteCommitmentMutation.mutate(c.id); }}
+                                      title="Delete outcome"
+                                      data-testid={`button-delete-confirmed-${c.id}`}
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </Button>
                                   </div>
                                 </div>
                                 
-                                <div className="flex items-center gap-1 shrink-0">
-                                  {getHealthStatusBadge(c.healthStatus)}
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7"
-                                    onClick={(e) => { e.stopPropagation(); setEditingCommitment(c); }}
-                                    title="Edit outcome"
-                                    data-testid={`button-edit-confirmed-${c.id}`}
-                                  >
-                                    <Pencil className="w-3.5 h-3.5" />
-                                  </Button>
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7"
-                                    onClick={(e) => { e.stopPropagation(); revertToDraftMutation.mutate(c.id); }}
-                                    disabled={revertToDraftMutation.isPending}
-                                    title="Revert to draft"
-                                    data-testid={`button-revert-confirmed-${c.id}`}
-                                  >
-                                    <Undo2 className="w-3.5 h-3.5" />
-                                  </Button>
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7 text-destructive hover:text-destructive"
-                                    onClick={(e) => { e.stopPropagation(); deleteCommitmentMutation.mutate(c.id); }}
-                                    title="Delete outcome"
-                                    data-testid={`button-delete-confirmed-${c.id}`}
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </Button>
-                                </div>
+                                {/* Collapsible KF Details */}
+                                <CollapsibleContent>
+                                  <div className="mt-3 pt-3 border-t space-y-3">
+                                    {/* Why It Matters */}
+                                    {whyMatters && (
+                                      <div className="text-xs">
+                                        <div className="flex items-center gap-1.5 mb-1">
+                                          <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
+                                          <span className="font-medium text-amber-600">Why It Matters</span>
+                                        </div>
+                                        <p className="text-muted-foreground pl-5">{whyMatters}</p>
+                                      </div>
+                                    )}
+                                    
+                                    {/* How KF Helps */}
+                                    {howKFHelps && howKFHelps.length > 0 && (
+                                      <div className="text-xs">
+                                        <div className="flex items-center gap-1.5 mb-1">
+                                          <Briefcase className="w-3.5 h-3.5 text-violet-500" />
+                                          <span className="font-medium text-violet-600">How Korn Ferry Helps</span>
+                                        </div>
+                                        <ul className="text-muted-foreground pl-5 space-y-1">
+                                          {howKFHelps.map((item: string, idx: number) => (
+                                            <li key={idx} className="flex items-start gap-1.5">
+                                              <CheckCircle2 className="w-3 h-3 text-emerald-500 mt-0.5 shrink-0" />
+                                              <span>{item}</span>
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Benchmark Data */}
+                                    {benchmark && (
+                                      <div className="text-xs">
+                                        <div className="flex items-center gap-1.5 mb-2">
+                                          <BarChart3 className="w-3.5 h-3.5 text-blue-500" />
+                                          <span className="font-medium text-blue-600">Industry Benchmarks</span>
+                                        </div>
+                                        <div className="grid grid-cols-4 gap-2 pl-5">
+                                          <div className="p-2 rounded bg-red-500/5 border border-red-500/20 text-center">
+                                            <p className="text-[10px] text-red-600 font-medium">Low</p>
+                                            <p className="font-medium">{benchmark.industryLow}</p>
+                                          </div>
+                                          <div className="p-2 rounded bg-amber-500/5 border border-amber-500/20 text-center">
+                                            <p className="text-[10px] text-amber-600 font-medium">Median</p>
+                                            <p className="font-medium">{benchmark.industryMedian}</p>
+                                          </div>
+                                          <div className="p-2 rounded bg-emerald-500/5 border border-emerald-500/20 text-center">
+                                            <p className="text-[10px] text-emerald-600 font-medium">High</p>
+                                            <p className="font-medium">{benchmark.industryHigh}</p>
+                                          </div>
+                                          <div className="p-2 rounded bg-violet-500/5 border border-violet-500/20 text-center">
+                                            <p className="text-[10px] text-violet-600 font-medium">Top Performer</p>
+                                            <p className="font-medium">{benchmark.topPerformerTarget || "Top quartile"}</p>
+                                          </div>
+                                        </div>
+                                        {benchmark.source && (
+                                          <p className="text-[10px] text-muted-foreground mt-1 pl-5 italic">Source: {benchmark.source}</p>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                </CollapsibleContent>
                               </div>
-                            </div>
+                            </Collapsible>
                           );
                         })}
                       </div>
@@ -4320,19 +4433,34 @@ export default function ProjectRoleView() {
                         <div className="space-y-2 max-h-96 overflow-y-auto">
                           {draftCommitments.map((c: any) => {
                             const journeyTemplate = getJourneyData(c);
+                            const kfOffering = c.provenance?.kfOffering;
+                            const kfRecommendation = c.provenance?.kfRecommendation;
                             return (
                               <div key={c.id} className="p-3 rounded-lg border hover-elevate" data-testid={`commitment-draft-${c.id}`}>
                                 <div className="flex items-start justify-between mb-2">
                                   <h4 className="font-medium text-sm flex-1 min-w-0 truncate">{c.name}</h4>
                                   <div className="flex flex-wrap gap-1 items-center ml-2">
-                                    {c.provenance?.source === "ai_generated" && (
+                                    {(c.provenance?.source === "ai_generated" || c.provenance?.source === "strategic_alignment") && (
                                       <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/30 text-[10px] px-1.5">
                                         <Sparkles className="w-3 h-3" />
+                                      </Badge>
+                                    )}
+                                    {kfOffering && (
+                                      <Badge className="bg-violet-500/10 text-violet-600 border-violet-500/30 text-[10px] px-1.5">
+                                        <Briefcase className="w-3 h-3 mr-0.5" />
+                                        {kfOffering.name}
                                       </Badge>
                                     )}
                                     {getValuePillarBadge(c.valuePillar)}
                                   </div>
                                 </div>
+                                
+                                {/* KF Recommendation snippet */}
+                                {kfRecommendation && (
+                                  <p className="text-[11px] text-muted-foreground mb-2 line-clamp-2 italic">
+                                    {kfRecommendation}
+                                  </p>
+                                )}
                                 
                                 <div className="flex items-center flex-wrap gap-2 text-xs text-muted-foreground mb-3">
                                   {c.baselineValue !== null && c.targetValue !== null && (
@@ -4385,19 +4513,26 @@ export default function ProjectRoleView() {
                         <div className="space-y-2 max-h-96 overflow-y-auto">
                           {proposedCommitments.map((c: any) => {
                             const journeyTemplate = getJourneyData(c);
+                            const kfOffering = c.provenance?.kfOffering;
                             return (
                               <div key={c.id} className="p-3 rounded-lg border border-blue-500/20 bg-blue-500/5" data-testid={`commitment-review-${c.id}`}>
                                 <div className="flex items-start justify-between mb-2">
                                   <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-1">
+                                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                                       <Badge variant="outline" className="text-[10px] px-1.5 shrink-0 bg-blue-500/10 border-blue-500/30">
                                         #{c.id}
                                       </Badge>
                                       <h4 className="font-medium text-sm truncate" title={c.name}>{c.name}</h4>
+                                      {kfOffering && (
+                                        <Badge className="bg-violet-500/10 text-violet-600 border-violet-500/30 text-[10px] px-1.5">
+                                          <Briefcase className="w-3 h-3 mr-0.5" />
+                                          {kfOffering.name}
+                                        </Badge>
+                                      )}
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-1 ml-2">
-                                    {c.provenance?.source === "ai_generated" && (
+                                    {(c.provenance?.source === "ai_generated" || c.provenance?.source === "strategic_alignment") && (
                                       <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/30 text-[10px] px-1.5">
                                         <Sparkles className="w-3 h-3" />
                                       </Badge>

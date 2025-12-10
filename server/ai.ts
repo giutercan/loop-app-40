@@ -4317,12 +4317,21 @@ export interface StrategyOutcome {
     industryLow: string;
     industryMedian: string;
     industryHigh: string;
+    topPerformerTarget: string;
     source: string;
   };
   valuePillar: "grow" | "optimise" | "derisk" | "strengthen";
   achievability: "high" | "medium" | "low";
   businessImpact: string;
   kornFerrySolution: string;
+  kfOffering: {
+    name: string;
+    capability: string;
+    description: string;
+  };
+  kfRecommendation: string;
+  whyMatters: string;
+  howKFHelps: string[];
 }
 
 export interface StrategyOutcomesResult {
@@ -4346,6 +4355,7 @@ const strategyOutcomeSchema = z.object({
     industryLow: z.string(),
     industryMedian: z.string(),
     industryHigh: z.string(),
+    topPerformerTarget: z.string().optional().default("Top quartile"),
     source: z.string()
   }),
   valuePillar: z.enum(["grow", "optimise", "derisk", "strengthen"]),
@@ -4358,7 +4368,15 @@ const strategyOutcomeSchema = z.object({
     return "medium";
   }).pipe(z.enum(["high", "medium", "low"])),
   businessImpact: z.string(),
-  kornFerrySolution: z.string()
+  kornFerrySolution: z.string(),
+  kfOffering: z.object({
+    name: z.string(),
+    capability: z.string(),
+    description: z.string()
+  }),
+  kfRecommendation: z.string(),
+  whyMatters: z.string(),
+  howKFHelps: z.array(z.string())
 });
 
 const strategyOutcomesResultSchema = z.object({
@@ -4393,6 +4411,7 @@ For EACH selected strategy, generate 1-2 specific, measurable outcomes. Each out
 3. Include realistic industry benchmarks
 4. Map to a Korn Ferry value pillar
 5. Specify the Korn Ferry solution that enables it
+6. Include a clear KF recommendation and rationale
 
 KORN FERRY VALUE PILLARS:
 - grow: Revenue growth, market expansion
@@ -4400,14 +4419,34 @@ KORN FERRY VALUE PILLARS:
 - derisk: Risk mitigation, retention, compliance
 - strengthen: Capability building, leadership development
 
-KORN FERRY SOLUTIONS:
-- Leadership Development
-- Talent Acquisition
-- Succession Planning
-- Organizational Design
-- Culture Transformation
-- Sales Effectiveness
-- Rewards & Performance
+KORN FERRY CORE CAPABILITIES (use these for kfOffering):
+1. Assessment & Succession
+   - Korn Ferry Assess™ - AI-driven leadership and talent assessments
+   - 360-Degree Feedback (KF360) - Multi-rater assessment covering 38 competencies
+   - Succession Planning - Evidence-based leadership pipeline development
+   - Leadership Potential Solution - Identifies high-potential talent
+
+2. Leadership & Professional Development
+   - Executive Coaching - Personalized leadership development
+   - Learning Lab - 38+ interactive AI-driven simulations
+   - Leadership Certifications - Structured development programs
+   - High-Potential Programs - Accelerated leader development
+
+3. Talent Acquisition
+   - Executive Search - #1 ranked executive recruiter
+   - Recruitment Process Outsourcing - End-to-end talent acquisition
+   - Employer Branding - EVP and talent attraction strategy
+
+4. Organization Strategy
+   - Organizational Design - Structure and role optimization
+   - Total Rewards - Compensation strategy and pay equity
+   - Culture Transformation - Values alignment and change
+   - Workforce Planning - Strategic workforce shaping
+
+5. Sales & Commercial Excellence
+   - Sales Effectiveness - Sales force transformation
+   - Miller Heiman Methodology - Strategic selling programs
+   - Revenue Growth - Go-to-market optimization
 
 Return your recommendations in this JSON format:
 {
@@ -4428,12 +4467,26 @@ Return your recommendations in this JSON format:
         "industryLow": "20%",
         "industryMedian": "15%",
         "industryHigh": "8%",
+        "topPerformerTarget": "5%",
         "source": "Korn Ferry 2024 Executive Retention Study"
       },
       "valuePillar": "derisk",
       "achievability": "high",
       "businessImpact": "Reduced replacement costs of $500K-1M per executive; preserved institutional knowledge",
-      "kornFerrySolution": "Succession Planning"
+      "kornFerrySolution": "Succession Planning",
+      "kfOffering": {
+        "name": "Succession Planning",
+        "capability": "Assessment & Succession",
+        "description": "Evidence-based Success Profiles to identify and prepare next-generation leaders with diverse representation"
+      },
+      "kfRecommendation": "Deploy Korn Ferry's Succession Planning solution with Leadership Potential Assessment to identify at-risk executives and create personalized retention pathways",
+      "whyMatters": "Executive turnover costs 2-3x annual salary and disrupts strategic initiatives. Proactive succession planning reduces flight risk by 40% while building a robust leadership pipeline",
+      "howKFHelps": [
+        "Assess current leadership bench strength with Four Dimensions of Leadership framework",
+        "Identify high-potential successors using validated assessment tools",
+        "Create personalized development plans aligned to role requirements",
+        "Implement retention mechanisms for critical talent"
+      ]
     }
   ],
   "summary": "Brief summary of the collective value these outcomes will deliver"
@@ -4443,7 +4496,11 @@ IMPORTANT:
 - Generate exactly 1-2 outcomes per selected strategy
 - Each outcome must reference its parent strategy ID
 - Use realistic targets based on industry standards
-- Provide specific, actionable metrics`;
+- Provide specific, actionable metrics
+- kfOffering.capability must be one of: "Assessment & Succession", "Leadership & Professional Development", "Talent Acquisition", "Organization Strategy", "Sales & Commercial Excellence"
+- kfRecommendation should be a specific, actionable recommendation mentioning KF tools/methodologies
+- whyMatters should explain business impact and urgency
+- howKFHelps should list 3-4 specific ways Korn Ferry delivers value`;
 
   try {
     console.log(`[AI Strategy Outcomes] Generating outcomes for ${selectedStrategies.length} strategies for ${companyName}`);
