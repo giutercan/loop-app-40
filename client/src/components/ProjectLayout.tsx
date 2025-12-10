@@ -8,7 +8,6 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -21,7 +20,6 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import {
-  TrendingUp,
   Search,
   Target,
   Activity,
@@ -122,21 +120,6 @@ export default function ProjectLayout({
     <SidebarProvider style={sidebarStyle}>
       <div className="flex min-h-screen w-full">
         <Sidebar collapsible="icon">
-          <SidebarHeader className="border-b border-sidebar-border">
-            <div className="flex items-center gap-3 px-2 py-3">
-              <Link href="/" data-testid="link-landing-logo">
-                <div className="flex items-center gap-3 hover-elevate rounded-lg px-1 py-1 -mx-1">
-                  <div className="w-9 h-9 bg-gradient-to-br from-primary via-primary to-primary/80 rounded-lg flex items-center justify-center shadow-md shadow-primary/20 shrink-0">
-                    <TrendingUp className="w-5 h-5 text-primary-foreground" />
-                  </div>
-                  <div className="group-data-[collapsible=icon]:hidden">
-                    <span className="text-lg font-bold">Korn Ferry</span>
-                    <p className="text-xs text-sidebar-foreground/70">Value Lifecycle</p>
-                  </div>
-                </div>
-              </Link>
-            </div>
-          </SidebarHeader>
 
           <SidebarContent>
             <SidebarGroup>
