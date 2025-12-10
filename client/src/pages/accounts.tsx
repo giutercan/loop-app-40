@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -280,7 +281,8 @@ export default function AccountsDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative">
+      <AnimatedBackground variant="subtle" />
       <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto max-w-7xl px-4 lg:px-8">
           <div className="flex h-16 lg:h-20 items-center justify-between">
@@ -450,7 +452,7 @@ function AccountCard({
   return (
     <>
       <Card 
-        className="transition-all duration-200 h-full hover-elevate"
+        className="transition-all duration-200 h-full hover-elevate micro-lift card-glow animate-fade-in-up"
         data-testid={`card-account-${account.id}`}
       >
         <CardHeader className="pb-3">

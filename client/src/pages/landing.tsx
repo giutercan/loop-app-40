@@ -10,6 +10,7 @@ import {
 import { Link } from "wouter";
 import heroImage from "@assets/Picture6_1763994371580.jpg";
 import { LoopLogoBrand } from "@/components/AppHeader";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
 
 const valuePillars = [
   {
@@ -110,9 +111,10 @@ const features = [
 
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative">
+      <AnimatedBackground variant="vibrant" />
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur-xl relative z-10">
         <div className="container mx-auto max-w-7xl px-4 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-3">
@@ -246,7 +248,7 @@ export default function Landing() {
               return (
                 <Card 
                   key={challenge.title} 
-                  className={`${challenge.bgColor} border-0 hover-elevate transition-all`}
+                  className={`${challenge.bgColor} border-0 hover-elevate transition-all micro-lift animate-fade-in-up`}
                   data-testid={`challenge-card-${challenge.title.toLowerCase().replace(/\s+/g, '-')}`}
                 >
                   <CardContent className="pt-6">
@@ -355,7 +357,7 @@ export default function Landing() {
               return (
                 <Card 
                   key={pillar.id} 
-                  className={`${pillar.bgColor} ${pillar.borderColor} border hover-elevate transition-all`}
+                  className={`${pillar.bgColor} ${pillar.borderColor} border hover-elevate transition-all micro-lift animate-fade-in-up`}
                   data-testid={`pillar-card-${pillar.id}`}
                 >
                   <CardContent className="pt-6">
@@ -403,7 +405,7 @@ export default function Landing() {
               return (
                 <Card 
                   key={feature.title} 
-                  className="hover-elevate transition-all border"
+                  className="hover-elevate transition-all border micro-lift animate-fade-in-up"
                   data-testid={`feature-card-${feature.title.toLowerCase().replace(/\s+/g, '-')}`}
                 >
                   <CardContent className="pt-6">
