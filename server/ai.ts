@@ -4281,3 +4281,191 @@ Generate positioning for the top 4-6 most relevant competitors for the solution 
     throw error;
   }
 }
+
+// ============================================================================
+// STRATEGY-BASED OUTCOME GENERATION
+// ============================================================================
+
+export interface StrategyBasedOutcomeInput {
+  companyName: string;
+  industry?: string;
+  selectedStrategies: Array<{
+    id: string;
+    strategyName: string;
+    strategyDescription: string;
+    strategicCategory: string;
+    businessRationale: string;
+    expectedOutcomes: string[];
+    timeframe: string;
+    priority: string;
+  }>;
+}
+
+export interface StrategyOutcome {
+  id: string;
+  strategyId: string;
+  outcomeName: string;
+  outcomeDescription: string;
+  kpiDetails: {
+    metricName: string;
+    unit: string;
+    suggestedBaseline: string;
+    suggestedTarget: string;
+    timeframe: string;
+  };
+  benchmark: {
+    industryLow: string;
+    industryMedian: string;
+    industryHigh: string;
+    source: string;
+  };
+  valuePillar: "grow" | "optimise" | "derisk" | "strengthen";
+  achievability: "high" | "medium" | "low";
+  businessImpact: string;
+  kornFerrySolution: string;
+}
+
+export interface StrategyOutcomesResult {
+  outcomes: StrategyOutcome[];
+  summary: string;
+}
+
+const strategyOutcomeSchema = z.object({
+  id: z.string(),
+  strategyId: z.string(),
+  outcomeName: z.string(),
+  outcomeDescription: z.string(),
+  kpiDetails: z.object({
+    metricName: z.string(),
+    unit: z.string(),
+    suggestedBaseline: z.string(),
+    suggestedTarget: z.string(),
+    timeframe: z.string()
+  }),
+  benchmark: z.object({
+    industryLow: z.string(),
+    industryMedian: z.string(),
+    industryHigh: z.string(),
+    source: z.string()
+  }),
+  valuePillar: z.enum(["grow", "optimise", "derisk", "strengthen"]),
+  achievability: z.enum(["high", "medium", "low"]),
+  businessImpact: z.string(),
+  kornFerrySolution: z.string()
+});
+
+const strategyOutcomesResultSchema = z.object({
+  outcomes: z.array(strategyOutcomeSchema),
+  summary: z.string()
+});
+
+export async function generateOutcomesFromStrategies(input: StrategyBasedOutcomeInput): Promise<StrategyOutcomesResult> {
+  const { companyName, industry, selectedStrategies } = input;
+  
+  const strategiesContext = selectedStrategies.map((s, idx) => 
+    `STRATEGY ${idx + 1}: ${s.strategyName} [ID: ${s.id}]
+Category: ${s.strategicCategory}
+Description: ${s.strategyDescription}
+Business Rationale: ${s.businessRationale}
+Expected Outcomes: ${s.expectedOutcomes.join('; ')}
+Timeframe: ${s.timeframe}
+Priority: ${s.priority}`
+  ).join('\n\n');
+
+  const prompt = `You are a Korn Ferry value architect. Based on the selected organizational strategies below, generate specific measurable outcomes that the customer should commit to achieving.
+
+COMPANY: ${companyName}
+INDUSTRY: ${industry || 'Not specified'}
+
+SELECTED STRATEGIES:
+${strategiesContext}
+
+For EACH selected strategy, generate 1-2 specific, measurable outcomes. Each outcome must:
+1. Be directly tied to the strategy it belongs to
+2. Have a clear KPI with measurable targets
+3. Include realistic industry benchmarks
+4. Map to a Korn Ferry value pillar
+5. Specify the Korn Ferry solution that enables it
+
+KORN FERRY VALUE PILLARS:
+- grow: Revenue growth, market expansion
+- optimise: Cost reduction, productivity
+- derisk: Risk mitigation, retention, compliance
+- strengthen: Capability building, leadership development
+
+KORN FERRY SOLUTIONS:
+- Leadership Development
+- Talent Acquisition
+- Succession Planning
+- Organizational Design
+- Culture Transformation
+- Sales Effectiveness
+- Rewards & Performance
+
+Return your recommendations in this JSON format:
+{
+  "outcomes": [
+    {
+      "id": "out_1",
+      "strategyId": "strat_1",
+      "outcomeName": "Reduce Executive Turnover by 25%",
+      "outcomeDescription": "Decrease voluntary departure rate among VP+ leaders through targeted retention initiatives",
+      "kpiDetails": {
+        "metricName": "Executive Voluntary Turnover Rate",
+        "unit": "%",
+        "suggestedBaseline": "18%",
+        "suggestedTarget": "12%",
+        "timeframe": "12 months"
+      },
+      "benchmark": {
+        "industryLow": "20%",
+        "industryMedian": "15%",
+        "industryHigh": "8%",
+        "source": "Korn Ferry 2024 Executive Retention Study"
+      },
+      "valuePillar": "derisk",
+      "achievability": "high",
+      "businessImpact": "Reduced replacement costs of $500K-1M per executive; preserved institutional knowledge",
+      "kornFerrySolution": "Succession Planning"
+    }
+  ],
+  "summary": "Brief summary of the collective value these outcomes will deliver"
+}
+
+IMPORTANT:
+- Generate exactly 1-2 outcomes per selected strategy
+- Each outcome must reference its parent strategy ID
+- Use realistic targets based on industry standards
+- Provide specific, actionable metrics`;
+
+  try {
+    console.log(`[AI Strategy Outcomes] Generating outcomes for ${selectedStrategies.length} strategies for ${companyName}`);
+    
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 4000,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    
+    if (!content) {
+      throw new Error("AI returned empty response");
+    }
+    
+    const parsedContent = JSON.parse(content);
+    
+    const validationResult = strategyOutcomesResultSchema.safeParse(parsedContent);
+    if (!validationResult.success) {
+      console.error("[AI Strategy Outcomes] Validation failed:", validationResult.error);
+      throw new Error(`AI strategy outcomes validation failed: ${validationResult.error.message}`);
+    }
+    
+    console.log(`[AI Strategy Outcomes] Success! Generated ${validationResult.data.outcomes.length} outcomes`);
+    return validationResult.data;
+  } catch (error) {
+    console.error("[AI Strategy Outcomes] Error:", error);
+    throw error;
+  }
+}

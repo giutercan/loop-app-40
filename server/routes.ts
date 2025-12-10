@@ -7207,6 +7207,37 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
     }
   });
   
+  // POST /api/projects/:id/strategy-outcomes - Generate AI-powered outcomes from selected strategies
+  app.post("/api/projects/:id/strategy-outcomes", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const project = await storage.getProject(id);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const { selectedStrategies } = req.body;
+      if (!selectedStrategies || !Array.isArray(selectedStrategies) || selectedStrategies.length === 0) {
+        return res.status(400).json({ error: "selectedStrategies array is required" });
+      }
+      
+      const account = project.accountId ? await storage.getAccount(project.accountId) : null;
+      
+      // Import and call the strategy outcomes function
+      const { generateOutcomesFromStrategies } = await import("./ai");
+      const result = await generateOutcomesFromStrategies({
+        companyName: project.companyName || account?.name || "Unknown Company",
+        industry: project.sector || account?.industry || undefined,
+        selectedStrategies
+      });
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Strategy Outcomes] Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
   // POST /api/projects/:id/outcome-recommendations - Generate AI-powered outcome recommendations
   app.post("/api/projects/:id/outcome-recommendations", async (req, res) => {
     try {

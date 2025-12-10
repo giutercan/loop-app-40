@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { 
   Sparkles,
@@ -21,10 +20,13 @@ import {
   Clock,
   Plus,
   ArrowRight,
+  ArrowLeft,
   CheckCircle2,
-  AlertCircle,
   RefreshCw,
-  Layers
+  Layers,
+  BarChart3,
+  DollarSign,
+  Zap
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -43,6 +45,35 @@ interface OrganizationalStrategy {
   isCustom?: boolean;
 }
 
+interface StrategyOutcome {
+  id: string;
+  strategyId: string;
+  outcomeName: string;
+  outcomeDescription: string;
+  kpiDetails: {
+    metricName: string;
+    unit: string;
+    suggestedBaseline: string;
+    suggestedTarget: string;
+    timeframe: string;
+  };
+  benchmark: {
+    industryLow: string;
+    industryMedian: string;
+    industryHigh: string;
+    source: string;
+  };
+  valuePillar: "grow" | "optimise" | "derisk" | "strengthen";
+  achievability: "high" | "medium" | "low";
+  businessImpact: string;
+  kornFerrySolution: string;
+}
+
+interface StrategyOutcomesResult {
+  outcomes: StrategyOutcome[];
+  summary: string;
+}
+
 interface StrategicRecommendationsResult {
   strategies: OrganizationalStrategy[];
   executiveSummary: string;
@@ -56,7 +87,7 @@ interface StrategicAlignmentSelectorProps {
   companyName?: string;
   industry?: string;
   onStrategiesSelected?: (strategies: OrganizationalStrategy[]) => void;
-  onComplete?: (data: { strategies: OrganizationalStrategy[] }) => void;
+  onComplete?: (data: { strategies: OrganizationalStrategy[]; outcomes: StrategyOutcome[] }) => void;
 }
 
 const CATEGORY_CONFIG: Record<string, { label: string; icon: typeof Target; color: string }> = {
@@ -102,6 +133,13 @@ const PRIORITY_CONFIG: Record<string, { color: string }> = {
   high: { color: "bg-red-500/10 text-red-600" },
   medium: { color: "bg-amber-500/10 text-amber-600" },
   low: { color: "bg-slate-500/10 text-slate-600" },
+};
+
+const VALUE_PILLAR_CONFIG: Record<string, { label: string; color: string; icon: typeof TrendingUp }> = {
+  grow: { label: "Grow", color: "bg-emerald-100 text-emerald-700", icon: TrendingUp },
+  optimise: { label: "Optimise", color: "bg-blue-100 text-blue-700", icon: BarChart3 },
+  derisk: { label: "De-risk", color: "bg-amber-100 text-amber-700", icon: Target },
+  strengthen: { label: "Strengthen", color: "bg-purple-100 text-purple-700", icon: Zap },
 };
 
 function StrategyCard({ 
@@ -221,6 +259,101 @@ function StrategyCard({
   );
 }
 
+function OutcomeCard({ 
+  outcome, 
+  strategy,
+  isSelected,
+  onToggle
+}: { 
+  outcome: StrategyOutcome;
+  strategy?: OrganizationalStrategy;
+  isSelected: boolean;
+  onToggle: () => void;
+}) {
+  const pillarConfig = VALUE_PILLAR_CONFIG[outcome.valuePillar] || VALUE_PILLAR_CONFIG.strengthen;
+  const [showDetails, setShowDetails] = useState(false);
+
+  return (
+    <div 
+      className={`rounded-lg border p-4 transition-all ${
+        isSelected 
+          ? "border-emerald-500 bg-emerald-500/5" 
+          : "border-border hover-elevate"
+      }`}
+      data-testid={`outcome-card-${outcome.id}`}
+    >
+      <div className="flex items-start gap-3">
+        <Checkbox 
+          checked={isSelected}
+          onCheckedChange={() => onToggle()}
+          className="mt-1"
+          data-testid={`checkbox-outcome-${outcome.id}`}
+        />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <span className="font-medium text-sm">{outcome.outcomeName}</span>
+            <Badge className={`text-xs ${pillarConfig.color}`}>
+              {pillarConfig.label}
+            </Badge>
+            <Badge variant="outline" className="text-xs">
+              {outcome.achievability === "high" ? "High" : outcome.achievability === "medium" ? "Medium" : "Low"} Achievability
+            </Badge>
+          </div>
+          <p className="text-xs text-muted-foreground mb-2">{outcome.outcomeDescription}</p>
+          
+          <div className="flex items-center gap-4 text-xs mb-2">
+            <div className="flex items-center gap-1">
+              <BarChart3 className="h-3 w-3 text-muted-foreground" />
+              <span><strong>Baseline:</strong> {outcome.kpiDetails.suggestedBaseline}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Target className="h-3 w-3 text-emerald-500" />
+              <span><strong>Target:</strong> {outcome.kpiDetails.suggestedTarget}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Clock className="h-3 w-3 text-muted-foreground" />
+              <span>{outcome.kpiDetails.timeframe}</span>
+            </div>
+          </div>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowDetails(!showDetails)}
+            className="h-6 px-2 text-xs"
+            data-testid={`button-toggle-outcome-details-${outcome.id}`}
+          >
+            {showDetails ? <ChevronUp className="h-3 w-3 mr-1" /> : <ChevronDown className="h-3 w-3 mr-1" />}
+            {showDetails ? "Hide Details" : "Show Details"}
+          </Button>
+
+          {showDetails && (
+            <div className="mt-3 pt-3 border-t space-y-2">
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div>
+                  <p className="font-medium text-muted-foreground mb-1">Industry Benchmarks</p>
+                  <div className="space-y-1">
+                    <p>Low: {outcome.benchmark.industryLow}</p>
+                    <p>Median: {outcome.benchmark.industryMedian}</p>
+                    <p className="text-emerald-600">High: {outcome.benchmark.industryHigh}</p>
+                  </div>
+                  <p className="text-muted-foreground mt-1 italic">{outcome.benchmark.source}</p>
+                </div>
+                <div>
+                  <p className="font-medium text-muted-foreground mb-1">Business Impact</p>
+                  <p>{outcome.businessImpact}</p>
+                  <p className="mt-2 font-medium text-muted-foreground">Korn Ferry Solution</p>
+                  <Badge variant="outline" className="mt-1">{outcome.kornFerrySolution}</Badge>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function StrategicAlignmentSelector({
   projectId,
   companyName,
@@ -228,10 +361,14 @@ export function StrategicAlignmentSelector({
   onStrategiesSelected,
   onComplete
 }: StrategicAlignmentSelectorProps) {
+  const [phase, setPhase] = useState<"strategies" | "outcomes">("strategies");
   const [selectedStrategies, setSelectedStrategies] = useState<Set<string>>(new Set());
   const [expandedStrategies, setExpandedStrategies] = useState<Set<string>>(new Set());
   const [customStrategies, setCustomStrategies] = useState<OrganizationalStrategy[]>([]);
   const [showAddCustom, setShowAddCustom] = useState(false);
+  const [confirmedStrategies, setConfirmedStrategies] = useState<OrganizationalStrategy[]>([]);
+  const [outcomes, setOutcomes] = useState<StrategyOutcome[]>([]);
+  const [selectedOutcomes, setSelectedOutcomes] = useState<Set<string>>(new Set());
   const [customStrategyForm, setCustomStrategyForm] = useState({
     name: "",
     description: "",
@@ -252,6 +389,28 @@ export function StrategicAlignmentSelector({
     },
     onSuccess: (data) => {
       queryClient.setQueryData(["/api/projects", projectId, "strategic-recommendations"], data);
+    },
+  });
+
+  const generateOutcomesMutation = useMutation({
+    mutationFn: async (strategies: OrganizationalStrategy[]) => {
+      const response = await apiRequest("POST", `/api/projects/${projectId}/strategy-outcomes`, {
+        selectedStrategies: strategies.map(s => ({
+          id: s.id,
+          strategyName: s.strategyName,
+          strategyDescription: s.strategyDescription,
+          strategicCategory: s.strategicCategory,
+          businessRationale: s.businessRationale,
+          expectedOutcomes: s.expectedOutcomes,
+          timeframe: s.timeframe,
+          priority: s.priority
+        }))
+      });
+      return response.json() as Promise<StrategyOutcomesResult>;
+    },
+    onSuccess: (data) => {
+      setOutcomes(data.outcomes);
+      setSelectedOutcomes(new Set(data.outcomes.map(o => o.id)));
     },
   });
 
@@ -325,148 +484,297 @@ export function StrategicAlignmentSelector({
     });
   };
 
-  const handleComplete = () => {
+  const handleConfirmStrategies = () => {
     const selected = allStrategies.filter(s => selectedStrategies.has(s.id));
-    onComplete?.({ strategies: selected });
+    setConfirmedStrategies(selected);
+    setPhase("outcomes");
+    generateOutcomesMutation.mutate(selected);
+  };
+
+  const toggleOutcome = (outcomeId: string) => {
+    const newSelected = new Set(selectedOutcomes);
+    if (newSelected.has(outcomeId)) {
+      newSelected.delete(outcomeId);
+    } else {
+      newSelected.add(outcomeId);
+    }
+    setSelectedOutcomes(newSelected);
+  };
+
+  const handleComplete = () => {
+    const selectedOutcomesList = outcomes.filter(o => selectedOutcomes.has(o.id));
+    onComplete?.({ strategies: confirmedStrategies, outcomes: selectedOutcomesList });
+  };
+
+  const getStrategyForOutcome = (strategyId: string) => {
+    return confirmedStrategies.find(s => s.id === strategyId);
   };
 
   return (
     <div className="space-y-4" data-testid="strategic-alignment-selector">
-      <Card className="bg-gradient-to-r from-violet-500/5 to-purple-500/5 border-violet-500/20">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center">
-                <Layers className="w-5 h-5 text-violet-600" />
-              </div>
-              <div>
-                <CardTitle className="text-lg">
-                  {companyName ? `${companyName}'s Strategic Priorities` : "Strategic Priorities"}
-                </CardTitle>
-                <CardDescription>
-                  AI-recommended organizational strategies tailored to {companyName || "your client"}'s 
-                  {industry ? ` ${industry}` : ""} context
-                </CardDescription>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-sm">
-                {selectedStrategies.size} selected
-              </Badge>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {isLoading && !hasStrategies ? (
-            <div className="space-y-3">
-              <Skeleton className="h-20 w-full" />
-              <Skeleton className="h-20 w-full" />
-              <Skeleton className="h-20 w-full" />
-            </div>
-          ) : !hasStrategies ? (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 mx-auto rounded-full bg-violet-500/10 flex items-center justify-center mb-4">
-                <Sparkles className="w-8 h-8 text-violet-600" />
-              </div>
-              <h3 className="font-semibold mb-2">Generate Strategic Recommendations</h3>
-              <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-                Our AI will analyze {companyName || "your client"}'s industry context and recommend 
-                organizational strategies that drive meaningful business outcomes.
-              </p>
-              <Button 
-                onClick={() => generateMutation.mutate()}
-                disabled={generateMutation.isPending}
-                data-testid="button-generate-strategies"
-              >
-                {generateMutation.isPending ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Generate Strategies
-                  </>
-                )}
-              </Button>
-            </div>
-          ) : (
-            <>
-              {cachedRecommendations?.executiveSummary && (
-                <div className="p-3 rounded-lg bg-muted/50 border-l-4 border-violet-500">
-                  <p className="text-sm">{cachedRecommendations.executiveSummary}</p>
-                  {cachedRecommendations.recommendedFocus && (
-                    <p className="text-xs text-muted-foreground mt-2 flex items-start gap-1">
-                      <Lightbulb className="h-3 w-3 mt-0.5 shrink-0 text-amber-500" />
-                      <span><strong>Recommended focus:</strong> {cachedRecommendations.recommendedFocus}</span>
-                    </p>
-                  )}
+      {phase === "strategies" ? (
+        <Card className="bg-gradient-to-r from-violet-500/5 to-purple-500/5 border-violet-500/20">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                  <Layers className="w-5 h-5 text-violet-600" />
                 </div>
-              )}
-
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={selectAllHighPriority}
-                    data-testid="button-select-high-priority"
-                  >
-                    <Target className="h-4 w-4 mr-1" />
-                    Select High Priority
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setShowAddCustom(true)}
-                    data-testid="button-add-custom-strategy"
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Custom
-                  </Button>
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    Step 1: Select Strategies
+                    <Badge variant="outline" className="text-xs font-normal">1 of 2</Badge>
+                  </CardTitle>
+                  <CardDescription>
+                    AI-recommended organizational strategies for {companyName || "your client"}
+                  </CardDescription>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-sm">
+                  {selectedStrategies.size} selected
+                </Badge>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {isLoading && !hasStrategies ? (
+              <div className="space-y-3">
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+            ) : !hasStrategies ? (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 mx-auto rounded-full bg-violet-500/10 flex items-center justify-center mb-4">
+                  <Sparkles className="w-8 h-8 text-violet-600" />
+                </div>
+                <h3 className="font-semibold mb-2">Generate Strategic Recommendations</h3>
+                <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
+                  Our AI will analyze {companyName || "your client"}'s industry context and recommend 
+                  organizational strategies that drive meaningful business outcomes.
+                </p>
+                <Button 
                   onClick={() => generateMutation.mutate()}
                   disabled={generateMutation.isPending}
-                  data-testid="button-refresh-strategies"
+                  data-testid="button-generate-strategies"
                 >
-                  <RefreshCw className={`h-4 w-4 mr-1 ${generateMutation.isPending ? 'animate-spin' : ''}`} />
-                  Refresh
+                  {generateMutation.isPending ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Generate Strategies
+                    </>
+                  )}
                 </Button>
               </div>
-
-              <div className="space-y-3">
-                {allStrategies.map(strategy => (
-                  <StrategyCard
-                    key={strategy.id}
-                    strategy={strategy}
-                    isSelected={selectedStrategies.has(strategy.id)}
-                    isExpanded={expandedStrategies.has(strategy.id)}
-                    onToggle={() => toggleStrategy(strategy.id)}
-                    onExpandToggle={() => toggleExpand(strategy.id)}
-                  />
-                ))}
-              </div>
-
-              {selectedStrategies.size > 0 && (
-                <div className="flex items-center justify-between pt-4 border-t">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                    {selectedStrategies.size} {selectedStrategies.size === 1 ? 'strategy' : 'strategies'} selected
+            ) : (
+              <>
+                {cachedRecommendations?.executiveSummary && (
+                  <div className="p-3 rounded-lg bg-muted/50 border-l-4 border-violet-500">
+                    <p className="text-sm">{cachedRecommendations.executiveSummary}</p>
+                    {cachedRecommendations.recommendedFocus && (
+                      <p className="text-xs text-muted-foreground mt-2 flex items-start gap-1">
+                        <Lightbulb className="h-3 w-3 mt-0.5 shrink-0 text-amber-500" />
+                        <span><strong>Recommended focus:</strong> {cachedRecommendations.recommendedFocus}</span>
+                      </p>
+                    )}
                   </div>
-                  <Button onClick={handleComplete} data-testid="button-confirm-strategies">
-                    Confirm Selection
-                    <ArrowRight className="w-4 h-4 ml-2" />
+                )}
+
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={selectAllHighPriority}
+                      data-testid="button-select-high-priority"
+                    >
+                      <Target className="h-4 w-4 mr-1" />
+                      Select High Priority
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setShowAddCustom(true)}
+                      data-testid="button-add-custom-strategy"
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add Custom
+                    </Button>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => generateMutation.mutate()}
+                    disabled={generateMutation.isPending}
+                    data-testid="button-refresh-strategies"
+                  >
+                    <RefreshCw className={`h-4 w-4 mr-1 ${generateMutation.isPending ? 'animate-spin' : ''}`} />
+                    Refresh
                   </Button>
                 </div>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
+
+                <div className="space-y-3">
+                  {allStrategies.map(strategy => (
+                    <StrategyCard
+                      key={strategy.id}
+                      strategy={strategy}
+                      isSelected={selectedStrategies.has(strategy.id)}
+                      isExpanded={expandedStrategies.has(strategy.id)}
+                      onToggle={() => toggleStrategy(strategy.id)}
+                      onExpandToggle={() => toggleExpand(strategy.id)}
+                    />
+                  ))}
+                </div>
+
+                {selectedStrategies.size > 0 && (
+                  <div className="flex items-center justify-between pt-4 border-t">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      {selectedStrategies.size} {selectedStrategies.size === 1 ? 'strategy' : 'strategies'} selected
+                    </div>
+                    <Button onClick={handleConfirmStrategies} data-testid="button-confirm-strategies">
+                      Generate Outcomes
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="bg-gradient-to-r from-emerald-500/5 to-teal-500/5 border-emerald-500/20">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                  <Target className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    Step 2: Review Outcomes
+                    <Badge variant="outline" className="text-xs font-normal">2 of 2</Badge>
+                  </CardTitle>
+                  <CardDescription>
+                    AI-generated measurable outcomes based on {confirmedStrategies.length} selected {confirmedStrategies.length === 1 ? 'strategy' : 'strategies'}
+                  </CardDescription>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-sm">
+                  {selectedOutcomes.size} outcomes selected
+                </Badge>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => setPhase("strategies")}
+              data-testid="button-back-to-strategies"
+            >
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back to Strategies
+            </Button>
+
+            {generateOutcomesMutation.isPending ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                  <Sparkles className="h-4 w-4 animate-pulse text-emerald-500" />
+                  Generating outcomes from your selected strategies...
+                </div>
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+              </div>
+            ) : outcomes.length > 0 ? (
+              <>
+                <div className="p-3 rounded-lg bg-muted/50 border-l-4 border-emerald-500">
+                  <p className="text-sm">
+                    Based on your selected strategies, we've identified {outcomes.length} measurable outcomes. 
+                    Select the outcomes you want to commit to with your client.
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setSelectedOutcomes(new Set(outcomes.map(o => o.id)))}
+                    data-testid="button-select-all-outcomes"
+                  >
+                    <CheckCircle2 className="h-4 w-4 mr-1" />
+                    Select All
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => generateOutcomesMutation.mutate(confirmedStrategies)}
+                    disabled={generateOutcomesMutation.isPending}
+                    data-testid="button-refresh-outcomes"
+                  >
+                    <RefreshCw className={`h-4 w-4 mr-1 ${generateOutcomesMutation.isPending ? 'animate-spin' : ''}`} />
+                    Regenerate
+                  </Button>
+                </div>
+
+                {confirmedStrategies.map(strategy => {
+                  const strategyOutcomes = outcomes.filter(o => o.strategyId === strategy.id);
+                  if (strategyOutcomes.length === 0) return null;
+                  
+                  return (
+                    <div key={strategy.id} className="space-y-2">
+                      <div className="flex items-center gap-2 py-2">
+                        <Badge variant="outline" className={CATEGORY_CONFIG[strategy.strategicCategory]?.color}>
+                          {strategy.strategyName}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {strategyOutcomes.length} {strategyOutcomes.length === 1 ? 'outcome' : 'outcomes'}
+                        </span>
+                      </div>
+                      <div className="space-y-2 pl-2 border-l-2 border-muted">
+                        {strategyOutcomes.map(outcome => (
+                          <OutcomeCard
+                            key={outcome.id}
+                            outcome={outcome}
+                            strategy={strategy}
+                            isSelected={selectedOutcomes.has(outcome.id)}
+                            onToggle={() => toggleOutcome(outcome.id)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {selectedOutcomes.size > 0 && (
+                  <div className="flex items-center justify-between pt-4 border-t">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      {selectedOutcomes.size} {selectedOutcomes.size === 1 ? 'outcome' : 'outcomes'} selected
+                    </div>
+                    <Button onClick={handleComplete} data-testid="button-confirm-outcomes">
+                      Confirm & Continue
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">No outcomes generated yet.</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Dialog open={showAddCustom} onOpenChange={setShowAddCustom}>
         <DialogContent data-testid="dialog-add-custom-strategy">
