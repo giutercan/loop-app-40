@@ -176,7 +176,7 @@ export default function NewProject() {
               </div>
               <div>
                 <span className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">Korn Ferry</span>
-                <p className="text-xs text-muted-foreground hidden lg:block">Value Lifecycle</p>
+                <p className="text-xs text-muted-foreground hidden lg:block">Loop</p>
               </div>
             </Link>
             

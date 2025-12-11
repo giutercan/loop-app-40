@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import heroImage from "@assets/Picture6_1763994371580.jpg";
-import { LoopLogoBrand } from "@/components/AppHeader";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 
 const valuePillars = [
@@ -118,7 +117,6 @@ export default function Landing() {
         <div className="container mx-auto max-w-7xl px-4 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-3">
-              <LoopLogoBrand className="w-11 h-11" />
               <div>
                 <span className="text-xl font-bold">Korn Ferry</span>
                 <p className="text-xs font-semibold bg-gradient-to-r from-secondary via-accent to-ai bg-clip-text text-transparent hidden sm:block">Loop</p>
@@ -275,7 +273,7 @@ export default function Landing() {
               <Lightbulb className="w-3.5 h-3.5 mr-2" />
               Our Vision
             </Badge>
-            <h2 className="text-3xl lg:text-4xl font-bold mb-4">A Unified Value Lifecycle</h2>
+            <h2 className="text-3xl lg:text-4xl font-bold mb-4">A Unified Value Loop</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               One platform where every team can discover, align, and realize value together
             </p>
@@ -445,7 +443,7 @@ export default function Landing() {
             </div>
             <div className="text-center" data-testid="stat-impact-platform">
               <div className="text-5xl lg:text-6xl font-bold mb-2">1</div>
-              <p className="text-white/80">Single source of truth across the value lifecycle</p>
+              <p className="text-white/80">Single source of truth across the value loop</p>
             </div>
           </div>
         </div>
@@ -462,7 +460,7 @@ export default function Landing() {
               Ready to Transform Value Delivery?
             </h2>
             <p className="text-lg text-muted-foreground">
-              The Value Lifecycle Platform is built by Korn Ferry, for Korn Ferry—helping every team prove and maximize client impact.
+              Korn Ferry Loop is built by Korn Ferry, for Korn Ferry—helping every team prove and maximize client impact.
             </p>
             <div className="flex flex-wrap gap-4 justify-center pt-4">
               <Link href="/accounts">
@@ -490,7 +488,7 @@ export default function Landing() {
               </div>
               <div>
                 <span className="text-lg font-bold">Korn Ferry</span>
-                <p className="text-xs text-white/60">Value Lifecycle Platform</p>
+                <p className="text-xs text-white/60">Korn Ferry Loop</p>
               </div>
             </div>
             <div className="flex items-center gap-6">

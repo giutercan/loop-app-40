@@ -121,8 +121,6 @@ import {
   type QuickWin,
   type KeyMilestone
 } from "@shared/value-frameworks";
-import { DemoModeButton } from "@/demo/DemoModeButton";
-import { useDemoMode } from "@/demo/DemoModeContext";
 import { JourneyLoopVisualizer } from "@/components/JourneyLoopVisualizer";
 import { UnifiedJourneyTimeline } from "@/components/UnifiedJourneyTimeline";
 import CompetitiveIntelligence from "@/components/CompetitiveIntelligence";
@@ -10356,8 +10354,6 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
             </div>
 
             <div className="flex items-center gap-3">
-              <DemoModeButton />
-              
               <Badge variant="outline" className="hidden sm:flex">
                 {project.lifecyclePhase ? phaseLabels[project.lifecyclePhase] || project.lifecyclePhase : "Active"}
               </Badge>
@@ -10376,7 +10372,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
 
               <Link href={`/projects/${projectId}`}>
                 <Button variant="outline" size="sm" data-testid="button-project-detail">
-                  Full Project
+                  Full Initiative
                 </Button>
               </Link>
             </div>

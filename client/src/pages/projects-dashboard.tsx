@@ -186,7 +186,7 @@ export default function ProjectsDashboard() {
               </div>
               <div>
                 <span className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">Korn Ferry</span>
-                <p className="text-xs text-muted-foreground hidden lg:block">Value Lifecycle</p>
+                <p className="text-xs text-muted-foreground hidden lg:block">Loop</p>
               </div>
             </Link>
             
@@ -200,7 +200,7 @@ export default function ProjectsDashboard() {
                 onClick={() => setLocation('/projects/new')}
               >
                 <Plus className="w-4 h-4 mr-2" />
-                New Project
+                New Initiative
               </Button>
             </div>
           </div>
@@ -223,7 +223,7 @@ export default function ProjectsDashboard() {
                     Client Engagements
                   </h1>
                   <p className="text-white/70 text-sm lg:text-base">
-                    Manage value lifecycle across Discovery, Alignment & Realization
+                    Manage value loop across Discovery, Alignment & Realization
                   </p>
                 </div>
               </div>
@@ -433,7 +433,7 @@ export default function ProjectsDashboard() {
                     <div className="text-center space-y-3 max-w-md">
                       <h3 className="text-2xl font-bold">Ready to Start</h3>
                       <p className="text-muted-foreground leading-relaxed">
-                        Create your first client engagement project and unlock AI-powered insights, strategic value alignment, and measurable outcomes.
+                        Create your first client engagement initiative and unlock AI-powered insights, strategic value alignment, and measurable outcomes.
                       </p>
                     </div>
                     <Button 
@@ -443,7 +443,7 @@ export default function ProjectsDashboard() {
                       onClick={() => setLocation('/projects/new')}
                     >
                       <Plus className="w-4 h-4 mr-2" />
-                      Create Your First Project
+                      Create Your First Initiative
                     </Button>
                   </div>
                 </div>

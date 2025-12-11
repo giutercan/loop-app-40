@@ -24,8 +24,6 @@ import CompanionCanvas from "@/pages/companion-canvas";
 import ProjectLayout from "@/components/ProjectLayout";
 import HandoffHub from "@/pages/handoff-hub";
 import { CommandPalette } from "@/components/CommandPalette";
-import { DemoModeProvider } from "@/demo/DemoModeContext";
-import { ExecutiveDemoTour } from "@/demo/ExecutiveDemoTour";
 import { CompanionProvider } from "@/components/AICompanionPanel";
 
 function DiscoveryWithLayout() {
@@ -110,14 +108,11 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <DemoModeProvider>
-          <CompanionProvider>
-            <CommandPalette />
-            <ExecutiveDemoTour />
-            <Toaster />
-            <Router />
-          </CompanionProvider>
-        </DemoModeProvider>
+        <CompanionProvider>
+          <CommandPalette />
+          <Toaster />
+          <Router />
+        </CompanionProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

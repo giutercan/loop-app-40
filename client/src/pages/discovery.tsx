@@ -883,7 +883,7 @@ function SuccessStoriesSection({ projectId }: { projectId: number | undefined })
       <Card>
         <CardContent className="pt-6">
           <p className="text-sm text-muted-foreground text-center">
-            Select a project to view success stories
+            Select an initiative to view success stories
           </p>
         </CardContent>
       </Card>
@@ -1955,9 +1955,9 @@ export default function Discovery() {
       <div className="h-full flex items-center justify-center p-6">
         <Card className="max-w-2xl w-full">
           <CardHeader>
-            <CardTitle className="text-2xl">Welcome to Korn Ferry Value Lifecycle</CardTitle>
+            <CardTitle className="text-2xl">Welcome to Korn Ferry Loop</CardTitle>
             <CardDescription>
-              Select an existing project or create a new one to get started
+              Select an existing initiative or create a new one to get started
             </CardDescription>
           </CardHeader>
           <CardContent>

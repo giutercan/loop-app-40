@@ -58,7 +58,7 @@ export default function PresentationPage() {
           </div>
           <div>
             <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-violet-600 via-blue-600 to-emerald-500 bg-clip-text text-transparent mb-4">
-              Value Lifecycle Platform
+              Korn Ferry Loop
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto">
               Transforming how Korn Ferry sells, delivers, and proves value
@@ -153,7 +153,7 @@ export default function PresentationPage() {
     {
       id: "vision",
       title: "Our Vision",
-      subtitle: "A unified platform for the entire value lifecycle",
+      subtitle: "A unified platform for the entire value loop",
       content: (
         <div className="max-w-4xl mx-auto space-y-8">
           <div className="text-center mb-12">
@@ -589,7 +589,7 @@ export default function PresentationPage() {
             </Card>
             <Card className="p-6 text-center">
               <div className="text-4xl font-bold text-emerald-600 mb-2">1 Platform</div>
-              <p className="text-sm text-muted-foreground">Single source of truth across the value lifecycle</p>
+              <p className="text-sm text-muted-foreground">Single source of truth across the value loop</p>
             </Card>
           </div>
 
@@ -665,7 +665,7 @@ export default function PresentationPage() {
               Ready to Transform Value Delivery?
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              The Value Lifecycle Platform is built by Korn Ferry, for Korn Ferry—
+              Korn Ferry Loop is built by Korn Ferry, for Korn Ferry—
               helping every team prove and maximize client impact.
             </p>
           </div>

@@ -12,7 +12,7 @@ const projectsDashboardSteps: Step[] = [
     target: "body",
     content: (
       <div className="space-y-2">
-        <h3 className="font-semibold text-lg">Welcome to Korn Ferry Value Lifecycle</h3>
+        <h3 className="font-semibold text-lg">Welcome to Korn Ferry Loop</h3>
         <p>This quick tour will show you how to manage client engagements from Discovery to Value Realization.</p>
       </div>
     ),
@@ -23,7 +23,7 @@ const projectsDashboardSteps: Step[] = [
     target: '[data-testid="button-new-project"]',
     content: (
       <div className="space-y-2">
-        <h3 className="font-semibold">Create New Project</h3>
+        <h3 className="font-semibold">Create New Initiative</h3>
         <p>Start a new client engagement by clicking here. You'll enter the company name and select an engagement type.</p>
       </div>
     ),
@@ -33,8 +33,8 @@ const projectsDashboardSteps: Step[] = [
     target: "body",
     content: (
       <div className="space-y-2">
-        <h3 className="font-semibold">Your Projects</h3>
-        <p>All your client engagements will appear on this page. Click on any project card to open it and continue your work.</p>
+        <h3 className="font-semibold">Your Initiatives</h3>
+        <p>All your client engagements will appear on this page. Click on any initiative card to open it and continue your work.</p>
       </div>
     ),
     placement: "center",
@@ -43,7 +43,7 @@ const projectsDashboardSteps: Step[] = [
     target: "body",
     content: (
       <div className="space-y-2">
-        <h3 className="font-semibold">Client Value Lifecycle</h3>
+        <h3 className="font-semibold">Client Value Loop</h3>
         <p>Each engagement moves through five connected phases:</p>
         <ul className="list-disc list-inside text-sm space-y-1 mt-2">
           <li><strong>Discover & Qualify</strong> - Research & understand the client</li>
@@ -61,7 +61,7 @@ const projectsDashboardSteps: Step[] = [
     content: (
       <div className="space-y-2">
         <h3 className="font-semibold text-lg">You're All Set!</h3>
-        <p>Create your first project to get started. You can restart this tour anytime using the help button.</p>
+        <p>Create your first initiative to get started. You can restart this tour anytime using the help button.</p>
       </div>
     ),
     placement: "center",
@@ -143,7 +143,7 @@ const accountHubSteps: Step[] = [
     content: (
       <div className="space-y-2">
         <h3 className="font-semibold text-lg">Welcome to the Account Hub</h3>
-        <p>This is your central command center for managing client accounts across the value lifecycle.</p>
+        <p>This is your central command center for managing client accounts across the value loop.</p>
       </div>
     ),
     placement: "center",
@@ -164,7 +164,7 @@ const accountHubSteps: Step[] = [
     content: (
       <div className="space-y-2">
         <h3 className="font-semibold">Filter by Phase</h3>
-        <p>Focus on initiatives in specific lifecycle phases - from Discovery to Value Realization.</p>
+        <p>Focus on initiatives in specific phases - from Discovery to Value Realization.</p>
       </div>
     ),
     placement: "bottom",
@@ -176,7 +176,7 @@ const accountHubSteps: Step[] = [
         <h3 className="font-semibold">Initiative Cards</h3>
         <p>Each initiative card shows:</p>
         <ul className="list-disc list-inside text-sm space-y-1 mt-2">
-          <li><strong>Lifecycle Phase</strong> - Current stage in the journey</li>
+          <li><strong>Phase</strong> - Current stage in the journey</li>
           <li><strong>KPI Status</strong> - Track progress across metrics</li>
           <li><strong>Value</strong> - Promised vs realized value</li>
           <li><strong>Quick Links</strong> - Jump directly to any phase</li>
@@ -200,7 +200,7 @@ const accountHubSteps: Step[] = [
     content: (
       <div className="space-y-2">
         <h3 className="font-semibold text-lg">You're Ready!</h3>
-        <p>Navigate seamlessly between the Account Hub, Value Spine, and individual initiatives. Start by exploring your initiatives or filtering by lifecycle phase.</p>
+        <p>Navigate seamlessly between the Account Hub, Value Spine, and individual initiatives. Start by exploring your initiatives or filtering by phase.</p>
       </div>
     ),
     placement: "center",

@@ -270,7 +270,7 @@ export default function ProjectSelector({ currentProjectId, onProjectChange }: P
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Project</AlertDialogTitle>
+              <AlertDialogTitle>Delete Initiative</AlertDialogTitle>
               <AlertDialogDescription>
                 Are you sure you want to delete "{currentProject.name}" for {currentProject.companyName}? 
                 This action cannot be undone and will permanently delete all associated data including discovery notes, 
@@ -285,7 +285,7 @@ export default function ProjectSelector({ currentProjectId, onProjectChange }: P
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 data-testid="button-confirm-delete"
               >
-                {deleteProjectMutation.isPending ? "Deleting..." : "Delete Project"}
+                {deleteProjectMutation.isPending ? "Deleting..." : "Delete Initiative"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -300,14 +300,14 @@ export default function ProjectSelector({ currentProjectId, onProjectChange }: P
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create New Project</DialogTitle>
+            <DialogTitle>Create New Initiative</DialogTitle>
             <DialogDescription>
-              Start a new value lifecycle engagement
+              Start a new value loop engagement
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <div>
-              <Label htmlFor="projectName">Project Name</Label>
+              <Label htmlFor="projectName">Initiative Name</Label>
               <Input
                 id="projectName"
                 placeholder="e.g., Leadership Development Initiative"
