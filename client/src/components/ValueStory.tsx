@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface ValueStoryData {
@@ -44,6 +44,7 @@ interface ValueStoryProps {
 
 export function ValueStory({ projectId }: ValueStoryProps) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const autoGenerateAttempted = useRef(false);
   
   const { data: valueStory, isLoading: isLoadingStory } = useQuery<ValueStoryData>({
     queryKey: ['/api/projects', projectId, 'value-story'],
@@ -58,11 +59,28 @@ export function ValueStory({ projectId }: ValueStoryProps) {
     }
   });
 
-  if (isLoadingStory) {
+  useEffect(() => {
+    if (!isLoadingStory && !valueStory && !generateMutation.isPending && !autoGenerateAttempted.current) {
+      autoGenerateAttempted.current = true;
+      generateMutation.mutate();
+    }
+  }, [isLoadingStory, valueStory, generateMutation.isPending]);
+
+  if (isLoadingStory || (!valueStory && generateMutation.isPending)) {
     return (
-      <Card className="border-dashed">
-        <CardContent className="py-8 flex items-center justify-center">
-          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      <Card className="border-dashed bg-gradient-to-br from-violet-500/5 to-purple-500/5">
+        <CardContent className="py-8">
+          <div className="flex flex-col items-center justify-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-violet-500/10 flex items-center justify-center">
+              <Loader2 className="w-6 h-6 animate-spin text-violet-600" />
+            </div>
+            <div className="text-center">
+              <p className="font-medium text-sm">Generating Value Story</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Creating your AI-powered transformation narrative...
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     );
@@ -77,13 +95,21 @@ export function ValueStory({ projectId }: ValueStoryProps) {
               <Sparkles className="w-6 h-6 text-violet-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-lg">Generate Value Story</h3>
+              <h3 className="font-semibold text-lg">
+                {generateMutation.isError ? "Generation Failed" : "Value Story"}
+              </h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Create an AI-powered narrative that tells the transformation story
+                {generateMutation.isError 
+                  ? "Unable to generate story. Click below to retry."
+                  : "Create an AI-powered narrative that tells the transformation story"
+                }
               </p>
             </div>
             <Button 
-              onClick={() => generateMutation.mutate()}
+              onClick={() => {
+                autoGenerateAttempted.current = false;
+                generateMutation.mutate();
+              }}
               disabled={generateMutation.isPending}
               className="gap-2"
               data-testid="button-generate-value-story"
@@ -96,7 +122,7 @@ export function ValueStory({ projectId }: ValueStoryProps) {
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  Generate Value Story
+                  {generateMutation.isError ? "Retry Generation" : "Generate Value Story"}
                 </>
               )}
             </Button>
