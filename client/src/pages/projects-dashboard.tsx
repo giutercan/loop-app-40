@@ -111,15 +111,15 @@ export default function ProjectsDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"], refetchType: 'active' });
       toast({
-        title: "Project deleted",
-        description: "The project has been successfully removed.",
+        title: "Initiative deleted",
+        description: "The initiative has been successfully removed.",
       });
     },
     onError: (error: any) => {
       toast({
         variant: "destructive",
         title: "Delete failed",
-        description: error.message || "Failed to delete the project. Please try again.",
+        description: error.message || "Failed to delete the initiative. Please try again.",
       });
     },
   });

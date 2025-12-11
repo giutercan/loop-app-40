@@ -866,7 +866,7 @@ function SuccessStoriesSection({ projectId }: { projectId: number | undefined })
       });
       toast({ 
         title: `${data.count} success stories generated`,
-        description: "AI recommendations added to your project"
+        description: "AI recommendations added to your initiative"
       });
     },
     onError: (error: Error) => {

@@ -78,7 +78,7 @@ export function CommandPalette() {
 
         {currentProject && (
           <>
-            <CommandGroup heading="Current Project">
+            <CommandGroup heading="Current Initiative">
               <CommandItem
                 onSelect={() => navigateTo(`/projects/${currentProject.id}/discovery`)}
                 data-testid={`command-project-discovery-${currentProject.id}`}
@@ -108,7 +108,7 @@ export function CommandPalette() {
                 data-testid={`command-project-dashboard-${currentProject.id}`}
               >
                 <LayoutDashboard className="mr-2 h-4 w-4 text-amber-500" />
-                <span>Project Dashboard</span>
+                <span>Initiative Dashboard</span>
               </CommandItem>
             </CommandGroup>
             <CommandSeparator />
@@ -118,19 +118,19 @@ export function CommandPalette() {
         <CommandGroup heading="Navigation">
           <CommandItem onSelect={() => navigateTo("/projects")} data-testid="command-nav-dashboard">
             <LayoutDashboard className="mr-2 h-4 w-4" />
-            <span>Projects Dashboard</span>
+            <span>Initiatives Dashboard</span>
             <CommandShortcut>Home</CommandShortcut>
           </CommandItem>
           <CommandItem onSelect={() => navigateTo("/projects/new")} data-testid="command-nav-new-project">
             <FolderPlus className="mr-2 h-4 w-4" />
-            <span>New Project</span>
+            <span>New Initiative</span>
           </CommandItem>
         </CommandGroup>
 
         {otherProjects.length > 0 && (
           <>
             <CommandSeparator />
-            <CommandGroup heading="Switch Project">
+            <CommandGroup heading="Switch Initiative">
               {otherProjects.map((project) => (
                 <CommandItem
                   key={project.id}

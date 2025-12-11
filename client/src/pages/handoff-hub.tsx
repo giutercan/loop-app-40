@@ -129,7 +129,7 @@ export default function HandoffHub() {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "discovery-insights", "summary"] });
       toast({
         title: "Handoff Confirmed",
-        description: "Project successfully handed off to delivery team.",
+        description: "Initiative successfully handed off to delivery team.",
       });
       setShowConfirmDialog(false);
     },
@@ -144,7 +144,7 @@ export default function HandoffHub() {
 
   const copyHandoffSummary = () => {
     const summary = `
-HANDOFF SUMMARY: ${project?.name || "Project"}
+HANDOFF SUMMARY: ${project?.name || "Initiative"}
 Company: ${project?.companyName}
 Total Value: $${(totalValue / 1000).toFixed(0)}K annually
 

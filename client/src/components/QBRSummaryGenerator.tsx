@@ -199,7 +199,7 @@ ${valueMetrics.realizationPercent < 50 ? '- Accelerate value realization activit
     return `# Detailed Progress Report
 ## ${project.companyName} - ${format(new Date(), 'MMMM yyyy')}
 
-### Project: ${project.name}
+### Initiative: ${project.name}
 **Sector:** ${project.sector || 'Not specified'}
 **Business Unit:** ${project.businessUnit || 'Not specified'}
 **Current Phase:** Realization
@@ -242,7 +242,7 @@ ${kpiDetails.filter(k => k.status === 'off-track').map(k => `- ${k.name}: ${k.pr
     if (!project || !dashboard) {
       toast({
         title: "Unable to generate",
-        description: "Project data is not available.",
+        description: "Initiative data is not available.",
         variant: "destructive",
       });
       return;

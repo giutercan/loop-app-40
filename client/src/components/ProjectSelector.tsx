@@ -131,8 +131,8 @@ export default function ProjectSelector({ currentProjectId, onProjectChange }: P
     onSuccess: (_, deletedProjectId) => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       toast({
-        title: "Project deleted",
-        description: "The project has been permanently deleted.",
+        title: "Initiative deleted",
+        description: "The initiative has been permanently deleted.",
       });
       
       // If we just deleted the current project, redirect to home
@@ -142,7 +142,7 @@ export default function ProjectSelector({ currentProjectId, onProjectChange }: P
     },
     onError: (error: Error) => {
       toast({
-        title: "Error deleting project",
+        title: "Error deleting initiative",
         description: error.message,
         variant: "destructive",
       });
@@ -173,7 +173,7 @@ export default function ProjectSelector({ currentProjectId, onProjectChange }: P
     if (!newProject.name || !newProject.companyName) {
       toast({
         title: "Validation error",
-        description: "Project name and company name are required.",
+        description: "Initiative name and company name are required.",
         variant: "destructive",
       });
       return;
@@ -195,7 +195,7 @@ export default function ProjectSelector({ currentProjectId, onProjectChange }: P
       setCompanyLogo("");
       
       toast({
-        title: "Project created",
+        title: "Initiative created",
         description: `${pendingProject.name} has been created successfully.`,
       });
       
@@ -225,7 +225,7 @@ export default function ProjectSelector({ currentProjectId, onProjectChange }: P
         <Building2 className="w-5 h-5 text-muted-foreground" />
         <Select value={currentProjectId?.toString()} onValueChange={handleProjectChange}>
           <SelectTrigger data-testid="select-project">
-            <SelectValue placeholder="Select a project" />
+            <SelectValue placeholder="Select an initiative" />
           </SelectTrigger>
           <SelectContent>
             {projects.map((project) => (
