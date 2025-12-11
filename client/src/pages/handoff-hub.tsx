@@ -32,7 +32,12 @@ import {
   RefreshCw,
   ChevronRight,
   Check,
-  User
+  User,
+  ChevronDown,
+  ChevronUp,
+  Info,
+  Layers,
+  Hash
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,6 +58,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ImpactDashboard } from "@/components/ImpactDashboard";
 import { ValueStory } from "@/components/ValueStory";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const VALUE_PILLAR_CONFIG = {
   grow: { label: "Grow", color: "emerald", icon: TrendingUp },
@@ -60,6 +66,165 @@ const VALUE_PILLAR_CONFIG = {
   derisk: { label: "De-risk", color: "amber", icon: Shield },
   strengthen: { label: "Strengthen", color: "violet", icon: Users },
 };
+
+function EnhancedOutcomeCard({ commitment: c, config }: { commitment: any; config: any }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  return (
+    <div 
+      className="rounded-lg border bg-card overflow-hidden"
+      data-testid={`outcome-card-${c.id}`}
+    >
+      <div 
+        className="p-4 cursor-pointer hover-elevate"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h4 className="font-medium">{c.name}</h4>
+              {c.sourceAiSuggestion && (
+                <Badge variant="outline" className="text-[10px] bg-purple-500/10 text-purple-600 border-purple-500/30">
+                  AI Generated
+                </Badge>
+              )}
+            </div>
+            {c.outcomeStatement && (
+              <p className="text-sm text-muted-foreground mt-1">{c.outcomeStatement}</p>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className="text-lg font-bold">
+                {c.baselineValue || "—"} → {c.targetValue || "—"}
+              </div>
+              <div className="text-xs text-muted-foreground">{c.kpiUnit || "units"}</div>
+            </div>
+            {isExpanded ? (
+              <ChevronUp className="w-5 h-5 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-muted-foreground" />
+            )}
+          </div>
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-2 mt-3">
+          {c.estimatedAnnualValue && (
+            <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30">
+              <DollarSign className="w-3 h-3 mr-1" />
+              ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr
+            </Badge>
+          )}
+          {c.solutionPattern && (
+            <Badge variant="outline" className="text-xs">
+              {c.solutionPattern.replace(/_/g, " ")}
+            </Badge>
+          )}
+          {c.targetDate && (
+            <Badge variant="outline" className="text-xs">
+              <Calendar className="w-3 h-3 mr-1" />
+              {new Date(c.targetDate).toLocaleDateString()}
+            </Badge>
+          )}
+          {c.linkedDiscoveryTheme && (
+            <Badge variant="outline" className="text-xs bg-indigo-500/10 text-indigo-600 border-indigo-500/30">
+              <Layers className="w-3 h-3 mr-1" />
+              {c.linkedDiscoveryTheme}
+            </Badge>
+          )}
+        </div>
+      </div>
+      
+      {isExpanded && (
+        <div className="px-4 pb-4 pt-2 border-t bg-muted/30 space-y-4">
+          {/* Definition & Measurement */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {c.kpiDefinition && (
+              <div>
+                <div className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1">
+                  <Hash className="w-3 h-3" />
+                  KPI Definition
+                </div>
+                <p className="text-sm">{c.kpiDefinition}</p>
+              </div>
+            )}
+            {c.measurementMethod && (
+              <div>
+                <div className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1">
+                  <Target className="w-3 h-3" />
+                  How to Measure
+                </div>
+                <p className="text-sm">{c.measurementMethod}</p>
+              </div>
+            )}
+          </div>
+          
+          {/* Baseline Context */}
+          {(c.baselineSource || c.baselineContext) && (
+            <div className="p-3 rounded-md bg-blue-500/5 border border-blue-500/10">
+              <div className="flex items-center gap-1 text-xs font-semibold text-blue-700 mb-1">
+                <Info className="w-3 h-3" />
+                Baseline Context
+              </div>
+              <p className="text-sm">
+                {c.baselineSource && <span className="font-medium">Source: </span>}
+                {c.baselineSource || c.baselineContext}
+              </p>
+            </div>
+          )}
+          
+          {/* Strategic Rationale */}
+          {c.strategicRationale && (
+            <div>
+              <div className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1">
+                <Lightbulb className="w-3 h-3" />
+                Strategic Rationale
+              </div>
+              <p className="text-sm text-muted-foreground">{c.strategicRationale}</p>
+            </div>
+          )}
+          
+          {/* AI Provenance */}
+          {c.sourceAiSuggestion && (
+            <div className="p-3 rounded-md bg-purple-500/5 border border-purple-500/10">
+              <div className="flex items-center gap-1 text-xs font-semibold text-purple-700 mb-1">
+                <Sparkles className="w-3 h-3" />
+                AI Recommendation Origin
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Generated from insight: "{c.sourceAiSuggestion.sourceInsightTitle || 'Discovery analysis'}"
+              </p>
+            </div>
+          )}
+          
+          {/* Stakeholder Ownership */}
+          {(c.customerStakeholderName || c.customerStakeholderTitle) && (
+            <div className="flex items-center gap-3 pt-2 border-t">
+              <User className="w-4 h-4 text-muted-foreground" />
+              <div>
+                <span className="text-sm font-medium">{c.customerStakeholderName}</span>
+                {c.customerStakeholderTitle && (
+                  <span className="text-sm text-muted-foreground ml-2">• {c.customerStakeholderTitle}</span>
+                )}
+              </div>
+            </div>
+          )}
+          
+          {/* Success Criteria if available */}
+          {c.successCriteria && (
+            <div>
+              <div className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1">
+                <CheckCircle2 className="w-3 h-3" />
+                Success Criteria
+              </div>
+              <p className="text-sm">{c.successCriteria}</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function HandoffHub() {
   const [, params] = useRoute("/projects/:id/handoff");
@@ -105,7 +270,17 @@ export default function HandoffHub() {
     enabled: projectId > 0,
   });
 
-  const confirmedCommitments = commitments.filter((c: any) => c.status === "confirmed");
+  const { data: jobThemes = [] } = useQuery<any[]>({
+    queryKey: ["/api/projects", projectId, "job-themes"],
+    enabled: projectId > 0,
+  });
+
+  const { data: insights = [] } = useQuery<any[]>({
+    queryKey: ["/api/projects", projectId, "insights"],
+    enabled: projectId > 0,
+  });
+
+  const confirmedCommitments = commitments.filter((c: any) => c.status === "confirmed" || c.status === "client_confirmed");
   const totalValue = confirmedCommitments.reduce((sum: number, c: any) => sum + (c.estimatedAnnualValue || 0), 0);
 
   const commitmentsByPillar = confirmedCommitments.reduce((acc: any, c: any) => {
@@ -383,7 +558,7 @@ TOP CHALLENGES: ${discoveryNotes?.topChallenges || "Not specified"}
                       <Target className="w-5 h-5 text-blue-600" />
                       Outcomes Scorecard
                     </CardTitle>
-                    <CardDescription>Confirmed commitments for delivery</CardDescription>
+                    <CardDescription>Confirmed commitments for delivery with full context</CardDescription>
                   </div>
                   <Badge variant="secondary">{confirmedCommitments.length} outcomes</Badge>
                 </div>
@@ -396,59 +571,21 @@ TOP CHALLENGES: ${discoveryNotes?.topChallenges || "Not specified"}
                     <p className="text-xs mt-1">Confirm outcomes in the Sales workspace first</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     {Object.entries(commitmentsByPillar).map(([pillar, items]: [string, any]) => {
                       const config = VALUE_PILLAR_CONFIG[pillar as keyof typeof VALUE_PILLAR_CONFIG] || { label: pillar, color: "gray", icon: Target };
                       const IconComponent = config.icon;
                       
                       return (
                         <div key={pillar}>
-                          <div className="flex items-center gap-2 mb-2">
+                          <div className="flex items-center gap-2 mb-3">
                             <IconComponent className={`w-4 h-4 text-${config.color}-600`} />
                             <span className="text-sm font-semibold">{config.label}</span>
                             <Badge variant="outline" className="text-xs">{items.length}</Badge>
                           </div>
-                          <div className="space-y-2">
+                          <div className="space-y-3">
                             {items.map((c: any) => (
-                              <div 
-                                key={c.id} 
-                                className="p-3 rounded-lg border bg-card hover-elevate"
-                                data-testid={`outcome-card-${c.id}`}
-                              >
-                                <div className="flex items-start justify-between gap-4">
-                                  <div className="flex-1 min-w-0">
-                                    <h4 className="font-medium text-sm">{c.name}</h4>
-                                    {c.outcomeStatement && (
-                                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{c.outcomeStatement}</p>
-                                    )}
-                                  </div>
-                                  <div className="text-right shrink-0">
-                                    <div className="text-sm font-semibold">
-                                      {c.baselineValue || "—"} → {c.targetValue || "—"}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">{c.kpiUnit || ""}</div>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                                  {c.estimatedAnnualValue && (
-                                    <span className="flex items-center gap-1">
-                                      <DollarSign className="w-3 h-3" />
-                                      ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr
-                                    </span>
-                                  )}
-                                  {c.solutionPattern && (
-                                    <Badge variant="outline" className="text-[10px]">
-                                      {c.solutionPattern.replace(/_/g, " ")}
-                                    </Badge>
-                                  )}
-                                  {c.targetDate && (
-                                    <span className="flex items-center gap-1">
-                                      <Calendar className="w-3 h-3" />
-                                      {new Date(c.targetDate).toLocaleDateString()}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
+                              <EnhancedOutcomeCard key={c.id} commitment={c} config={config} />
                             ))}
                           </div>
                         </div>
@@ -458,6 +595,82 @@ TOP CHALLENGES: ${discoveryNotes?.topChallenges || "Not specified"}
                 )}
               </CardContent>
             </Card>
+
+            {/* Job Themes Summary for Delivery Context */}
+            {jobThemes.length > 0 && (
+              <Card data-testid="card-job-themes">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Layers className="w-5 h-5 text-indigo-600" />
+                    Strategic Themes
+                  </CardTitle>
+                  <CardDescription>Key business priorities from discovery</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {jobThemes.slice(0, 5).map((theme: any) => (
+                      <div key={theme.id} className="p-3 rounded-lg border bg-indigo-500/5 border-indigo-500/20">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm">{theme.jobTheme || theme.name}</h4>
+                            {theme.strategicPriority && (
+                              <p className="text-xs text-muted-foreground mt-1">{theme.strategicPriority}</p>
+                            )}
+                          </div>
+                          {theme.impactScore && (
+                            <Badge variant="outline" className="text-xs">
+                              Impact: {theme.impactScore}/5
+                            </Badge>
+                          )}
+                        </div>
+                        {theme.keyInsights && (
+                          <div className="mt-2 pt-2 border-t border-indigo-500/10">
+                            <p className="text-xs text-muted-foreground">{theme.keyInsights}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* High-Priority Insights for Delivery */}
+            {insights.filter((i: any) => i.priority === "high").length > 0 && (
+              <Card data-testid="card-key-insights">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Lightbulb className="w-5 h-5 text-amber-600" />
+                    Key Insights for Delivery
+                  </CardTitle>
+                  <CardDescription>High-priority findings from discovery</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {insights
+                      .filter((i: any) => i.priority === "high")
+                      .slice(0, 5)
+                      .map((insight: any) => (
+                        <div key={insight.id} className="p-3 rounded-lg border bg-amber-500/5 border-amber-500/20">
+                          <p className="text-sm">{insight.content}</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            {insight.kornferryPillar && (
+                              <Badge variant="outline" className="text-[10px]">
+                                {insight.kornferryPillar}
+                              </Badge>
+                            )}
+                            {insight.confidence && (
+                              <span className="text-xs text-muted-foreground">
+                                {insight.confidence} confidence
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             <Card data-testid="card-quick-wins">
               <CardHeader className="pb-3">

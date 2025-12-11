@@ -8862,9 +8862,9 @@ Respond in JSON format:
       });
       
       // Mark all confirmed commitments as handed_off
-      const commitments = await storage.getKpiCommitmentsByProject(projectId);
+      const commitments = await storage.getKpiCommitments(projectId);
       for (const c of commitments) {
-        if (c.status === "confirmed") {
+        if (c.status === "client_confirmed") {
           await storage.updateKpiCommitment(c.id, { status: "handed_off" });
         }
       }
