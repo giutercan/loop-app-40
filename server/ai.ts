@@ -4533,3 +4533,158 @@ IMPORTANT:
     throw error;
   }
 }
+
+// =====================================================
+// VALUE STORY GENERATION
+// =====================================================
+
+export interface ValueStoryInput {
+  companyName: string;
+  industry?: string;
+  discoverySynthesis?: {
+    executiveSummary?: string;
+    keyChallenges?: string[];
+    strategicOpportunities?: string[];
+  };
+  outcomes: Array<{
+    name: string;
+    description?: string;
+    valuePillar?: string;
+    baselineValue?: number | null;
+    targetValue?: number | null;
+    kpiUnit?: string;
+    estimatedAnnualValue?: number | null;
+  }>;
+  clientQuotes?: string[];
+  risks?: Array<{ title: string; severity?: string }>;
+}
+
+export interface ValueStoryResult {
+  executiveNarrative: string;
+  keyWins: {
+    quickWins: string[];
+    momentumBuilders: string[];
+    strategicImpacts: string[];
+  };
+  valueProposition: string;
+  impactSummary: {
+    totalValue: string;
+    primaryBenefits: string[];
+    transformationJourney: string;
+  };
+  clientStory: string;
+  callToAction: string;
+  generatedAt: string;
+}
+
+const valueStoryResultSchema = z.object({
+  executiveNarrative: z.string(),
+  keyWins: z.object({
+    quickWins: z.array(z.string()),
+    momentumBuilders: z.array(z.string()),
+    strategicImpacts: z.array(z.string())
+  }),
+  valueProposition: z.string(),
+  impactSummary: z.object({
+    totalValue: z.string(),
+    primaryBenefits: z.array(z.string()),
+    transformationJourney: z.string()
+  }),
+  clientStory: z.string(),
+  callToAction: z.string()
+});
+
+export async function generateValueStory(input: ValueStoryInput): Promise<ValueStoryResult> {
+  const { companyName, industry, discoverySynthesis, outcomes, clientQuotes, risks } = input;
+  
+  const outcomesContext = outcomes.map((o, idx) => 
+    `${idx + 1}. ${o.name}${o.description ? ` - ${o.description}` : ''}
+   Value Pillar: ${o.valuePillar || 'Not specified'}
+   Baseline → Target: ${o.baselineValue ?? '—'} → ${o.targetValue ?? '—'} ${o.kpiUnit || ''}
+   Estimated Annual Value: ${o.estimatedAnnualValue ? `$${(o.estimatedAnnualValue / 1000).toFixed(0)}K` : 'TBD'}`
+  ).join('\n\n');
+
+  const totalValue = outcomes.reduce((sum, o) => sum + (o.estimatedAnnualValue || 0), 0);
+
+  const prompt = `You are a Korn Ferry value storyteller. Create a compelling value story for a client engagement.
+
+COMPANY: ${companyName}
+INDUSTRY: ${industry || 'Not specified'}
+
+DISCOVERY CONTEXT:
+${discoverySynthesis?.executiveSummary || 'No discovery summary available'}
+
+KEY CHALLENGES IDENTIFIED:
+${discoverySynthesis?.keyChallenges?.join('\n- ') || 'Not specified'}
+
+STRATEGIC OPPORTUNITIES:
+${discoverySynthesis?.strategicOpportunities?.join('\n- ') || 'Not specified'}
+
+COMMITTED OUTCOMES:
+${outcomesContext || 'No outcomes defined yet'}
+
+TOTAL PROJECTED VALUE: $${(totalValue / 1000000).toFixed(2)}M
+
+${clientQuotes?.length ? `CLIENT QUOTES:\n${clientQuotes.map(q => `"${q}"`).join('\n')}` : ''}
+
+${risks?.length ? `KEY RISKS TO ADDRESS:\n${risks.map(r => `- ${r.title} (${r.severity || 'medium'} severity)`).join('\n')}` : ''}
+
+Generate a comprehensive value story in JSON format:
+{
+  "executiveNarrative": "A compelling 2-3 paragraph narrative that tells the transformation story - from current challenges to future state, emphasizing the strategic partnership and value creation journey",
+  
+  "keyWins": {
+    "quickWins": ["3-5 immediate wins achievable in 1-3 months"],
+    "momentumBuilders": ["3-5 medium-term wins that build on quick wins, 4-9 months"],
+    "strategicImpacts": ["3-5 long-term strategic outcomes, 10-18+ months"]
+  },
+  
+  "valueProposition": "A single powerful statement capturing the core value this engagement delivers",
+  
+  "impactSummary": {
+    "totalValue": "Formatted total value with context (e.g., '$2.5M in annual value through reduced turnover and improved productivity')",
+    "primaryBenefits": ["Top 3-4 quantified benefits"],
+    "transformationJourney": "Brief description of the transformation arc from current state to future state"
+  },
+  
+  "clientStory": "A brief 'success story' narrative written as if the engagement has been completed successfully - what the client achieved and how",
+  
+  "callToAction": "A compelling next step or call to action for stakeholders"
+}
+
+Make the narrative emotionally compelling while grounded in data. Use specific numbers and outcomes where available.`;
+
+  try {
+    console.log(`[AI Value Story] Generating value story for ${companyName}`);
+    
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 2500,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    
+    if (!content) {
+      throw new Error("AI returned empty response");
+    }
+    
+    const parsedContent = JSON.parse(content);
+    
+    const validationResult = valueStoryResultSchema.safeParse(parsedContent);
+    if (!validationResult.success) {
+      console.error("[AI Value Story] Validation failed:", validationResult.error);
+      throw new Error(`AI value story validation failed: ${validationResult.error.message}`);
+    }
+    
+    console.log(`[AI Value Story] Success! Generated value story for ${companyName}`);
+    return {
+      ...validationResult.data,
+      generatedAt: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error("[AI Value Story] Error:", error);
+    throw error;
+  }
+}

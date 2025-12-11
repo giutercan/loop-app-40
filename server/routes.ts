@@ -6008,6 +6008,105 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
     }
   });
   
+  // Approve a KPI from shared link
+  app.post("/api/alignment/shared/:token/kpis/:kpiId/approve", async (req, res) => {
+    try {
+      const { token, kpiId } = req.params;
+      const { customerName } = req.body;
+      
+      // Find share link
+      const shareLink = await storage.getAlignmentShareLinkByToken(token);
+      if (!shareLink) {
+        return res.status(404).json({ error: "Share link not found" });
+      }
+      
+      // Verify permissions
+      if (shareLink.status !== "active") {
+        return res.status(403).json({ error: "This link has been revoked" });
+      }
+      if (shareLink.expiresAt && new Date(shareLink.expiresAt) < new Date()) {
+        return res.status(403).json({ error: "This link has expired" });
+      }
+      if (shareLink.permissions === "view") {
+        return res.status(403).json({ error: "You do not have permission to approve" });
+      }
+      
+      // Update KPI with approval
+      const updateData = {
+        approvalStatus: "approved",
+        approvedBy: customerName ? sanitizeInput(customerName) : "Customer",
+        approvedAt: new Date().toISOString()
+      };
+      
+      const updatedKPI = await storage.updateJobThemeKPI(parseInt(kpiId), updateData);
+      
+      if (!updatedKPI) {
+        return res.status(404).json({ error: "KPI not found" });
+      }
+      
+      res.json(updatedKPI);
+    } catch (error: any) {
+      console.error("Error approving KPI from shared link:", error);
+      res.status(500).json({ error: error.message || "Failed to approve KPI" });
+    }
+  });
+  
+  // Add a comment to a KPI from shared link
+  app.post("/api/alignment/shared/:token/kpis/:kpiId/comments", async (req, res) => {
+    try {
+      const { token, kpiId } = req.params;
+      const { text, customerName } = req.body;
+      
+      if (!text || !text.trim()) {
+        return res.status(400).json({ error: "Comment text is required" });
+      }
+      
+      // Find share link
+      const shareLink = await storage.getAlignmentShareLinkByToken(token);
+      if (!shareLink) {
+        return res.status(404).json({ error: "Share link not found" });
+      }
+      
+      // Verify permissions
+      if (shareLink.status !== "active") {
+        return res.status(403).json({ error: "This link has been revoked" });
+      }
+      if (shareLink.expiresAt && new Date(shareLink.expiresAt) < new Date()) {
+        return res.status(403).json({ error: "This link has expired" });
+      }
+      if (shareLink.permissions === "view") {
+        return res.status(403).json({ error: "You do not have permission to comment" });
+      }
+      
+      // Get existing KPI to retrieve current comments
+      const kpiIdNum = parseInt(kpiId);
+      const existingKPI = await storage.getJobThemeKPI(kpiIdNum);
+      
+      if (!existingKPI) {
+        return res.status(404).json({ error: "KPI not found" });
+      }
+      
+      // Add new comment to existing comments array
+      const existingComments = (existingKPI as any).comments || [];
+      const newComment = {
+        id: `comment_${Date.now()}`,
+        text: sanitizeInput(text),
+        author: customerName ? sanitizeInput(customerName) : "Customer",
+        authorType: "customer",
+        createdAt: new Date().toISOString()
+      };
+      
+      const updatedKPI = await storage.updateJobThemeKPI(kpiIdNum, {
+        comments: [...existingComments, newComment]
+      } as any);
+      
+      res.json(updatedKPI);
+    } catch (error: any) {
+      console.error("Error adding comment to KPI from shared link:", error);
+      res.status(500).json({ error: error.message || "Failed to add comment" });
+    }
+  });
+  
   // Get existing share link for a project
   app.get("/api/projects/:projectId/alignment/share", async (req, res) => {
     try {
@@ -7476,6 +7575,77 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
       res.json(result);
     } catch (error: any) {
       console.error("[Strategy Outcomes] Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // POST /api/projects/:id/value-story - Generate AI-powered value story narrative
+  app.post("/api/projects/:id/value-story", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const project = await storage.getProject(id);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const account = project.accountId ? await storage.getAccount(project.accountId) : null;
+      const synthesis = (project as any).discoverySynthesis;
+      
+      // Get confirmed outcomes/commitments
+      const commitments = await storage.getKpiCommitments(id);
+      const confirmedCommitments = commitments.filter(c => c.status === 'confirmed');
+      
+      // Import and call the value story function
+      const { generateValueStory } = await import("./ai");
+      const result = await generateValueStory({
+        companyName: project.companyName || account?.name || "Unknown Company",
+        industry: project.sector || account?.industry || undefined,
+        discoverySynthesis: synthesis ? {
+          executiveSummary: synthesis.executiveSummary,
+          keyChallenges: synthesis.keyChallenges,
+          strategicOpportunities: synthesis.strategicOpportunities
+        } : undefined,
+        outcomes: confirmedCommitments.map(c => ({
+          name: c.commitmentTitle,
+          description: c.commitmentDescription || undefined,
+          valuePillar: (c as any).valuePillar || undefined,
+          baselineValue: c.baselineValue,
+          targetValue: c.targetValue,
+          kpiUnit: c.kpiUnit || undefined,
+          estimatedAnnualValue: c.estimatedAnnualValue
+        })),
+        clientQuotes: req.body.clientQuotes || [],
+        risks: req.body.risks || []
+      });
+      
+      // Cache the value story on the project
+      await storage.updateProject(id, {
+        valueStory: result
+      } as any);
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Value Story] Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // GET /api/projects/:id/value-story - Get cached value story
+  app.get("/api/projects/:id/value-story", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const project = await storage.getProject(id);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const cached = (project as any).valueStory;
+      if (cached) {
+        res.json(cached);
+      } else {
+        res.status(404).json({ error: "No value story available. Generate one first." });
+      }
+    } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });

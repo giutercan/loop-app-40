@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { TrendingUp, TrendingDown, AlertCircle, CheckCircle, Building2, Sparkles, Loader2 } from "lucide-react";
+import { TrendingUp, TrendingDown, AlertCircle, CheckCircle, Building2, Sparkles, Loader2, ThumbsUp, MessageSquare, Clock, Send } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface JobThemeKPI {
@@ -24,6 +26,16 @@ interface JobThemeKPI {
   targetEnteredByName: string | null;
   customerComment: string | null;
   definition: string | null;
+  approvalStatus?: 'pending' | 'approved' | 'rejected';
+  approvedBy?: string;
+  approvedAt?: string;
+  comments?: Array<{
+    id: string;
+    text: string;
+    author: string;
+    authorType: 'customer' | 'consultant';
+    createdAt: string;
+  }>;
 }
 
 interface JobTheme {
@@ -242,6 +254,9 @@ function SharedKPIRow({ kpi, token, canEdit, customerName }: SharedKPIRowProps) 
   const [localBaseline, setLocalBaseline] = useState(kpi.baselineValue || "");
   const [localTarget, setLocalTarget] = useState(kpi.targetValue || "");
   const [localComment, setLocalComment] = useState(kpi.customerComment || "");
+  const [newComment, setNewComment] = useState("");
+  const [showComments, setShowComments] = useState(false);
+  const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
 
   // Sync with server data
   useEffect(() => {
@@ -300,6 +315,59 @@ function SharedKPIRow({ kpi, token, canEdit, customerName }: SharedKPIRowProps) 
       });
     },
   });
+
+  const approveMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", `/api/alignment/shared/${token}/kpis/${kpi.id}/approve`, {
+        customerName: customerName || "Customer",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/alignment/shared/${token}`], refetchType: "all" });
+      setApprovalDialogOpen(false);
+      toast({
+        title: "KPI Approved",
+        description: "Your approval has been recorded",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Approval failed",
+        description: error.message || "Please try again",
+      });
+    },
+  });
+
+  const addCommentMutation = useMutation({
+    mutationFn: async (text: string) => {
+      return await apiRequest("POST", `/api/alignment/shared/${token}/kpis/${kpi.id}/comments`, {
+        text,
+        customerName: customerName || "Customer",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/alignment/shared/${token}`], refetchType: "all" });
+      setNewComment("");
+      toast({
+        title: "Comment added",
+        description: "Your comment has been saved",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Failed to add comment",
+        description: error.message || "Please try again",
+      });
+    },
+  });
+
+  const handleAddComment = () => {
+    if (newComment.trim()) {
+      addCommentMutation.mutate(newComment.trim());
+    }
+  };
 
   const handleBaselineBlur = () => {
     if (localBaseline !== kpi.baselineValue) {
@@ -453,6 +521,147 @@ function SharedKPIRow({ kpi, token, canEdit, customerName }: SharedKPIRowProps) 
         <div className="bg-muted/50 p-3 rounded-md">
           <p className="text-sm font-medium mb-1">Customer Note:</p>
           <p className="text-sm">{kpi.customerComment}</p>
+        </div>
+      )}
+
+      <Separator className="my-4" />
+
+      {/* Action Row - Approve and Comment */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          {/* Approval Status */}
+          {kpi.approvalStatus === 'approved' ? (
+            <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-700 gap-1">
+              <CheckCircle className="w-3 h-3" />
+              Approved by {kpi.approvedBy}
+            </Badge>
+          ) : canEdit && hasValues ? (
+            <Dialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>
+              <DialogTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="gap-1"
+                  data-testid={`button-approve-${kpi.id}`}
+                >
+                  <ThumbsUp className="w-3 h-3" />
+                  Approve KPI
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Approve This KPI?</DialogTitle>
+                  <DialogDescription>
+                    By approving, you confirm that the baseline ({localBaseline}) and target ({localTarget}) values are accurate and agreed upon.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                  <div className="p-4 rounded-lg bg-muted">
+                    <h4 className="font-medium">{kpi.kpiName}</h4>
+                    <div className="flex items-center gap-4 mt-2 text-sm">
+                      <span>Baseline: <strong>{localBaseline}</strong></span>
+                      <span>Target: <strong>{localTarget}</strong></span>
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setApprovalDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={() => approveMutation.mutate()}
+                    disabled={approveMutation.isPending}
+                    className="gap-1"
+                  >
+                    {approveMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <CheckCircle className="w-4 h-4" />
+                    )}
+                    Confirm Approval
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          ) : (
+            <Badge variant="outline" className="gap-1">
+              <Clock className="w-3 h-3" />
+              Pending
+            </Badge>
+          )}
+
+          {/* Comment Toggle */}
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="gap-1"
+            onClick={() => setShowComments(!showComments)}
+            data-testid={`button-toggle-comments-${kpi.id}`}
+          >
+            <MessageSquare className="w-3 h-3" />
+            {kpi.comments?.length || 0} Comments
+          </Button>
+        </div>
+      </div>
+
+      {/* Comments Thread */}
+      {showComments && (
+        <div className="mt-4 space-y-4">
+          <div className="border rounded-lg p-4 bg-muted/30">
+            <h5 className="text-sm font-medium mb-3">Discussion</h5>
+            
+            {/* Existing Comments */}
+            {kpi.comments && kpi.comments.length > 0 ? (
+              <div className="space-y-3 mb-4">
+                {kpi.comments.map((comment) => (
+                  <div 
+                    key={comment.id} 
+                    className={`p-3 rounded-lg ${
+                      comment.authorType === 'customer' 
+                        ? 'bg-blue-500/10 ml-4' 
+                        : 'bg-muted mr-4'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium">{comment.author}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(comment.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-sm">{comment.text}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground mb-4">No comments yet. Start the discussion!</p>
+            )}
+
+            {/* Add Comment */}
+            {canEdit && (
+              <div className="flex gap-2">
+                <Textarea
+                  placeholder="Add a comment or question..."
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  rows={2}
+                  className="flex-1"
+                  data-testid={`textarea-new-comment-${kpi.id}`}
+                />
+                <Button 
+                  size="icon"
+                  onClick={handleAddComment}
+                  disabled={!newComment.trim() || addCommentMutation.isPending}
+                  data-testid={`button-send-comment-${kpi.id}`}
+                >
+                  {addCommentMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

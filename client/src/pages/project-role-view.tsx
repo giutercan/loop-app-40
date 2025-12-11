@@ -129,6 +129,7 @@ import CompetitiveIntelligence from "@/components/CompetitiveIntelligence";
 import { StrategicAlignmentSelector } from "@/components/StrategicAlignmentSelector";
 import { JOURNEY_LOOP_STAGES, UNIFIED_JOURNEY_PHASES, createUnifiedJourney } from "@shared/value-frameworks";
 import { VoiceCommandOverlay, FloatingVoiceButton } from "@/components/VoiceCommandOverlay";
+import { InlineEditableBaseline } from "@/components/InlineEditableField";
 
 type Role = "sales" | "consultant" | "delivery" | "csm" | "client_sponsor";
 
@@ -4400,12 +4401,26 @@ export default function ProjectRoleView() {
                                     </div>
                                     
                                     <div className="flex items-center flex-wrap gap-3 text-xs mb-2">
-                                      {c.baselineValue !== null && c.targetValue !== null && (
-                                        <span className="flex items-center gap-1 text-muted-foreground">
-                                          <Target className="w-3 h-3" />
-                                          {c.baselineValue} → {c.targetValue} {c.kpiUnit || ""}
-                                        </span>
-                                      )}
+                                      <span className="flex items-center gap-1 text-muted-foreground">
+                                        <Target className="w-3 h-3" />
+                                        <InlineEditableBaseline
+                                          baseline={c.baselineValue}
+                                          target={c.targetValue}
+                                          unit={c.kpiUnit || ""}
+                                          onBaselineSave={(value) => {
+                                            updateCommitmentMutation.mutate({
+                                              id: c.id,
+                                              data: { baselineValue: value ? parseFloat(value) : null }
+                                            });
+                                          }}
+                                          onTargetSave={(value) => {
+                                            updateCommitmentMutation.mutate({
+                                              id: c.id,
+                                              data: { targetValue: value ? parseFloat(value) : null }
+                                            });
+                                          }}
+                                        />
+                                      </span>
                                       {c.estimatedAnnualValue && (
                                         <span className={`font-medium ${colors.text}`}>
                                           ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr
@@ -4704,18 +4719,27 @@ export default function ProjectRoleView() {
                                 
                                 {/* Key Metrics Row */}
                                 <div className="flex flex-wrap items-center gap-4 text-sm">
-                                  {/* Baseline → Target */}
-                                  {(c.baselineValue || c.targetValue) && (
-                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted/50">
-                                      <BarChart3 className="w-4 h-4 text-muted-foreground" />
-                                      <span className="text-muted-foreground">Baseline:</span>
-                                      <span className="font-medium">{c.baselineValue || '—'}</span>
-                                      <ArrowRight className="w-3 h-3 text-muted-foreground" />
-                                      <span className="text-muted-foreground">Target:</span>
-                                      <span className="font-medium text-emerald-600">{c.targetValue || '—'}</span>
-                                      {c.kpiUnit && <span className="text-muted-foreground">{c.kpiUnit}</span>}
-                                    </div>
-                                  )}
+                                  {/* Baseline → Target - Editable */}
+                                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted/50">
+                                    <BarChart3 className="w-4 h-4 text-muted-foreground" />
+                                    <InlineEditableBaseline
+                                      baseline={c.baselineValue}
+                                      target={c.targetValue}
+                                      unit={c.kpiUnit || ""}
+                                      onBaselineSave={(value) => {
+                                        updateCommitmentMutation.mutate({
+                                          id: c.id,
+                                          data: { baselineValue: value ? parseFloat(value) : null }
+                                        });
+                                      }}
+                                      onTargetSave={(value) => {
+                                        updateCommitmentMutation.mutate({
+                                          id: c.id,
+                                          data: { targetValue: value ? parseFloat(value) : null }
+                                        });
+                                      }}
+                                    />
+                                  </div>
                                   
                                   {/* Estimated Value */}
                                   {c.estimatedAnnualValue && (

@@ -51,6 +51,8 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ImpactDashboard } from "@/components/ImpactDashboard";
+import { ValueStory } from "@/components/ValueStory";
 
 const VALUE_PILLAR_CONFIG = {
   grow: { label: "Grow", color: "emerald", icon: TrendingUp },
@@ -369,6 +371,9 @@ TOP CHALLENGES: ${discoveryNotes?.topChallenges || "Not specified"}
                 )}
               </CardContent>
             </Card>
+
+            {/* AI-Generated Value Story */}
+            <ValueStory projectId={projectId} />
 
             <Card data-testid="card-outcomes-scorecard">
               <CardHeader className="pb-3">
