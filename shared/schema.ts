@@ -215,6 +215,10 @@ export const projects = pgTable("projects", {
     enum: ["health_dashboard", "kpi_tracking", "business_review", "success_stories"] 
   }), // null means not yet in delivery
   
+  // Handoff tracking (sales-to-delivery transition)
+  handoffNotes: text("handoff_notes"), // Notes from sales team to delivery
+  handoffConfirmedAt: timestamp("handoff_confirmed_at"), // When handoff was confirmed
+  
   // Discovery progress tracking (Guided Discovery wizard state)
   discoveryTheme: text("discovery_theme"), // Selected theme ID (e.g., "leadership", "kf-full-search")
   discoveryStep: text("discovery_step", { 

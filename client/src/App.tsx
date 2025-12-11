@@ -22,6 +22,7 @@ import ProjectRoleView from "@/pages/project-role-view";
 import Presentation from "@/pages/presentation";
 import CompanionCanvas from "@/pages/companion-canvas";
 import ProjectLayout from "@/components/ProjectLayout";
+import HandoffHub from "@/pages/handoff-hub";
 import { CommandPalette } from "@/components/CommandPalette";
 import { DemoModeProvider } from "@/demo/DemoModeContext";
 import { ExecutiveDemoTour } from "@/demo/ExecutiveDemoTour";
@@ -86,6 +87,7 @@ function Router() {
       <Route path="/accounts/:id/hub" component={AccountHub} />
       <Route path="/accounts/:id/:role" component={AccountRoleView} />
       <Route path="/accounts/:id" component={AccountValueSpine} />
+      <Route path="/projects/:id/handoff" component={HandoffHub} />
       <Route path="/projects/:id/:role" component={ProjectRoleView} />
       <Route path="/discovery">
         <Redirect to="/projects" />

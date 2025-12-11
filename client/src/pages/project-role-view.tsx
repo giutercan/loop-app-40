@@ -5231,13 +5231,12 @@ export default function ProjectRoleView() {
                     ${(confirmedValue / 1000000).toFixed(2)}M
                   </p>
                 </div>
-                <Button 
-                  onClick={() => setActiveTab("handoff")}
-                  data-testid="button-go-to-handoff"
-                >
-                  <ArrowUpRight className="w-4 h-4 mr-2" />
-                  Proceed to Handoff
-                </Button>
+                <Link href={`/projects/${projectId}/handoff`}>
+                  <Button data-testid="button-go-to-handoff">
+                    <ArrowUpRight className="w-4 h-4 mr-2" />
+                    View Handoff Hub
+                  </Button>
+                </Link>
               </div>
             </CardContent>
           </Card>

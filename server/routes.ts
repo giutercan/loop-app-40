@@ -8672,6 +8672,44 @@ Respond in JSON format:
     }
   });
   
+  // POST /api/projects/:projectId/confirm-handoff - Confirm sales-to-delivery handoff
+  app.post("/api/projects/:projectId/confirm-handoff", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const { handoffNotes, confirmedAt } = req.body;
+      
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Update project to delivery stage with handoff notes
+      const updated = await storage.updateProject(projectId, {
+        salesStage: "handoff",
+        deliveryStage: "health_dashboard",
+        handoffNotes: handoffNotes || null,
+        handoffConfirmedAt: confirmedAt ? new Date(confirmedAt) : new Date(),
+      });
+      
+      // Mark all confirmed commitments as handed_off
+      const commitments = await storage.getKpiCommitmentsByProject(projectId);
+      for (const c of commitments) {
+        if (c.status === "confirmed") {
+          await storage.updateKpiCommitment(c.id, { status: "handed_off" });
+        }
+      }
+      
+      res.json({ 
+        success: true, 
+        project: updated,
+        handoffConfirmedAt: confirmedAt,
+        handoffNotes
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Helper to calculate KPI health status
   function calculateKPIHealthStatus(
     baseline: number | null, 
