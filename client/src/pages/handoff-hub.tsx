@@ -166,10 +166,16 @@ function EnhancedOutcomeCard({ commitment: c, config }: { commitment: any; confi
                 <Info className="w-3 h-3" />
                 Baseline Context
               </div>
-              <p className="text-sm">
-                {c.baselineSource && <span className="font-medium">Source: </span>}
-                {c.baselineSource || c.baselineContext}
-              </p>
+              <div className="space-y-1">
+                {c.baselineSource && (
+                  <p className="text-sm">
+                    <span className="font-medium">Source: </span>{c.baselineSource}
+                  </p>
+                )}
+                {c.baselineContext && (
+                  <p className="text-sm text-muted-foreground">{c.baselineContext}</p>
+                )}
+              </div>
             </div>
           )}
           
