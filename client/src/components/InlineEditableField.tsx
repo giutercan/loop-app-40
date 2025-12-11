@@ -90,7 +90,10 @@ export function InlineEditableField({
           size="icon"
           variant="ghost"
           className="h-5 w-5"
-          onClick={handleCancel}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            handleCancel();
+          }}
           data-testid="button-inline-cancel"
         >
           <X className="h-3 w-3 text-muted-foreground" />
@@ -190,13 +193,23 @@ export function InlineEditableBaseline({
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            onBlur={handleSave}
             placeholder="Baseline"
             className="h-6 text-xs w-16"
             data-testid="input-baseline"
           />
           <Button size="icon" variant="ghost" className="h-5 w-5" onClick={handleSave}>
             <Check className="h-3 w-3 text-emerald-500" />
+          </Button>
+          <Button 
+            size="icon" 
+            variant="ghost" 
+            className="h-5 w-5" 
+            onMouseDown={(e) => {
+              e.preventDefault();
+              handleCancel();
+            }}
+          >
+            <X className="h-3 w-3 text-muted-foreground" />
           </Button>
         </div>
       ) : (
@@ -223,13 +236,23 @@ export function InlineEditableBaseline({
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            onBlur={handleSave}
             placeholder="Target"
             className="h-6 text-xs w-16"
             data-testid="input-target"
           />
           <Button size="icon" variant="ghost" className="h-5 w-5" onClick={handleSave}>
             <Check className="h-3 w-3 text-emerald-500" />
+          </Button>
+          <Button 
+            size="icon" 
+            variant="ghost" 
+            className="h-5 w-5" 
+            onMouseDown={(e) => {
+              e.preventDefault();
+              handleCancel();
+            }}
+          >
+            <X className="h-3 w-3 text-muted-foreground" />
           </Button>
         </div>
       ) : (
