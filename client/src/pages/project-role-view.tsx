@@ -2112,6 +2112,122 @@ export default function ProjectRoleView() {
     });
   };
   
+  // Document-based Green Sheet enrichment state
+  const [showDocumentEnrichDialog, setShowDocumentEnrichDialog] = useState(false);
+  const [documentEnrichmentResult, setDocumentEnrichmentResult] = useState<{
+    callPlanner: {
+      objective: string;
+      desiredOutcome: string;
+      openingStatement: string;
+      bestActionCommitment: string;
+    };
+    meetingContact: {
+      name: string;
+      title: string;
+      role: string;
+      influence: string;
+      knownConcerns: string;
+      decisionCriteria: string;
+      personalRapport: string;
+    };
+    sourcedFrom: string[];
+  } | null>(null);
+
+  // Document enrichment mutation
+  const enrichFromDocumentsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", `/api/projects/${projectId}/green-sheet/enrich`, {});
+      return response.json();
+    },
+    onSuccess: (result) => {
+      setDocumentEnrichmentResult(result.suggestions);
+      setShowDocumentEnrichDialog(true);
+      toast({
+        title: "Documents analyzed",
+        description: `AI analyzed ${result.artifactsAnalyzed} pre-meeting document(s) for Green Sheet suggestions.`
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Analysis failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Map AI role values to valid BuyingRole enum
+  const mapToBuyingRole = (aiRole: string): BuyingRole | null => {
+    const normalizedRole = aiRole?.toLowerCase().replace(/[_\s-]/g, "");
+    const roleMap: Record<string, BuyingRole> = {
+      economicbuyer: "economic_buyer",
+      userbuyer: "user_buyer",
+      technicalbuyer: "technical_buyer",
+      coach: "coach",
+      champion: "champion",
+      decisionmaker: "economic_buyer",
+      influencer: "user_buyer",
+      evaluator: "technical_buyer",
+      sponsor: "economic_buyer"
+    };
+    return roleMap[normalizedRole] || null;
+  };
+
+  // Map AI influence values to valid InfluenceLevel enum
+  const mapToInfluenceLevel = (aiInfluence: string): InfluenceLevel | null => {
+    const normalizedInfluence = aiInfluence?.toLowerCase().replace(/[_\s-]/g, "");
+    const influenceMap: Record<string, InfluenceLevel> = {
+      high: "high",
+      medium: "medium",
+      low: "low",
+      decisionmaker: "high",
+      stronginfluencer: "high",
+      influencer: "medium",
+      limitedinfluence: "low",
+      critical: "high",
+      moderate: "medium",
+      minimal: "low"
+    };
+    return influenceMap[normalizedInfluence] || null;
+  };
+
+  // Apply document enrichment results
+  const applyDocumentEnrichment = () => {
+    if (!documentEnrichmentResult) return;
+    
+    const { callPlanner, meetingContact: docContact } = documentEnrichmentResult;
+    
+    // Update call planner fields (only if not already filled)
+    setGreenSheetEdits(prev => ({
+      objective: prev.objective || callPlanner.objective,
+      desiredOutcome: prev.desiredOutcome || callPlanner.desiredOutcome,
+      openingStatement: prev.openingStatement || callPlanner.openingStatement,
+      bestActionCommitment: prev.bestActionCommitment || callPlanner.bestActionCommitment,
+    }));
+    
+    // Map AI role and influence to valid enums
+    const mappedRole = mapToBuyingRole(docContact.role);
+    const mappedInfluence = mapToInfluenceLevel(docContact.influence);
+    
+    // Update meeting contact (only if not already filled)
+    setMeetingContact(prev => ({
+      ...prev,
+      name: prev.name || docContact.name,
+      title: prev.title || docContact.title,
+      role: prev.role || mappedRole,
+      influence: prev.influence || mappedInfluence,
+      knownConcerns: prev.knownConcerns || docContact.knownConcerns,
+      decisionCriteria: prev.decisionCriteria || docContact.decisionCriteria,
+      personalRapport: prev.personalRapport || docContact.personalRapport,
+    }));
+    
+    setShowDocumentEnrichDialog(false);
+    toast({
+      title: "Green Sheet enriched",
+      description: "Fields have been populated from your pre-meeting documents."
+    });
+  };
+  
   // Meeting Profile API functions
   const loadMeetingProfile = useCallback(async () => {
     if (!projectId || meetingProfileLoaded) return;
@@ -7641,6 +7757,23 @@ export default function ProjectRoleView() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            enrichFromDocumentsMutation.mutate();
+                          }}
+                          disabled={enrichFromDocumentsMutation.isPending}
+                          className="gap-1.5 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10"
+                          data-testid="button-enrich-from-documents"
+                        >
+                          {enrichFromDocumentsMutation.isPending ? (
+                            <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Analyzing...</>
+                          ) : (
+                            <><FileText className="w-3.5 h-3.5" /> Enrich from Docs</>
+                          )}
+                        </Button>
                         {meetingContact.name && (
                           <Badge variant="secondary" className="text-xs">
                             <UserCircle className="w-3 h-3 mr-1" />
@@ -11424,6 +11557,115 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 Apply Insights to Green Sheet
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Document Enrichment Results Dialog */}
+      <Dialog open={showDocumentEnrichDialog} onOpenChange={setShowDocumentEnrichDialog}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-emerald-600" />
+              Green Sheet Suggestions from Documents
+            </DialogTitle>
+            <DialogDescription>
+              AI has analyzed your pre-meeting documents and generated suggestions for the Green Sheet.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {documentEnrichmentResult && (
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+              {/* Sources */}
+              {documentEnrichmentResult.sourcedFrom.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  <span className="text-xs text-muted-foreground">Sourced from:</span>
+                  {documentEnrichmentResult.sourcedFrom.map((source, i) => (
+                    <Badge key={i} variant="outline" className="text-xs">{source}</Badge>
+                  ))}
+                </div>
+              )}
+              
+              {/* Call Planner Suggestions */}
+              <div className="p-4 rounded-lg border-2 border-emerald-500/30 bg-emerald-50/50">
+                <h4 className="font-semibold text-sm text-emerald-800 mb-3 flex items-center gap-2">
+                  <Target className="w-4 h-4" />
+                  Call Planner Suggestions
+                </h4>
+                <div className="grid gap-3">
+                  {documentEnrichmentResult.callPlanner.objective && (
+                    <div className="p-2 rounded border bg-white">
+                      <Label className="text-xs text-muted-foreground">Call Objective</Label>
+                      <p className="text-sm mt-1">{documentEnrichmentResult.callPlanner.objective}</p>
+                    </div>
+                  )}
+                  {documentEnrichmentResult.callPlanner.desiredOutcome && (
+                    <div className="p-2 rounded border bg-white">
+                      <Label className="text-xs text-muted-foreground">Desired Outcome</Label>
+                      <p className="text-sm mt-1">{documentEnrichmentResult.callPlanner.desiredOutcome}</p>
+                    </div>
+                  )}
+                  {documentEnrichmentResult.callPlanner.openingStatement && (
+                    <div className="p-2 rounded border bg-white">
+                      <Label className="text-xs text-muted-foreground">Opening Statement</Label>
+                      <p className="text-sm mt-1">{documentEnrichmentResult.callPlanner.openingStatement}</p>
+                    </div>
+                  )}
+                  {documentEnrichmentResult.callPlanner.bestActionCommitment && (
+                    <div className="p-2 rounded border bg-white">
+                      <Label className="text-xs text-muted-foreground">Best Action Commitment</Label>
+                      <p className="text-sm mt-1">{documentEnrichmentResult.callPlanner.bestActionCommitment}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Contact Suggestions */}
+              {(documentEnrichmentResult.meetingContact.name || documentEnrichmentResult.meetingContact.knownConcerns) && (
+                <div className="p-4 rounded-lg border-2 border-blue-500/30 bg-blue-50/50">
+                  <h4 className="font-semibold text-sm text-blue-800 mb-3 flex items-center gap-2">
+                    <UserCircle className="w-4 h-4" />
+                    Contact Suggestions
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    {documentEnrichmentResult.meetingContact.name && (
+                      <div className="p-2 rounded border bg-white">
+                        <Label className="text-xs text-muted-foreground">Name</Label>
+                        <p className="text-sm mt-1">{documentEnrichmentResult.meetingContact.name}</p>
+                      </div>
+                    )}
+                    {documentEnrichmentResult.meetingContact.title && (
+                      <div className="p-2 rounded border bg-white">
+                        <Label className="text-xs text-muted-foreground">Title</Label>
+                        <p className="text-sm mt-1">{documentEnrichmentResult.meetingContact.title}</p>
+                      </div>
+                    )}
+                    {documentEnrichmentResult.meetingContact.knownConcerns && (
+                      <div className="col-span-2 p-2 rounded border bg-white">
+                        <Label className="text-xs text-muted-foreground">Known Concerns</Label>
+                        <p className="text-sm mt-1">{documentEnrichmentResult.meetingContact.knownConcerns}</p>
+                      </div>
+                    )}
+                    {documentEnrichmentResult.meetingContact.decisionCriteria && (
+                      <div className="col-span-2 p-2 rounded border bg-white">
+                        <Label className="text-xs text-muted-foreground">Decision Criteria</Label>
+                        <p className="text-sm mt-1">{documentEnrichmentResult.meetingContact.decisionCriteria}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <DialogFooter className="gap-2 mt-4">
+            <Button variant="outline" onClick={() => setShowDocumentEnrichDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={applyDocumentEnrichment} className="gap-2 bg-emerald-600 hover:bg-emerald-700" data-testid="button-apply-document-enrichment">
+              <CheckCircle className="w-4 h-4" />
+              Apply to Green Sheet
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

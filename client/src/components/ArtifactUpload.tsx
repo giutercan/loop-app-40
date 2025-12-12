@@ -108,6 +108,15 @@ export function ArtifactUpload({
 
   const { data: artifacts = [], isLoading } = useQuery<InteractionArtifact[]>({
     queryKey: ["/api/projects", projectId, "interaction-artifacts", meetingContext],
+    queryFn: async () => {
+      const res = await fetch(`/api/projects/${projectId}/interaction-artifacts?context=${meetingContext}`, {
+        credentials: "include"
+      });
+      if (!res.ok) {
+        throw new Error(`${res.status}: ${await res.text()}`);
+      }
+      return res.json();
+    }
   });
 
   const uploadMutation = useMutation({
@@ -137,6 +146,7 @@ export function ArtifactUpload({
       });
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "interaction-artifacts", meetingContext] });
       queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "interaction-artifacts"] });
       setIsUploadDialogOpen(false);
       setUploadForm({ file: null, title: "", meetingType: "", meetingDate: "", freeformNotes: "" });
@@ -160,6 +170,7 @@ export function ArtifactUpload({
       });
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "interaction-artifacts", meetingContext] });
       queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "interaction-artifacts"] });
       setIsNotesDialogOpen(false);
       setNotesForm({ title: "", meetingType: "", meetingDate: "", freeformNotes: "" });
@@ -175,6 +186,7 @@ export function ArtifactUpload({
       return apiRequest("POST", `/api/interaction-artifacts/${artifactId}/process`, {});
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "interaction-artifacts", meetingContext] });
       queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "interaction-artifacts"] });
       toast({ title: "AI processing complete", description: "Insights have been extracted from your document." });
     },
@@ -188,6 +200,7 @@ export function ArtifactUpload({
       return apiRequest("DELETE", `/api/interaction-artifacts/${artifactId}`, {});
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "interaction-artifacts", meetingContext] });
       queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "interaction-artifacts"] });
       toast({ title: "Deleted", description: "The artifact has been removed." });
     }

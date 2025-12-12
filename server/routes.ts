@@ -7778,6 +7778,126 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
     }
   });
   
+  // POST /api/projects/:id/green-sheet/enrich - Enrich Green Sheet from artifacts
+  app.post("/api/projects/:id/green-sheet/enrich", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Get pre-meeting artifacts with extracted text
+      const artifacts = await storage.getInteractionArtifactsByContext(projectId, "pre_meeting");
+      const artifactsWithContent = artifacts.filter(a => a.extractedText || a.freeformNotes);
+      
+      if (artifactsWithContent.length === 0) {
+        return res.status(400).json({ error: "No pre-meeting documents or notes found to analyze" });
+      }
+      
+      // Combine all artifact content
+      const combinedContent = artifactsWithContent.map(a => {
+        const parts = [];
+        if (a.title) parts.push(`[${a.title}]`);
+        if (a.extractedText) parts.push(a.extractedText);
+        if (a.freeformNotes) parts.push(`Notes: ${a.freeformNotes}`);
+        return parts.join("\n");
+      }).join("\n\n---\n\n");
+      
+      // Get existing green sheet data
+      const existingGreenSheet = (project as any).greenSheetData;
+      
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are a Korn Ferry strategic sales consultant helping prepare for client meetings. 
+Analyze the provided pre-meeting documents and notes to suggest content for the Green Sheet meeting planner.
+
+Extract and suggest:
+1. Call Objective: What is the primary goal for this meeting?
+2. Desired Outcome: What specific outcomes should result from this meeting?
+3. Opening Statement: A strong opening to set context and credibility
+4. Best Action Commitment: The ideal next step or commitment to secure
+
+Also identify:
+- Contact information (name, title, role in buying process)
+- Known concerns or challenges the contact has
+- Decision criteria they might use
+- Any rapport-building personal notes
+
+Be specific and actionable. Use the exact language and concerns from the documents where possible.`
+          },
+          {
+            role: "user",
+            content: `Company: ${project.companyName || "Unknown"}
+Initiative: ${project.name}
+
+Existing Green Sheet Data:
+${existingGreenSheet ? JSON.stringify(existingGreenSheet, null, 2) : "None"}
+
+Pre-Meeting Documents and Notes:
+${combinedContent.substring(0, 20000)}`
+          }
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "green_sheet_suggestions",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                callPlanner: {
+                  type: "object",
+                  properties: {
+                    objective: { type: "string", description: "Suggested call objective" },
+                    desiredOutcome: { type: "string", description: "Suggested desired outcome" },
+                    openingStatement: { type: "string", description: "Suggested opening statement" },
+                    bestActionCommitment: { type: "string", description: "Suggested best action commitment" }
+                  },
+                  required: ["objective", "desiredOutcome", "openingStatement", "bestActionCommitment"],
+                  additionalProperties: false
+                },
+                meetingContact: {
+                  type: "object",
+                  properties: {
+                    name: { type: "string", description: "Contact name if found" },
+                    title: { type: "string", description: "Contact title if found" },
+                    role: { type: "string", description: "Buying role (economic_buyer, user_buyer, technical_buyer, coach)" },
+                    influence: { type: "string", description: "Influence level (decision_maker, strong_influencer, influencer, limited_influence)" },
+                    knownConcerns: { type: "string", description: "Known concerns or challenges" },
+                    decisionCriteria: { type: "string", description: "Decision criteria if mentioned" },
+                    personalRapport: { type: "string", description: "Personal notes for rapport building" }
+                  },
+                  required: ["name", "title", "role", "influence", "knownConcerns", "decisionCriteria", "personalRapport"],
+                  additionalProperties: false
+                },
+                sourcedFrom: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "List of document titles that informed these suggestions"
+                }
+              },
+              required: ["callPlanner", "meetingContact", "sourcedFrom"],
+              additionalProperties: false
+            }
+          }
+        }
+      });
+      
+      const suggestions = JSON.parse(response.choices[0].message.content || "{}");
+      res.json({ 
+        suggestions,
+        artifactsAnalyzed: artifactsWithContent.length
+      });
+    } catch (error: any) {
+      console.error("Error enriching green sheet:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
   // PATCH /api/projects/:id/story-builder - Save Story Builder data
   app.patch("/api/projects/:id/story-builder", async (req, res) => {
     try {
@@ -10065,8 +10185,8 @@ Be concise but helpful. Use the user's context (current account, project, page) 
       } else if (mimeType === 'application/pdf') {
         // Use pdf-parse for PDF extraction
         try {
-          const pdfParse = (await import('pdf-parse')).default;
-          const pdfData = await pdfParse(fileBuffer);
+          const pdfParse = await import('pdf-parse');
+          const pdfData = await pdfParse.default(fileBuffer);
           extractedText = pdfData.text;
         } catch (pdfError) {
           console.error("PDF parsing error:", pdfError);
