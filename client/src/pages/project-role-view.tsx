@@ -128,6 +128,8 @@ import { StrategicAlignmentSelector } from "@/components/StrategicAlignmentSelec
 import { JOURNEY_LOOP_STAGES, UNIFIED_JOURNEY_PHASES, createUnifiedJourney } from "@shared/value-frameworks";
 import { VoiceCommandOverlay, FloatingVoiceButton } from "@/components/VoiceCommandOverlay";
 import { InlineEditableBaseline } from "@/components/InlineEditableField";
+import { ArtifactUpload } from "@/components/ArtifactUpload";
+import { ArtifactLibrary } from "@/components/ArtifactLibrary";
 
 type Role = "sales" | "consultant" | "delivery" | "csm" | "client_sponsor";
 
@@ -7712,6 +7714,17 @@ export default function ProjectRoleView() {
                       </div>
                     </div>
                     
+                    {/* Pre-Meeting Context Documents */}
+                    <div className="mt-4">
+                      <ArtifactUpload
+                        projectId={projectId}
+                        meetingContext="pre_meeting"
+                        title="Pre-Meeting Materials"
+                        description="Upload call transcripts, research documents, or notes to enrich AI coaching"
+                        compact={false}
+                      />
+                    </div>
+                    
                     {/* Rapport & Credibility - Compact */}
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="p-4 rounded-lg border bg-blue-500/5 border-blue-500/20">
@@ -8810,6 +8823,60 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 </Tabs>
               </CardContent>
             </Card>
+
+            {/* Post-Meeting Debrief & Materials */}
+            <Card className="border-2 border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-teal-500/5">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center">
+                    <FileText className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      Post-Meeting Debrief
+                      <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-300">Enriches AI Coaching</Badge>
+                    </CardTitle>
+                    <CardDescription>
+                      Capture meeting outcomes, transcripts, and notes for continuous learning
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ArtifactUpload
+                  projectId={projectId}
+                  meetingContext="post_meeting"
+                  title="Post-Meeting Materials"
+                  description="Upload meeting transcripts, debriefs, or key takeaways after client interactions"
+                  compact={false}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Unified Artifact Library - All meeting materials in one place */}
+            <Collapsible defaultOpen={false}>
+              <CollapsibleTrigger className="w-full" data-testid="trigger-artifact-library">
+                <div className="flex items-center justify-between p-4 rounded-lg border bg-card hover-elevate">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-purple-500/20 flex items-center justify-center">
+                      <FileText className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="text-left">
+                      <h4 className="font-semibold">Meeting Artifact Library</h4>
+                      <p className="text-xs text-muted-foreground">View all pre-meeting and post-meeting materials in one place</p>
+                    </div>
+                  </div>
+                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-3">
+                <ArtifactLibrary 
+                  projectId={projectId} 
+                  companyName={project?.companyName}
+                />
+              </CollapsibleContent>
+            </Collapsible>
+
             {/* Navigation */}
             <div className="flex justify-between">
               <Button variant="outline" onClick={() => setDiscoveryStep("intelligence")} data-testid="button-back-to-intelligence">

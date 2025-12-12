@@ -9946,4 +9946,269 @@ Be concise but helpful. Use the user's context (current account, project, page) 
       res.status(500).json({ error: error.message });
     }
   });
+
+  // ============================================================================
+  // INTERACTION ARTIFACTS - Pre/Post Meeting Context & Documents
+  // ============================================================================
+
+  // GET /api/projects/:id/interaction-artifacts - Get all artifacts for a project
+  app.get("/api/projects/:id/interaction-artifacts", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const { context } = req.query;
+      
+      let artifacts;
+      if (context && (context === 'pre_meeting' || context === 'post_meeting')) {
+        artifacts = await storage.getInteractionArtifactsByContext(projectId, context);
+      } else {
+        artifacts = await storage.getInteractionArtifacts(projectId);
+      }
+      res.json(artifacts);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/interaction-artifacts/:id - Get a single artifact
+  app.get("/api/interaction-artifacts/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const artifact = await storage.getInteractionArtifact(id);
+      if (!artifact) {
+        return res.status(404).json({ error: "Artifact not found" });
+      }
+      res.json(artifact);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Zod schemas for artifact validation
+  const createArtifactSchema = z.object({
+    artifactType: z.enum(["document", "transcript", "notes", "voice_memo"]),
+    meetingContext: z.enum(["pre_meeting", "post_meeting"]),
+    title: z.string().max(500).optional(),
+    freeformNotes: z.string().max(50000).optional(),
+    meetingType: z.string().max(100).optional(),
+    meetingDate: z.string().optional(),
+    attendees: z.array(z.string()).optional(),
+    aiProcessingStatus: z.enum(["pending", "processing", "completed", "failed"]).optional()
+  });
+
+  const uploadArtifactSchema = z.object({
+    fileName: z.string().min(1).max(255),
+    fileContent: z.string().min(1).max(15000000), // ~10MB base64 limit
+    mimeType: z.enum([
+      "application/pdf",
+      "text/plain",
+      "text/csv",
+      "application/json",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ]),
+    fileSize: z.number().max(10485760).optional(), // 10MB max
+    meetingContext: z.enum(["pre_meeting", "post_meeting"]),
+    title: z.string().max(500).optional(),
+    meetingType: z.string().max(100).optional(),
+    meetingDate: z.string().optional(),
+    freeformNotes: z.string().max(10000).optional()
+  });
+
+  // POST /api/projects/:id/interaction-artifacts - Create a new artifact (notes only)
+  app.post("/api/projects/:id/interaction-artifacts", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      
+      const parseResult = createArtifactSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: "Invalid request body", details: parseResult.error.issues });
+      }
+      
+      const artifact = await storage.createInteractionArtifact({
+        ...parseResult.data,
+        projectId,
+        meetingDate: parseResult.data.meetingDate ? new Date(parseResult.data.meetingDate) : null
+      });
+      res.json(artifact);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/projects/:id/interaction-artifacts/upload - Upload a document
+  app.post("/api/projects/:id/interaction-artifacts/upload", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      
+      const parseResult = uploadArtifactSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: "Invalid upload data", details: parseResult.error.issues });
+      }
+      
+      const { fileName, fileContent, mimeType, fileSize, meetingContext, title, meetingType, meetingDate, freeformNotes } = parseResult.data;
+      
+      // Generate unique key for object storage
+      const timestamp = Date.now();
+      const sanitizedName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const objectStorageKey = `.private/artifacts/${projectId}/${timestamp}_${sanitizedName}`;
+      
+      // Store file in object storage
+      const { Client } = await import("@replit/object-storage");
+      const client = new Client();
+      const fileBuffer = Buffer.from(fileContent, 'base64');
+      await client.uploadFromBytes(objectStorageKey, fileBuffer);
+      
+      // Extract text from documents for AI processing
+      let extractedText = "";
+      if (mimeType === 'text/plain' || mimeType === 'text/csv' || mimeType === 'application/json') {
+        extractedText = fileBuffer.toString('utf-8');
+      } else if (mimeType === 'application/pdf') {
+        // Use pdf-parse for PDF extraction
+        try {
+          const pdfParse = (await import('pdf-parse')).default;
+          const pdfData = await pdfParse(fileBuffer);
+          extractedText = pdfData.text;
+        } catch (pdfError) {
+          console.error("PDF parsing error:", pdfError);
+        }
+      }
+      // Note: Word doc extraction would require additional library (mammoth)
+      
+      // Create artifact record
+      const artifact = await storage.createInteractionArtifact({
+        projectId,
+        artifactType: 'document',
+        meetingContext,
+        fileName,
+        fileSize: fileSize || fileBuffer.length,
+        mimeType,
+        objectStorageKey,
+        title: title || fileName,
+        freeformNotes,
+        extractedText: extractedText ? extractedText.substring(0, 50000) : null, // Limit to 50k chars
+        meetingDate: meetingDate ? new Date(meetingDate) : null,
+        meetingType,
+        aiProcessingStatus: extractedText ? 'completed' : 'pending'
+      });
+      
+      res.json(artifact);
+    } catch (error: any) {
+      console.error("Error uploading artifact:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PATCH /api/interaction-artifacts/:id - Update an artifact
+  app.patch("/api/interaction-artifacts/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const artifact = await storage.updateInteractionArtifact(id, req.body);
+      if (!artifact) {
+        return res.status(404).json({ error: "Artifact not found" });
+      }
+      res.json(artifact);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/interaction-artifacts/:id - Delete an artifact
+  app.delete("/api/interaction-artifacts/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const artifact = await storage.getInteractionArtifact(id);
+      
+      if (!artifact) {
+        return res.status(404).json({ error: "Artifact not found" });
+      }
+      
+      // Delete from object storage if file exists
+      if (artifact.objectStorageKey) {
+        try {
+          const { Client } = await import("@replit/object-storage");
+          const client = new Client();
+          await client.delete(artifact.objectStorageKey);
+        } catch (storageError) {
+          console.error("Error deleting from object storage:", storageError);
+        }
+      }
+      
+      await storage.deleteInteractionArtifact(id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/interaction-artifacts/:id/process - Trigger AI processing on artifact
+  app.post("/api/interaction-artifacts/:id/process", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const artifact = await storage.getInteractionArtifact(id);
+      
+      if (!artifact) {
+        return res.status(404).json({ error: "Artifact not found" });
+      }
+      
+      // Get project for context
+      const project = await storage.getProject(artifact.projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Update status to processing
+      await storage.updateInteractionArtifact(id, { aiProcessingStatus: 'processing' });
+      
+      // Extract insights from content
+      const contentToAnalyze = artifact.extractedText || artifact.freeformNotes;
+      if (!contentToAnalyze) {
+        await storage.updateInteractionArtifact(id, { aiProcessingStatus: 'failed' });
+        return res.status(400).json({ error: "No content to process" });
+      }
+      
+      const contextType = artifact.meetingContext === 'pre_meeting' ? 'preparation' : 'debrief';
+      
+      const aiResponse = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are a senior Korn Ferry consultant analyzing ${contextType} materials for a client engagement with ${project.companyName} in the ${project.sector} sector.`
+          },
+          {
+            role: "user",
+            content: `Analyze this ${artifact.meetingType || 'meeting'} ${contextType} content and extract key insights:
+
+${contentToAnalyze.substring(0, 10000)}
+
+Provide a JSON response with:
+{
+  "summary": "A 2-3 sentence summary of the key points",
+  "insights": ["List of 3-5 key insights or observations"],
+  "actionItems": ["List of action items or follow-ups identified"],
+  "stakeholderMentions": ["Names or roles of stakeholders mentioned"],
+  "risks": ["Any risks or concerns identified"],
+  "opportunities": ["Any opportunities or positive signals"]
+}`
+          }
+        ],
+        response_format: { type: "json_object" }
+      });
+      
+      const aiInsights = JSON.parse(aiResponse.choices[0].message.content || "{}");
+      
+      await storage.updateInteractionArtifact(id, {
+        aiProcessingStatus: 'completed',
+        aiSummary: aiInsights.summary,
+        aiExtractedInsights: aiInsights
+      });
+      
+      const updatedArtifact = await storage.getInteractionArtifact(id);
+      res.json(updatedArtifact);
+    } catch (error: any) {
+      console.error("Error processing artifact:", error);
+      await storage.updateInteractionArtifact(parseInt(req.params.id), { aiProcessingStatus: 'failed' });
+      res.status(500).json({ error: error.message });
+    }
+  });
 }

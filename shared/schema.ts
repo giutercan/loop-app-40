@@ -2194,3 +2194,57 @@ export const accountHubSchema = z.object({
   }),
 });
 export type AccountHub = z.infer<typeof accountHubSchema>;
+
+// ============================================================================
+// INTERACTION ARTIFACTS - Pre/Post Meeting Context & Documents
+// ============================================================================
+
+// Interaction Artifacts - Documents and notes for meeting prep and debrief
+export const interactionArtifacts = pgTable("interaction_artifacts", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  
+  // Artifact classification
+  artifactType: text("artifact_type", { 
+    enum: ["document", "transcript", "notes", "voice_memo"] 
+  }).notNull(),
+  meetingContext: text("meeting_context", { 
+    enum: ["pre_meeting", "post_meeting"] 
+  }).notNull(),
+  
+  // File metadata (for documents)
+  fileName: text("file_name"),
+  fileSize: integer("file_size"),
+  mimeType: text("mime_type"),
+  objectStorageKey: text("object_storage_key"), // Path in object storage
+  
+  // Content
+  title: text("title"), // User-provided title
+  freeformNotes: text("freeform_notes"), // Free text notes
+  extractedText: text("extracted_text"), // AI-extracted text from documents
+  
+  // Meeting context
+  meetingDate: timestamp("meeting_date"),
+  meetingType: text("meeting_type"), // e.g., "Discovery Call", "QBR", "Stakeholder Interview"
+  attendees: text("attendees").array(), // List of attendee names
+  
+  // AI processing
+  aiProcessingStatus: text("ai_processing_status", {
+    enum: ["pending", "processing", "completed", "failed"]
+  }).notNull().default("pending"),
+  aiExtractedInsights: jsonb("ai_extracted_insights"), // AI-generated insights from content
+  aiSummary: text("ai_summary"), // AI-generated summary
+  
+  // Metadata
+  uploadedBy: text("uploaded_by"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertInteractionArtifactSchema = createInsertSchema(interactionArtifacts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertInteractionArtifact = z.infer<typeof insertInteractionArtifactSchema>;
+export type InteractionArtifact = typeof interactionArtifacts.$inferSelect;

@@ -59,7 +59,8 @@ import type {
   AiSession, InsertAiSession,
   AiMessage, InsertAiMessage,
   ProjectIntelligence, InsertProjectIntelligence,
-  MeetingProfile, InsertMeetingProfile
+  MeetingProfile, InsertMeetingProfile,
+  InteractionArtifact, InsertInteractionArtifact
 } from "@shared/schema";
 
 export interface IStorage {
@@ -408,6 +409,18 @@ export interface IStorage {
   createMeetingProfile(profile: InsertMeetingProfile): Promise<MeetingProfile>;
   updateMeetingProfile(id: number, profile: Partial<InsertMeetingProfile>): Promise<MeetingProfile | undefined>;
   deleteMeetingProfile(id: number): Promise<void>;
+  
+  // ============================================================================
+  // INTERACTION ARTIFACTS - Pre/Post Meeting Context & Documents
+  // ============================================================================
+  
+  // Interaction Artifacts (documents, notes, transcripts for meeting prep/debrief)
+  getInteractionArtifacts(projectId: number): Promise<InteractionArtifact[]>;
+  getInteractionArtifactsByContext(projectId: number, meetingContext: string): Promise<InteractionArtifact[]>;
+  getInteractionArtifact(id: number): Promise<InteractionArtifact | undefined>;
+  createInteractionArtifact(artifact: InsertInteractionArtifact): Promise<InteractionArtifact>;
+  updateInteractionArtifact(id: number, artifact: Partial<InsertInteractionArtifact>): Promise<InteractionArtifact | undefined>;
+  deleteInteractionArtifact(id: number): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -2292,6 +2305,48 @@ export class DbStorage implements IStorage {
   
   async deleteMeetingProfile(id: number): Promise<void> {
     await db.delete(schema.meetingProfiles).where(eq(schema.meetingProfiles.id, id));
+  }
+  
+  // ============================================================================
+  // INTERACTION ARTIFACTS - Pre/Post Meeting Context & Documents
+  // ============================================================================
+  
+  async getInteractionArtifacts(projectId: number): Promise<InteractionArtifact[]> {
+    return await db.select().from(schema.interactionArtifacts)
+      .where(eq(schema.interactionArtifacts.projectId, projectId))
+      .orderBy(desc(schema.interactionArtifacts.createdAt));
+  }
+  
+  async getInteractionArtifactsByContext(projectId: number, meetingContext: string): Promise<InteractionArtifact[]> {
+    return await db.select().from(schema.interactionArtifacts)
+      .where(and(
+        eq(schema.interactionArtifacts.projectId, projectId),
+        eq(schema.interactionArtifacts.meetingContext, meetingContext)
+      ))
+      .orderBy(desc(schema.interactionArtifacts.createdAt));
+  }
+  
+  async getInteractionArtifact(id: number): Promise<InteractionArtifact | undefined> {
+    const results = await db.select().from(schema.interactionArtifacts)
+      .where(eq(schema.interactionArtifacts.id, id));
+    return results[0];
+  }
+  
+  async createInteractionArtifact(artifact: InsertInteractionArtifact): Promise<InteractionArtifact> {
+    const results = await db.insert(schema.interactionArtifacts).values(artifact).returning();
+    return results[0];
+  }
+  
+  async updateInteractionArtifact(id: number, artifact: Partial<InsertInteractionArtifact>): Promise<InteractionArtifact | undefined> {
+    const results = await db.update(schema.interactionArtifacts)
+      .set({ ...artifact, updatedAt: new Date() })
+      .where(eq(schema.interactionArtifacts.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deleteInteractionArtifact(id: number): Promise<void> {
+    await db.delete(schema.interactionArtifacts).where(eq(schema.interactionArtifacts.id, id));
   }
 }
 
