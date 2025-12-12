@@ -1570,6 +1570,9 @@ export default function ProjectRoleView() {
   const [probeHistory, setProbeHistory] = useState<Array<{role: "user" | "assistant"; content: string; timestamp: string}>>([]);
   const [isProbing, setIsProbing] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+  const [savedToContext, setSavedToContext] = useState<Set<number>>(new Set());
+  const [showContextPrompt, setShowContextPrompt] = useState<number | null>(null);
+  const [savingToContext, setSavingToContext] = useState<number | null>(null);
   
   
   // Mutation to probe the intelligence (ask follow-up questions)
@@ -1579,6 +1582,7 @@ export default function ProjectRoleView() {
       return await res.json() as { question: string; answer: string; timestamp: string };
     },
     onSuccess: (data) => {
+      const newHistoryLength = probeHistory.length + 2;
       setProbeHistory(prev => [
         ...prev,
         { role: "user" as const, content: data.question, timestamp: data.timestamp },
@@ -1586,6 +1590,8 @@ export default function ProjectRoleView() {
       ]);
       setProbeQuestion("");
       setIsProbing(false);
+      // Show context prompt for the new assistant response (index will be newHistoryLength - 1)
+      setShowContextPrompt(newHistoryLength - 1);
     },
     onError: (error: any) => {
       console.error("Failed to probe intelligence:", error);
@@ -1593,6 +1599,52 @@ export default function ProjectRoleView() {
       toast({ 
         title: "Question Failed", 
         description: "Could not process your question. Please try again.", 
+        variant: "destructive" 
+      });
+    }
+  });
+
+  // Mutation to save probe insight to AI context (appending to discovery notes)
+  const saveToContextMutation = useMutation({
+    mutationFn: async ({ question, answer }: { question: string; answer: string }) => {
+      // First get existing notes
+      const existingRes = await fetch(`/api/projects/${projectId}/discovery-notes`);
+      const existingNotes = existingRes.ok ? await existingRes.json() : {};
+      
+      // Create the new insight entry
+      const timestamp = new Date().toLocaleString();
+      const newInsight = `\n\n---\n📊 **AI Follow-up Insight** (${timestamp})\n**Question:** ${question}\n**Response:** ${answer}`;
+      
+      // Append to existing freeformNotes
+      const updatedNotes = (existingNotes.freeformNotes || "") + newInsight;
+      
+      const res = await apiRequest("POST", `/api/projects/${projectId}/discovery-notes`, { 
+        projectId,
+        freeformNotes: updatedNotes,
+        keyStakeholder: existingNotes.keyStakeholder || null,
+        topChallenges: existingNotes.topChallenges || null,
+        timeline: existingNotes.timeline || null
+      });
+      return await res.json();
+    },
+    onSuccess: () => {
+      const idx = savingToContext;
+      if (idx !== null) {
+        setSavedToContext(prev => new Set(prev).add(idx));
+      }
+      setSavingToContext(null);
+      setShowContextPrompt(null);
+      toast({ 
+        title: "Added to AI Context", 
+        description: "This insight will be used to enrich future AI coaching and recommendations." 
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "discovery-notes"] });
+    },
+    onError: () => {
+      setSavingToContext(null);
+      toast({ 
+        title: "Failed to Save", 
+        description: "Could not add insight to context. Please try again.", 
         variant: "destructive" 
       });
     }
@@ -7060,24 +7112,96 @@ export default function ProjectRoleView() {
                       <CardContent className="space-y-4 pt-0">
                         {/* Probe History */}
                         {probeHistory.length > 0 && (
-                          <div className="space-y-3 max-h-64 overflow-y-auto border rounded-lg p-3 bg-background">
+                          <div className="space-y-3 max-h-96 overflow-y-auto border rounded-lg p-3 bg-background">
                             {probeHistory.map((msg, idx) => (
-                              <div 
-                                key={idx} 
-                                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                              >
+                              <div key={idx}>
                                 <div 
-                                  className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
-                                    msg.role === "user" 
-                                      ? "bg-purple-600 text-white" 
-                                      : "bg-muted"
-                                  }`}
+                                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                                 >
-                                  <p className="whitespace-pre-wrap">{msg.content}</p>
-                                  <p className="text-xs opacity-60 mt-1">
-                                    {new Date(msg.timestamp).toLocaleTimeString()}
-                                  </p>
+                                  <div 
+                                    className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
+                                      msg.role === "user" 
+                                        ? "bg-purple-600 text-white" 
+                                        : savedToContext.has(idx) 
+                                          ? "bg-emerald-500/10 border border-emerald-500/30" 
+                                          : "bg-muted"
+                                    }`}
+                                  >
+                                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                                    <div className="flex items-center justify-between mt-1 gap-2">
+                                      <p className="text-xs opacity-60">
+                                        {new Date(msg.timestamp).toLocaleTimeString()}
+                                      </p>
+                                      {msg.role === "assistant" && savedToContext.has(idx) && (
+                                        <Badge className="text-xs bg-emerald-500/20 text-emerald-700">
+                                          <CheckCircle2 className="w-3 h-3 mr-1" />
+                                          In AI Context
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
+                                
+                                {/* Context prompt for assistant responses */}
+                                {msg.role === "assistant" && showContextPrompt === idx && !savedToContext.has(idx) && (
+                                  <div className="mt-2 ml-0 p-3 rounded-lg border border-purple-500/30 bg-purple-500/5">
+                                    <div className="flex items-start gap-3">
+                                      <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                                        <Sparkles className="w-4 h-4 text-purple-600" />
+                                      </div>
+                                      <div className="flex-1">
+                                        <p className="text-sm font-medium">Add this insight to AI Context?</p>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                          This will help the AI provide better coaching and recommendations throughout your engagement.
+                                        </p>
+                                        <div className="flex gap-2 mt-3">
+                                          <Button
+                                            size="sm"
+                                            onClick={() => {
+                                              const questionIdx = idx - 1;
+                                              const question = probeHistory[questionIdx]?.content || "";
+                                              setSavingToContext(idx);
+                                              saveToContextMutation.mutate({ question, answer: msg.content });
+                                            }}
+                                            disabled={savingToContext === idx}
+                                            data-testid={`button-add-context-${idx}`}
+                                          >
+                                            {savingToContext === idx ? (
+                                              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                                            ) : (
+                                              <Plus className="w-4 h-4 mr-1" />
+                                            )}
+                                            Yes, Add to Context
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => setShowContextPrompt(null)}
+                                            data-testid={`button-skip-context-${idx}`}
+                                          >
+                                            Skip
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Add to context button for past responses */}
+                                {msg.role === "assistant" && showContextPrompt !== idx && !savedToContext.has(idx) && (
+                                  <div className="mt-1 ml-0">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="text-xs text-muted-foreground hover:text-purple-600"
+                                      onClick={() => setShowContextPrompt(idx)}
+                                      data-testid={`button-show-context-prompt-${idx}`}
+                                    >
+                                      <Plus className="w-3 h-3 mr-1" />
+                                      Add to AI Context
+                                    </Button>
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
