@@ -6179,6 +6179,17 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
       
       const commitments = await storage.getKpiCommitments(shareLink.projectId);
       
+      // Get discovery data for summary
+      const discoveryNotes = await storage.getDiscoveryNotes(shareLink.projectId);
+      const themes = await storage.getJobThemes(shareLink.projectId);
+      const aiInsights = await storage.getAIInsights(shareLink.projectId);
+      
+      // Get discovery synthesis if available
+      const discoverySynthesis = (project as any).discoverySynthesis || null;
+      
+      // Get meeting transcripts and artifacts
+      const artifacts = await storage.getInteractionArtifactsByContext(shareLink.projectId, "post_meeting");
+      
       res.json({
         project: {
           id: project.id,
@@ -6199,6 +6210,35 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
           targetValue: c.targetValue,
           metricUnit: c.metricUnit,
         })),
+        // Discovery summary data
+        discovery: {
+          themes: themes.map(t => ({
+            id: t.id,
+            name: t.name,
+            description: t.description,
+            priority: t.priority,
+          })),
+          notes: discoveryNotes.map(n => ({
+            id: n.id,
+            content: n.content,
+            noteType: n.noteType,
+            createdAt: n.createdAt,
+          })),
+          insights: aiInsights.slice(0, 10).map(i => ({
+            id: i.id,
+            headline: i.headline,
+            insightType: i.insightType,
+            keyFinding: i.keyFinding,
+            strategicImplication: i.strategicImplication,
+          })),
+          synthesis: discoverySynthesis,
+          meetingNotes: artifacts.filter(a => a.freeformNotes).map(a => ({
+            id: a.id,
+            title: a.title,
+            notes: a.freeformNotes,
+            createdAt: a.createdAt,
+          })),
+        },
         permissions: shareLink.permissions,
         customerName: shareLink.customerName,
         welcomeMessage: shareLink.welcomeMessage,
@@ -6299,6 +6339,77 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
     } catch (error: any) {
       console.error("Error adding portal approval:", error);
       res.status(500).json({ error: error.message || "Failed to add approval" });
+    }
+  });
+
+  // Update outcome baselines from customer portal
+  const portalOutcomeUpdateSchema = z.object({
+    baseline: z.string().max(100).optional(),
+    target: z.string().max(100).optional(),
+    customerName: z.string().max(100).optional(),
+  }).strict();
+
+  app.patch("/api/portal/:token/outcome/:outcomeId", async (req, res) => {
+    try {
+      const { token, outcomeId } = req.params;
+      
+      // Validate input with Zod schema
+      const parseResult = portalOutcomeUpdateSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: "Invalid input", details: parseResult.error.errors });
+      }
+      
+      const { baseline, target, customerName } = parseResult.data;
+      
+      const shareLink = await storage.getAlignmentShareLinkByToken(token);
+      if (!shareLink) {
+        return res.status(404).json({ error: "Portal link not found" });
+      }
+      
+      if (shareLink.status !== "active") {
+        return res.status(403).json({ error: "This portal link has been revoked" });
+      }
+      if (shareLink.permissions !== "edit") {
+        return res.status(403).json({ error: "You do not have permission to edit" });
+      }
+      
+      // Get current strategy selection and update the outcome
+      const strategySelection = await storage.getStrategySelection(shareLink.projectId);
+      if (!strategySelection) {
+        return res.status(404).json({ error: "Strategy selection not found" });
+      }
+      
+      const outcomes = strategySelection.generatedOutcomesData?.outcomes || [];
+      const outcomeIndex = outcomes.findIndex((o: any) => o.id === outcomeId);
+      
+      if (outcomeIndex === -1) {
+        return res.status(404).json({ error: "Outcome not found" });
+      }
+      
+      // Update the outcome's baseline/target
+      const updatedOutcomes = [...outcomes];
+      updatedOutcomes[outcomeIndex] = {
+        ...updatedOutcomes[outcomeIndex],
+        kpiDetails: {
+          ...updatedOutcomes[outcomeIndex].kpiDetails,
+          suggestedBaseline: baseline !== undefined ? sanitizeInput(baseline) : updatedOutcomes[outcomeIndex].kpiDetails.suggestedBaseline,
+          suggestedTarget: target !== undefined ? sanitizeInput(target) : updatedOutcomes[outcomeIndex].kpiDetails.suggestedTarget,
+        },
+        clientEditedAt: new Date().toISOString(),
+        clientEditedBy: sanitizeInput(customerName) || "Anonymous",
+      };
+      
+      await storage.updateStrategySelection(shareLink.projectId, {
+        generatedOutcomesData: {
+          ...strategySelection.generatedOutcomesData,
+          outcomes: updatedOutcomes,
+        },
+      });
+      
+      res.json({ success: true, outcome: updatedOutcomes[outcomeIndex] });
+    } catch (error: any) {
+      console.error("Error updating outcome from portal:", error);
+      res.status(500).json({ error: error.message || "Failed to update outcome" });
     }
   });
 

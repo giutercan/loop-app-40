@@ -26,8 +26,19 @@ import {
   Send,
   Loader2,
   FileText,
-  Layers
+  Layers,
+  Sparkles,
+  Brain,
+  MessageCircle,
+  Pencil,
+  Check,
+  X,
+  ChevronDown,
+  ChevronUp,
+  BookOpen,
+  Quote
 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface PortalStrategy {
@@ -58,6 +69,9 @@ interface PortalOutcome {
   businessImpact: string;
   kornFerrySolution: string;
   clientApproved?: boolean;
+  clientEditedAt?: string;
+  clientEditedBy?: string;
+  whyRecommended?: string;
 }
 
 interface PortalComment {
@@ -67,6 +81,39 @@ interface PortalComment {
   comment: string;
   createdAt: string;
   customerName: string;
+}
+
+interface DiscoveryData {
+  themes: Array<{
+    id: number;
+    name: string;
+    description: string | null;
+    priority: number;
+  }>;
+  notes: Array<{
+    id: number;
+    content: string;
+    noteType: string | null;
+    createdAt: string;
+  }>;
+  insights: Array<{
+    id: number;
+    headline: string;
+    insightType: string | null;
+    keyFinding: string | null;
+    strategicImplication: string | null;
+  }>;
+  synthesis: {
+    executiveSummary?: string;
+    keyThemes?: string[];
+    strategicImplications?: string[];
+  } | null;
+  meetingNotes: Array<{
+    id: number;
+    title: string;
+    notes: string;
+    createdAt: string;
+  }>;
 }
 
 interface CustomerPortalData {
@@ -89,6 +136,7 @@ interface CustomerPortalData {
     targetValue: string | null;
     metricUnit: string | null;
   }>;
+  discovery?: DiscoveryData;
   permissions: string;
   customerName: string | null;
   welcomeMessage: string | null;
@@ -190,6 +238,50 @@ export default function CustomerPortalPage() {
       toast({ variant: "destructive", title: "Failed to record approval" });
     },
   });
+
+  // State for baseline editing
+  const [editingOutcome, setEditingOutcome] = useState<string | null>(null);
+  const [baselineEdits, setBaselineEdits] = useState<Record<string, { baseline: string; target: string }>>({});
+  const [expandedInsights, setExpandedInsights] = useState(false);
+  const [expandedMeetingNotes, setExpandedMeetingNotes] = useState(false);
+
+  const updateOutcomeMutation = useMutation({
+    mutationFn: async (updateData: { outcomeId: string; baseline?: string; target?: string }) => {
+      const response = await apiRequest("PATCH", `/api/portal/${token}/outcome/${updateData.outcomeId}`, {
+        baseline: updateData.baseline,
+        target: updateData.target,
+        customerName: customerName || "Anonymous",
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Baseline updated", description: "Your changes have been saved" });
+      setEditingOutcome(null);
+      refetch();
+    },
+    onError: () => {
+      toast({ variant: "destructive", title: "Failed to update baseline" });
+    },
+  });
+
+  const startEditingBaseline = (outcomeId: string, currentBaseline: string, currentTarget: string) => {
+    setEditingOutcome(outcomeId);
+    setBaselineEdits(prev => ({
+      ...prev,
+      [outcomeId]: { baseline: currentBaseline, target: currentTarget }
+    }));
+  };
+
+  const cancelEditingBaseline = () => {
+    setEditingOutcome(null);
+  };
+
+  const saveBaselineEdit = (outcomeId: string) => {
+    const edits = baselineEdits[outcomeId];
+    if (edits) {
+      updateOutcomeMutation.mutate({ outcomeId, baseline: edits.baseline, target: edits.target });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -333,6 +425,7 @@ export default function CustomerPortalPage() {
 
           {sections.overview && (
             <TabsContent value="overview" className="space-y-6">
+              {/* Engagement Stats */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -344,13 +437,17 @@ export default function CustomerPortalPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 text-center">
+                      <div className="text-3xl font-bold text-blue-600">{data.discovery?.themes?.length || 0}</div>
+                      <div className="text-sm text-muted-foreground">Discovery Themes</div>
+                    </div>
                     <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-lg p-4 text-center">
                       <div className="text-3xl font-bold text-emerald-600">{data.strategies?.length || 0}</div>
                       <div className="text-sm text-muted-foreground">Strategic Priorities</div>
                     </div>
-                    <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 text-center">
-                      <div className="text-3xl font-bold text-blue-600">{data.outcomes?.length || 0}</div>
+                    <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-4 text-center">
+                      <div className="text-3xl font-bold text-amber-600">{data.outcomes?.length || 0}</div>
                       <div className="text-sm text-muted-foreground">Proposed Outcomes</div>
                     </div>
                     <div className="bg-purple-50 dark:bg-purple-950/30 rounded-lg p-4 text-center">
@@ -359,33 +456,168 @@ export default function CustomerPortalPage() {
                     </div>
                   </div>
 
-                  <Separator />
-
-                  <div>
-                    <h3 className="font-medium mb-3">How to Collaborate</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                        <MessageSquare className="w-5 h-5 text-blue-500 mt-0.5" />
-                        <div>
-                          <p className="font-medium text-sm">Add Comments</p>
-                          <p className="text-xs text-muted-foreground">
-                            Share your feedback on strategies and outcomes
-                          </p>
-                        </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                      <MessageSquare className="w-5 h-5 text-blue-500 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-sm">Add Comments</p>
+                        <p className="text-xs text-muted-foreground">
+                          Share your feedback on strategies and outcomes
+                        </p>
                       </div>
-                      <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                        <ThumbsUp className="w-5 h-5 text-emerald-500 mt-0.5" />
-                        <div>
-                          <p className="font-medium text-sm">Approve Items</p>
-                          <p className="text-xs text-muted-foreground">
-                            Indicate your approval for proposed outcomes
-                          </p>
-                        </div>
+                    </div>
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                      <Pencil className="w-5 h-5 text-amber-500 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-sm">Edit Baselines</p>
+                        <p className="text-xs text-muted-foreground">
+                          Adjust baseline numbers on outcomes to match your data
+                        </p>
                       </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Discovery Summary */}
+              {data.discovery && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Brain className="w-5 h-5 text-violet-500" />
+                      What We've Discovered
+                    </CardTitle>
+                    <CardDescription>
+                      Summary of insights from our discovery conversations and research
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Executive Summary */}
+                    {data.discovery.synthesis?.executiveSummary && (
+                      <div className="p-4 rounded-lg bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 border border-violet-200 dark:border-violet-800">
+                        <h4 className="font-semibold text-sm flex items-center gap-2 mb-2 text-violet-700 dark:text-violet-300">
+                          <Sparkles className="w-4 h-4" />
+                          Executive Summary
+                        </h4>
+                        <p className="text-sm text-muted-foreground">
+                          {data.discovery.synthesis.executiveSummary}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Key Themes */}
+                    {data.discovery.themes && data.discovery.themes.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                          <Target className="w-4 h-4 text-emerald-500" />
+                          Strategic Themes Identified
+                        </h4>
+                        <div className="grid gap-3">
+                          {data.discovery.themes.map((theme) => (
+                            <div key={theme.id} className="p-3 rounded-lg border bg-card">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-medium text-sm">{theme.name}</span>
+                                <Badge variant="outline" className="text-xs">
+                                  Priority {theme.priority}
+                                </Badge>
+                              </div>
+                              {theme.description && (
+                                <p className="text-xs text-muted-foreground">{theme.description}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Key Insights */}
+                    {data.discovery.insights && data.discovery.insights.length > 0 && (
+                      <Collapsible open={expandedInsights} onOpenChange={setExpandedInsights}>
+                        <CollapsibleTrigger asChild>
+                          <div className="flex items-center justify-between cursor-pointer p-3 rounded-lg hover:bg-muted/50">
+                            <h4 className="font-semibold text-sm flex items-center gap-2">
+                              <Lightbulb className="w-4 h-4 text-amber-500" />
+                              Key Insights ({data.discovery.insights.length})
+                            </h4>
+                            {expandedInsights ? (
+                              <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                            )}
+                          </div>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="space-y-2 mt-2">
+                          {data.discovery.insights.map((insight) => (
+                            <div key={insight.id} className="p-3 rounded-lg border bg-amber-50/50 dark:bg-amber-950/20">
+                              <p className="font-medium text-sm">{insight.headline}</p>
+                              {insight.keyFinding && (
+                                <p className="text-xs text-muted-foreground mt-1">{insight.keyFinding}</p>
+                              )}
+                              {insight.strategicImplication && (
+                                <p className="text-xs text-amber-700 dark:text-amber-400 mt-2 italic">
+                                  Implication: {insight.strategicImplication}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
+
+                    {/* Meeting Notes */}
+                    {data.discovery.meetingNotes && data.discovery.meetingNotes.length > 0 && (
+                      <Collapsible open={expandedMeetingNotes} onOpenChange={setExpandedMeetingNotes}>
+                        <CollapsibleTrigger asChild>
+                          <div className="flex items-center justify-between cursor-pointer p-3 rounded-lg hover:bg-muted/50">
+                            <h4 className="font-semibold text-sm flex items-center gap-2">
+                              <MessageCircle className="w-4 h-4 text-blue-500" />
+                              Conversation Notes ({data.discovery.meetingNotes.length})
+                            </h4>
+                            {expandedMeetingNotes ? (
+                              <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                            )}
+                          </div>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="space-y-2 mt-2">
+                          {data.discovery.meetingNotes.map((note) => (
+                            <div key={note.id} className="p-3 rounded-lg border">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-medium text-sm">{note.title}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {new Date(note.createdAt).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <p className="text-xs text-muted-foreground whitespace-pre-wrap">
+                                {note.notes.length > 300 ? note.notes.substring(0, 300) + "..." : note.notes}
+                              </p>
+                            </div>
+                          ))}
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
+
+                    {/* Strategic Implications */}
+                    {data.discovery.synthesis?.strategicImplications && data.discovery.synthesis.strategicImplications.length > 0 && (
+                      <div className="p-4 rounded-lg border-2 border-primary/20 bg-primary/5">
+                        <h4 className="font-semibold text-sm flex items-center gap-2 mb-3">
+                          <BookOpen className="w-4 h-4 text-primary" />
+                          Strategic Implications
+                        </h4>
+                        <ul className="space-y-2">
+                          {data.discovery.synthesis.strategicImplications.map((implication, idx) => (
+                            <li key={idx} className="flex items-start gap-2 text-sm">
+                              <span className="text-primary font-medium">{idx + 1}.</span>
+                              <span>{implication}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
           )}
 
@@ -524,7 +756,7 @@ export default function CustomerPortalPage() {
                     Proposed Outcomes
                   </CardTitle>
                   <CardDescription>
-                    Measurable outcomes aligned with your strategic priorities
+                    Measurable outcomes aligned with your strategic priorities. You can edit baselines if they don't match your current data.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -534,6 +766,8 @@ export default function CustomerPortalPage() {
                         const pillarConfig = VALUE_PILLAR_CONFIG[outcome.valuePillar] || VALUE_PILLAR_CONFIG.strengthen;
                         const approval = getApprovalStatus("outcomes", outcome.id);
                         const comments = getCommentsForItem("outcomes", outcome.id);
+                        const isEditing = editingOutcome === outcome.id;
+                        const edits = baselineEdits[outcome.id];
 
                         return (
                           <div 
@@ -543,7 +777,7 @@ export default function CustomerPortalPage() {
                           >
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
+                                <div className="flex items-center gap-2 flex-wrap mb-1">
                                   <h4 className="font-medium">{outcome.outcomeName}</h4>
                                   <Badge className={`text-xs ${pillarConfig.color}`}>
                                     {pillarConfig.label}
@@ -554,23 +788,54 @@ export default function CustomerPortalPage() {
                                       Approved
                                     </Badge>
                                   )}
+                                  {outcome.clientEditedAt && (
+                                    <Badge variant="outline" className="text-xs">
+                                      <Pencil className="w-3 h-3 mr-1" />
+                                      Edited by {outcome.clientEditedBy}
+                                    </Badge>
+                                  )}
                                 </div>
                                 <p className="text-sm text-muted-foreground">{outcome.outcomeDescription}</p>
                               </div>
                             </div>
 
+                            {/* Editable KPI Grid */}
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                               <div className="bg-muted/30 rounded-lg p-2 text-center">
                                 <p className="text-xs text-muted-foreground">Metric</p>
                                 <p className="text-sm font-medium">{outcome.kpiDetails.metricName}</p>
                               </div>
-                              <div className="bg-muted/30 rounded-lg p-2 text-center">
-                                <p className="text-xs text-muted-foreground">Baseline</p>
-                                <p className="text-sm font-medium">{outcome.kpiDetails.suggestedBaseline}</p>
+                              <div className={`rounded-lg p-2 text-center ${isEditing ? 'bg-amber-50 dark:bg-amber-950/30 border-2 border-amber-300' : 'bg-muted/30'}`}>
+                                <p className="text-xs text-muted-foreground mb-1">Baseline</p>
+                                {isEditing ? (
+                                  <Input
+                                    value={edits?.baseline || ""}
+                                    onChange={(e) => setBaselineEdits(prev => ({
+                                      ...prev,
+                                      [outcome.id]: { ...prev[outcome.id], baseline: e.target.value }
+                                    }))}
+                                    className="h-7 text-sm text-center"
+                                    data-testid={`input-baseline-${outcome.id}`}
+                                  />
+                                ) : (
+                                  <p className="text-sm font-medium">{outcome.kpiDetails.suggestedBaseline}</p>
+                                )}
                               </div>
-                              <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-lg p-2 text-center">
-                                <p className="text-xs text-muted-foreground">Target</p>
-                                <p className="text-sm font-medium text-emerald-600">{outcome.kpiDetails.suggestedTarget}</p>
+                              <div className={`rounded-lg p-2 text-center ${isEditing ? 'bg-emerald-100 dark:bg-emerald-950/50 border-2 border-emerald-300' : 'bg-emerald-50 dark:bg-emerald-950/30'}`}>
+                                <p className="text-xs text-muted-foreground mb-1">Target</p>
+                                {isEditing ? (
+                                  <Input
+                                    value={edits?.target || ""}
+                                    onChange={(e) => setBaselineEdits(prev => ({
+                                      ...prev,
+                                      [outcome.id]: { ...prev[outcome.id], target: e.target.value }
+                                    }))}
+                                    className="h-7 text-sm text-center"
+                                    data-testid={`input-target-${outcome.id}`}
+                                  />
+                                ) : (
+                                  <p className="text-sm font-medium text-emerald-600">{outcome.kpiDetails.suggestedTarget}</p>
+                                )}
                               </div>
                               <div className="bg-muted/30 rounded-lg p-2 text-center">
                                 <p className="text-xs text-muted-foreground">Timeframe</p>
@@ -578,6 +843,23 @@ export default function CustomerPortalPage() {
                               </div>
                             </div>
 
+                            {/* Why We Recommend This */}
+                            <div className="bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 rounded-lg p-3 border border-violet-200 dark:border-violet-800">
+                              <p className="text-xs font-medium text-violet-700 dark:text-violet-300 mb-1 flex items-center gap-1">
+                                <Quote className="w-3 h-3" />
+                                Why We Recommend This
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {outcome.whyRecommended || outcome.businessImpact}
+                              </p>
+                              {outcome.kornFerrySolution && (
+                                <p className="text-xs text-violet-600 dark:text-violet-400 mt-2">
+                                  Korn Ferry Solution: {outcome.kornFerrySolution}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Business Impact */}
                             <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3">
                               <p className="text-xs font-medium text-muted-foreground mb-1">Business Impact</p>
                               <p className="text-sm">{outcome.businessImpact}</p>
@@ -600,8 +882,55 @@ export default function CustomerPortalPage() {
                             )}
 
                             {canEdit && (
-                              <div className="border-t pt-3 flex items-center gap-2">
-                                {!approval?.approved && (
+                              <div className="border-t pt-3 flex items-center gap-2 flex-wrap">
+                                {/* Baseline Edit Controls */}
+                                {data.permissions === "edit" && (
+                                  <>
+                                    {isEditing ? (
+                                      <div className="flex items-center gap-2">
+                                        <Button 
+                                          size="sm" 
+                                          variant="default"
+                                          onClick={() => saveBaselineEdit(outcome.id)}
+                                          disabled={updateOutcomeMutation.isPending}
+                                          data-testid={`button-save-baseline-${outcome.id}`}
+                                        >
+                                          {updateOutcomeMutation.isPending ? (
+                                            <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                                          ) : (
+                                            <Check className="w-4 h-4 mr-1" />
+                                          )}
+                                          Save
+                                        </Button>
+                                        <Button 
+                                          size="sm" 
+                                          variant="ghost"
+                                          onClick={cancelEditingBaseline}
+                                          data-testid={`button-cancel-edit-${outcome.id}`}
+                                        >
+                                          <X className="w-4 h-4 mr-1" />
+                                          Cancel
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline"
+                                        onClick={() => startEditingBaseline(
+                                          outcome.id, 
+                                          outcome.kpiDetails.suggestedBaseline, 
+                                          outcome.kpiDetails.suggestedTarget
+                                        )}
+                                        data-testid={`button-edit-baseline-${outcome.id}`}
+                                      >
+                                        <Pencil className="w-4 h-4 mr-1" />
+                                        Edit Numbers
+                                      </Button>
+                                    )}
+                                  </>
+                                )}
+
+                                {!approval?.approved && !isEditing && (
                                   <Button 
                                     size="sm" 
                                     variant="outline"

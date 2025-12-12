@@ -27,6 +27,14 @@ The AI strategy focuses on strategic and actionable insights, with data sorted b
 - **Storage**: In-memory storage (MemStorage)
 
 ## Recent Changes (December 2024)
+- **Enhanced Customer Portal**: 
+  - Discovery Summary in Overview tab: Shows executive summary, strategic themes, insights (collapsible), conversation notes (collapsible), and strategic implications
+  - Baseline Editing: Clients with "edit" permission can modify outcome baselines/targets directly in the portal with visual feedback and save/cancel controls
+  - "Why We Recommend This" explanations: Each outcome now includes recommendation rationale and Korn Ferry solution context
+  - Client edit tracking: Shows "Edited by [name]" badge on outcomes modified by clients
+  - PATCH `/api/portal/:token/outcome/:outcomeId` endpoint for baseline updates
+- **AI-Powered Green Sheet Enrichment**: Pre-meeting documents can be analyzed to auto-populate call objectives, desired outcomes, opening statements, and contact details via POST `/api/projects/:id/green-sheet/enrich`
+- **Discovery Toolkit Reorganization**: Pre-Meeting Materials section now appears above Green Sheet with "AI Context" badge to establish intuitive upload-then-enrich workflow
 - **Strategy Selection Persistence**: Added `strategySelections` database table to persist strategy choices and generated outcomes per project. Enables restoring state when users return, with handoff confirmation gate before delivery handoff.
   - Database table: `strategySelections` with JSONB fields for `selectedStrategiesData` and `generatedOutcomesData`
   - API routes: GET/POST/PATCH `/api/projects/:projectId/strategy-selection`
