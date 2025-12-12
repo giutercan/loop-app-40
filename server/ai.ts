@@ -165,6 +165,27 @@ Return your response in this exact JSON structure:
     "howWeHelp": ["Specific way KF can help #1", "Specific way #2", "Specific way #3"],
     "potentialValue": "Total potential value estimate",
     "keyQuestions": ["Discovery question #1", "Discovery question #2", "Discovery question #3"]
+  },
+  "annualReportSummary": {
+    "fiscalYear": "Most recent fiscal year (e.g., 'FY2024')",
+    "ceoLetterHighlights": ["Key point from CEO letter #1", "Key point #2", "Key point #3"],
+    "strategicPriorities": ["Priority #1", "Priority #2", "Priority #3"],
+    "peopleMetrics": {
+      "headcount": "Employee count or headcount trend",
+      "turnover": "Turnover rate if disclosed",
+      "diversity": "DEI metrics if disclosed",
+      "engagement": "Employee engagement scores if disclosed"
+    },
+    "riskFactors": ["People/talent related risk #1", "Risk #2"],
+    "source": "10-K or Annual Report, Year"
+  },
+  "earningsCallHighlights": {
+    "quarter": "Most recent quarter (e.g., 'Q3 FY2024')",
+    "executiveCommentary": ["Key quote or theme from CEO/CFO #1", "Key quote #2"],
+    "workforceDiscussions": ["Workforce-related discussion point #1", "Point #2"],
+    "futureOutlook": "Forward-looking statements about talent, hiring, or organizational changes",
+    "analystQuestions": ["Relevant analyst Q&A topic #1", "Topic #2"],
+    "source": "Earnings Call Transcript, Date"
   }
 }
 
@@ -173,6 +194,8 @@ IMPORTANT:
 - Provide 3-4 main competitors
 - Provide 4-5 strategic insights relevant to the theme
 - Provide 3-5 key executives (CHRO, CEO, relevant C-suite)
+- Include annual report summary with CEO letter highlights and people metrics when available
+- Include earnings call highlights with executive commentary on workforce topics
 - All information should be as accurate as possible based on your knowledge
 - Focus on REAL information about ${companyName}, not hypothetical scenarios`;
 

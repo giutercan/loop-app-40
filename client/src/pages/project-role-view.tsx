@@ -102,7 +102,8 @@ import {
   Trash2,
   Undo2,
   Edit2,
-  ArrowRightCircle
+  ArrowRightCircle,
+  Quote
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -1534,6 +1535,27 @@ export default function ProjectRoleView() {
       howWeHelp: string[];
       potentialValue: string;
       keyQuestions: string[];
+    };
+    annualReportSummary?: {
+      fiscalYear: string;
+      ceoLetterHighlights: string[];
+      strategicPriorities: string[];
+      peopleMetrics: {
+        headcount?: string;
+        turnover?: string;
+        diversity?: string;
+        engagement?: string;
+      };
+      riskFactors: string[];
+      source: string;
+    };
+    earningsCallHighlights?: {
+      quarter: string;
+      executiveCommentary: string[];
+      workforceDiscussions: string[];
+      futureOutlook: string;
+      analystQuestions: string[];
+      source: string;
     };
     generatedAt: string;
   }
@@ -6542,6 +6564,193 @@ export default function ProjectRoleView() {
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Annual Report Summary */}
+              {liveIntelligence.annualReportSummary && (
+                <Card className="border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-transparent" data-testid="card-annual-report">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                        <FileText className="w-5 h-5 text-amber-600" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg">Annual Report Summary</CardTitle>
+                        <CardDescription>{liveIntelligence.annualReportSummary.fiscalYear} • {liveIntelligence.annualReportSummary.source}</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* CEO Letter Highlights */}
+                    {liveIntelligence.annualReportSummary.ceoLetterHighlights?.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                          <Quote className="w-4 h-4 text-amber-600" />
+                          CEO Letter Highlights
+                        </h4>
+                        <ul className="space-y-2">
+                          {liveIntelligence.annualReportSummary.ceoLetterHighlights.map((highlight, idx) => (
+                            <li key={idx} className="text-sm p-2 rounded bg-amber-500/5 border border-amber-500/20 italic">
+                              "{highlight}"
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Strategic Priorities */}
+                    {liveIntelligence.annualReportSummary.strategicPriorities?.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                          <Target className="w-4 h-4 text-amber-600" />
+                          Strategic Priorities
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {liveIntelligence.annualReportSummary.strategicPriorities.map((priority, idx) => (
+                            <Badge key={idx} variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-500/30">
+                              {priority}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* People Metrics */}
+                    {liveIntelligence.annualReportSummary.peopleMetrics && (
+                      <div>
+                        <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                          <Users className="w-4 h-4 text-amber-600" />
+                          People & Talent Metrics
+                        </h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          {liveIntelligence.annualReportSummary.peopleMetrics.headcount && (
+                            <div className="p-3 rounded-lg bg-muted/50">
+                              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Headcount</p>
+                              <p className="text-sm font-medium">{liveIntelligence.annualReportSummary.peopleMetrics.headcount}</p>
+                            </div>
+                          )}
+                          {liveIntelligence.annualReportSummary.peopleMetrics.turnover && (
+                            <div className="p-3 rounded-lg bg-muted/50">
+                              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Turnover</p>
+                              <p className="text-sm font-medium">{liveIntelligence.annualReportSummary.peopleMetrics.turnover}</p>
+                            </div>
+                          )}
+                          {liveIntelligence.annualReportSummary.peopleMetrics.diversity && (
+                            <div className="p-3 rounded-lg bg-muted/50">
+                              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Diversity</p>
+                              <p className="text-sm font-medium">{liveIntelligence.annualReportSummary.peopleMetrics.diversity}</p>
+                            </div>
+                          )}
+                          {liveIntelligence.annualReportSummary.peopleMetrics.engagement && (
+                            <div className="p-3 rounded-lg bg-muted/50">
+                              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Engagement</p>
+                              <p className="text-sm font-medium">{liveIntelligence.annualReportSummary.peopleMetrics.engagement}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Risk Factors */}
+                    {liveIntelligence.annualReportSummary.riskFactors?.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 text-red-500" />
+                          People-Related Risk Factors
+                        </h4>
+                        <ul className="space-y-1">
+                          {liveIntelligence.annualReportSummary.riskFactors.map((risk, idx) => (
+                            <li key={idx} className="text-sm p-2 rounded bg-red-500/5 border border-red-500/20 text-red-700">
+                              {risk}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Earnings Call Highlights */}
+              {liveIntelligence.earningsCallHighlights && (
+                <Card className="border-blue-500/30 bg-gradient-to-br from-blue-500/5 to-transparent" data-testid="card-earnings-call">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                        <Phone className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg">Earnings Call Highlights</CardTitle>
+                        <CardDescription>{liveIntelligence.earningsCallHighlights.quarter} • {liveIntelligence.earningsCallHighlights.source}</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Executive Commentary */}
+                    {liveIntelligence.earningsCallHighlights.executiveCommentary?.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                          <Quote className="w-4 h-4 text-blue-600" />
+                          Executive Commentary
+                        </h4>
+                        <ul className="space-y-2">
+                          {liveIntelligence.earningsCallHighlights.executiveCommentary.map((quote, idx) => (
+                            <li key={idx} className="text-sm p-3 rounded bg-blue-500/5 border border-blue-500/20 italic">
+                              "{quote}"
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Workforce Discussions */}
+                    {liveIntelligence.earningsCallHighlights.workforceDiscussions?.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                          <Users className="w-4 h-4 text-blue-600" />
+                          Workforce & Talent Discussions
+                        </h4>
+                        <ul className="space-y-2">
+                          {liveIntelligence.earningsCallHighlights.workforceDiscussions.map((discussion, idx) => (
+                            <li key={idx} className="text-sm p-2 rounded bg-blue-500/5 border border-blue-500/20">
+                              {discussion}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Future Outlook */}
+                    {liveIntelligence.earningsCallHighlights.futureOutlook && (
+                      <div>
+                        <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                          <TrendingUp className="w-4 h-4 text-blue-600" />
+                          Forward-Looking Outlook
+                        </h4>
+                        <p className="text-sm p-3 rounded bg-gradient-to-r from-blue-500/10 to-transparent border border-blue-500/20">
+                          {liveIntelligence.earningsCallHighlights.futureOutlook}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Analyst Q&A */}
+                    {liveIntelligence.earningsCallHighlights.analystQuestions?.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                          <HelpCircle className="w-4 h-4 text-blue-600" />
+                          Analyst Q&A Topics
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {liveIntelligence.earningsCallHighlights.analystQuestions.map((topic, idx) => (
+                            <Badge key={idx} variant="outline" className="bg-blue-500/10 text-blue-700 border-blue-500/30">
+                              {topic}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
               
               {/* Generated timestamp */}
               <div className="flex items-center justify-between mb-4">
