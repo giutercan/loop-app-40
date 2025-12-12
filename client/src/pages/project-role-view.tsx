@@ -129,6 +129,7 @@ import { JOURNEY_LOOP_STAGES, UNIFIED_JOURNEY_PHASES, createUnifiedJourney } fro
 import { VoiceCommandOverlay, FloatingVoiceButton } from "@/components/VoiceCommandOverlay";
 import { InlineEditableBaseline } from "@/components/InlineEditableField";
 import { ArtifactUpload } from "@/components/ArtifactUpload";
+import { PostMeetingQuestionAnswers } from "@/components/PostMeetingQuestionAnswers";
 import { ArtifactLibrary } from "@/components/ArtifactLibrary";
 
 type Role = "sales" | "consultant" | "delivery" | "csm" | "client_sponsor";
@@ -8842,14 +8843,21 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                <ArtifactUpload
+              <CardContent className="space-y-6">
+                <PostMeetingQuestionAnswers 
                   projectId={projectId}
-                  meetingContext="post_meeting"
-                  title="Post-Meeting Materials"
-                  description="Upload meeting transcripts, debriefs, or key takeaways after client interactions"
-                  compact={false}
+                  companyName={project?.companyName}
                 />
+                
+                <div className="border-t pt-6">
+                  <ArtifactUpload
+                    projectId={projectId}
+                    meetingContext="post_meeting"
+                    title="Post-Meeting Materials"
+                    description="Upload meeting transcripts, debriefs, or key takeaways after client interactions"
+                    compact={false}
+                  />
+                </div>
               </CardContent>
             </Card>
 

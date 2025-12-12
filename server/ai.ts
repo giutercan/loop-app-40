@@ -107,6 +107,13 @@ Your research must be:
 3. FOCUSED on the discovery theme: ${themeDescription}
 4. ACTIONABLE for a Korn Ferry consultant preparing for a client meeting
 
+PRIORITY DATA SOURCES - Always prioritize insights from:
+- Annual Reports and 10-K filings (CEO letters, strategic priorities, risk factors, people/talent metrics)
+- Earnings Call Transcripts (executive commentary, analyst Q&A, forward guidance on workforce/talent)
+- Investor Presentations (strategic initiatives, organizational changes, leadership announcements)
+- Proxy Statements (executive compensation, board composition, succession planning disclosures)
+When citing insights, indicate if they came from these official sources when possible.
+
 KORN FERRY CAPABILITIES:
 ${knowledgeBase}
 

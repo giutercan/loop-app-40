@@ -25,6 +25,7 @@ import ProjectLayout from "@/components/ProjectLayout";
 import HandoffHub from "@/pages/handoff-hub";
 import { CommandPalette } from "@/components/CommandPalette";
 import { CompanionProvider } from "@/components/AICompanionPanel";
+import { ScrollToTop } from "@/components/ScrollToTop";
 
 function DiscoveryWithLayout() {
   const [, params] = useRoute("/projects/:id/discovery");
@@ -72,7 +73,9 @@ function DashboardWithLayout() {
 
 function Router() {
   return (
-    <Switch>
+    <>
+      <ScrollToTop />
+      <Switch>
       {/* Landing page is the entry point */}
       <Route path="/" component={Landing} />
       <Route path="/welcome" component={Landing} />
@@ -101,6 +104,7 @@ function Router() {
       <Route path="/companion" component={CompanionCanvas} />
       <Route component={NotFound} />
     </Switch>
+    </>
   );
 }
 
