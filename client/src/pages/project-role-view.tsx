@@ -132,6 +132,18 @@ import { InlineEditableBaseline } from "@/components/InlineEditableField";
 import { ArtifactUpload } from "@/components/ArtifactUpload";
 import { PostMeetingQuestionAnswers } from "@/components/PostMeetingQuestionAnswers";
 import { ArtifactLibrary } from "@/components/ArtifactLibrary";
+import { ExportButton } from "@/components/ExportButton";
+import { 
+  generateIntelligencePPT, 
+  generateIntelligencePDF,
+  generateOutcomesPPT,
+  generateOutcomesPDF,
+  generateCoachingPPT,
+  generateCoachingPDF,
+  type IntelligenceExportData,
+  type OutcomeExportData,
+  type CoachingExportData
+} from "@/lib/exportService";
 
 type Role = "sales" | "consultant" | "delivery" | "csm" | "client_sponsor";
 
@@ -1138,6 +1150,42 @@ function DiscoverySummaryStep({
                   {new Date(synthesis.generatedAt).toLocaleString()}
                 </Badge>
               )}
+              <ExportButton
+                label="Export Briefing"
+                size="sm"
+                onExportPPT={() => {
+                  if (!synthesis) return;
+                  const exportData: CoachingExportData = {
+                    companyName: project?.companyName || "Company",
+                    initiativeName: themeName || "Discovery",
+                    synthesis: synthesis.executiveSummary,
+                    recommendations: synthesis.whatWeLearned?.keyThemes?.map((theme: any) => ({
+                      title: theme.theme,
+                      description: theme.insight,
+                      priority: "high"
+                    })) || [],
+                    talkingPoints: synthesis.businessImplications?.opportunities?.slice(0, 5).map((o: any) => o.title) || [],
+                    nextSteps: synthesis.readinessToBuildValue?.nextSteps || []
+                  };
+                  generateCoachingPPT(exportData);
+                }}
+                onExportPDF={() => {
+                  if (!synthesis) return;
+                  const exportData: CoachingExportData = {
+                    companyName: project?.companyName || "Company",
+                    initiativeName: themeName || "Discovery",
+                    synthesis: synthesis.executiveSummary,
+                    recommendations: synthesis.whatWeLearned?.keyThemes?.map((theme: any) => ({
+                      title: theme.theme,
+                      description: theme.insight,
+                      priority: "high"
+                    })) || [],
+                    talkingPoints: synthesis.businessImplications?.opportunities?.slice(0, 5).map((o: any) => o.title) || [],
+                    nextSteps: synthesis.readinessToBuildValue?.nextSteps || []
+                  };
+                  generateCoachingPDF(exportData);
+                }}
+              />
               <Button variant="outline" size="sm" onClick={handleCopyMarkdown} title="Copy to clipboard" data-testid="button-copy-markdown">
                 <Copy className="w-4 h-4" />
               </Button>
@@ -4168,6 +4216,58 @@ export default function ProjectRoleView() {
                   </div>
                 </div>
 
+                {/* Export Button */}
+                <ExportButton
+                  label="Export Value Report"
+                  size="sm"
+                  onExportPPT={() => {
+                    const allCommitments = [...confirmedCommitments, ...proposedCommitments, ...draftCommitments] as any[];
+                    const exportData: OutcomeExportData = {
+                      companyName: project?.companyName || "Company",
+                      initiativeName: project?.name || "Initiative",
+                      outcomes: allCommitments.map((c: any) => ({
+                        title: c.kpiName || c.name || "Outcome",
+                        description: c.description,
+                        valuePillar: c.valuePillar || "Value",
+                        status: c.status || "draft",
+                        estimatedValue: c.estimatedValue ? `$${(Number(c.estimatedValue) / 1000000).toFixed(2)}M` : undefined
+                      })),
+                      kpis: allCommitments.filter((c: any) => c.kpiName).map((c: any) => ({
+                        name: c.kpiName,
+                        baseline: c.baselineValue?.toString(),
+                        target: c.targetValue?.toString(),
+                        unit: c.unit,
+                        status: c.status
+                      })),
+                      totalValue: `$${((confirmedValue + proposedValue + draftValue) / 1000000).toFixed(2)}M`,
+                    };
+                    generateOutcomesPPT(exportData);
+                  }}
+                  onExportPDF={() => {
+                    const allCommitments = [...confirmedCommitments, ...proposedCommitments, ...draftCommitments] as any[];
+                    const exportData: OutcomeExportData = {
+                      companyName: project?.companyName || "Company",
+                      initiativeName: project?.name || "Initiative",
+                      outcomes: allCommitments.map((c: any) => ({
+                        title: c.kpiName || c.name || "Outcome",
+                        description: c.description,
+                        valuePillar: c.valuePillar || "Value",
+                        status: c.status || "draft",
+                        estimatedValue: c.estimatedValue ? `$${(Number(c.estimatedValue) / 1000000).toFixed(2)}M` : undefined
+                      })),
+                      kpis: allCommitments.filter((c: any) => c.kpiName).map((c: any) => ({
+                        name: c.kpiName,
+                        baseline: c.baselineValue?.toString(),
+                        target: c.targetValue?.toString(),
+                        unit: c.unit,
+                        status: c.status
+                      })),
+                      totalValue: `$${((confirmedValue + proposedValue + draftValue) / 1000000).toFixed(2)}M`,
+                    };
+                    generateOutcomesPDF(exportData);
+                  }}
+                />
+
                 {/* Pipeline Progress Bar */}
                 <div className="lg:w-64">
                   <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
@@ -6413,6 +6513,46 @@ export default function ProjectRoleView() {
                         <CheckCircle className="w-3 h-3 mr-1" />
                         Live Data
                       </Badge>
+                      <ExportButton
+                        label="Export Report"
+                        size="sm"
+                        onExportPPT={() => {
+                          if (!liveIntelligence) return;
+                          const exportData: IntelligenceExportData = {
+                            companyName: project.companyName || "Company",
+                            industry: liveIntelligence.companyOverview?.industry,
+                            theme: selectedDiscoveryTheme || undefined,
+                            executiveSummary: liveIntelligence.companyOverview?.description,
+                            insights: liveIntelligence.strategicInsights?.map((insight: any) => ({
+                              title: insight.title || insight.category || "Insight",
+                              value: insight.insight || insight.description || "",
+                              category: insight.category,
+                              priority: insight.priority
+                            })) || [],
+                            annualReportSummary: liveIntelligence.annualReportSummary,
+                            earningsCallHighlights: liveIntelligence.earningsCallHighlights,
+                          };
+                          generateIntelligencePPT(exportData);
+                        }}
+                        onExportPDF={() => {
+                          if (!liveIntelligence) return;
+                          const exportData: IntelligenceExportData = {
+                            companyName: project.companyName || "Company",
+                            industry: liveIntelligence.companyOverview?.industry,
+                            theme: selectedDiscoveryTheme || undefined,
+                            executiveSummary: liveIntelligence.companyOverview?.description,
+                            insights: liveIntelligence.strategicInsights?.map((insight: any) => ({
+                              title: insight.title || insight.category || "Insight",
+                              value: insight.insight || insight.description || "",
+                              category: insight.category,
+                              priority: insight.priority
+                            })) || [],
+                            annualReportSummary: liveIntelligence.annualReportSummary,
+                            earningsCallHighlights: liveIntelligence.earningsCallHighlights,
+                          };
+                          generateIntelligencePDF(exportData);
+                        }}
+                      />
                       <Button 
                         variant="outline" 
                         size="sm"
