@@ -7732,6 +7732,41 @@ export default function ProjectRoleView() {
               </CardHeader>
             </Card>
 
+            {/* Pre-Meeting Materials - Positioned above Green Sheet for AI enrichment flow */}
+            <Card className="border-2 border-blue-500/30 bg-gradient-to-br from-blue-500/5 to-indigo-500/5">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                      <Upload className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base flex items-center gap-2 text-blue-700">
+                        Pre-Meeting Materials
+                        <Badge className="bg-blue-100 text-blue-700 border-blue-300 text-xs">AI Context</Badge>
+                      </CardTitle>
+                      <CardDescription className="text-sm">
+                        Upload documents to power AI suggestions for your Green Sheet below
+                      </CardDescription>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <ArtifactUpload
+                  projectId={projectId}
+                  meetingContext="pre_meeting"
+                  title=""
+                  description="Upload call transcripts, research documents, emails, or notes. AI will analyze these to suggest Green Sheet content."
+                  compact={true}
+                />
+                <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                  <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+                  <span>After uploading, use the "Enrich from Docs" button in the Green Sheet below</span>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Enhanced Interactive Green Sheet */}
             <Card className="border-2 border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 to-teal-500/5">
               <Collapsible open={isGreenSheetExpanded} onOpenChange={setIsGreenSheetExpanded}>
@@ -8319,17 +8354,6 @@ export default function ProjectRoleView() {
                           />
                         </div>
                       </div>
-                    </div>
-                    
-                    {/* Pre-Meeting Context Documents */}
-                    <div className="mt-4">
-                      <ArtifactUpload
-                        projectId={projectId}
-                        meetingContext="pre_meeting"
-                        title="Pre-Meeting Materials"
-                        description="Upload call transcripts, research documents, or notes to enrich AI coaching"
-                        compact={false}
-                      />
                     </div>
                     
                     {/* Rapport & Credibility - Compact */}
