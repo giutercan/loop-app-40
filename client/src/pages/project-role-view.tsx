@@ -103,7 +103,8 @@ import {
   Undo2,
   Edit2,
   ArrowRightCircle,
-  Quote
+  Quote,
+  Upload
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { apiRequest, queryClient } from "@/lib/queryClient";
