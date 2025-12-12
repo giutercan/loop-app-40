@@ -67,15 +67,23 @@ export function PostMeetingQuestionAnswers({ projectId, companyName }: PostMeeti
 
   const askedQuestions = questions.filter(q => q.isAsked);
 
+  // Initialize local answers from server data only once when questions load
   useEffect(() => {
+    if (questions.length === 0) return;
+    
     const initial: Record<number, string> = {};
-    askedQuestions.forEach(q => {
-      if (q.answer) {
+    questions.forEach(q => {
+      if (q.isAsked && q.answer && !localAnswers[q.id]) {
         initial[q.id] = q.answer;
       }
     });
-    setLocalAnswers(prev => ({ ...initial, ...prev }));
-  }, [questions]);
+    
+    // Only update if there are new initial values to set
+    if (Object.keys(initial).length > 0) {
+      setLocalAnswers(prev => ({ ...prev, ...initial }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [questions.length]);
 
   const saveAnswerMutation = useMutation({
     mutationFn: async ({ questionId, answer }: { questionId: number; answer: string }) => {
