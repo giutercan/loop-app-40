@@ -1182,50 +1182,24 @@ export function StrategicAlignmentSelector({
             </CardContent>
           </Card>
 
-          {/* Ready for Handoff - Only shows when outcomes exist and are selected */}
-          {outcomes.length > 0 && selectedOutcomes.size > 0 && (
-            <Card className="bg-gradient-to-r from-blue-500/5 to-indigo-500/5 border-blue-500/20">
-              <CardContent className="py-6">
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center">
-                      <ArrowRight className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-lg">Ready for Handoff</p>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedOutcomes.size} outcome{selectedOutcomes.size !== 1 ? 's' : ''} from {confirmedStrategies.length} strateg{confirmedStrategies.length !== 1 ? 'ies' : 'y'} ready for delivery
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={handleSaveOutcomes}
-                      disabled={saveSelectionMutation.isPending}
-                      data-testid="button-save-outcomes"
-                    >
-                      {saveSelectionMutation.isPending ? (
-                        <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
-                      ) : (
-                        <CheckCircle2 className="h-4 w-4 mr-1" />
-                      )}
-                      Save Progress
-                    </Button>
-                    <Button 
-                      onClick={handleComplete} 
-                      size="lg"
-                      className="bg-blue-600 hover:bg-blue-700"
-                      data-testid="button-ready-for-handoff"
-                    >
-                      <ArrowRight className="w-4 h-4 mr-2" />
-                      Proceed to Handoff
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          {/* Save Progress - Only shows when outcomes exist */}
+          {outcomes.length > 0 && (
+            <div className="flex justify-end">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleSaveOutcomes}
+                disabled={saveSelectionMutation.isPending}
+                data-testid="button-save-outcomes"
+              >
+                {saveSelectionMutation.isPending ? (
+                  <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                )}
+                Save Progress
+              </Button>
+            </div>
           )}
         </div>
       )}
