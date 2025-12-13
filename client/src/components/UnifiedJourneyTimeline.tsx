@@ -45,8 +45,8 @@ interface SelectedOutcome {
   selected?: boolean;
   status?: "draft" | "proposed" | "confirmed" | "in_progress" | "completed";
   description?: string;
-  baselineValue?: string;
-  targetValue?: string;
+  baselineValue?: number;
+  targetValue?: number;
   metricUnit?: string;
   strategyName?: string;
 }
@@ -283,18 +283,25 @@ export function UnifiedJourneyTimeline({
                     <div className="flex items-center gap-2">
                       {(() => {
                         const PillarIcon = pillarIcons[lane.pillar as ValuePillarId];
-                        return PillarIcon ? <PillarIcon className={`w-4 h-4 ${pillarConfig?.color?.replace('bg-', 'text-') || 'text-muted-foreground'}`} /> : null;
+                        const colorMap: Record<string, string> = {
+                          emerald: 'text-emerald-600 dark:text-emerald-400',
+                          blue: 'text-blue-600 dark:text-blue-400',
+                          amber: 'text-amber-600 dark:text-amber-400',
+                          violet: 'text-violet-600 dark:text-violet-400'
+                        };
+                        const iconColor = colorMap[pillarConfig?.color || ''] || 'text-muted-foreground';
+                        return PillarIcon ? <PillarIcon className={`w-4 h-4 ${iconColor}`} /> : null;
                       })()}
                       <p className="font-medium text-sm truncate">{lane.outcomeName}</p>
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      <Badge variant="secondary" className={`text-xs px-1.5 py-0`}>
+                      <Badge variant="secondary" className="text-xs px-1.5 py-0">
                         {pillarConfig?.name || lane.pillar}
                       </Badge>
                       {outcome?.status && statusConfig[outcome.status] && (() => {
                         const StatusIcon = statusConfig[outcome.status].icon;
                         return (
-                          <Badge className={`text-xs px-1.5 py-0 ${statusConfig[outcome.status].color}`}>
+                          <Badge variant="outline" className="text-xs px-1.5 py-0">
                             <StatusIcon className="w-3 h-3 mr-0.5" />
                             {statusConfig[outcome.status].label}
                           </Badge>

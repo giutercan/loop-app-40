@@ -4328,11 +4328,11 @@ export default function ProjectRoleView() {
             expectedValue: c.estimatedAnnualValue ? `$${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr` : undefined,
             selected: timelineSelectedOutcomes.size === 0 || timelineSelectedOutcomes.has(c.id.toString()),
             status: c.status || 'draft',
-            description: c.description || c.commitmentDescription || '',
-            baselineValue: c.baselineValue?.toString() || '',
-            targetValue: c.targetValue?.toString() || '',
-            metricUnit: c.metricUnit || c.kpiUnit || '',
-            strategyName: c.provenance?.kornFerrySolution || ''
+            description: c.description || c.commitmentDescription || undefined,
+            baselineValue: c.baselineValue || undefined,
+            targetValue: c.targetValue || undefined,
+            metricUnit: c.metricUnit || c.kpiUnit || undefined,
+            strategyName: c.provenance?.kornFerrySolution || undefined
           }));
 
           const selectedCount = selectedOutcomesForTimeline.filter(o => o.selected).length;
