@@ -4878,8 +4878,8 @@ export default function ProjectRoleView() {
 
           {/* Legacy "Outcomes in Progress" section removed - outcomes are now managed through StrategicAlignmentSelector */}
 
-        {/* Unified Value Journey - Enhanced with Timeline Groupings and Value Totals */}
-        {(() => {
+          {/* Unified Value Journey - Enhanced with Timeline Groupings and Value Totals */}
+          {(() => {
           const allCommitmentsWithPattern = (commitments as any[]).filter(c => c.solutionPattern);
           if (allCommitmentsWithPattern.length === 0) return null;
           
@@ -9310,6 +9310,41 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 </CardContent>
               </Card>
             )}
+
+            {/* Value Summary & Handoff Section at Bottom */}
+            <Card className="bg-gradient-to-r from-emerald-500/5 to-blue-500/5 border-emerald-500/20 mt-6">
+              <CardContent className="py-6">
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div className="flex items-center gap-6">
+                    <div className="text-center">
+                      <p className="text-3xl font-bold" data-testid="text-total-outcomes">{commitments.length}</p>
+                      <p className="text-sm text-muted-foreground">Total Outcomes</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-3xl font-bold text-emerald-600" data-testid="text-annual-value">
+                        ${(commitments.reduce((sum: number, c: any) => sum + (c.estimatedAnnualValue || 0), 0) / 1000000).toFixed(2)}M
+                      </p>
+                      <p className="text-sm text-muted-foreground">Annual Value</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-3xl font-bold text-blue-600" data-testid="text-confirmed-count">
+                        {commitments.filter((c: any) => c.status === "client_confirmed").length}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Confirmed</p>
+                    </div>
+                  </div>
+                  <Button 
+                    size="lg"
+                    onClick={() => setActiveTab("handoff")}
+                    disabled={commitments.filter((c: any) => c.status === "client_confirmed").length === 0}
+                    data-testid="button-submit-handoff"
+                  >
+                    <ArrowUpRight className="w-5 h-5 mr-2" />
+                    Submit for Delivery Handoff
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* STAGE 4: HANDOFF - Transition to Delivery */}
