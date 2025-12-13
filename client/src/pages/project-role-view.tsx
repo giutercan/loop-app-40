@@ -8434,13 +8434,15 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                             portalSections: { overview: true, strategies: true, outcomes: true, progress: true },
                           });
                           const data = await response.json();
-                          if (data.shareUrl) {
-                            const fullUrl = `${window.location.origin}${data.shareUrl}`;
+                          if (data.shareLink?.token) {
+                            const fullUrl = `${window.location.origin}/portal/${data.shareLink.token}`;
                             await navigator.clipboard.writeText(fullUrl);
                             toast({ 
                               title: "Link Copied!", 
                               description: "Client portal link has been copied to your clipboard." 
                             });
+                          } else {
+                            throw new Error("No share token returned");
                           }
                         } catch (error) {
                           toast({ 
