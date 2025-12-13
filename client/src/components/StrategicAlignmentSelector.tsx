@@ -26,7 +26,13 @@ import {
   Layers,
   BarChart3,
   DollarSign,
-  Zap
+  Zap,
+  Award,
+  Info,
+  Pencil,
+  Check,
+  X,
+  Save
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -67,6 +73,14 @@ interface StrategyOutcome {
   achievability: "high" | "medium" | "low";
   businessImpact: string;
   kornFerrySolution: string;
+  isKornFerryProven?: boolean;
+  kornFerryExplanation?: string;
+  benchmarkRecommendation?: {
+    recommendedBaseline: string;
+    recommendedTarget: string;
+    rationale: string;
+    source: string;
+  };
 }
 
 interface StrategyOutcomesResult {
@@ -264,16 +278,62 @@ function OutcomeCard({
   strategy,
   isSelected,
   onToggle,
+  onUpdate,
   isClientApproved = false
 }: { 
   outcome: StrategyOutcome;
   strategy?: OrganizationalStrategy;
   isSelected: boolean;
   onToggle: () => void;
+  onUpdate?: (outcomeId: string, updates: Partial<StrategyOutcome>) => void;
   isClientApproved?: boolean;
 }) {
   const pillarConfig = VALUE_PILLAR_CONFIG[outcome.valuePillar] || VALUE_PILLAR_CONFIG.strengthen;
   const [showDetails, setShowDetails] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedName, setEditedName] = useState(outcome.outcomeName);
+  const [editedDescription, setEditedDescription] = useState(outcome.outcomeDescription);
+  const [editedBaseline, setEditedBaseline] = useState(outcome.kpiDetails.suggestedBaseline);
+  const [editedTarget, setEditedTarget] = useState(outcome.kpiDetails.suggestedTarget);
+  const [useRecommendedBaseline, setUseRecommendedBaseline] = useState(true);
+  const [useRecommendedTarget, setUseRecommendedTarget] = useState(true);
+
+  const handleSaveEdits = () => {
+    if (onUpdate) {
+      onUpdate(outcome.id, {
+        outcomeName: editedName,
+        outcomeDescription: editedDescription,
+        kpiDetails: {
+          ...outcome.kpiDetails,
+          suggestedBaseline: editedBaseline,
+          suggestedTarget: editedTarget,
+        }
+      });
+    }
+    setIsEditing(false);
+  };
+
+  const handleCancelEdits = () => {
+    setEditedName(outcome.outcomeName);
+    setEditedDescription(outcome.outcomeDescription);
+    setEditedBaseline(outcome.kpiDetails.suggestedBaseline);
+    setEditedTarget(outcome.kpiDetails.suggestedTarget);
+    setIsEditing(false);
+  };
+
+  const handleAcceptRecommendedBaseline = () => {
+    if (outcome.benchmarkRecommendation) {
+      setEditedBaseline(outcome.benchmarkRecommendation.recommendedBaseline);
+      setUseRecommendedBaseline(true);
+    }
+  };
+
+  const handleAcceptRecommendedTarget = () => {
+    if (outcome.benchmarkRecommendation) {
+      setEditedTarget(outcome.benchmarkRecommendation.recommendedTarget);
+      setUseRecommendedTarget(true);
+    }
+  };
 
   return (
     <div 
@@ -293,7 +353,22 @@ function OutcomeCard({
         />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
-            <span className="font-medium text-sm">{outcome.outcomeName}</span>
+            {isEditing ? (
+              <Input
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                className="h-7 text-sm font-medium flex-1 min-w-[200px]"
+                data-testid={`input-outcome-name-${outcome.id}`}
+              />
+            ) : (
+              <span className="font-medium text-sm">{outcome.outcomeName}</span>
+            )}
+            {outcome.isKornFerryProven && (
+              <Badge className="text-xs bg-primary/10 text-primary border-primary/20" data-testid={`badge-kf-proven-${outcome.id}`}>
+                <Award className="w-3 h-3 mr-1" />
+                Proven by Korn Ferry
+              </Badge>
+            )}
             {isClientApproved && (
               <Badge className="text-xs bg-emerald-500/10 text-emerald-600 border-emerald-500/20" data-testid={`badge-client-approved-${outcome.id}`}>
                 <CheckCircle2 className="w-3 h-3 mr-1" />
@@ -306,18 +381,109 @@ function OutcomeCard({
             <Badge variant="outline" className="text-xs">
               {outcome.achievability === "high" ? "High" : outcome.achievability === "medium" ? "Medium" : "Low"} Achievability
             </Badge>
+            {!isEditing && onUpdate && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 ml-auto"
+                onClick={() => setIsEditing(true)}
+                data-testid={`button-edit-outcome-${outcome.id}`}
+              >
+                <Pencil className="h-3 w-3" />
+              </Button>
+            )}
+            {isEditing && (
+              <div className="flex items-center gap-1 ml-auto">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-emerald-600"
+                  onClick={handleSaveEdits}
+                  data-testid={`button-save-outcome-${outcome.id}`}
+                >
+                  <Check className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-muted-foreground"
+                  onClick={handleCancelEdits}
+                  data-testid={`button-cancel-outcome-${outcome.id}`}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
           </div>
-          <p className="text-xs text-muted-foreground mb-2">{outcome.outcomeDescription}</p>
+          {isEditing ? (
+            <Textarea
+              value={editedDescription}
+              onChange={(e) => setEditedDescription(e.target.value)}
+              className="text-xs mb-2 min-h-[60px]"
+              data-testid={`input-outcome-description-${outcome.id}`}
+            />
+          ) : (
+            <p className="text-xs text-muted-foreground mb-2">{outcome.outcomeDescription}</p>
+          )}
           
-          <div className="flex items-center gap-4 text-xs mb-2">
-            <div className="flex items-center gap-1">
-              <BarChart3 className="h-3 w-3 text-muted-foreground" />
-              <span><strong>Baseline:</strong> {outcome.kpiDetails.suggestedBaseline}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Target className="h-3 w-3 text-emerald-500" />
-              <span><strong>Target:</strong> {outcome.kpiDetails.suggestedTarget}</span>
-            </div>
+          <div className="flex items-center gap-4 text-xs mb-2 flex-wrap">
+            {isEditing ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-3 w-3 text-muted-foreground" />
+                  <span className="font-medium">Baseline:</span>
+                  <Input
+                    value={editedBaseline}
+                    onChange={(e) => { setEditedBaseline(e.target.value); setUseRecommendedBaseline(false); }}
+                    className="h-6 w-32 text-xs"
+                    data-testid={`input-outcome-baseline-${outcome.id}`}
+                  />
+                  {outcome.benchmarkRecommendation && !useRecommendedBaseline && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-5 px-2 text-[10px]"
+                      onClick={handleAcceptRecommendedBaseline}
+                      data-testid={`button-accept-baseline-${outcome.id}`}
+                    >
+                      Use AI Rec
+                    </Button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Target className="h-3 w-3 text-emerald-500" />
+                  <span className="font-medium">Target:</span>
+                  <Input
+                    value={editedTarget}
+                    onChange={(e) => { setEditedTarget(e.target.value); setUseRecommendedTarget(false); }}
+                    className="h-6 w-32 text-xs"
+                    data-testid={`input-outcome-target-${outcome.id}`}
+                  />
+                  {outcome.benchmarkRecommendation && !useRecommendedTarget && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-5 px-2 text-[10px]"
+                      onClick={handleAcceptRecommendedTarget}
+                      data-testid={`button-accept-target-${outcome.id}`}
+                    >
+                      Use AI Rec
+                    </Button>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-1">
+                  <BarChart3 className="h-3 w-3 text-muted-foreground" />
+                  <span><strong>Baseline:</strong> {outcome.kpiDetails.suggestedBaseline}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Target className="h-3 w-3 text-emerald-500" />
+                  <span><strong>Target:</strong> {outcome.kpiDetails.suggestedTarget}</span>
+                </div>
+              </>
+            )}
             <div className="flex items-center gap-1">
               <Clock className="h-3 w-3 text-muted-foreground" />
               <span>{outcome.kpiDetails.timeframe}</span>
@@ -336,7 +502,48 @@ function OutcomeCard({
           </Button>
 
           {showDetails && (
-            <div className="mt-3 pt-3 border-t space-y-2">
+            <div className="mt-3 pt-3 border-t space-y-3">
+              {/* Korn Ferry Explanation */}
+              {outcome.kornFerryExplanation && (
+                <div className={`p-3 rounded-md text-xs ${outcome.isKornFerryProven ? 'bg-primary/5 border border-primary/20' : 'bg-muted/50 border border-muted'}`}>
+                  <div className="flex items-start gap-2">
+                    {outcome.isKornFerryProven ? (
+                      <Award className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                    ) : (
+                      <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                    )}
+                    <div>
+                      <p className="font-medium mb-1">
+                        {outcome.isKornFerryProven ? 'Why Korn Ferry Can Deliver' : 'Partnership Consideration'}
+                      </p>
+                      <p className="text-muted-foreground">{outcome.kornFerryExplanation}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Benchmark Recommendation */}
+              {outcome.benchmarkRecommendation && (
+                <div className="bg-emerald-500/5 border border-emerald-500/20 p-3 rounded-md text-xs">
+                  <p className="font-medium text-emerald-700 dark:text-emerald-400 mb-2 flex items-center gap-1">
+                    <Target className="h-3 w-3" />
+                    AI-Recommended Targets
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-muted-foreground">Recommended Baseline</p>
+                      <p className="font-medium">{outcome.benchmarkRecommendation.recommendedBaseline}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Recommended Target</p>
+                      <p className="font-medium text-emerald-600">{outcome.benchmarkRecommendation.recommendedTarget}</p>
+                    </div>
+                  </div>
+                  <p className="text-muted-foreground mt-2">{outcome.benchmarkRecommendation.rationale}</p>
+                  <p className="text-muted-foreground mt-1 italic text-[10px]">Source: {outcome.benchmarkRecommendation.source}</p>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div>
                   <p className="font-medium text-muted-foreground mb-1">Industry Benchmarks</p>
@@ -619,6 +826,14 @@ export function StrategicAlignmentSelector({
       newSelected.add(outcomeId);
     }
     setSelectedOutcomes(newSelected);
+  };
+
+  const handleUpdateOutcome = (outcomeId: string, updates: Partial<StrategyOutcome>) => {
+    setOutcomes(prevOutcomes => 
+      prevOutcomes.map(o => 
+        o.id === outcomeId ? { ...o, ...updates } : o
+      )
+    );
   };
 
   const handleSaveOutcomes = () => {
@@ -948,6 +1163,7 @@ export function StrategicAlignmentSelector({
                               strategy={strategy}
                               isSelected={selectedOutcomes.has(outcome.id)}
                               onToggle={() => toggleOutcome(outcome.id)}
+                              onUpdate={handleUpdateOutcome}
                               isClientApproved={isOutcomeClientApproved(outcome.id)}
                             />
                           ))}

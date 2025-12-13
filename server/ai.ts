@@ -4329,6 +4329,19 @@ export interface StrategyBasedOutcomeInput {
     timeframe: string;
     priority: string;
   }>;
+  // Discovery context for more personalized outcomes
+  discoveryContext?: {
+    executiveSummary?: string;
+    keyChallenges?: string[];
+    strategicOpportunities?: string[];
+    insights?: Array<{
+      label: string;
+      value: string;
+      solutionArea?: string;
+      kornFerryPillar?: string;
+    }>;
+    interactionNotes?: string[];
+  };
 }
 
 export interface StrategyOutcome {
@@ -4362,6 +4375,15 @@ export interface StrategyOutcome {
   kfRecommendation: string;
   whyMatters: string;
   howKFHelps: string[];
+  // New fields for Korn Ferry proven outcomes
+  isKornFerryProven: boolean;
+  kornFerryExplanation: string;
+  benchmarkRecommendation: {
+    recommendedBaseline: string;
+    recommendedTarget: string;
+    rationale: string;
+    source: string;
+  };
 }
 
 export interface StrategyOutcomesResult {
@@ -4406,7 +4428,15 @@ const strategyOutcomeSchema = z.object({
   }),
   kfRecommendation: z.string(),
   whyMatters: z.string(),
-  howKFHelps: z.array(z.string())
+  howKFHelps: z.array(z.string()),
+  isKornFerryProven: z.boolean(),
+  kornFerryExplanation: z.string(),
+  benchmarkRecommendation: z.object({
+    recommendedBaseline: z.string(),
+    recommendedTarget: z.string(),
+    rationale: z.string(),
+    source: z.string()
+  })
 });
 
 const strategyOutcomesResultSchema = z.object({
@@ -4415,7 +4445,7 @@ const strategyOutcomesResultSchema = z.object({
 });
 
 export async function generateOutcomesFromStrategies(input: StrategyBasedOutcomeInput): Promise<StrategyOutcomesResult> {
-  const { companyName, industry, selectedStrategies } = input;
+  const { companyName, industry, selectedStrategies, discoveryContext } = input;
   
   const strategiesContext = selectedStrategies.map((s, idx) => 
     `STRATEGY ${idx + 1}: ${s.strategyName} [ID: ${s.id}]
@@ -4427,10 +4457,38 @@ Timeframe: ${s.timeframe}
 Priority: ${s.priority}`
   ).join('\n\n');
 
-  const prompt = `You are a Korn Ferry value architect. Based on the selected organizational strategies below, generate specific measurable outcomes that the customer should commit to achieving.
+  // Build discovery context section if available
+  let discoverySection = '';
+  if (discoveryContext) {
+    const parts = [];
+    if (discoveryContext.executiveSummary) {
+      parts.push(`EXECUTIVE SUMMARY:\n${discoveryContext.executiveSummary}`);
+    }
+    if (discoveryContext.keyChallenges?.length) {
+      parts.push(`KEY CHALLENGES IDENTIFIED:\n${discoveryContext.keyChallenges.map(c => `- ${c}`).join('\n')}`);
+    }
+    if (discoveryContext.strategicOpportunities?.length) {
+      parts.push(`STRATEGIC OPPORTUNITIES:\n${discoveryContext.strategicOpportunities.map(o => `- ${o}`).join('\n')}`);
+    }
+    if (discoveryContext.insights?.length) {
+      const insightsText = discoveryContext.insights.slice(0, 8).map(i => 
+        `- [${i.solutionArea || 'General'}] ${i.label}: ${i.value}`
+      ).join('\n');
+      parts.push(`DISCOVERY INSIGHTS:\n${insightsText}`);
+    }
+    if (discoveryContext.interactionNotes?.length) {
+      parts.push(`CLIENT INTERACTION NOTES:\n${discoveryContext.interactionNotes.slice(0, 3).map(n => `- ${n}`).join('\n')}`);
+    }
+    if (parts.length > 0) {
+      discoverySection = `\n\n=== DISCOVERY CONTEXT ===\nUse this context to personalize outcomes and make recommendations more relevant to ${companyName}'s specific situation:\n\n${parts.join('\n\n')}`;
+    }
+  }
+
+  const prompt = `You are a Korn Ferry value architect. Based on the selected organizational strategies and discovery context below, generate specific measurable outcomes that the customer should commit to achieving.
 
 COMPANY: ${companyName}
 INDUSTRY: ${industry || 'Not specified'}
+${discoverySection}
 
 SELECTED STRATEGIES:
 ${strategiesContext}
@@ -4442,6 +4500,7 @@ For EACH selected strategy, generate 1-2 specific, measurable outcomes. Each out
 4. Map to a Korn Ferry value pillar
 5. Specify the Korn Ferry solution that enables it
 6. Include a clear KF recommendation and rationale
+7. Indicate whether this is a "Korn Ferry Proven" outcome
 
 KORN FERRY VALUE PILLARS:
 - grow: Revenue growth, market expansion
@@ -4449,17 +4508,22 @@ KORN FERRY VALUE PILLARS:
 - derisk: Risk mitigation, retention, compliance
 - strengthen: Capability building, leadership development
 
+KORN FERRY CORE STRENGTHS (outcomes in these areas are "Proven by Korn Ferry"):
+1. Talent Acquisition - #1 Executive Recruiter globally (time-to-hire, cost-per-hire, quality of hire)
+2. Leadership Development - Leadership pipeline, succession readiness, executive coaching
+3. Sales Performance - Win rates, sales cycle, quota attainment (Miller Heiman methodology)
+4. Compensation & Rewards - Pay equity, competitiveness, retention (32,000+ company benchmark data)
+5. Organizational Design - Role clarity, span of control, efficiency
+
 KORN FERRY CORE CAPABILITIES (use these for kfOffering):
 1. Assessment & Succession
    - Korn Ferry Assess™ - AI-driven leadership and talent assessments
    - 360-Degree Feedback (KF360) - Multi-rater assessment covering 38 competencies
    - Succession Planning - Evidence-based leadership pipeline development
-   - Leadership Potential Solution - Identifies high-potential talent
 
 2. Leadership & Professional Development
    - Executive Coaching - Personalized leadership development
    - Learning Lab - 38+ interactive AI-driven simulations
-   - Leadership Certifications - Structured development programs
    - High-Potential Programs - Accelerated leader development
 
 3. Talent Acquisition
@@ -4471,12 +4535,10 @@ KORN FERRY CORE CAPABILITIES (use these for kfOffering):
    - Organizational Design - Structure and role optimization
    - Total Rewards - Compensation strategy and pay equity
    - Culture Transformation - Values alignment and change
-   - Workforce Planning - Strategic workforce shaping
 
 5. Sales & Commercial Excellence
    - Sales Effectiveness - Sales force transformation
    - Miller Heiman Methodology - Strategic selling programs
-   - Revenue Growth - Go-to-market optimization
 
 Return your recommendations in this JSON format:
 {
@@ -4507,39 +4569,54 @@ Return your recommendations in this JSON format:
       "kfOffering": {
         "name": "Succession Planning",
         "capability": "Assessment & Succession",
-        "description": "Evidence-based Success Profiles to identify and prepare next-generation leaders with diverse representation"
+        "description": "Evidence-based Success Profiles to identify and prepare next-generation leaders"
       },
-      "kfRecommendation": "Deploy Korn Ferry's Succession Planning solution with Leadership Potential Assessment to identify at-risk executives and create personalized retention pathways",
-      "whyMatters": "Executive turnover costs 2-3x annual salary and disrupts strategic initiatives. Proactive succession planning reduces flight risk by 40% while building a robust leadership pipeline",
+      "kfRecommendation": "Deploy Korn Ferry's Succession Planning solution with Leadership Potential Assessment",
+      "whyMatters": "Executive turnover costs 2-3x annual salary and disrupts strategic initiatives",
       "howKFHelps": [
         "Assess current leadership bench strength with Four Dimensions of Leadership framework",
         "Identify high-potential successors using validated assessment tools",
         "Create personalized development plans aligned to role requirements",
         "Implement retention mechanisms for critical talent"
-      ]
+      ],
+      "isKornFerryProven": true,
+      "kornFerryExplanation": "Korn Ferry is the #1 executive recruiter globally with 50+ years of succession planning expertise. Our Leadership Potential Assessment has been validated across 4M+ assessments and predicts leadership success with 85% accuracy.",
+      "benchmarkRecommendation": {
+        "recommendedBaseline": "18%",
+        "recommendedTarget": "12%",
+        "rationale": "Based on industry median of 15%, recommending baseline slightly above (current state) with target at industry high performer level",
+        "source": "Korn Ferry 2024 Executive Retention Study (n=2,500 companies)"
+      }
     }
   ],
   "summary": "Brief summary of the collective value these outcomes will deliver"
 }
 
-IMPORTANT:
+IMPORTANT GUIDELINES:
 - Generate exactly 1-2 outcomes per selected strategy
 - Each outcome must reference its parent strategy ID
 - Use realistic targets based on industry standards
 - Provide specific, actionable metrics
 - kfOffering.capability must be one of: "Assessment & Succession", "Leadership & Professional Development", "Talent Acquisition", "Organization Strategy", "Sales & Commercial Excellence"
-- kfRecommendation should be a specific, actionable recommendation mentioning KF tools/methodologies
-- whyMatters should explain business impact and urgency
-- howKFHelps should list 3-4 specific ways Korn Ferry delivers value`;
+
+KORN FERRY PROVEN CLASSIFICATION:
+- isKornFerryProven: true for outcomes in KF's core strength areas (talent, leadership, sales, compensation, org design)
+- isKornFerryProven: false for outcomes where KF can help but isn't the primary driver (e.g., pure technology, operations, manufacturing)
+- kornFerryExplanation: If proven, explain WHY KF excels (benchmarks, methodology, track record). If not proven, explain how KF can support as a partner but note the outcome depends on other factors.
+
+BENCHMARK RECOMMENDATIONS:
+- benchmarkRecommendation should provide AI-recommended baseline and target values
+- Include rationale explaining how the recommendation was derived from benchmarks
+- Source should cite specific Korn Ferry research, industry data, or methodology`;
 
   try {
-    console.log(`[AI Strategy Outcomes] Generating outcomes for ${selectedStrategies.length} strategies for ${companyName}`);
+    console.log(`[AI Strategy Outcomes] Generating outcomes for ${selectedStrategies.length} strategies for ${companyName}${discoveryContext ? ' (with discovery context)' : ''}`);
     
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
-      max_completion_tokens: 4000,
+      max_completion_tokens: 6000,
     });
 
     const content = response.choices[0]?.message?.content;

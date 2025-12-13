@@ -7675,12 +7675,38 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
       
       const account = project.accountId ? await storage.getAccount(project.accountId) : null;
       
+      // Fetch discovery context for more personalized outcomes
+      const [dataPoints, interactionArtifacts] = await Promise.all([
+        storage.getCompanyDataPoints(id),
+        storage.getInteractionArtifacts(id)
+      ]);
+      
+      const synthesis = (project as any).discoverySynthesis;
+      
+      // Build discovery context
+      const discoveryContext = {
+        executiveSummary: synthesis?.executiveSummary,
+        keyChallenges: synthesis?.keyChallenges,
+        strategicOpportunities: synthesis?.strategicOpportunities,
+        insights: dataPoints.slice(0, 10).map(dp => ({
+          label: dp.label,
+          value: dp.value,
+          solutionArea: dp.solutionArea || undefined,
+          kornFerryPillar: dp.kornFerryPillar || undefined
+        })),
+        interactionNotes: interactionArtifacts
+          .filter(a => a.freeformNotes)
+          .slice(0, 5)
+          .map(a => a.freeformNotes as string)
+      };
+      
       // Import and call the strategy outcomes function
       const { generateOutcomesFromStrategies } = await import("./ai");
       const result = await generateOutcomesFromStrategies({
         companyName: project.companyName || account?.name || "Unknown Company",
         industry: project.sector || account?.industry || undefined,
-        selectedStrategies
+        selectedStrategies,
+        discoveryContext: (discoveryContext.executiveSummary || discoveryContext.insights?.length) ? discoveryContext : undefined
       });
       
       res.json(result);
