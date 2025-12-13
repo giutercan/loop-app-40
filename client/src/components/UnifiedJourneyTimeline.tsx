@@ -15,7 +15,15 @@ import {
   Target,
   CheckCircle2,
   Circle,
-  ArrowRight
+  ArrowRight,
+  Shield,
+  BarChart3,
+  Sparkles,
+  FileEdit,
+  Send,
+  CheckCircle,
+  Play,
+  DollarSign
 } from "lucide-react";
 import {
   UNIFIED_JOURNEY_PHASES,
@@ -35,6 +43,12 @@ interface SelectedOutcome {
   pillar: ValuePillarId;
   expectedValue?: string;
   selected?: boolean;
+  status?: "draft" | "proposed" | "confirmed" | "in_progress" | "completed";
+  description?: string;
+  baselineValue?: string;
+  targetValue?: string;
+  metricUnit?: string;
+  strategyName?: string;
 }
 
 interface UnifiedJourneyTimelineProps {
@@ -84,6 +98,21 @@ const pillarColors: Record<string, { dot: string; bar: string; bg: string }> = {
   blue: { dot: 'bg-blue-500', bar: 'bg-blue-500/20', bg: 'bg-blue-50' },
   amber: { dot: 'bg-amber-500', bar: 'bg-amber-500/20', bg: 'bg-amber-50' },
   violet: { dot: 'bg-violet-500', bar: 'bg-violet-500/20', bg: 'bg-violet-50' },
+};
+
+const pillarIcons: Record<ValuePillarId, typeof TrendingUp> = {
+  grow: TrendingUp,
+  optimise: BarChart3,
+  derisk: Shield,
+  strengthen: Sparkles
+};
+
+const statusConfig: Record<string, { label: string; color: string; icon: typeof FileEdit }> = {
+  draft: { label: "Draft", color: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300", icon: FileEdit },
+  proposed: { label: "Proposed", color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400", icon: Send },
+  confirmed: { label: "Confirmed", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400", icon: CheckCircle },
+  in_progress: { label: "In Progress", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400", icon: Play },
+  completed: { label: "Completed", color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400", icon: Trophy }
 };
 
 export function UnifiedJourneyTimeline({
@@ -249,13 +278,28 @@ export function UnifiedJourneyTimeline({
                   {/* Pillar Indicator */}
                   <div className={`w-2 h-10 rounded-full ${colors.dot} shrink-0`} />
 
-                  {/* Outcome Info */}
-                  <div className="min-w-0 flex-shrink-0 w-44">
-                    <p className="font-medium text-sm truncate">{lane.outcomeName}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                  {/* Outcome Info with Pillar Icon and Status */}
+                  <div className="min-w-0 flex-shrink-0 w-56">
+                    <div className="flex items-center gap-2">
+                      {(() => {
+                        const PillarIcon = pillarIcons[lane.pillar as ValuePillarId];
+                        return PillarIcon ? <PillarIcon className={`w-4 h-4 ${pillarConfig?.color?.replace('bg-', 'text-') || 'text-muted-foreground'}`} /> : null;
+                      })()}
+                      <p className="font-medium text-sm truncate">{lane.outcomeName}</p>
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <Badge variant="secondary" className={`text-xs px-1.5 py-0`}>
                         {pillarConfig?.name || lane.pillar}
                       </Badge>
+                      {outcome?.status && statusConfig[outcome.status] && (() => {
+                        const StatusIcon = statusConfig[outcome.status].icon;
+                        return (
+                          <Badge className={`text-xs px-1.5 py-0 ${statusConfig[outcome.status].color}`}>
+                            <StatusIcon className="w-3 h-3 mr-0.5" />
+                            {statusConfig[outcome.status].label}
+                          </Badge>
+                        );
+                      })()}
                       <span className="text-xs text-muted-foreground">{lane.totalDuration}</span>
                     </div>
                   </div>
