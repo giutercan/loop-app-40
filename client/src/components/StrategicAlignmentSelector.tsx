@@ -32,9 +32,11 @@ import {
   Pencil,
   Check,
   X,
-  Save
+  Save,
+  Link2
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface OrganizationalStrategy {
   id: string;
@@ -593,6 +595,8 @@ export function StrategicAlignmentSelector({
     timeframe: "medium_term" as OrganizationalStrategy["timeframe"],
     priority: "medium" as OrganizationalStrategy["priority"],
   });
+
+  const { toast } = useToast();
 
   const { data: cachedRecommendations, isLoading: cacheLoading } = useQuery<StrategicRecommendationsResult>({
     queryKey: ["/api/projects", projectId, "strategic-recommendations"],
@@ -1182,9 +1186,9 @@ export function StrategicAlignmentSelector({
             </CardContent>
           </Card>
 
-          {/* Save Progress - Only shows when outcomes exist */}
+          {/* Save Progress & Copy Client Link - Only shows when outcomes exist */}
           {outcomes.length > 0 && (
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
               <Button 
                 variant="outline" 
                 size="sm"
@@ -1198,6 +1202,47 @@ export function StrategicAlignmentSelector({
                   <CheckCircle2 className="h-4 w-4 mr-1" />
                 )}
                 Save Progress
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={async () => {
+                  try {
+                    const response = await apiRequest("POST", `/api/projects/${projectId}/portal/share`, {
+                      portalTitle: `${companyName || 'Client'} Collaboration Portal`,
+                      welcomeMessage: `Welcome to your strategic collaboration portal. Review the proposed strategies and outcomes, and share your feedback.`,
+                      portalSections: { overview: true, strategies: true, outcomes: true, progress: true },
+                    });
+                    const data = await response.json();
+                    if (data.shareUrl) {
+                      const fullUrl = `${window.location.origin}${data.shareUrl}`;
+                      await navigator.clipboard.writeText(fullUrl);
+                      toast({ 
+                        title: "Link Copied!", 
+                        description: "Client portal link has been copied to your clipboard." 
+                      });
+                    } else if (data.shareLink?.shareToken) {
+                      const fullUrl = `${window.location.origin}/portal/${data.shareLink.shareToken}`;
+                      await navigator.clipboard.writeText(fullUrl);
+                      toast({ 
+                        title: "Link Copied!", 
+                        description: "Client portal link has been copied to your clipboard." 
+                      });
+                    } else {
+                      throw new Error("No share token returned");
+                    }
+                  } catch (error) {
+                    toast({ 
+                      variant: "destructive",
+                      title: "Failed to generate link", 
+                      description: "Please try again." 
+                    });
+                  }
+                }}
+                data-testid="btn-copy-client-link-outcomes"
+              >
+                <Link2 className="w-4 h-4 mr-1" />
+                Copy Client Link
               </Button>
             </div>
           )}
