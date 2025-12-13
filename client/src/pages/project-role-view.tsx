@@ -8597,6 +8597,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
     const [executiveSummary, setExecutiveSummary] = useState("");
     const [isCreateHandoffOpen, setIsCreateHandoffOpen] = useState(false);
     const [selectedCommitmentIds, setSelectedCommitmentIds] = useState<number[]>([]);
+    const [isConvertingOutcomes, setIsConvertingOutcomes] = useState(false);
 
     // Fetch commitments
     const { data: commitments = [] } = useQuery({
@@ -8607,6 +8608,110 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
     const { data: handoffPackets = [] } = useQuery({
       queryKey: ["/api/projects", projectId, "handoffs"],
     });
+
+    // Fetch strategy selection to check for pending outcomes
+    const { data: strategySelection } = useQuery({
+      queryKey: ["/api/projects", projectId, "strategy-selection"],
+    });
+
+    // Create commitment mutation for converting outcomes
+    const createCommitmentMutation = useMutation({
+      mutationFn: async (data: any) => {
+        const response = await apiRequest("POST", `/api/projects/${projectId}/commitments`, data);
+        return response.json();
+      },
+    });
+
+    // Get pending outcomes that haven't been converted to commitments yet
+    const pendingOutcomes = (strategySelection as any)?.generatedOutcomesData?.outcomes || [];
+    const isStrategySelectionLoading = !strategySelection && strategySelection !== null;
+    
+    // Check if outcomes have already been converted by comparing with existing commitments
+    // Commitments use 'name' field which is set from 'commitmentTitle' during creation
+    const existingCommitmentNames = new Set((commitments as any[]).map(c => c.name));
+    const unconvertedOutcomes = pendingOutcomes.filter((o: any) => 
+      !existingCommitmentNames.has(o.outcomeName)
+    );
+
+    // Handle converting pending outcomes to commitments (Proceed to Handoff)
+    const handleProceedToHandoff = async () => {
+      if (unconvertedOutcomes.length === 0) return;
+      
+      setIsConvertingOutcomes(true);
+      
+      const kornFerrySolutionToPattern: Record<string, string> = {
+        "Leadership Development": "leadership_development",
+        "Leadership Assessment": "leadership_development",
+        "Executive Assessment": "leadership_development",
+        "Sales Effectiveness": "sales_effectiveness",
+        "Sales Training": "sales_effectiveness",
+        "Sales Force Transformation": "sales_effectiveness",
+        "Talent Acquisition": "talent_acquisition",
+        "Recruiting Strategy": "talent_acquisition",
+        "Assessment & Selection": "talent_acquisition",
+        "Compensation & Benefits": "rewards_optimization",
+        "Total Rewards": "rewards_optimization",
+        "Pay & Benefits": "rewards_optimization",
+        "Organization Design": "org_transformation",
+        "Organization Transformation": "org_transformation",
+        "Change Management": "org_transformation",
+        "Workforce Planning": "org_transformation",
+        "Strategic Workforce Planning": "org_transformation",
+        "Succession Planning": "leadership_development",
+        "Succession Management": "leadership_development",
+        "Employee Engagement": "org_transformation",
+        "Culture Transformation": "org_transformation",
+        "Culture & Engagement": "org_transformation",
+        "Diversity & Inclusion": "org_transformation",
+        "DEI": "org_transformation",
+        "DEI Transformation": "org_transformation",
+      };
+      
+      let successCount = 0;
+      for (const outcome of unconvertedOutcomes) {
+        try {
+          const baselineStr = outcome.kpiDetails?.suggestedBaseline || "";
+          const targetStr = outcome.kpiDetails?.suggestedTarget || "";
+          
+          const solutionPattern = kornFerrySolutionToPattern[outcome.kornFerrySolution] || null;
+          
+          await createCommitmentMutation.mutateAsync({
+            commitmentTitle: outcome.outcomeName,
+            commitmentDescription: outcome.outcomeDescription,
+            metricUnit: outcome.kpiDetails?.unit || "",
+            baselineValue: baselineStr,
+            targetValue: targetStr,
+            valuePillar: outcome.valuePillar,
+            solutionPattern,
+            status: "draft",
+            outcomeStatement: outcome.businessImpact,
+            provenance: {
+              source: "strategic_alignment",
+              strategyId: outcome.strategyId,
+              kornFerrySolution: outcome.kornFerrySolution,
+              kfOffering: outcome.kfOffering,
+              kfRecommendation: outcome.kfRecommendation,
+              whyMatters: outcome.whyMatters,
+              howKFHelps: outcome.howKFHelps,
+              benchmark: outcome.benchmark,
+              generatedAt: new Date().toISOString(),
+            },
+          });
+          successCount++;
+        } catch (error) {
+          console.error("Failed to create commitment from outcome:", error);
+        }
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "commitments"] });
+      
+      setIsConvertingOutcomes(false);
+      
+      toast({
+        title: "Outcomes Created",
+        description: `${successCount} outcome${successCount !== 1 ? 's' : ''} have been converted to commitments.`
+      });
+    };
 
     // Create handoff packet mutation
     const createHandoffMutation = useMutation({
@@ -8711,6 +8816,73 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
             </div>
           </CardContent>
         </Card>
+
+        {/* Pending Outcomes to Convert - Proceed to Handoff Section */}
+        {unconvertedOutcomes.length > 0 && (
+          <Card className="border-amber-500/30 bg-amber-500/5">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                    <Sparkles className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">Pending Outcomes from Strategy Selection</CardTitle>
+                    <CardDescription>
+                      {unconvertedOutcomes.length} outcome{unconvertedOutcomes.length !== 1 ? 's' : ''} ready to be converted to commitments
+                    </CardDescription>
+                  </div>
+                </div>
+                <Button
+                  onClick={handleProceedToHandoff}
+                  disabled={isConvertingOutcomes}
+                  data-testid="button-proceed-to-handoff"
+                >
+                  {isConvertingOutcomes ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Converting...
+                    </>
+                  ) : (
+                    <>
+                      <ArrowRight className="w-4 h-4 mr-2" />
+                      Proceed to Handoff
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {unconvertedOutcomes.slice(0, 5).map((outcome: any, idx: number) => (
+                  <div key={outcome.id || idx} className="p-3 rounded-lg border bg-background">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{outcome.outcomeName}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-1">{outcome.outcomeDescription}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className="text-xs">
+                            {outcome.valuePillar === 'grow' ? 'Grow' : 
+                             outcome.valuePillar === 'optimise' ? 'Optimise' :
+                             outcome.valuePillar === 'derisk' ? 'De-risk' : 'Strengthen'}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {outcome.kpiDetails?.suggestedBaseline} → {outcome.kpiDetails?.suggestedTarget}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {unconvertedOutcomes.length > 5 && (
+                  <p className="text-xs text-muted-foreground text-center py-2">
+                    + {unconvertedOutcomes.length - 5} more outcomes
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Ready for Handoff */}
         {confirmedCommitments.length > 0 && (
