@@ -5787,6 +5787,7 @@ export default function ProjectRoleView() {
           </DialogContent>
         </Dialog>
       </div>
+    </div>
     );
   };
 
