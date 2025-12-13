@@ -263,12 +263,14 @@ function OutcomeCard({
   outcome, 
   strategy,
   isSelected,
-  onToggle
+  onToggle,
+  isClientApproved = false
 }: { 
   outcome: StrategyOutcome;
   strategy?: OrganizationalStrategy;
   isSelected: boolean;
   onToggle: () => void;
+  isClientApproved?: boolean;
 }) {
   const pillarConfig = VALUE_PILLAR_CONFIG[outcome.valuePillar] || VALUE_PILLAR_CONFIG.strengthen;
   const [showDetails, setShowDetails] = useState(false);
@@ -292,6 +294,12 @@ function OutcomeCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
             <span className="font-medium text-sm">{outcome.outcomeName}</span>
+            {isClientApproved && (
+              <Badge className="text-xs bg-emerald-500/10 text-emerald-600 border-emerald-500/20" data-testid={`badge-client-approved-${outcome.id}`}>
+                <CheckCircle2 className="w-3 h-3 mr-1" />
+                Approved by Client
+              </Badge>
+            )}
             <Badge className={`text-xs ${pillarConfig.color}`}>
               {pillarConfig.label}
             </Badge>
@@ -402,6 +410,29 @@ export function StrategicAlignmentSelector({
     queryKey: ["/api/projects", projectId, "strategy-selection"],
     retry: false,
   });
+
+  // Fetch share link data for client approvals
+  const { data: shareData } = useQuery<{
+    shareLink: {
+      clientApprovals?: Array<{
+        section: string;
+        itemId: string;
+        approved: boolean;
+        approvedAt: string;
+        customerName: string;
+      }>;
+    } | null;
+  }>({
+    queryKey: [`/api/projects/${projectId}/alignment/share`],
+  });
+
+  const clientApprovals = shareData?.shareLink?.clientApprovals || [];
+
+  const isOutcomeClientApproved = (outcomeId: string) => {
+    return clientApprovals.some(
+      (a) => a.section === "outcomes" && a.itemId === outcomeId && a.approved
+    );
+  };
 
   const saveSelectionMutation = useMutation({
     mutationFn: async (data: {
@@ -917,6 +948,7 @@ export function StrategicAlignmentSelector({
                               strategy={strategy}
                               isSelected={selectedOutcomes.has(outcome.id)}
                               onToggle={() => toggleOutcome(outcome.id)}
+                              isClientApproved={isOutcomeClientApproved(outcome.id)}
                             />
                           ))}
                         </div>
