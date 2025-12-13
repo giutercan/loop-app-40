@@ -4338,187 +4338,20 @@ export default function ProjectRoleView() {
           return (
             <Card data-testid="unified-journey-section" className="mt-6">
               <CardHeader>
-                <div className="flex items-start justify-between flex-wrap gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-violet-500/20 flex items-center justify-center">
-                      <Layers className="w-6 h-6 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-xl">Unified Value Journey</CardTitle>
-                      <CardDescription className="mt-1">
-                        Roadmap showing how outcomes will be delivered over time
-                      </CardDescription>
-                    </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-violet-500/20 flex items-center justify-center">
+                    <BarChart3 className="w-5 h-5 text-primary" />
                   </div>
-                  
-                  {/* Summary Stats */}
-                  <div className="flex items-center gap-4 p-3 rounded-lg bg-muted/30">
-                    <div className="text-center">
-                      <p className="text-2xl font-bold">{selectedCount}</p>
-                      <p className="text-xs text-muted-foreground">Outcomes</p>
-                    </div>
-                    <div className="w-px h-10 bg-border" />
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-emerald-600">
-                        ${(selectedValue / 1000000).toFixed(2)}M
-                      </p>
-                      <p className="text-xs text-muted-foreground">Value</p>
-                    </div>
-                    <div className="w-px h-10 bg-border" />
-                    <div className="text-center">
-                      <p className="text-2xl font-bold">{sortedTimelineEntries.length}</p>
-                      <p className="text-xs text-muted-foreground">Phases</p>
-                    </div>
+                  <div>
+                    <CardTitle className="text-lg">Detailed Journey View</CardTitle>
+                    <CardDescription>
+                      Implementation roadmap for selected outcomes
+                    </CardDescription>
                   </div>
-                </div>
-                
-                {/* Selection Controls */}
-                <div className="flex items-center gap-2 mt-4">
-                  {timelineSelectedOutcomes.size > 0 && (
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => setTimelineSelectedOutcomes(new Set())}
-                      data-testid="button-clear-selection"
-                    >
-                      <Eye className="w-4 h-4 mr-1" />
-                      Show All ({totalCount})
-                    </Button>
-                  )}
-                  <p className="text-sm text-muted-foreground">
-                    {selectedCount < totalCount && `Showing ${selectedCount} of ${totalCount} outcomes`}
-                  </p>
                 </div>
               </CardHeader>
               
-              <CardContent className="space-y-6">
-                {/* Timeline Groupings with Value Totals */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    Implementation Timeline
-                  </h3>
-                  
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {sortedTimelineEntries.map(([timeline, { outcomes, totalValue, monthOrder }]) => {
-                      const isQuickWin = monthOrder <= 3;
-                      const isMedium = monthOrder > 3 && monthOrder <= 9;
-                      const isLong = monthOrder > 9;
-                      
-                      const bgColor = isQuickWin 
-                        ? "bg-emerald-500/5 border-emerald-500/20"
-                        : isMedium 
-                          ? "bg-blue-500/5 border-blue-500/20"
-                          : "bg-violet-500/5 border-violet-500/20";
-                      
-                      const iconColor = isQuickWin 
-                        ? "text-emerald-600 bg-emerald-500/10"
-                        : isMedium 
-                          ? "text-blue-600 bg-blue-500/10"
-                          : "text-violet-600 bg-violet-500/10";
-                      
-                      return (
-                        <div key={timeline} className={`p-4 rounded-lg border ${bgColor}`}>
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              <div className={`w-8 h-8 rounded-lg ${iconColor} flex items-center justify-center`}>
-                                {isQuickWin ? <Zap className="w-4 h-4" /> : 
-                                 isMedium ? <Clock className="w-4 h-4" /> : 
-                                 <Target className="w-4 h-4" />}
-                              </div>
-                              <div>
-                                <p className="font-semibold text-sm">{timeline}</p>
-                                <p className="text-[10px] text-muted-foreground">
-                                  {isQuickWin ? "Quick Wins" : isMedium ? "Medium Term" : "Strategic"}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className={`font-bold ${isQuickWin ? "text-emerald-600" : isMedium ? "text-blue-600" : "text-violet-600"}`}>
-                                ${(totalValue / 1000).toFixed(0)}K
-                              </p>
-                              <p className="text-[10px] text-muted-foreground">{outcomes.length} outcomes</p>
-                            </div>
-                          </div>
-                          
-                          <div className="space-y-2">
-                            {outcomes.slice(0, 3).map((c: any) => {
-                              const isSelected = timelineSelectedOutcomes.size === 0 || timelineSelectedOutcomes.has(c.id.toString());
-                              const journeyTemplate = getJourneyData(c);
-                              const phaseCount = journeyTemplate?.phases?.length || 0;
-                              
-                              return (
-                                <div 
-                                  key={c.id}
-                                  className={`p-2 rounded-lg bg-background border cursor-pointer transition-all ${
-                                    isSelected ? "opacity-100" : "opacity-50"
-                                  }`}
-                                  onClick={() => {
-                                    setTimelineSelectedOutcomes(prev => {
-                                      const next = new Set(prev);
-                                      if (prev.size === 0) {
-                                        sortedCommitments.forEach(commitment => {
-                                          if (commitment.id !== c.id) {
-                                            next.add(commitment.id.toString());
-                                          }
-                                        });
-                                      } else if (next.has(c.id.toString())) {
-                                        next.delete(c.id.toString());
-                                      } else {
-                                        next.add(c.id.toString());
-                                      }
-                                      return next;
-                                    });
-                                  }}
-                                  data-testid={`timeline-outcome-${c.id}`}
-                                >
-                                  <div className="flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-2 min-w-0">
-                                      <span className="text-[10px] font-medium text-muted-foreground">#{c.id}</span>
-                                      <span className="text-xs font-medium truncate">{c.name}</span>
-                                    </div>
-                                    {c.estimatedAnnualValue && (
-                                      <span className="text-[10px] font-medium text-muted-foreground shrink-0">
-                                        ${(c.estimatedAnnualValue / 1000).toFixed(0)}K
-                                      </span>
-                                    )}
-                                  </div>
-                                  
-                                  {/* Progress indicator */}
-                                  {phaseCount > 0 && (
-                                    <div className="flex gap-0.5 mt-1.5">
-                                      {Array.from({ length: Math.min(phaseCount, 6) }).map((_, idx) => (
-                                        <div 
-                                          key={idx} 
-                                          className={`h-1 flex-1 rounded-full ${
-                                            idx === 0 ? "bg-emerald-400" : "bg-muted"
-                                          }`}
-                                        />
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                            
-                            {outcomes.length > 3 && (
-                              <p className="text-[10px] text-muted-foreground text-center py-1">
-                                +{outcomes.length - 3} more outcomes
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-                
-                {/* Timeline Visualization */}
-                <div className="pt-4 border-t">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2 mb-4">
-                    <BarChart3 className="w-4 h-4" />
-                    Detailed Journey View
-                  </h3>
+              <CardContent>
                   <UnifiedJourneyTimeline
                     selectedOutcomes={selectedOutcomesForTimeline}
                     selectable={true}
@@ -4548,7 +4381,6 @@ export default function ProjectRoleView() {
                       });
                     }}
                   />
-                </div>
               </CardContent>
             </Card>
           );
