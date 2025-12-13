@@ -125,6 +125,7 @@ import {
 } from "@shared/value-frameworks";
 import { JourneyLoopVisualizer } from "@/components/JourneyLoopVisualizer";
 import { UnifiedJourneyTimeline } from "@/components/UnifiedJourneyTimeline";
+import { UnifiedValueJourney } from "@/components/UnifiedValueJourney";
 import CompetitiveIntelligence from "@/components/CompetitiveIntelligence";
 import { StrategicAlignmentSelector } from "@/components/StrategicAlignmentSelector";
 import { JOURNEY_LOOP_STAGES, UNIFIED_JOURNEY_PHASES, createUnifiedJourney } from "@shared/value-frameworks";
@@ -4189,6 +4190,44 @@ export default function ProjectRoleView() {
             });
           }}
         />
+
+        {/* Value Pillar Journey - Outcomes grouped by Grow, De-risk, Optimise, Strengthen */}
+        {(() => {
+          const allCommitments = commitments as any[];
+          if (allCommitments.length === 0) return null;
+          
+          const outcomeData = allCommitments.map(c => {
+            const timeline = c.solutionPattern 
+              ? OUTCOME_JOURNEY_TEMPLATES[c.solutionPattern as SolutionPatternId]?.typicalTimeline 
+              : null;
+            const monthsMatch = timeline?.match(/(\d+)/);
+            const implementationMonths = monthsMatch ? parseInt(monthsMatch[1]) : 18;
+            
+            return {
+              id: c.id.toString(),
+              outcomeName: c.name || c.commitmentTitle || "Untitled Outcome",
+              outcomeDescription: c.description || c.commitmentDescription || "",
+              valuePillar: (c.valuePillar || "grow") as "grow" | "optimise" | "derisk" | "strengthen",
+              kpiDetails: {
+                metricName: c.name || "",
+                unit: c.metricUnit || c.kpiUnit || "",
+                suggestedBaseline: c.baselineValue?.toString() || "",
+                suggestedTarget: c.targetValue?.toString() || "",
+                timeframe: timeline || "12-18 months"
+              },
+              estimatedValue: c.estimatedAnnualValue || 0,
+              achievability: (c.achievability || "medium") as "high" | "medium" | "low",
+              implementationMonths
+            };
+          });
+          
+          return (
+            <UnifiedValueJourney
+              outcomes={outcomeData}
+              projectId={projectId}
+            />
+          );
+        })()}
 
         {/* Edit Recommendation Dialog */}
         <Dialog open={!!editingRecommendation} onOpenChange={(open) => !open && setEditingRecommendation(null)}>
