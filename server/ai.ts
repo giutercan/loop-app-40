@@ -4391,6 +4391,9 @@ export interface StrategyOutcomesResult {
   summary: string;
 }
 
+// Helper to coerce numbers to strings
+const stringOrNumber = z.union([z.string(), z.number()]).transform(val => String(val));
+
 const strategyOutcomeSchema = z.object({
   id: z.string(),
   strategyId: z.string(),
@@ -4399,15 +4402,15 @@ const strategyOutcomeSchema = z.object({
   kpiDetails: z.object({
     metricName: z.string(),
     unit: z.string(),
-    suggestedBaseline: z.string(),
-    suggestedTarget: z.string(),
+    suggestedBaseline: stringOrNumber,
+    suggestedTarget: stringOrNumber,
     timeframe: z.string()
   }),
   benchmark: z.object({
-    industryLow: z.string(),
-    industryMedian: z.string(),
-    industryHigh: z.string(),
-    topPerformerTarget: z.string().optional().default("Top quartile"),
+    industryLow: stringOrNumber,
+    industryMedian: stringOrNumber,
+    industryHigh: stringOrNumber,
+    topPerformerTarget: stringOrNumber.optional().default("Top quartile"),
     source: z.string()
   }),
   valuePillar: z.enum(["grow", "optimise", "derisk", "strengthen"]),
@@ -4432,8 +4435,8 @@ const strategyOutcomeSchema = z.object({
   isKornFerryProven: z.boolean(),
   kornFerryExplanation: z.string(),
   benchmarkRecommendation: z.object({
-    recommendedBaseline: z.string(),
-    recommendedTarget: z.string(),
+    recommendedBaseline: stringOrNumber,
+    recommendedTarget: stringOrNumber,
     rationale: z.string(),
     source: z.string()
   })
