@@ -1208,27 +1208,25 @@ export function StrategicAlignmentSelector({
                 size="sm"
                 onClick={async () => {
                   try {
-                    const response = await apiRequest("POST", `/api/projects/${projectId}/portal/share`, {
-                      portalTitle: `${companyName || 'Client'} Collaboration Portal`,
-                      welcomeMessage: `Welcome to your strategic collaboration portal. Review the proposed strategies and outcomes, and share your feedback.`,
-                      portalSections: { overview: true, strategies: true, outcomes: true, progress: true },
+                    const response = await fetch(`/api/projects/${projectId}/portal/share`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        portalTitle: `${companyName || 'Client'} Collaboration Portal`,
+                        welcomeMessage: `Welcome to your strategic collaboration portal. Review the proposed strategies and outcomes, and share your feedback.`,
+                        portalSections: { overview: true, strategies: true, outcomes: true, progress: true },
+                      }),
+                      credentials: "include",
                     });
                     
                     if (!response.ok) {
                       const errorText = await response.text().catch(() => "");
-                      let errorMessage = `Server error: ${response.status}`;
-                      try {
-                        const errorData = JSON.parse(errorText);
-                        errorMessage = errorData.error || errorMessage;
-                      } catch {
-                        if (errorText) errorMessage = errorText;
-                      }
-                      throw new Error(errorMessage);
+                      throw new Error(errorText || `Server error: ${response.status}`);
                     }
                     
                     const data = await response.json();
-                    let fullUrl = "";
                     
+                    let fullUrl = "";
                     if (data.shareUrl) {
                       fullUrl = `${window.location.origin}${data.shareUrl}`;
                     } else if (data.shareLink?.shareToken) {

@@ -4358,8 +4358,14 @@ export default function ProjectRoleView() {
             }); // All outcomes now included with fallback pattern
 
           // Combine commitments with strategy-selection outcomes
+          // Include all commitments, assigning default pattern if missing
+          const commitmentsWithDefaultPattern = (commitments as any[]).map(c => ({
+            ...c,
+            solutionPattern: c.solutionPattern || "org_transformation"
+          }));
+          
           const allCommitmentsWithPattern = [
-            ...(commitments as any[]).filter(c => c.solutionPattern),
+            ...commitmentsWithDefaultPattern,
             ...strategyOutcomesForJourney
           ];
           
