@@ -4337,7 +4337,8 @@ export default function ProjectRoleView() {
           const strategyOutcomesForJourney = strategyOutcomes
             .filter((o: any) => !existingCommitmentNames.has(o.outcomeName)) // Exclude already converted
             .map((o: any, idx: number) => {
-              const solutionPattern = kornFerrySolutionToPattern[o.kornFerrySolution] || null;
+              // Use mapping or default to org_transformation for unknown solutions
+              const solutionPattern = kornFerrySolutionToPattern[o.kornFerrySolution] || "org_transformation";
               const valueStr = o.estimatedAnnualValue || "";
               const valueNum = parseFloat(valueStr.replace(/[^0-9.-]/g, '')) || 0;
               return {
@@ -4354,8 +4355,7 @@ export default function ProjectRoleView() {
                 provenance: { kornFerrySolution: o.kornFerrySolution },
                 isFromStrategySelection: true
               };
-            })
-            .filter((o: any) => o.solutionPattern); // Only include outcomes with valid patterns
+            }); // All outcomes now included with fallback pattern
 
           // Combine commitments with strategy-selection outcomes
           const allCommitmentsWithPattern = [

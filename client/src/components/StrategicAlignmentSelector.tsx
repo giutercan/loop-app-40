@@ -1213,29 +1213,41 @@ export function StrategicAlignmentSelector({
                       welcomeMessage: `Welcome to your strategic collaboration portal. Review the proposed strategies and outcomes, and share your feedback.`,
                       portalSections: { overview: true, strategies: true, outcomes: true, progress: true },
                     });
-                    const data = await response.json();
-                    if (data.shareUrl) {
-                      const fullUrl = `${window.location.origin}${data.shareUrl}`;
-                      await navigator.clipboard.writeText(fullUrl);
-                      toast({ 
-                        title: "Link Copied!", 
-                        description: "Client portal link has been copied to your clipboard." 
-                      });
-                    } else if (data.shareLink?.shareToken) {
-                      const fullUrl = `${window.location.origin}/portal/${data.shareLink.shareToken}`;
-                      await navigator.clipboard.writeText(fullUrl);
-                      toast({ 
-                        title: "Link Copied!", 
-                        description: "Client portal link has been copied to your clipboard." 
-                      });
-                    } else {
-                      throw new Error("No share token returned");
+                    
+                    if (!response.ok) {
+                      const errorText = await response.text().catch(() => "");
+                      let errorMessage = `Server error: ${response.status}`;
+                      try {
+                        const errorData = JSON.parse(errorText);
+                        errorMessage = errorData.error || errorMessage;
+                      } catch {
+                        if (errorText) errorMessage = errorText;
+                      }
+                      throw new Error(errorMessage);
                     }
-                  } catch (error) {
+                    
+                    const data = await response.json();
+                    let fullUrl = "";
+                    
+                    if (data.shareUrl) {
+                      fullUrl = `${window.location.origin}${data.shareUrl}`;
+                    } else if (data.shareLink?.shareToken) {
+                      fullUrl = `${window.location.origin}/portal/${data.shareLink.shareToken}`;
+                    } else {
+                      throw new Error("No share URL or token returned from server");
+                    }
+                    
+                    await navigator.clipboard.writeText(fullUrl);
+                    toast({ 
+                      title: "Link Copied!", 
+                      description: "Client portal link has been copied to your clipboard." 
+                    });
+                  } catch (error: any) {
+                    console.error("Copy Client Link error:", error);
                     toast({ 
                       variant: "destructive",
                       title: "Failed to generate link", 
-                      description: "Please try again." 
+                      description: error.message || "Please try again." 
                     });
                   }
                 }}
