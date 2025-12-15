@@ -4121,15 +4121,30 @@ export default function ProjectRoleView() {
               "Leadership Development": "leadership_development",
               "Leadership Assessment": "leadership_development",
               "Executive Assessment": "leadership_development",
+              "Executive Coaching": "leadership_development",
+              "Leadership Coaching": "leadership_development",
+              "Leader Development": "leadership_development",
+              "Management Development": "leadership_development",
               "Sales Effectiveness": "sales_effectiveness",
               "Sales Training": "sales_effectiveness",
               "Sales Force Transformation": "sales_effectiveness",
+              "Sales Performance": "sales_effectiveness",
+              "Sales Enablement": "sales_effectiveness",
+              "Revenue Growth": "sales_effectiveness",
               "Talent Acquisition": "talent_acquisition",
               "Recruiting Strategy": "talent_acquisition",
               "Assessment & Selection": "talent_acquisition",
+              "Talent Assessment": "talent_acquisition",
+              "Hiring Excellence": "talent_acquisition",
+              "Recruitment": "talent_acquisition",
+              "Selection": "talent_acquisition",
               "Compensation & Benefits": "rewards_optimization",
               "Total Rewards": "rewards_optimization",
               "Pay & Benefits": "rewards_optimization",
+              "Rewards": "rewards_optimization",
+              "Pay Equity": "rewards_optimization",
+              "Compensation": "rewards_optimization",
+              "Benefits": "rewards_optimization",
               "Organization Design": "org_transformation",
               "Organization Transformation": "org_transformation",
               "Change Management": "org_transformation",
@@ -4143,6 +4158,34 @@ export default function ProjectRoleView() {
               "Diversity & Inclusion": "org_transformation",
               "DEI": "org_transformation",
               "DEI Transformation": "org_transformation",
+              "Organizational Effectiveness": "org_transformation",
+              "Performance Management": "org_transformation",
+              "Talent Management": "leadership_development",
+              "Learning & Development": "leadership_development",
+              "L&D": "leadership_development",
+            };
+            
+            // Helper function to find best matching pattern
+            const findSolutionPattern = (solution: string): string => {
+              // Exact match first
+              if (kornFerrySolutionToPattern[solution]) {
+                return kornFerrySolutionToPattern[solution];
+              }
+              // Try case-insensitive match
+              const lowerSolution = solution.toLowerCase();
+              for (const [key, value] of Object.entries(kornFerrySolutionToPattern)) {
+                if (key.toLowerCase() === lowerSolution) {
+                  return value;
+                }
+              }
+              // Try partial match
+              for (const [key, value] of Object.entries(kornFerrySolutionToPattern)) {
+                if (lowerSolution.includes(key.toLowerCase()) || key.toLowerCase().includes(lowerSolution)) {
+                  return value;
+                }
+              }
+              // Default fallback based on value pillar or generic transformation
+              return "org_transformation";
             };
             
             let successCount = 0;
@@ -4151,7 +4194,7 @@ export default function ProjectRoleView() {
                 const baselineStr = outcome.kpiDetails?.suggestedBaseline || "";
                 const targetStr = outcome.kpiDetails?.suggestedTarget || "";
                 
-                const solutionPattern = kornFerrySolutionToPattern[outcome.kornFerrySolution] || null;
+                const solutionPattern = findSolutionPattern(outcome.kornFerrySolution || "");
                 
                 await createCommitmentMutation.mutateAsync({
                   commitmentTitle: outcome.outcomeName,
@@ -8658,15 +8701,30 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
         "Leadership Development": "leadership_development",
         "Leadership Assessment": "leadership_development",
         "Executive Assessment": "leadership_development",
+        "Executive Coaching": "leadership_development",
+        "Leadership Coaching": "leadership_development",
+        "Leader Development": "leadership_development",
+        "Management Development": "leadership_development",
         "Sales Effectiveness": "sales_effectiveness",
         "Sales Training": "sales_effectiveness",
         "Sales Force Transformation": "sales_effectiveness",
+        "Sales Performance": "sales_effectiveness",
+        "Sales Enablement": "sales_effectiveness",
+        "Revenue Growth": "sales_effectiveness",
         "Talent Acquisition": "talent_acquisition",
         "Recruiting Strategy": "talent_acquisition",
         "Assessment & Selection": "talent_acquisition",
+        "Talent Assessment": "talent_acquisition",
+        "Hiring Excellence": "talent_acquisition",
+        "Recruitment": "talent_acquisition",
+        "Selection": "talent_acquisition",
         "Compensation & Benefits": "rewards_optimization",
         "Total Rewards": "rewards_optimization",
         "Pay & Benefits": "rewards_optimization",
+        "Rewards": "rewards_optimization",
+        "Pay Equity": "rewards_optimization",
+        "Compensation": "rewards_optimization",
+        "Benefits": "rewards_optimization",
         "Organization Design": "org_transformation",
         "Organization Transformation": "org_transformation",
         "Change Management": "org_transformation",
@@ -8680,6 +8738,30 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
         "Diversity & Inclusion": "org_transformation",
         "DEI": "org_transformation",
         "DEI Transformation": "org_transformation",
+        "Organizational Effectiveness": "org_transformation",
+        "Performance Management": "org_transformation",
+        "Talent Management": "leadership_development",
+        "Learning & Development": "leadership_development",
+        "L&D": "leadership_development",
+      };
+      
+      // Helper function to find best matching pattern
+      const findSolutionPattern = (solution: string): string => {
+        if (kornFerrySolutionToPattern[solution]) {
+          return kornFerrySolutionToPattern[solution];
+        }
+        const lowerSolution = solution.toLowerCase();
+        for (const [key, value] of Object.entries(kornFerrySolutionToPattern)) {
+          if (key.toLowerCase() === lowerSolution) {
+            return value;
+          }
+        }
+        for (const [key, value] of Object.entries(kornFerrySolutionToPattern)) {
+          if (lowerSolution.includes(key.toLowerCase()) || key.toLowerCase().includes(lowerSolution)) {
+            return value;
+          }
+        }
+        return "org_transformation";
       };
       
       let successCount = 0;
@@ -8688,7 +8770,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
           const baselineStr = outcome.kpiDetails?.suggestedBaseline || "";
           const targetStr = outcome.kpiDetails?.suggestedTarget || "";
           
-          const solutionPattern = kornFerrySolutionToPattern[outcome.kornFerrySolution] || null;
+          const solutionPattern = findSolutionPattern(outcome.kornFerrySolution || "");
           
           await createCommitmentMutation.mutateAsync({
             commitmentTitle: outcome.outcomeName,
