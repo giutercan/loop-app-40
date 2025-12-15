@@ -3602,6 +3602,25 @@ export default function ProjectRoleView() {
       queryKey: ["/api/projects", projectId, "commitments"],
     });
 
+    // Fetch strategy selection for live outcomes data
+    const { data: strategySelectionData } = useQuery<{
+      id: number;
+      projectId: number;
+      selectedStrategiesData: {
+        strategies: any[];
+        selectedIds: string[];
+        customStrategies: any[];
+      } | null;
+      generatedOutcomesData: {
+        outcomes: any[];
+        selectedOutcomeIds: string[];
+      } | null;
+      handoffConfirmed: boolean;
+      status: string;
+    }>({
+      queryKey: ["/api/projects", projectId, "strategy-selection"],
+    });
+
     // Fetch strategic pillars for this account
     const { data: strategicPillars = [] } = useQuery({
       queryKey: ["/api/accounts", project.accountId, "strategic-pillars"],
@@ -4281,7 +4300,69 @@ export default function ProjectRoleView() {
         </Dialog>
           {/* Unified Value Journey - Enhanced with Timeline Groupings and Value Totals */}
           {(() => {
-          const allCommitmentsWithPattern = (commitments as any[]).filter(c => c.solutionPattern);
+          // Map Korn Ferry solutions to solution patterns for strategy-selection outcomes
+          const kornFerrySolutionToPattern: Record<string, string> = {
+            "Leadership Development": "leadership_development",
+            "Leadership Assessment": "leadership_development",
+            "Executive Assessment": "leadership_development",
+            "Sales Effectiveness": "sales_effectiveness",
+            "Sales Training": "sales_effectiveness",
+            "Sales Force Transformation": "sales_effectiveness",
+            "Talent Acquisition": "talent_acquisition",
+            "Recruiting Strategy": "talent_acquisition",
+            "Assessment & Selection": "talent_acquisition",
+            "Compensation & Benefits": "rewards_optimization",
+            "Total Rewards": "rewards_optimization",
+            "Pay & Benefits": "rewards_optimization",
+            "Organization Design": "org_transformation",
+            "Organization Transformation": "org_transformation",
+            "Change Management": "org_transformation",
+            "Workforce Planning": "org_transformation",
+            "Strategic Workforce Planning": "org_transformation",
+            "Succession Planning": "leadership_development",
+            "Succession Management": "leadership_development",
+            "Employee Engagement": "org_transformation",
+            "Culture Transformation": "org_transformation",
+            "Culture & Engagement": "org_transformation",
+            "Diversity & Inclusion": "org_transformation",
+            "DEI": "org_transformation",
+            "DEI Transformation": "org_transformation",
+          };
+
+          // Get outcomes from strategy-selection (live data)
+          const strategyOutcomes = strategySelectionData?.generatedOutcomesData?.outcomes || [];
+          const existingCommitmentNames = new Set((commitments as any[]).map(c => c.name));
+          
+          // Convert strategy-selection outcomes to commitment-like format for journey view
+          const strategyOutcomesForJourney = strategyOutcomes
+            .filter((o: any) => !existingCommitmentNames.has(o.outcomeName)) // Exclude already converted
+            .map((o: any, idx: number) => {
+              const solutionPattern = kornFerrySolutionToPattern[o.kornFerrySolution] || null;
+              const valueStr = o.estimatedAnnualValue || "";
+              const valueNum = parseFloat(valueStr.replace(/[^0-9.-]/g, '')) || 0;
+              return {
+                id: `strategy-${o.id || idx}`,
+                name: o.outcomeName,
+                solutionPattern,
+                valuePillar: o.valuePillar || 'grow',
+                estimatedAnnualValue: valueNum * (valueStr.includes('M') ? 1000000 : valueStr.includes('K') ? 1000 : 1),
+                status: 'draft',
+                description: o.businessImpact,
+                baselineValue: o.kpiDetails?.suggestedBaseline,
+                targetValue: o.kpiDetails?.suggestedTarget,
+                metricUnit: o.kpiDetails?.unit,
+                provenance: { kornFerrySolution: o.kornFerrySolution },
+                isFromStrategySelection: true
+              };
+            })
+            .filter((o: any) => o.solutionPattern); // Only include outcomes with valid patterns
+
+          // Combine commitments with strategy-selection outcomes
+          const allCommitmentsWithPattern = [
+            ...(commitments as any[]).filter(c => c.solutionPattern),
+            ...strategyOutcomesForJourney
+          ];
+          
           if (allCommitmentsWithPattern.length === 0) return null;
           
           // Sort outcomes by estimated value (highest first) for priority ordering
