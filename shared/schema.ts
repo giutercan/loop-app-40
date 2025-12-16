@@ -2248,3 +2248,101 @@ export const insertInteractionArtifactSchema = createInsertSchema(interactionArt
 });
 export type InsertInteractionArtifact = z.infer<typeof insertInteractionArtifactSchema>;
 export type InteractionArtifact = typeof interactionArtifacts.$inferSelect;
+
+// ============================================================================
+// SALESFORCE INTEGRATION
+// ============================================================================
+
+// Salesforce Integration - OAuth tokens and connection info (one per org)
+export const salesforceIntegrations = pgTable("salesforce_integrations", {
+  id: serial("id").primaryKey(),
+  instanceUrl: text("instance_url").notNull(),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token"),
+  tokenIssuedAt: timestamp("token_issued_at").notNull(),
+  tokenExpiresAt: timestamp("token_expires_at"),
+  userId: text("user_id"),
+  userName: text("user_name"),
+  orgId: text("org_id"),
+  isActive: boolean("is_active").notNull().default(true),
+  lastSyncAt: timestamp("last_sync_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertSalesforceIntegrationSchema = createInsertSchema(salesforceIntegrations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertSalesforceIntegration = z.infer<typeof insertSalesforceIntegrationSchema>;
+export type SalesforceIntegration = typeof salesforceIntegrations.$inferSelect;
+
+// Salesforce Account Link - Maps local accounts to Salesforce accounts
+export const salesforceAccountLinks = pgTable("salesforce_account_links", {
+  id: serial("id").primaryKey(),
+  localAccountId: integer("local_account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+  salesforceAccountId: text("salesforce_account_id").notNull(),
+  salesforceAccountName: text("salesforce_account_name"),
+  lastSyncedAt: timestamp("last_synced_at"),
+  syncStatus: text("sync_status", { enum: ["synced", "pending", "conflict", "error"] }).notNull().default("synced"),
+  lastSyncDirection: text("last_sync_direction", { enum: ["push", "pull"] }),
+  syncError: text("sync_error"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertSalesforceAccountLinkSchema = createInsertSchema(salesforceAccountLinks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertSalesforceAccountLink = z.infer<typeof insertSalesforceAccountLinkSchema>;
+export type SalesforceAccountLink = typeof salesforceAccountLinks.$inferSelect;
+
+// Salesforce Opportunity Link - Maps local commitments to Salesforce opportunities
+export const salesforceOpportunityLinks = pgTable("salesforce_opportunity_links", {
+  id: serial("id").primaryKey(),
+  localCommitmentId: integer("local_commitment_id").notNull().references(() => kpiCommitments.id, { onDelete: "cascade" }),
+  salesforceOpportunityId: text("salesforce_opportunity_id").notNull(),
+  salesforceOpportunityName: text("salesforce_opportunity_name"),
+  lastSyncedAt: timestamp("last_synced_at"),
+  syncStatus: text("sync_status", { enum: ["synced", "pending", "conflict", "error"] }).notNull().default("synced"),
+  lastSyncDirection: text("last_sync_direction", { enum: ["push", "pull"] }),
+  syncError: text("sync_error"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertSalesforceOpportunityLinkSchema = createInsertSchema(salesforceOpportunityLinks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertSalesforceOpportunityLink = z.infer<typeof insertSalesforceOpportunityLinkSchema>;
+export type SalesforceOpportunityLink = typeof salesforceOpportunityLinks.$inferSelect;
+
+// Salesforce Sync Log - History of sync operations
+export const salesforceSyncLogs = pgTable("salesforce_sync_logs", {
+  id: serial("id").primaryKey(),
+  integrationId: integer("integration_id").notNull().references(() => salesforceIntegrations.id, { onDelete: "cascade" }),
+  syncType: text("sync_type", { enum: ["full", "incremental", "manual"] }).notNull(),
+  direction: text("direction", { enum: ["push", "pull", "bidirectional"] }).notNull(),
+  status: text("status", { enum: ["started", "completed", "failed", "partial"] }).notNull(),
+  recordsProcessed: integer("records_processed").default(0),
+  recordsCreated: integer("records_created").default(0),
+  recordsUpdated: integer("records_updated").default(0),
+  recordsSkipped: integer("records_skipped").default(0),
+  recordsFailed: integer("records_failed").default(0),
+  errors: jsonb("errors"),
+  startedAt: timestamp("started_at").notNull(),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertSalesforceSyncLogSchema = createInsertSchema(salesforceSyncLogs).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertSalesforceSyncLog = z.infer<typeof insertSalesforceSyncLogSchema>;
+export type SalesforceSyncLog = typeof salesforceSyncLogs.$inferSelect;

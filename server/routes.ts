@@ -10468,4 +10468,143 @@ Provide a JSON response with:
       res.status(500).json({ error: error.message });
     }
   });
+
+  // ============================================================================
+  // SALESFORCE INTEGRATION ROUTES
+  // ============================================================================
+
+  // Import salesforce functions dynamically to avoid circular dependencies
+  const salesforce = await import('./salesforce');
+
+  // GET /api/integrations/salesforce/status - Get integration status
+  app.get("/api/integrations/salesforce/status", async (_req, res) => {
+    try {
+      const integration = await salesforce.getActiveIntegration();
+      
+      if (!integration) {
+        return res.json({ 
+          connected: false,
+          configured: !!(process.env.SALESFORCE_CLIENT_ID && process.env.SALESFORCE_CLIENT_SECRET)
+        });
+      }
+      
+      const syncStatus = await salesforce.getSyncStatus(integration.id);
+      
+      res.json({
+        connected: true,
+        configured: true,
+        integration: {
+          id: integration.id,
+          instanceUrl: integration.instanceUrl,
+          userName: integration.userName,
+          orgId: integration.orgId,
+          lastSyncAt: integration.lastSyncAt
+        },
+        syncStatus
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/integrations/salesforce/auth - Start OAuth flow
+  app.get("/api/integrations/salesforce/auth", async (_req, res) => {
+    try {
+      if (!process.env.SALESFORCE_CLIENT_ID || !process.env.SALESFORCE_CLIENT_SECRET) {
+        return res.status(400).json({ 
+          error: "Salesforce integration not configured. Please add SALESFORCE_CLIENT_ID and SALESFORCE_CLIENT_SECRET." 
+        });
+      }
+      
+      const authUrl = salesforce.getAuthorizationUrl();
+      res.json({ authUrl });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/integrations/salesforce/callback - OAuth callback
+  app.get("/api/integrations/salesforce/callback", async (req, res) => {
+    try {
+      const code = req.query.code as string;
+      
+      if (!code) {
+        return res.status(400).send("Authorization code not provided");
+      }
+      
+      const result = await salesforce.exchangeCodeForTokens(code);
+      
+      // Redirect back to integrations page with success
+      res.redirect("/integrations?salesforce=connected");
+    } catch (error: any) {
+      console.error("Salesforce OAuth callback error:", error);
+      res.redirect("/integrations?salesforce=error&message=" + encodeURIComponent(error.message));
+    }
+  });
+
+  // POST /api/integrations/salesforce/disconnect - Disconnect integration
+  app.post("/api/integrations/salesforce/disconnect", async (_req, res) => {
+    try {
+      const integration = await salesforce.getActiveIntegration();
+      
+      if (!integration) {
+        return res.status(404).json({ error: "No active integration found" });
+      }
+      
+      await salesforce.disconnectIntegration(integration.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/integrations/salesforce/sync - Trigger manual sync
+  app.post("/api/integrations/salesforce/sync", async (req, res) => {
+    try {
+      const integration = await salesforce.getActiveIntegration();
+      
+      if (!integration) {
+        return res.status(404).json({ error: "No active integration found" });
+      }
+      
+      const { direction = "bidirectional" } = req.body;
+      const conn = await salesforce.createConnection(integration);
+      
+      let result;
+      if (direction === "pull") {
+        const accounts = await salesforce.pullAccountsFromSalesforce(conn, integration.id);
+        const opportunities = await salesforce.pullOpportunitiesFromSalesforce(conn, integration.id);
+        result = { accounts, opportunities };
+      } else if (direction === "push") {
+        const accounts = await salesforce.pushAccountsToSalesforce(conn, integration.id);
+        const opportunities = await salesforce.pushCommitmentsToSalesforce(conn, integration.id);
+        result = { accounts, opportunities };
+      } else {
+        result = await salesforce.fullSync(integration.id);
+      }
+      
+      res.json({ success: true, result });
+    } catch (error: any) {
+      console.error("Salesforce sync error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/integrations/salesforce/logs - Get sync logs
+  app.get("/api/integrations/salesforce/logs", async (req, res) => {
+    try {
+      const integration = await salesforce.getActiveIntegration();
+      
+      if (!integration) {
+        return res.json({ logs: [] });
+      }
+      
+      const limit = parseInt(req.query.limit as string) || 10;
+      const logs = await salesforce.getRecentSyncLogs(integration.id, limit);
+      
+      res.json({ logs });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 }
