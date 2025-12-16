@@ -6207,16 +6207,23 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
         },
         strategies,
         outcomes,
-        commitments: commitments.map(c => ({
-          id: c.id,
-          commitmentTitle: c.commitmentTitle,
-          commitmentDescription: c.commitmentDescription,
-          status: c.status,
-          valuePillar: c.valuePillar,
-          baselineValue: c.baselineValue,
-          targetValue: c.targetValue,
-          metricUnit: c.metricUnit,
-        })),
+        commitments: commitments.map(c => {
+          const provenance = (c.aiProvenance as any) || {};
+          return {
+            id: c.id,
+            commitmentTitle: c.commitmentTitle,
+            commitmentDescription: c.commitmentDescription,
+            status: c.status,
+            valuePillar: c.valuePillar,
+            baselineValue: c.baselineValue,
+            targetValue: c.targetValue,
+            metricUnit: c.metricUnit,
+            // Include client edit tracking
+            clientEditedAt: provenance.clientEditedAt || null,
+            clientEditedBy: provenance.clientEditedBy || null,
+            clientConfirmed: provenance.clientConfirmed || false,
+          };
+        }),
         // Discovery summary data
         discovery: {
           themes: themes.map(t => ({
@@ -6398,22 +6405,54 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
       
       // Update the outcome's baseline/target
       const updatedOutcomes = [...outcomes];
+      const outcomeData = updatedOutcomes[outcomeIndex];
       updatedOutcomes[outcomeIndex] = {
-        ...updatedOutcomes[outcomeIndex],
+        ...outcomeData,
         kpiDetails: {
-          ...updatedOutcomes[outcomeIndex].kpiDetails,
-          suggestedBaseline: baseline !== undefined ? sanitizeInput(baseline) : updatedOutcomes[outcomeIndex].kpiDetails.suggestedBaseline,
-          suggestedTarget: target !== undefined ? sanitizeInput(target) : updatedOutcomes[outcomeIndex].kpiDetails.suggestedTarget,
+          ...outcomeData.kpiDetails,
+          suggestedBaseline: baseline !== undefined ? sanitizeInput(baseline) : outcomeData.kpiDetails.suggestedBaseline,
+          suggestedTarget: target !== undefined ? sanitizeInput(target) : outcomeData.kpiDetails.suggestedTarget,
         },
         clientEditedAt: new Date().toISOString(),
         clientEditedBy: sanitizeInput(customerName) || "Anonymous",
+        clientConfirmed: true, // Mark as confirmed by client
       };
       
       await storage.updateStrategySelection(shareLink.projectId, {
         generatedOutcomes: updatedOutcomes,
       });
       
-      res.json({ success: true, outcome: updatedOutcomes[outcomeIndex] });
+      // Also update the corresponding kpiCommitment if it exists
+      // Find commitment by matching outcome name to commitment title
+      const commitments = await storage.getKpiCommitments(shareLink.projectId);
+      const matchingCommitment = commitments.find(c => 
+        c.commitmentTitle.toLowerCase() === outcomeData.outcomeName?.toLowerCase() ||
+        c.commitmentTitle.toLowerCase().includes(outcomeData.outcomeName?.toLowerCase())
+      );
+      
+      if (matchingCommitment) {
+        // Update the commitment with client-provided baselines
+        const existingProvenance = (matchingCommitment.aiProvenance as any) || {};
+        await storage.updateKpiCommitment(matchingCommitment.id, {
+          baselineValue: baseline !== undefined ? sanitizeInput(baseline) : matchingCommitment.baselineValue,
+          targetValue: target !== undefined ? sanitizeInput(target) : matchingCommitment.targetValue,
+          // Add client edit tracking to provenance metadata
+          aiProvenance: {
+            ...existingProvenance,
+            clientEditedAt: new Date().toISOString(),
+            clientEditedBy: sanitizeInput(customerName) || "Anonymous",
+            clientConfirmed: true,
+            originalBaseline: existingProvenance.originalBaseline || matchingCommitment.baselineValue,
+            originalTarget: existingProvenance.originalTarget || matchingCommitment.targetValue,
+          },
+        });
+      }
+      
+      res.json({ 
+        success: true, 
+        outcome: updatedOutcomes[outcomeIndex],
+        commitmentUpdated: !!matchingCommitment,
+      });
     } catch (error: any) {
       console.error("Error updating outcome from portal:", error);
       res.status(500).json({ error: error.message || "Failed to update outcome" });

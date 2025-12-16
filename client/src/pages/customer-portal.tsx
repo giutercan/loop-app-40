@@ -354,12 +354,12 @@ export default function CustomerPortalPage() {
               <h1 className="text-2xl font-bold" data-testid="text-portal-company-name">
                 {data.project.companyName}
               </h1>
-              <p className="text-sm text-muted-foreground flex items-center gap-2">
+              <div className="text-sm text-muted-foreground flex items-center gap-2">
                 <span>{data.portalTitle || "Collaboration Portal"}</span>
                 <Badge variant="outline" className="text-xs">
                   Powered by Korn Ferry
                 </Badge>
-              </p>
+              </div>
             </div>
           </div>
 
