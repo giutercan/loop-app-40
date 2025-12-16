@@ -10473,18 +10473,22 @@ Provide a JSON response with:
   // SALESFORCE INTEGRATION ROUTES
   // ============================================================================
 
-  // Import salesforce functions dynamically to avoid circular dependencies
-  const salesforce = await import('./salesforce');
+  // Import salesforce lazily on first request to avoid circular dependencies
+  const getSalesforce = () => import('./salesforce');
 
   // GET /api/integrations/salesforce/status - Get integration status
   app.get("/api/integrations/salesforce/status", async (_req, res) => {
     try {
+      const salesforce = await getSalesforce();
       const integration = await salesforce.getActiveIntegration();
+      
+      const isConfigured = !!(process.env.SALESFORCE_CLIENT_ID && process.env.SALESFORCE_CLIENT_SECRET);
       
       if (!integration) {
         return res.json({ 
           connected: false,
-          configured: !!(process.env.SALESFORCE_CLIENT_ID && process.env.SALESFORCE_CLIENT_SECRET)
+          configured: isConfigured,
+          syncStatus: null
         });
       }
       
@@ -10492,7 +10496,7 @@ Provide a JSON response with:
       
       res.json({
         connected: true,
-        configured: true,
+        configured: isConfigured,
         integration: {
           id: integration.id,
           instanceUrl: integration.instanceUrl,
@@ -10503,6 +10507,7 @@ Provide a JSON response with:
         syncStatus
       });
     } catch (error: any) {
+      console.error("Salesforce status error:", error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -10516,6 +10521,7 @@ Provide a JSON response with:
         });
       }
       
+      const salesforce = await getSalesforce();
       const authUrl = salesforce.getAuthorizationUrl();
       res.json({ authUrl });
     } catch (error: any) {
@@ -10532,6 +10538,7 @@ Provide a JSON response with:
         return res.status(400).send("Authorization code not provided");
       }
       
+      const salesforce = await getSalesforce();
       const result = await salesforce.exchangeCodeForTokens(code);
       
       // Redirect back to integrations page with success
@@ -10545,6 +10552,7 @@ Provide a JSON response with:
   // POST /api/integrations/salesforce/disconnect - Disconnect integration
   app.post("/api/integrations/salesforce/disconnect", async (_req, res) => {
     try {
+      const salesforce = await getSalesforce();
       const integration = await salesforce.getActiveIntegration();
       
       if (!integration) {
@@ -10561,6 +10569,7 @@ Provide a JSON response with:
   // POST /api/integrations/salesforce/sync - Trigger manual sync
   app.post("/api/integrations/salesforce/sync", async (req, res) => {
     try {
+      const salesforce = await getSalesforce();
       const integration = await salesforce.getActiveIntegration();
       
       if (!integration) {
@@ -10593,6 +10602,7 @@ Provide a JSON response with:
   // GET /api/integrations/salesforce/logs - Get sync logs
   app.get("/api/integrations/salesforce/logs", async (req, res) => {
     try {
+      const salesforce = await getSalesforce();
       const integration = await salesforce.getActiveIntegration();
       
       if (!integration) {

@@ -51,7 +51,8 @@ import {
   Layers,
   Trash2,
   MoreVertical,
-  ExternalLink
+  ExternalLink,
+  Settings
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -298,6 +299,11 @@ export default function AccountsDashboard() {
             </Link>
             
             <div className="flex items-center gap-4">
+              <Link href="/integrations">
+                <Button variant="ghost" size="icon" data-testid="button-integrations">
+                  <Settings className="w-5 h-5" />
+                </Button>
+              </Link>
               <Dialog open={isNewAccountOpen} onOpenChange={setIsNewAccountOpen}>
                 <DialogTrigger asChild>
                   <Button size="lg" className="shadow-lg shadow-primary/20" data-testid="button-new-account">

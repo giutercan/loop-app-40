@@ -23,6 +23,7 @@ import Presentation from "@/pages/presentation";
 import CompanionCanvas from "@/pages/companion-canvas";
 import ProjectLayout from "@/components/ProjectLayout";
 import HandoffHub from "@/pages/handoff-hub";
+import Integrations from "@/pages/integrations";
 import { CommandPalette } from "@/components/CommandPalette";
 import { CompanionProvider } from "@/components/AICompanionPanel";
 import { ScrollToTop } from "@/components/ScrollToTop";
@@ -102,6 +103,7 @@ function Router() {
       <Route path="/portal/:token" component={CustomerPortal} />
       <Route path="/presentation" component={Presentation} />
       <Route path="/companion" component={CompanionCanvas} />
+      <Route path="/integrations" component={Integrations} />
       <Route component={NotFound} />
     </Switch>
     </>

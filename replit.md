@@ -49,3 +49,39 @@ The AI strategy focuses on strategic and actionable insights, with data sorted b
 ## External Dependencies
 - **OpenAI GPT-4o**: Used for all AI-powered functionalities, including research, insight generation, recommendations, narrative creation, and industry baselines.
 - **Clearout API**: Provides real-time company name autocomplete with logos.
+- **Salesforce CRM**: Two-way integration for syncing accounts and opportunities (see Salesforce Integration section).
+
+## Salesforce Integration
+The platform supports two-way synchronization with Salesforce CRM to keep accounts and opportunities in sync.
+
+### Features
+- **OAuth 2.0 Authentication**: Connect Salesforce account via secure OAuth flow
+- **Account Sync**: Pull Salesforce Accounts → local accounts, push local accounts → Salesforce
+- **Opportunity Sync**: Pull Salesforce Opportunities → KPI Commitments, push commitments → Opportunities
+- **Sync Logs**: Track all sync operations with success/failure counts
+- **Manual Sync**: Trigger sync on demand with direction control (pull/push/bidirectional)
+
+### Database Tables
+- `salesforce_integrations`: Stores OAuth tokens and connection info
+- `salesforce_account_links`: Maps local accounts ↔ Salesforce Account IDs
+- `salesforce_opportunity_links`: Maps KPI commitments ↔ Salesforce Opportunity IDs
+- `salesforce_sync_logs`: Audit trail of all sync operations
+
+### Configuration (Environment Variables)
+- `SALESFORCE_CLIENT_ID`: Connected App Consumer Key
+- `SALESFORCE_CLIENT_SECRET`: Connected App Consumer Secret
+- `SALESFORCE_CALLBACK_URL`: OAuth callback URL (e.g., `https://your-app.replit.app/api/integrations/salesforce/callback`)
+- `SALESFORCE_LOGIN_URL`: Optional, defaults to `https://login.salesforce.com` (use `https://test.salesforce.com` for sandbox)
+
+### API Routes
+- `GET /api/integrations/salesforce/status`: Get connection status
+- `GET /api/integrations/salesforce/auth`: Start OAuth flow
+- `GET /api/integrations/salesforce/callback`: OAuth callback handler
+- `POST /api/integrations/salesforce/disconnect`: Disconnect integration
+- `POST /api/integrations/salesforce/sync`: Trigger manual sync with `{ direction: 'pull' | 'push' | 'bidirectional' }`
+- `GET /api/integrations/salesforce/logs`: Get recent sync logs
+
+### Frontend
+- Settings icon in Accounts dashboard header → `/integrations` page
+- Shows connection status, linked record counts, sync history
+- Connect/disconnect buttons, manual sync with direction selector
