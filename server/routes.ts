@@ -6174,15 +6174,22 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
       }
       
       const strategySelection = await storage.getStrategySelection(shareLink.projectId);
-      const strategies = strategySelection?.selectedStrategiesData?.strategies || [];
-      const outcomes = strategySelection?.generatedOutcomesData?.outcomes || [];
+      // Access the correct field names from the database schema
+      const generatedStrategies = (strategySelection?.generatedStrategies as any[]) || [];
+      const selectedStrategyIds = strategySelection?.selectedStrategyIds || [];
+      const strategies = generatedStrategies.filter((s: any) => selectedStrategyIds.includes(s?.id));
+      const generatedOutcomes = (strategySelection?.generatedOutcomes as any[]) || [];
+      const selectedOutcomeIds = strategySelection?.selectedOutcomeIds || [];
+      const outcomes = generatedOutcomes.filter((o: any) => selectedOutcomeIds.includes(o?.id));
       
       const commitments = await storage.getKpiCommitments(shareLink.projectId);
       
       // Get discovery data for summary
-      const discoveryNotes = await storage.getDiscoveryNotes(shareLink.projectId);
-      const themes = await storage.getJobThemes(shareLink.projectId);
-      const aiInsights = await storage.getAIInsights(shareLink.projectId);
+      const discoveryNotesData = await storage.getDiscoveryNotes(shareLink.projectId);
+      const themes = await storage.getJobThemes(shareLink.projectId) || [];
+      // Get company data points (AI-generated insights) instead of non-existent getAIInsights
+      const companyDataPoints = await storage.getCompanyDataPoints(shareLink.projectId) || [];
+      const aiInsights = companyDataPoints.filter(dp => dp.provenance === 'ai_generated');
       
       // Get discovery synthesis if available
       const discoverySynthesis = (project as any).discoverySynthesis || null;
@@ -6218,18 +6225,20 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
             description: t.description,
             priority: t.priority,
           })),
-          notes: discoveryNotes.map(n => ({
-            id: n.id,
-            content: n.content,
-            noteType: n.noteType,
-            createdAt: n.createdAt,
-          })),
+          notes: discoveryNotesData ? [{
+            id: discoveryNotesData.id,
+            content: discoveryNotesData.freeformNotes || '',
+            noteType: 'discovery',
+            keyStakeholder: discoveryNotesData.keyStakeholder,
+            topChallenges: discoveryNotesData.topChallenges,
+            timeline: discoveryNotesData.timeline,
+          }] : [],
           insights: aiInsights.slice(0, 10).map(i => ({
             id: i.id,
-            headline: i.headline,
-            insightType: i.insightType,
-            keyFinding: i.keyFinding,
-            strategicImplication: i.strategicImplication,
+            headline: i.label,
+            insightType: i.kornFerryPillar || 'general',
+            keyFinding: i.value,
+            strategicImplication: i.relevantJob || null,
           })),
           synthesis: discoverySynthesis,
           meetingNotes: artifacts.filter(a => a.freeformNotes).map(a => ({
@@ -6379,7 +6388,8 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
         return res.status(404).json({ error: "Strategy selection not found" });
       }
       
-      const outcomes = strategySelection.generatedOutcomesData?.outcomes || [];
+      // Access the correct field name from database schema
+      const outcomes = (strategySelection.generatedOutcomes as any[]) || [];
       const outcomeIndex = outcomes.findIndex((o: any) => o.id === outcomeId);
       
       if (outcomeIndex === -1) {
@@ -6400,10 +6410,7 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
       };
       
       await storage.updateStrategySelection(shareLink.projectId, {
-        generatedOutcomesData: {
-          ...strategySelection.generatedOutcomesData,
-          outcomes: updatedOutcomes,
-        },
+        generatedOutcomes: updatedOutcomes,
       });
       
       res.json({ success: true, outcome: updatedOutcomes[outcomeIndex] });
@@ -8680,7 +8687,30 @@ Respond in JSON format:
         return res.status(404).json({ error: "No strategy selection found for this project" });
       }
       
-      res.json(selection);
+      // Transform database data back to frontend format
+      // Database stores: generatedStrategies, selectedStrategyIds, generatedOutcomes, selectedOutcomeIds
+      // Frontend expects: selectedStrategiesData: {strategies, selectedIds, customStrategies}
+      //                   generatedOutcomesData: {outcomes, selectedOutcomeIds}
+      const strategies = (selection.generatedStrategies as any[]) || [];
+      const selectedIds = selection.selectedStrategyIds || [];
+      const outcomes = (selection.generatedOutcomes as any[]) || [];
+      const selectedOutcomeIds = selection.selectedOutcomeIds || [];
+      
+      const response = {
+        ...selection,
+        // Add frontend-expected nested structures
+        selectedStrategiesData: {
+          strategies: strategies,
+          selectedIds: selectedIds,
+          customStrategies: [], // Custom strategies are merged with strategies
+        },
+        generatedOutcomesData: {
+          outcomes: outcomes,
+          selectedOutcomeIds: selectedOutcomeIds,
+        },
+      };
+      
+      res.json(response);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -8691,6 +8721,39 @@ Respond in JSON format:
     try {
       const projectId = parseInt(req.params.projectId);
       
+      // Transform frontend data to match database schema
+      // Frontend sends: selectedStrategiesData: {strategies, selectedIds, customStrategies}
+      //                 generatedOutcomesData: {outcomes, selectedOutcomeIds}
+      // Database expects: generatedStrategies, selectedStrategyIds, generatedOutcomes, selectedOutcomeIds
+      
+      const transformedData: any = {
+        status: req.body.status,
+      };
+      
+      // Transform selectedStrategiesData
+      if (req.body.selectedStrategiesData) {
+        const { strategies, selectedIds, customStrategies } = req.body.selectedStrategiesData;
+        // Merge AI strategies with custom strategies
+        const allStrategies = [...(strategies || []), ...(customStrategies || [])];
+        transformedData.generatedStrategies = allStrategies;
+        transformedData.selectedStrategyIds = selectedIds || [];
+        transformedData.strategiesSelectedAt = new Date();
+      }
+      
+      // Transform generatedOutcomesData
+      if (req.body.generatedOutcomesData) {
+        const { outcomes, selectedOutcomeIds } = req.body.generatedOutcomesData;
+        transformedData.generatedOutcomes = outcomes || [];
+        transformedData.selectedOutcomeIds = selectedOutcomeIds || [];
+        transformedData.outcomesGeneratedAt = new Date();
+      }
+      
+      // Handle handoff confirmation
+      if (req.body.handoffConfirmed === true) {
+        transformedData.status = "ready_for_handoff";
+        transformedData.outcomesConfirmedAt = new Date();
+      }
+      
       // Check if selection already exists
       const existing = await storage.getStrategySelection(projectId);
       
@@ -8698,14 +8761,14 @@ Respond in JSON format:
       if (existing) {
         // Update existing selection
         result = await storage.updateStrategySelection(projectId, {
-          ...req.body,
+          ...transformedData,
           updatedAt: new Date(),
         });
       } else {
         // Create new selection
         result = await storage.createStrategySelection({
           projectId,
-          ...req.body,
+          ...transformedData,
         });
       }
       
