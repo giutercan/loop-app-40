@@ -39,6 +39,11 @@ The AI strategy focuses on strategic and actionable insights, with data sorted b
   - Database table: `strategySelections` with JSONB fields for `selectedStrategiesData` and `generatedOutcomesData`
   - API routes: GET/POST/PATCH `/api/projects/:projectId/strategy-selection`
   - Frontend: Auto-restores saved selections on mount, persists on confirm, handoff confirmation dialog
+  - **Outcome-to-Commitment Conversion**: When outcomes are saved (status: outcomes_generated or outcomes_selected) or handoff is confirmed, selected outcomes are automatically converted to kpiCommitment records with:
+    - Field mapping: outcomeName → commitmentTitle, valuePillar, KPI details (metric, unit, baseline, target)
+    - Journey templates: Solution pattern is inferred from kornFerrySolution/kfOffering fields and OUTCOME_JOURNEY_TEMPLATES are injected for phases, quickWins, milestones
+    - AI provenance tracking: Each commitment stores metadata about its origin (strategy outcome ID, generation timestamp)
+    - Duplicate prevention: Existing commitment titles are checked to avoid creating duplicates
 - **Unified Strategy-to-Outcomes Workflow**: StrategicAlignmentSelector is now the single entry point for outcome creation in Design Outcomes stage. AI generates outcomes based on selected strategies, creating them as drafts that flow through draft → proposed → confirmed workflow.
 - **Narrative Outcome Display**: Replaced 3-column grid layout with storytelling format - outcomes grouped by Value Pillars (Grow, Optimise, De-risk, Strengthen) with "We will..." narrative presentation.
 - **Enhanced Pipeline Visualization**: Header shows total value, pipeline status counts (Draft/Review/Confirmed), and visual progress bar.

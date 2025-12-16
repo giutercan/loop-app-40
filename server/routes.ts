@@ -8694,22 +8694,117 @@ Respond in JSON format:
       // Check if selection already exists
       const existing = await storage.getStrategySelection(projectId);
       
+      let result;
       if (existing) {
         // Update existing selection
-        const updated = await storage.updateStrategySelection(projectId, {
+        result = await storage.updateStrategySelection(projectId, {
           ...req.body,
           updatedAt: new Date(),
         });
-        return res.json(updated);
       } else {
         // Create new selection
-        const selection = await storage.createStrategySelection({
+        result = await storage.createStrategySelection({
           projectId,
           ...req.body,
         });
-        return res.status(201).json(selection);
       }
+      
+      // Create kpiCommitments when outcomes are generated/saved OR when handoff is confirmed
+      const shouldCreateCommitments = 
+        (req.body.status === "outcomes_generated" || 
+         req.body.status === "outcomes_selected" || 
+         req.body.handoffConfirmed === true) && 
+        req.body.generatedOutcomesData;
+      
+      if (shouldCreateCommitments) {
+        const { outcomes, selectedOutcomeIds } = req.body.generatedOutcomesData;
+        
+        if (outcomes && selectedOutcomeIds && selectedOutcomeIds.length > 0) {
+          // Helper function to map kornFerrySolution to solutionPattern
+          const mapToSolutionPattern = (kornFerrySolution: string, kfOfferingName?: string): SolutionPatternId | null => {
+            const combined = (kornFerrySolution + " " + (kfOfferingName || "")).toLowerCase();
+            
+            if (combined.includes("sales") || combined.includes("revenue") || combined.includes("commercial")) {
+              return "sales_effectiveness";
+            }
+            if (combined.includes("leader") || combined.includes("executive") || combined.includes("succession")) {
+              return "leadership_development";
+            }
+            if (combined.includes("organization") || combined.includes("transformation") || combined.includes("design") || combined.includes("change")) {
+              return "org_transformation";
+            }
+            if (combined.includes("talent") || combined.includes("recruit") || combined.includes("hire") || combined.includes("acquisition")) {
+              return "talent_acquisition";
+            }
+            if (combined.includes("reward") || combined.includes("compensation") || combined.includes("pay") || combined.includes("benefit")) {
+              return "rewards_optimization";
+            }
+            return null;
+          };
+          
+          // Get existing commitments to avoid duplicates
+          const existingCommitments = await storage.getKpiCommitments(projectId);
+          const existingTitles = new Set(existingCommitments.map(c => c.commitmentTitle.toLowerCase()));
+          
+          // Create kpiCommitments from selected outcomes
+          for (const outcome of outcomes) {
+            if (!selectedOutcomeIds.includes(outcome.id)) continue;
+            
+            // Skip if commitment with same title already exists
+            if (existingTitles.has(outcome.outcomeName?.toLowerCase() || "")) continue;
+            
+            const solutionPattern = mapToSolutionPattern(
+              outcome.kornFerrySolution || "", 
+              outcome.kfOffering?.name || ""
+            );
+            
+            // Get journey template if solution pattern is mapped
+            let journeyPhases = null;
+            let quickWins = null;
+            let keyMilestones = null;
+            let implementationTimeline = null;
+            
+            if (solutionPattern && OUTCOME_JOURNEY_TEMPLATES[solutionPattern]) {
+              const template = OUTCOME_JOURNEY_TEMPLATES[solutionPattern];
+              journeyPhases = template.phases;
+              quickWins = template.quickWins;
+              keyMilestones = template.milestones;
+              implementationTimeline = template.typicalTimeline;
+            }
+            
+            // Create the commitment
+            const commitmentData = {
+              projectId,
+              commitmentTitle: outcome.outcomeName || "Untitled Outcome",
+              commitmentDescription: outcome.outcomeDescription || null,
+              valuePillar: outcome.valuePillar || null,
+              solutionPattern: solutionPattern,
+              customMetricName: outcome.kpiDetails?.metricName || null,
+              metricUnit: outcome.kpiDetails?.unit || null,
+              baselineValue: outcome.kpiDetails?.suggestedBaseline || null,
+              targetValue: outcome.kpiDetails?.suggestedTarget || null,
+              status: "draft" as const,
+              journeyPhases,
+              quickWins,
+              keyMilestones,
+              implementationTimeline,
+              aiProvenance: {
+                generatedFrom: "strategy_outcome",
+                outcomeId: outcome.id,
+                strategyId: outcome.strategyId,
+                generatedAt: new Date().toISOString(),
+              },
+            };
+            
+            await storage.createKpiCommitment(commitmentData);
+            existingTitles.add((outcome.outcomeName || "").toLowerCase());
+          }
+        }
+      }
+      
+      return res.status(existing ? 200 : 201).json(result);
     } catch (error: any) {
+      console.error("Strategy selection error:", error);
       res.status(500).json({ error: error.message });
     }
   });
