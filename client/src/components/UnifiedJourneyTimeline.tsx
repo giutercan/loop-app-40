@@ -32,9 +32,11 @@ import {
   type UnifiedPhase,
   type OutcomeLane,
   type UnifiedJourneyData,
+  type ConsolidatedPhase,
   type SolutionPatternId,
   type ValuePillarId
 } from "@shared/value-frameworks";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface SelectedOutcome {
   id: string;
@@ -115,6 +117,8 @@ const statusConfig: Record<string, { label: string; color: string; icon: typeof 
   completed: { label: "Completed", color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400", icon: Trophy }
 };
 
+type ViewMode = "integrated" | "detailed";
+
 export function UnifiedJourneyTimeline({
   selectedOutcomes,
   onOutcomeClick,
@@ -124,6 +128,8 @@ export function UnifiedJourneyTimeline({
 }: UnifiedJourneyTimelineProps) {
   const [selectedLane, setSelectedLane] = useState<string | null>(null);
   const [showAllActivities, setShowAllActivities] = useState<Record<string, boolean>>({});
+  const [viewMode, setViewMode] = useState<ViewMode>("integrated");
+  const [expandedPhases, setExpandedPhases] = useState<Record<string, boolean>>({});
 
   // When selectable, show ALL outcomes (even deselected ones) so checkboxes remain visible
   // Only filter to selected outcomes when NOT in selectable mode
@@ -178,7 +184,7 @@ export function UnifiedJourneyTimeline({
 
   return (
     <div className="space-y-0" data-testid="unified-journey-timeline">
-      {/* Header Summary */}
+      {/* Header Summary with View Toggle */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-violet-500 to-emerald-500 flex items-center justify-center">
@@ -191,6 +197,17 @@ export function UnifiedJourneyTimeline({
             </p>
           </div>
         </div>
+        
+        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)} className="h-8">
+          <TabsList className="h-8">
+            <TabsTrigger value="integrated" className="text-xs h-7 px-3" data-testid="tab-integrated-view">
+              Integrated Plan
+            </TabsTrigger>
+            <TabsTrigger value="detailed" className="text-xs h-7 px-3" data-testid="tab-detailed-view">
+              By Outcome
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       {/* Phase Rail - Clean horizontal spine */}
@@ -237,7 +254,168 @@ export function UnifiedJourneyTimeline({
         </div>
       </div>
 
-      {/* Timeline Lanes - Clean progress ribbons */}
+      {/* Integrated Delivery Plan View */}
+      {viewMode === "integrated" && (
+        <Card className="overflow-hidden" data-testid="integrated-plan-view">
+          <div className="divide-y">
+            {journeyData.consolidatedPhases.map((phase, phaseIdx) => {
+              const config = phaseConfig[phase.phaseId];
+              const Icon = config.icon;
+              const isExpanded = expandedPhases[phase.phaseId] ?? true;
+              const showAllActivitiesForPhase = expandedPhases[`${phase.phaseId}-activities`] ?? false;
+              const visibleActivities = showAllActivitiesForPhase ? phase.allActivities : phase.allActivities.slice(0, 4);
+
+              return (
+                <motion.div
+                  key={phase.phaseId}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: phaseIdx * 0.1 }}
+                  className="relative"
+                  data-testid={`phase-${phase.phaseId}`}
+                >
+                  <div 
+                    className={`${config.bgLight} px-4 py-4 cursor-pointer hover:bg-muted/30 transition-colors`}
+                    onClick={() => setExpandedPhases(prev => ({ ...prev, [phase.phaseId]: !isExpanded }))}
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-lg ${config.color} flex items-center justify-center`}>
+                          <Icon className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <h4 className={`font-semibold ${config.text}`}>{phase.phaseName}</h4>
+                          <p className="text-xs text-muted-foreground">
+                            Weeks {phase.startWeek}-{phase.endWeek} · {phase.outcomeCount} outcome{phase.outcomeCount > 1 ? 's' : ''}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        {phase.outcomes.slice(0, 3).map((outcome) => {
+                          const colors = pillarColors[outcome.pillarColor] || pillarColors.blue;
+                          const PillarIcon = pillarIcons[outcome.pillar];
+                          return (
+                            <Badge 
+                              key={outcome.id}
+                              variant="secondary" 
+                              className="text-xs cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onOutcomeClick?.(outcome.id);
+                              }}
+                              data-testid={`badge-outcome-${outcome.id}`}
+                            >
+                              {PillarIcon && <PillarIcon className="w-3 h-3 mr-1" />}
+                              {outcome.name.length > 25 ? outcome.name.substring(0, 25) + '...' : outcome.name}
+                            </Badge>
+                          );
+                        })}
+                        {phase.outcomes.length > 3 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{phase.outcomes.length - 3} more
+                          </Badge>
+                        )}
+                        <div className="ml-2">
+                          {isExpanded ? (
+                            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden border-t bg-background"
+                      >
+                        <div className="p-4 grid md:grid-cols-2 gap-4">
+                          <div>
+                            <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
+                              <Target className="w-4 h-4 text-muted-foreground" />
+                              Key Activities
+                            </h5>
+                            <div className="space-y-1.5">
+                              {visibleActivities.map((activity, i) => (
+                                <div key={i} className="flex items-start gap-2">
+                                  <Circle className="w-1.5 h-1.5 mt-2 fill-current text-muted-foreground shrink-0" />
+                                  <span className="text-sm text-muted-foreground">{activity.text}</span>
+                                  {activity.outcomeNames.length > 1 && (
+                                    <Badge variant="outline" className="text-[10px] px-1 py-0 ml-auto shrink-0">
+                                      {activity.outcomeNames.length} outcomes
+                                    </Badge>
+                                  )}
+                                </div>
+                              ))}
+                              {phase.allActivities.length > 4 && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setExpandedPhases(prev => ({ 
+                                      ...prev, 
+                                      [`${phase.phaseId}-activities`]: !prev[`${phase.phaseId}-activities`]
+                                    }));
+                                  }}
+                                  className="text-xs text-primary hover:underline mt-1"
+                                >
+                                  {showAllActivitiesForPhase ? 'Show less' : `+${phase.allActivities.length - 4} more activities`}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-muted-foreground" />
+                              Key Milestones
+                            </h5>
+                            <div className="space-y-1.5">
+                              {phase.allMilestones.slice(0, 5).map((milestone, i) => (
+                                <div key={i} className="flex items-start gap-2">
+                                  <CheckCircle2 className={`w-3.5 h-3.5 mt-0.5 ${config.text} shrink-0`} />
+                                  <span className="text-sm text-muted-foreground">{milestone.text}</span>
+                                  <span className="text-[10px] text-muted-foreground/60 ml-auto">Wk {milestone.week}</span>
+                                </div>
+                              ))}
+                              {phase.allMilestones.length > 5 && (
+                                <p className="text-xs text-muted-foreground/60 pl-5">
+                                  +{phase.allMilestones.length - 5} more milestones
+                                </p>
+                              )}
+                            </div>
+                            
+                            {phase.keyDeliverables.length > 0 && (
+                              <div className="mt-3 pt-3 border-t border-dashed">
+                                <p className="text-xs font-medium text-muted-foreground mb-1.5">Key Deliverables</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {phase.keyDeliverables.map((deliverable, i) => (
+                                    <Badge key={i} variant="outline" className={`text-xs ${config.border}`}>
+                                      {deliverable}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* Detailed Timeline Lanes - Clean progress ribbons */}
+      {viewMode === "detailed" && (
       <Card className="overflow-hidden">
         <div className="divide-y">
           {journeyData.lanes.map((lane, laneIdx) => {
@@ -457,6 +635,7 @@ export function UnifiedJourneyTimeline({
           })}
         </div>
       </Card>
+      )}
 
       {/* Phase Legend - Clean summary */}
       <div className="mt-4 flex items-center justify-center gap-6">

@@ -1201,11 +1201,31 @@ export interface OutcomeLane {
   expectedValue?: string;
 }
 
+export interface ConsolidatedPhase {
+  phaseId: UnifiedPhase['id'];
+  phaseName: string;
+  phaseShortName: string;
+  startWeek: number;
+  endWeek: number;
+  outcomeCount: number;
+  outcomes: {
+    id: string;
+    name: string;
+    pillar: ValuePillarId;
+    pillarColor: string;
+  }[];
+  allActivities: { text: string; outcomeNames: string[] }[];
+  allMilestones: { text: string; week: number; outcomeNames: string[] }[];
+  keyDeliverables: string[];
+}
+
 export interface UnifiedJourneyData {
   phases: UnifiedPhase[];
   lanes: OutcomeLane[];
+  consolidatedPhases: ConsolidatedPhase[];
   totalOutcomes: number;
   totalMonths: number;
+  totalValue?: string;
   sharedMilestones: {
     week: number;
     title: string;
@@ -1336,9 +1356,107 @@ export const createUnifiedJourney = (
   const maxEndWeek = Math.max(...lanes.flatMap(l => l.phases.map(p => p.endWeek)), 52);
   const totalMonths = Math.ceil(maxEndWeek / 4);
 
+  // Build consolidated phases - merge all activities/milestones per phase across outcomes
+  const consolidatedPhases: ConsolidatedPhase[] = UNIFIED_JOURNEY_PHASES.map(phase => {
+    // Get all lanes that have this phase
+    const lanesWithPhase = lanes.filter(lane => 
+      lane.phases.some(p => p.phaseId === phase.id)
+    );
+    
+    // Collect all activities with deduplication and source tracking
+    const activityMap = new Map<string, string[]>();
+    const milestoneList: { text: string; week: number; outcomeNames: string[] }[] = [];
+    
+    let phaseStartWeek = Infinity;
+    let phaseEndWeek = 0;
+    
+    lanesWithPhase.forEach(lane => {
+      const lanePhase = lane.phases.find(p => p.phaseId === phase.id);
+      if (!lanePhase) return;
+      
+      // Track phase timing
+      phaseStartWeek = Math.min(phaseStartWeek, lanePhase.startWeek);
+      phaseEndWeek = Math.max(phaseEndWeek, lanePhase.endWeek);
+      
+      // Collect activities with deduplication
+      lanePhase.activities.forEach(activity => {
+        const normalizedActivity = activity.toLowerCase().trim();
+        const existingKey = Array.from(activityMap.keys()).find(
+          key => key.toLowerCase() === normalizedActivity
+        );
+        if (existingKey) {
+          activityMap.get(existingKey)?.push(lane.outcomeName);
+        } else {
+          activityMap.set(activity, [lane.outcomeName]);
+        }
+      });
+      
+      // Collect milestones - distribute evenly across the phase duration
+      const milestonesCount = lanePhase.milestones.length;
+      lanePhase.milestones.forEach((milestone, idx) => {
+        // Calculate week: for single milestone, place at midpoint; for multiple, distribute evenly
+        let week: number;
+        if (milestonesCount === 1) {
+          // Single milestone goes at the midpoint of the phase
+          week = Math.floor((lanePhase.startWeek + lanePhase.endWeek) / 2);
+        } else {
+          // Multiple milestones: distribute from start to end proportionally
+          week = lanePhase.startWeek + Math.floor(
+            (lanePhase.endWeek - lanePhase.startWeek) * ((idx + 1) / (milestonesCount + 1))
+          );
+        }
+        
+        const existing = milestoneList.find(
+          m => m.text.toLowerCase() === milestone.toLowerCase()
+        );
+        if (existing) {
+          if (!existing.outcomeNames.includes(lane.outcomeName)) {
+            existing.outcomeNames.push(lane.outcomeName);
+          }
+        } else {
+          milestoneList.push({ text: milestone, week, outcomeNames: [lane.outcomeName] });
+        }
+      });
+    });
+    
+    // Convert activity map to array
+    const allActivities = Array.from(activityMap.entries()).map(([text, outcomeNames]) => ({
+      text,
+      outcomeNames
+    }));
+    
+    // Sort milestones by week
+    milestoneList.sort((a, b) => a.week - b.week);
+    
+    // Generate key deliverables (top milestones that appear in multiple outcomes or are critical)
+    const keyDeliverables = milestoneList
+      .filter(m => m.outcomeNames.length > 1 || milestoneList.length <= 3)
+      .slice(0, 3)
+      .map(m => m.text);
+    
+    return {
+      phaseId: phase.id,
+      phaseName: phase.name,
+      phaseShortName: phase.shortName,
+      startWeek: phaseStartWeek === Infinity ? 0 : phaseStartWeek,
+      endWeek: phaseEndWeek,
+      outcomeCount: lanesWithPhase.length,
+      outcomes: lanesWithPhase.map(lane => ({
+        id: lane.outcomeId,
+        name: lane.outcomeName,
+        pillar: lane.pillar,
+        pillarColor: lane.pillarColor
+      })),
+      allActivities,
+      allMilestones: milestoneList,
+      keyDeliverables
+    };
+  });
+
   return {
     phases: UNIFIED_JOURNEY_PHASES,
     lanes,
+    consolidatedPhases,
     totalOutcomes: selectedOutcomes.length,
     totalMonths,
     sharedMilestones
