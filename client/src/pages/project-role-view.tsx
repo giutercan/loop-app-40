@@ -11760,6 +11760,37 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
             ))}
           </div>
 
+          {/* CRO/CFO Success Frame - KPI Context */}
+          {(() => {
+            const kpiOutcomes = (commitments as any[]).filter(c => 
+              (c.status === "client_confirmed" || c.status === "proposed" || c.status === "draft") && 
+              (c.baselineValue != null || c.targetValue != null)
+            ).slice(0, 5);
+            if (kpiOutcomes.length === 0) return null;
+            return (
+              <div className="p-3 rounded-lg bg-gradient-to-r from-slate-800 to-slate-900 border border-slate-700 mt-3" data-testid="panel-success-frame">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="w-4 h-4 text-emerald-400" />
+                  <span className="text-xs font-semibold text-white">CRO Success Frame</span>
+                  <span className="text-[10px] text-slate-400 ml-auto">What success looks like</span>
+                </div>
+                <div className="grid gap-1.5">
+                  {kpiOutcomes.map((kpi: any) => (
+                    <div key={kpi.id} className="flex items-center justify-between text-xs">
+                      <span className="text-slate-300 truncate flex-1">{kpi.kpiMetric || kpi.name}</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-slate-400">{kpi.baselineValue ?? "—"}</span>
+                        <ArrowRight className="w-3 h-3 text-emerald-400" />
+                        <span className="text-emerald-400 font-semibold">{kpi.targetValue ?? "—"}</span>
+                        {kpi.kpiUnit && <span className="text-slate-500 text-[10px]">{kpi.kpiUnit}</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* BEFORE Phase - Crafting the Story */}
           {activeStoryPhase === "before" && (
             <div className="space-y-4 mt-4">
