@@ -101,6 +101,7 @@ function safeParseFloat(value: string | number | null | undefined): number {
 
 // Helper function to gather enriched context from artifacts and Green Sheet
 // This provides a unified knowledge base for AI coaching and recommendations
+// Note: Only AI-extracted insights are included (no raw content) to respect token limits and privacy
 interface EnrichedContext {
   artifactInsights: {
     summary: string;
@@ -108,7 +109,6 @@ interface EnrichedContext {
     actionItems: string[];
     risks: string[];
     stakeholderMentions: string[];
-    rawContent: string[];
   };
   greenSheet: {
     meetingContact: {
@@ -117,17 +117,21 @@ interface EnrichedContext {
       role: string | null;
       influence: string | null;
       knownConcerns: string;
-      personalRapport: string;
       decisionCriteria: string;
     } | null;
     callPlanner: {
       objective: string;
       desiredOutcome: string;
-      openingStatement: string;
       bestActionCommitment: string;
     } | null;
   };
-  combinedContext: string; // Formatted text for AI prompts
+  combinedContext: string; // Formatted text for AI prompts (max ~2000 chars)
+}
+
+// Truncate text to max length with ellipsis
+function truncateText(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength - 3) + '...';
 }
 
 async function getEnrichedDiscoveryContext(
@@ -140,90 +144,79 @@ async function getEnrichedDiscoveryContext(
     storageRef.getProject(projectId)
   ]);
 
-  // Extract insights from analyzed artifacts
+  // Extract insights from analyzed artifacts (only AI-processed summaries, not raw content)
   const analyzedArtifacts = artifacts.filter(a => a.aiProcessingStatus === 'completed');
   const allInsights: string[] = [];
   const allActionItems: string[] = [];
   const allRisks: string[] = [];
   const allStakeholders: string[] = [];
   const allSummaries: string[] = [];
-  const rawContent: string[] = [];
 
   for (const artifact of analyzedArtifacts) {
+    // Only include AI-generated summaries (already sanitized by AI processing)
     if (artifact.aiSummary) {
-      allSummaries.push(artifact.aiSummary);
+      allSummaries.push(truncateText(artifact.aiSummary, 300));
     }
     
     if (artifact.aiExtractedInsights) {
       const insights = artifact.aiExtractedInsights as any;
       if (insights.insights?.length) {
-        allInsights.push(...insights.insights);
+        allInsights.push(...insights.insights.slice(0, 5).map((i: string) => truncateText(i, 150)));
       }
       if (insights.actionItems?.length) {
-        allActionItems.push(...insights.actionItems);
+        allActionItems.push(...insights.actionItems.slice(0, 3).map((i: string) => truncateText(i, 100)));
       }
       if (insights.risks?.length) {
-        allRisks.push(...insights.risks);
+        allRisks.push(...insights.risks.slice(0, 3).map((r: string) => truncateText(r, 100)));
       }
       if (insights.stakeholderMentions?.length) {
-        allStakeholders.push(...insights.stakeholderMentions);
+        // Only include role/title, not personal details
+        allStakeholders.push(...insights.stakeholderMentions.slice(0, 5));
       }
-    }
-
-    // Include raw content (notes, extracted text) for deeper context
-    if (artifact.freeformNotes) {
-      rawContent.push(`[Meeting Notes - ${artifact.title || artifact.fileName}]: ${artifact.freeformNotes}`);
-    }
-    if (artifact.extractedText && artifact.extractedText.length < 5000) {
-      rawContent.push(`[Document - ${artifact.title || artifact.fileName}]: ${artifact.extractedText.substring(0, 2000)}`);
     }
   }
 
-  // Extract Green Sheet data
+  // Extract Green Sheet data (business context only, no PII)
   const greenSheetData = project?.greenSheetData as any;
   const meetingContact = greenSheetData?.meetingContact || null;
   const callPlanner = greenSheetData?.callPlanner || null;
 
-  // Build combined context string for AI prompts
+  // Build combined context string for AI prompts - keep compact (~1500 chars max)
+  // NOTE: Excludes all PII (names, titles, personal details) - only business context
   const contextParts: string[] = [];
 
   if (allSummaries.length > 0) {
-    contextParts.push(`### Meeting & Document Insights\n${allSummaries.slice(0, 5).join('\n\n')}`);
+    contextParts.push(`Meeting Insights: ${allSummaries.slice(0, 2).join(' | ')}`);
   }
 
   if (allInsights.length > 0) {
-    contextParts.push(`### Key Insights from Interactions\n${allInsights.slice(0, 10).map(i => `- ${i}`).join('\n')}`);
-  }
-
-  if (allActionItems.length > 0) {
-    contextParts.push(`### Action Items Identified\n${allActionItems.slice(0, 8).map(i => `- ${i}`).join('\n')}`);
+    contextParts.push(`Key Findings: ${allInsights.slice(0, 4).join('; ')}`);
   }
 
   if (allRisks.length > 0) {
-    contextParts.push(`### Risks & Concerns\n${allRisks.slice(0, 6).map(r => `- ${r}`).join('\n')}`);
+    contextParts.push(`Concerns: ${allRisks.slice(0, 2).join('; ')}`);
   }
 
-  if (allStakeholders.length > 0) {
-    contextParts.push(`### Stakeholders Mentioned\n${[...new Set(allStakeholders)].slice(0, 10).map(s => `- ${s}`).join('\n')}`);
+  // Include only business-relevant Green Sheet info (NO names, titles, or PII)
+  if (meetingContact?.knownConcerns) {
+    contextParts.push(`Stakeholder Concerns: ${truncateText(meetingContact.knownConcerns, 150)}`);
+  }
+  if (meetingContact?.decisionCriteria) {
+    contextParts.push(`Decision Criteria: ${truncateText(meetingContact.decisionCriteria, 150)}`);
   }
 
-  if (meetingContact?.name || meetingContact?.knownConcerns) {
-    const contactInfo = [];
-    if (meetingContact.name) contactInfo.push(`Contact: ${meetingContact.name}${meetingContact.title ? ` (${meetingContact.title})` : ''}`);
-    if (meetingContact.role) contactInfo.push(`Role: ${meetingContact.role.replace('_', ' ')}`);
-    if (meetingContact.influence) contactInfo.push(`Influence: ${meetingContact.influence}`);
-    if (meetingContact.knownConcerns) contactInfo.push(`Known Concerns: ${meetingContact.knownConcerns}`);
-    if (meetingContact.decisionCriteria) contactInfo.push(`Decision Criteria: ${meetingContact.decisionCriteria}`);
-    contextParts.push(`### Green Sheet - Meeting Contact\n${contactInfo.join('\n')}`);
+  if (callPlanner?.objective) {
+    contextParts.push(`Call Objective: ${truncateText(callPlanner.objective, 120)}`);
+  }
+  if (callPlanner?.desiredOutcome) {
+    contextParts.push(`Desired Outcome: ${truncateText(callPlanner.desiredOutcome, 120)}`);
   }
 
-  if (callPlanner?.objective || callPlanner?.desiredOutcome) {
-    const plannerInfo = [];
-    if (callPlanner.objective) plannerInfo.push(`Call Objective: ${callPlanner.objective}`);
-    if (callPlanner.desiredOutcome) plannerInfo.push(`Desired Outcome: ${callPlanner.desiredOutcome}`);
-    if (callPlanner.bestActionCommitment) plannerInfo.push(`Best Action Commitment: ${callPlanner.bestActionCommitment}`);
-    contextParts.push(`### Green Sheet - Call Preparation\n${plannerInfo.join('\n')}`);
-  }
+  // Final context limited to ~1500 chars, empty string if no context
+  const rawContext = contextParts.join('. ');
+  const combinedContext = rawContext.length > 0 
+    ? ` Additional discovery context: ${truncateText(rawContext, 1400)}`
+    : '';
 
   return {
     artifactInsights: {
@@ -231,16 +224,24 @@ async function getEnrichedDiscoveryContext(
       keyInsights: allInsights,
       actionItems: allActionItems,
       risks: allRisks,
-      stakeholderMentions: [...new Set(allStakeholders)],
-      rawContent
+      stakeholderMentions: [...new Set(allStakeholders)]
     },
     greenSheet: {
-      meetingContact,
-      callPlanner
+      meetingContact: meetingContact ? {
+        name: meetingContact.name,
+        title: meetingContact.title,
+        role: meetingContact.role,
+        influence: meetingContact.influence,
+        knownConcerns: meetingContact.knownConcerns,
+        decisionCriteria: meetingContact.decisionCriteria
+      } : null,
+      callPlanner: callPlanner ? {
+        objective: callPlanner.objective,
+        desiredOutcome: callPlanner.desiredOutcome,
+        bestActionCommitment: callPlanner.bestActionCommitment
+      } : null
     },
-    combinedContext: contextParts.length > 0 
-      ? `\n\n## Additional Context from Discovery Materials\n\n${contextParts.join('\n\n')}\n\n`
-      : ''
+    combinedContext
   };
 }
 
@@ -2141,6 +2142,11 @@ Return as JSON:
       // Get enriched context from artifacts and Green Sheet
       const enrichedContext = await getEnrichedDiscoveryContext(projectId, storage);
       
+      // Build enhanced description with enriched context
+      const enhancedDescription = enrichedContext.combinedContext 
+        ? `${project.description || 'No company description available.'}${enrichedContext.combinedContext}`
+        : project.description;
+      
       // Generate questions with AI - include company context and enriched discovery materials
       let generatedQuestions;
       try {
@@ -2153,8 +2159,7 @@ Return as JSON:
             employeeCount: project.employeeCount,
             revenue: project.revenue,
             headquarters: project.headquarters,
-            // Append enriched context from artifacts and Green Sheet to description
-            description: (project.description || '') + enrichedContext.combinedContext
+            description: enhancedDescription
           }
         );
       } catch (aiError: any) {
@@ -4331,8 +4336,11 @@ Return as JSON:
       
       console.log(`[Discovery KPI Suggestions] Project ${projectId}: ${insights.length} insights, theme: ${discoveryTheme}`);
       
-      // Include enriched context from artifacts and Green Sheet in consultant notes
-      const enrichedNotes = (discoveryNotes?.freeformNotes || '') + enrichedContext.combinedContext;
+      // Include enriched context from artifacts and Green Sheet in consultant notes (handle null safely)
+      const baseNotes = discoveryNotes?.freeformNotes || '';
+      const enrichedNotes = enrichedContext.combinedContext 
+        ? `${baseNotes}${enrichedContext.combinedContext}`
+        : baseNotes;
       
       const suggestions = await generateDiscoveryKpiSuggestions({
         companyName: project.companyName,
@@ -5615,8 +5623,11 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
         getEnrichedDiscoveryContext(projectId, storage)
       ]);
       
-      // Include enriched context in notes content for AI consideration
-      const notesContent = (notes?.freeformNotes || '') + enrichedContext.combinedContext;
+      // Include enriched context in notes content for AI consideration (handle null safely)
+      const baseNotes = notes?.freeformNotes || '';
+      const notesContent = enrichedContext.combinedContext 
+        ? `${baseNotes}${enrichedContext.combinedContext}`
+        : baseNotes;
 
       // Generate AI recommendations
       const { recommendations } = await generateSuccessStoryRecommendations({
