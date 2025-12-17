@@ -234,6 +234,16 @@ export function ArtifactUpload({
     }
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "completed": return "Analyzed";
+      case "processing": return "Analyzing...";
+      case "pending": return "Pending";
+      case "failed": return "Failed";
+      default: return status;
+    }
+  };
+
   const getTypeIcon = (type: string) => {
     switch (type) {
       case "document": return <FileText className="w-4 h-4" />;
@@ -757,7 +767,7 @@ export function ArtifactUpload({
                         )}
                         <Badge variant="outline" className="text-xs">
                           {getStatusIcon(artifact.aiProcessingStatus)}
-                          <span className="ml-1 capitalize">{artifact.aiProcessingStatus.replace('_', ' ')}</span>
+                          <span className="ml-1">{getStatusLabel(artifact.aiProcessingStatus)}</span>
                         </Badge>
                         {expandedArtifact === artifact.id ? (
                           <ChevronUp className="w-4 h-4 text-muted-foreground" />

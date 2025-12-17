@@ -10523,8 +10523,8 @@ Be concise but helpful. Use the user's context (current account, project, page) 
       } else if (mimeType === 'application/pdf') {
         // Use pdf-parse for PDF extraction
         try {
-          const pdfParse = await import('pdf-parse');
-          const pdfData = await pdfParse.default(fileBuffer);
+          const pdfParse = (await import('pdf-parse')).default || (await import('pdf-parse'));
+          const pdfData = await pdfParse(fileBuffer);
           extractedText = pdfData.text;
         } catch (pdfError) {
           console.error("PDF parsing error:", pdfError);
@@ -10620,11 +10620,56 @@ Be concise but helpful. Use the user's context (current account, project, page) 
       // Update status to processing
       await storage.updateInteractionArtifact(id, { aiProcessingStatus: 'processing' });
       
-      // Extract insights from content
-      const contentToAnalyze = artifact.extractedText || artifact.freeformNotes;
+      // Extract insights from content - try extractedText first, then fetch from object storage
+      let contentToAnalyze = artifact.extractedText || artifact.freeformNotes;
+      
+      // If no extracted text but we have a file in object storage, fetch and extract it
+      if (!contentToAnalyze && artifact.objectStorageKey) {
+        try {
+          console.log("[Artifact Process] Fetching file from object storage:", artifact.objectStorageKey);
+          const { Client } = await import("@replit/object-storage");
+          const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+          if (bucketId) {
+            const client = new Client({ bucketId });
+            const fileBuffer = await client.downloadAsBytes(artifact.objectStorageKey);
+            
+            if (fileBuffer.ok && fileBuffer.value) {
+              const uint8Array = fileBuffer.value;
+              const buffer = Buffer.from(uint8Array.buffer, uint8Array.byteOffset, uint8Array.byteLength);
+              console.log("[Artifact Process] File downloaded, size:", buffer.length, "bytes, mimeType:", artifact.mimeType);
+              
+              // Extract text based on mime type
+              if (artifact.mimeType === 'text/plain' || artifact.mimeType === 'text/csv' || artifact.mimeType === 'application/json') {
+                contentToAnalyze = buffer.toString('utf-8');
+              } else if (artifact.mimeType === 'application/pdf') {
+                try {
+                  const pdfParse = (await import('pdf-parse')).default || (await import('pdf-parse'));
+                  const pdfData = await pdfParse(buffer);
+                  contentToAnalyze = pdfData.text;
+                  console.log("[Artifact Process] PDF text extracted, length:", contentToAnalyze?.length || 0);
+                } catch (pdfError) {
+                  console.error("[Artifact Process] PDF parsing error:", pdfError);
+                }
+              }
+              
+              // Save extracted text for future use
+              if (contentToAnalyze) {
+                await storage.updateInteractionArtifact(id, { 
+                  extractedText: contentToAnalyze.substring(0, 50000) 
+                });
+              }
+            } else {
+              console.error("[Artifact Process] Failed to download file:", fileBuffer);
+            }
+          }
+        } catch (storageError) {
+          console.error("[Artifact Process] Error fetching from object storage:", storageError);
+        }
+      }
+      
       if (!contentToAnalyze) {
         await storage.updateInteractionArtifact(id, { aiProcessingStatus: 'failed' });
-        return res.status(400).json({ error: "No content to process" });
+        return res.status(400).json({ error: "No content to process. Please ensure the document contains readable text." });
       }
       
       const contextType = artifact.meetingContext === 'pre_meeting' ? 'preparation' : 'debrief';
