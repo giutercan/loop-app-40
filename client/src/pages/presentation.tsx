@@ -138,11 +138,11 @@ export default function PresentationPage() {
             className="absolute inset-0 bg-cover bg-center"
             style={{ backgroundImage: `url(${executiveImage})` }}
           />
-          <div className="absolute inset-0 bg-gradient-to-l from-[#00173B]/95 via-[#00173B]/85 to-[#00173B]/40 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#00173B]/95 via-[#00173B]/85 to-[#00173B]/40 pointer-events-none" />
           
           {/* Content */}
-          <div className="relative z-10 h-full flex items-center justify-end px-8 md:px-16">
-            <div className="max-w-2xl text-right">
+          <div className="relative z-10 h-full flex items-center justify-start px-8 md:px-16">
+            <div className="max-w-2xl text-left">
               <p className="text-[#00ADBB] text-sm uppercase tracking-widest mb-4">
                 The Real Question
               </p>
