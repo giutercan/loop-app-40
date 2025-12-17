@@ -49,13 +49,13 @@ export default function Landing() {
         {/* Content */}
         <div className="relative z-10 container mx-auto max-w-5xl px-6 lg:px-12 text-center">
           <h1 className="text-5xl sm:text-7xl lg:text-[120px] font-bold text-white leading-[0.9] tracking-tight mb-8">
-            PROVE<br />
-            <span className="text-[#009B77]">MORE</span>
+            CLOSE<br />
+            <span className="text-[#009B77]">THE LOOP</span>
           </h1>
           
           <p className="text-xl lg:text-2xl text-white/80 max-w-2xl mx-auto mb-12 leading-relaxed">
-            AI everywhere. Impact invisible.<br />
-            <span className="text-white">Until now.</span>
+            Because outcomes matter.<br />
+            <span className="text-white">And now you can prove them.</span>
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
