@@ -48,7 +48,7 @@ export default function PresentationPage() {
             className="absolute inset-0 bg-cover bg-center"
             style={{ backgroundImage: `url(${buyerImage})` }}
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#00173B]/95 via-[#00173B]/80 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#00173B]/95 via-[#00173B]/80 to-transparent pointer-events-none" />
           
           {/* Content */}
           <div className="relative z-10 h-full flex items-center px-8 md:px-16">
@@ -135,7 +135,7 @@ export default function PresentationPage() {
             className="absolute inset-0 bg-cover bg-center"
             style={{ backgroundImage: `url(${executiveImage})` }}
           />
-          <div className="absolute inset-0 bg-gradient-to-l from-[#00173B]/95 via-[#00173B]/85 to-[#00173B]/40" />
+          <div className="absolute inset-0 bg-gradient-to-l from-[#00173B]/95 via-[#00173B]/85 to-[#00173B]/40 pointer-events-none" />
           
           {/* Content */}
           <div className="relative z-10 h-full flex items-center justify-end px-8 md:px-16">
@@ -453,7 +453,7 @@ export default function PresentationPage() {
       </div>
 
       {/* Navigation */}
-      <footer className="fixed bottom-0 left-0 right-0 p-4 flex items-center justify-between">
+      <footer className="fixed bottom-0 left-0 right-0 z-50 p-4 flex items-center justify-between">
         <Button
           variant="ghost"
           size="icon"
