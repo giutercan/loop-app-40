@@ -29,6 +29,7 @@ import {
 import executiveImage from "@assets/GettyImages-551703701_1765967640588.jpg";
 import buyerImage from "@assets/Picture38_1765967640589.png";
 import paradoxImage from "@assets/image_1765968794671.png";
+import interventionImpactImage from "@assets/Screenshot_2025-12-17_112244_1765970588779.png";
 
 interface Slide {
   id: string;
@@ -343,7 +344,23 @@ export default function PresentationPage() {
       )
     },
 
-    // Slide 8: Close
+    // Slide 8: From Intervention to Impact
+    {
+      id: "impact",
+      content: (
+        <div className="h-full flex flex-col items-center justify-center p-8 bg-[#f5f5f5]">
+          <div className="max-w-6xl w-full">
+            <img 
+              src={interventionImpactImage} 
+              alt="From Intervention to Impact: A System for Driving Client KPIs - Up to 40% increase in Win Rate, Shorten Sales Cycles by up to 30%, Reduce A-Player Attrition by up to 6 p.p."
+              className="w-full h-auto rounded-lg shadow-lg"
+            />
+          </div>
+        </div>
+      )
+    },
+
+    // Slide 9: Close
     {
       id: "close",
       content: (
