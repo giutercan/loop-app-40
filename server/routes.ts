@@ -99,6 +99,151 @@ function safeParseFloat(value: string | number | null | undefined): number {
   return parsed !== null ? parsed : 0;
 }
 
+// Helper function to gather enriched context from artifacts and Green Sheet
+// This provides a unified knowledge base for AI coaching and recommendations
+interface EnrichedContext {
+  artifactInsights: {
+    summary: string;
+    keyInsights: string[];
+    actionItems: string[];
+    risks: string[];
+    stakeholderMentions: string[];
+    rawContent: string[];
+  };
+  greenSheet: {
+    meetingContact: {
+      name: string;
+      title: string;
+      role: string | null;
+      influence: string | null;
+      knownConcerns: string;
+      personalRapport: string;
+      decisionCriteria: string;
+    } | null;
+    callPlanner: {
+      objective: string;
+      desiredOutcome: string;
+      openingStatement: string;
+      bestActionCommitment: string;
+    } | null;
+  };
+  combinedContext: string; // Formatted text for AI prompts
+}
+
+async function getEnrichedDiscoveryContext(
+  projectId: number,
+  storageRef: typeof storage
+): Promise<EnrichedContext> {
+  // Fetch artifacts and project in parallel
+  const [artifacts, project] = await Promise.all([
+    storageRef.getInteractionArtifacts(projectId),
+    storageRef.getProject(projectId)
+  ]);
+
+  // Extract insights from analyzed artifacts
+  const analyzedArtifacts = artifacts.filter(a => a.aiProcessingStatus === 'completed');
+  const allInsights: string[] = [];
+  const allActionItems: string[] = [];
+  const allRisks: string[] = [];
+  const allStakeholders: string[] = [];
+  const allSummaries: string[] = [];
+  const rawContent: string[] = [];
+
+  for (const artifact of analyzedArtifacts) {
+    if (artifact.aiSummary) {
+      allSummaries.push(artifact.aiSummary);
+    }
+    
+    if (artifact.aiExtractedInsights) {
+      const insights = artifact.aiExtractedInsights as any;
+      if (insights.insights?.length) {
+        allInsights.push(...insights.insights);
+      }
+      if (insights.actionItems?.length) {
+        allActionItems.push(...insights.actionItems);
+      }
+      if (insights.risks?.length) {
+        allRisks.push(...insights.risks);
+      }
+      if (insights.stakeholderMentions?.length) {
+        allStakeholders.push(...insights.stakeholderMentions);
+      }
+    }
+
+    // Include raw content (notes, extracted text) for deeper context
+    if (artifact.freeformNotes) {
+      rawContent.push(`[Meeting Notes - ${artifact.title || artifact.fileName}]: ${artifact.freeformNotes}`);
+    }
+    if (artifact.extractedText && artifact.extractedText.length < 5000) {
+      rawContent.push(`[Document - ${artifact.title || artifact.fileName}]: ${artifact.extractedText.substring(0, 2000)}`);
+    }
+  }
+
+  // Extract Green Sheet data
+  const greenSheetData = project?.greenSheetData as any;
+  const meetingContact = greenSheetData?.meetingContact || null;
+  const callPlanner = greenSheetData?.callPlanner || null;
+
+  // Build combined context string for AI prompts
+  const contextParts: string[] = [];
+
+  if (allSummaries.length > 0) {
+    contextParts.push(`### Meeting & Document Insights\n${allSummaries.slice(0, 5).join('\n\n')}`);
+  }
+
+  if (allInsights.length > 0) {
+    contextParts.push(`### Key Insights from Interactions\n${allInsights.slice(0, 10).map(i => `- ${i}`).join('\n')}`);
+  }
+
+  if (allActionItems.length > 0) {
+    contextParts.push(`### Action Items Identified\n${allActionItems.slice(0, 8).map(i => `- ${i}`).join('\n')}`);
+  }
+
+  if (allRisks.length > 0) {
+    contextParts.push(`### Risks & Concerns\n${allRisks.slice(0, 6).map(r => `- ${r}`).join('\n')}`);
+  }
+
+  if (allStakeholders.length > 0) {
+    contextParts.push(`### Stakeholders Mentioned\n${[...new Set(allStakeholders)].slice(0, 10).map(s => `- ${s}`).join('\n')}`);
+  }
+
+  if (meetingContact?.name || meetingContact?.knownConcerns) {
+    const contactInfo = [];
+    if (meetingContact.name) contactInfo.push(`Contact: ${meetingContact.name}${meetingContact.title ? ` (${meetingContact.title})` : ''}`);
+    if (meetingContact.role) contactInfo.push(`Role: ${meetingContact.role.replace('_', ' ')}`);
+    if (meetingContact.influence) contactInfo.push(`Influence: ${meetingContact.influence}`);
+    if (meetingContact.knownConcerns) contactInfo.push(`Known Concerns: ${meetingContact.knownConcerns}`);
+    if (meetingContact.decisionCriteria) contactInfo.push(`Decision Criteria: ${meetingContact.decisionCriteria}`);
+    contextParts.push(`### Green Sheet - Meeting Contact\n${contactInfo.join('\n')}`);
+  }
+
+  if (callPlanner?.objective || callPlanner?.desiredOutcome) {
+    const plannerInfo = [];
+    if (callPlanner.objective) plannerInfo.push(`Call Objective: ${callPlanner.objective}`);
+    if (callPlanner.desiredOutcome) plannerInfo.push(`Desired Outcome: ${callPlanner.desiredOutcome}`);
+    if (callPlanner.bestActionCommitment) plannerInfo.push(`Best Action Commitment: ${callPlanner.bestActionCommitment}`);
+    contextParts.push(`### Green Sheet - Call Preparation\n${plannerInfo.join('\n')}`);
+  }
+
+  return {
+    artifactInsights: {
+      summary: allSummaries.join('\n\n'),
+      keyInsights: allInsights,
+      actionItems: allActionItems,
+      risks: allRisks,
+      stakeholderMentions: [...new Set(allStakeholders)],
+      rawContent
+    },
+    greenSheet: {
+      meetingContact,
+      callPlanner
+    },
+    combinedContext: contextParts.length > 0 
+      ? `\n\n## Additional Context from Discovery Materials\n\n${contextParts.join('\n\n')}\n\n`
+      : ''
+  };
+}
+
 // Helper function to calculate project value metrics
 async function calculateProjectValueMetrics(projectId: number, storage: typeof import("./storage").storage) {
   // Bulk fetch all data in parallel with minimal queries
@@ -1993,7 +2138,10 @@ Return as JSON:
         }))
       }));
 
-      // Generate questions with AI - include company context
+      // Get enriched context from artifacts and Green Sheet
+      const enrichedContext = await getEnrichedDiscoveryContext(projectId, storage);
+      
+      // Generate questions with AI - include company context and enriched discovery materials
       let generatedQuestions;
       try {
         generatedQuestions = await generateDiscoveryQuestions(
@@ -2005,7 +2153,8 @@ Return as JSON:
             employeeCount: project.employeeCount,
             revenue: project.revenue,
             headquarters: project.headquarters,
-            description: project.description
+            // Append enriched context from artifacts and Green Sheet to description
+            description: (project.description || '') + enrichedContext.combinedContext
           }
         );
       } catch (aiError: any) {
@@ -3618,10 +3767,11 @@ Return as JSON:
       }
 
       // Gather discovery data for AI analysis
-      const [dataPoints, headlines, discoveryNotes] = await Promise.all([
+      const [dataPoints, headlines, discoveryNotes, enrichedContext] = await Promise.all([
         storage.getCompanyDataPoints(projectId),
         storage.getHeadlines(projectId),
-        storage.getDiscoveryNotes(projectId)
+        storage.getDiscoveryNotes(projectId),
+        getEnrichedDiscoveryContext(projectId, storage)
       ]);
 
       if (dataPoints.length === 0 && headlines.length === 0) {
@@ -3631,7 +3781,7 @@ Return as JSON:
         });
       }
 
-      // Generate pillars using AI
+      // Generate pillars using AI - include enriched context from artifacts and Green Sheet
       const aiPillars = await generateStrategicPillars(
         project.companyName,
         project.sector,
@@ -3647,9 +3797,14 @@ Return as JSON:
           date: h.date
         })),
         discoveryNotes ? {
-          freeformNotes: discoveryNotes.freeformNotes,
+          // Append enriched context to freeform notes for AI consideration
+          freeformNotes: (discoveryNotes.freeformNotes || '') + enrichedContext.combinedContext,
           topChallenges: discoveryNotes.topChallenges,
           keyStakeholder: discoveryNotes.keyStakeholder
+        } : enrichedContext.combinedContext ? {
+          freeformNotes: enrichedContext.combinedContext,
+          topChallenges: null,
+          keyStakeholder: null
         } : null
       );
 
@@ -4155,8 +4310,11 @@ Return as JSON:
         return res.status(400).json({ error: "No discovery insights found. Complete discovery research first." });
       }
       
-      // Get discovery notes for additional context
-      const discoveryNotes = await storage.getDiscoveryNotes(projectId);
+      // Get discovery notes and enriched context for additional context
+      const [discoveryNotes, enrichedContext] = await Promise.all([
+        storage.getDiscoveryNotes(projectId),
+        getEnrichedDiscoveryContext(projectId, storage)
+      ]);
       
       // Map data points to the format expected by the AI function
       const insights = dataPoints.map(dp => ({
@@ -4173,12 +4331,15 @@ Return as JSON:
       
       console.log(`[Discovery KPI Suggestions] Project ${projectId}: ${insights.length} insights, theme: ${discoveryTheme}`);
       
+      // Include enriched context from artifacts and Green Sheet in consultant notes
+      const enrichedNotes = (discoveryNotes?.freeformNotes || '') + enrichedContext.combinedContext;
+      
       const suggestions = await generateDiscoveryKpiSuggestions({
         companyName: project.companyName,
         industry: project.sector || undefined,
         discoveryTheme,
         insights,
-        consultantNotes: discoveryNotes?.freeformNotes || undefined,
+        consultantNotes: enrichedNotes || undefined,
       });
       
       res.json({ suggestions, theme: discoveryTheme, insightsCount: insights.length });
@@ -5448,9 +5609,14 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
         }
       }
 
-      // Load notes content
-      const notes = await storage.getDiscoveryNotes(projectId);
-      const notesContent = notes?.freeformNotes || '';
+      // Load notes content and enriched context from artifacts and Green Sheet
+      const [notes, enrichedContext] = await Promise.all([
+        storage.getDiscoveryNotes(projectId),
+        getEnrichedDiscoveryContext(projectId, storage)
+      ]);
+      
+      // Include enriched context in notes content for AI consideration
+      const notesContent = (notes?.freeformNotes || '') + enrichedContext.combinedContext;
 
       // Generate AI recommendations
       const { recommendations } = await generateSuccessStoryRecommendations({
@@ -7850,16 +8016,25 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
         });
       }
       
-      // Get existing commitments to avoid duplicates
-      const existingCommitments = await storage.getKpiCommitments(id);
+      // Get existing commitments, account info, and enriched context
+      const [existingCommitments, enrichedContext] = await Promise.all([
+        storage.getKpiCommitments(id),
+        getEnrichedDiscoveryContext(id, storage)
+      ]);
       const account = project.accountId ? await storage.getAccount(project.accountId) : null;
+      
+      // Enhance synthesis with enriched context from artifacts and Green Sheet
+      const enhancedSynthesis = {
+        ...synthesis,
+        additionalContext: enrichedContext.combinedContext
+      };
       
       // Import and call the outcome recommendations function
       const { generateOutcomeRecommendations } = await import("./ai");
       const result = await generateOutcomeRecommendations({
         companyName: project.companyName || account?.name || "Unknown Company",
         industry: project.sector || account?.industry || undefined,
-        discoverySynthesis: synthesis,
+        discoverySynthesis: enhancedSynthesis,
         existingCommitments: existingCommitments.map(c => ({
           title: c.commitmentTitle,
           kpiName: c.customMetricName || undefined
