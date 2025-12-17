@@ -92,7 +92,7 @@ export function AppHeader() {
         <div className="flex items-center gap-4">
           <div 
             className="flex items-center gap-2.5 hover:opacity-90 transition-opacity cursor-pointer" 
-            onClick={() => navigate("/accounts")}
+            onClick={() => navigate("/")}
             data-testid="link-header-logo"
           >
             <div className="hidden sm:flex flex-col leading-none">
