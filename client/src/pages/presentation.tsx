@@ -29,7 +29,6 @@ import {
 import executiveImage from "@assets/GettyImages-551703701_1765967640588.jpg";
 import buyerImage from "@assets/Picture38_1765967640589.png";
 import paradoxImage from "@assets/image_1765968794671.png";
-import interventionImpactImage from "@assets/Screenshot_2025-12-17_112244_1765970588779.png";
 
 interface Slide {
   id: string;
@@ -344,16 +343,44 @@ export default function PresentationPage() {
       )
     },
 
-    // Slide 8: Close - From Intervention to Impact
+    // Slide 8: Close - The Future of Selling
     {
       id: "close",
       content: (
-        <div className="h-full w-full flex items-center justify-center p-6" style={{ backgroundColor: '#e8e4dc' }}>
-          <img 
-            src={interventionImpactImage} 
-            alt="From Intervention to Impact: A System for Driving Client KPIs"
-            className="max-w-full max-h-full object-contain"
-          />
+        <div className="h-full flex flex-col items-center justify-center px-8 bg-[#00173B]">
+          <div className="max-w-4xl text-center">
+            <Rocket className="w-14 h-14 text-[#05C690] mx-auto mb-8" />
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight mb-8">
+              The future of selling<br/>
+              <span className="text-[#929192]">is not a better pitch deck.</span>
+            </h2>
+            
+            <p className="text-xl md:text-2xl text-white/90 mb-10">
+              It's a better system.
+            </p>
+
+            <div className="space-y-4 max-w-2xl mx-auto mb-12">
+              <div className="flex items-center gap-4 bg-white/10 backdrop-blur-sm rounded-lg px-6 py-4">
+                <CircleDot className="w-5 h-5 text-[#05C690] flex-shrink-0" />
+                <p className="text-lg text-white text-left">One method. One language. <span className="text-[#05C690]">Embedded in the flow of work.</span></p>
+              </div>
+              <div className="flex items-center gap-4 bg-white/10 backdrop-blur-sm rounded-lg px-6 py-4">
+                <CircleDot className="w-5 h-5 text-[#05C690] flex-shrink-0" />
+                <p className="text-lg text-white text-left">A closed loop that turns every intervention into <span className="text-[#05C690]">measurable lift.</span></p>
+              </div>
+              <div className="flex items-center gap-4 bg-white/10 backdrop-blur-sm rounded-lg px-6 py-4">
+                <CircleDot className="w-5 h-5 text-[#05C690] flex-shrink-0" />
+                <p className="text-lg text-white text-left">And every lift into <span className="text-[#05C690]">learning.</span></p>
+              </div>
+            </div>
+            
+            <div className="p-6 rounded-xl bg-gradient-to-r from-[#00634F]/30 to-[#009B77]/30 border border-[#05C690]/40 max-w-xl mx-auto">
+              <p className="text-xl md:text-2xl text-white font-medium">
+                Trust everywhere. Proof everywhere.<br/>
+                <span className="text-[#05C690]">Performance that compounds.</span>
+              </p>
+            </div>
+          </div>
         </div>
       )
     }
@@ -362,7 +389,7 @@ export default function PresentationPage() {
   const currentSlideData = slides[currentSlide];
   
   // Determine if current slide has light or dark background for navigation styling
-  const darkBgSlides = ["buying", "paradox", "cro", "proof", "why"];
+  const darkBgSlides = ["buying", "paradox", "cro", "proof", "why", "close"];
   const isDarkBg = darkBgSlides.includes(currentSlideData.id);
 
   const goToSlide = useCallback((index: number) => {
