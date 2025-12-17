@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import heroImage from "@assets/Picture6_1763994371580.jpg";
+import interventionImpactImage from "@assets/image_1765969612984.png";
+import futureSellingImage from "@assets/image_1765969628368.png";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 
 const buyerExpectations = [
@@ -433,6 +435,39 @@ export default function Landing() {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* Intervention to Impact System */}
+      <section className="py-16 lg:py-20 bg-white">
+        <div className="container mx-auto max-w-6xl px-4 lg:px-8">
+          <div className="text-center mb-10">
+            <Badge className="bg-[#005971]/10 text-[#005971] border-[#005971]/20 mb-4">
+              <BarChart3 className="w-3.5 h-3.5 mr-2" />
+              Proven Results
+            </Badge>
+            <h2 className="text-2xl lg:text-3xl font-bold text-[#00173B]">
+              From Intervention to Impact
+            </h2>
+          </div>
+          <div className="rounded-xl overflow-hidden shadow-lg border">
+            <img 
+              src={interventionImpactImage} 
+              alt="A System for Driving Client KPIs - Up to 40% increase in Win Rate, Shorten Sales Cycles by up to 30%, Reduce A-Player Attrition by up to 6 p.p."
+              className="w-full h-auto"
+              data-testid="img-intervention-impact"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Future of Selling Vision */}
+      <section className="py-0">
+        <img 
+          src={futureSellingImage} 
+          alt="The future of selling is not a better pitch deck. It's a better system. Trust everywhere. Proof everywhere. Performance that compounds."
+          className="w-full h-auto"
+          data-testid="img-future-selling"
+        />
       </section>
 
       {/* CTA Section */}
