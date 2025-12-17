@@ -144,18 +144,24 @@ async function getEnrichedDiscoveryContext(
     storageRef.getProject(projectId)
   ]);
 
-  // Extract insights from analyzed artifacts (only AI-processed summaries, not raw content)
+  // Extract insights from artifacts - both AI-processed and manually added notes
   const analyzedArtifacts = artifacts.filter(a => a.aiProcessingStatus === 'completed');
   const allInsights: string[] = [];
   const allActionItems: string[] = [];
   const allRisks: string[] = [];
   const allStakeholders: string[] = [];
   const allSummaries: string[] = [];
+  const consultantNotes: string[] = [];
 
   for (const artifact of analyzedArtifacts) {
-    // Only include AI-generated summaries (already sanitized by AI processing)
+    // Include AI-generated summaries
     if (artifact.aiSummary) {
       allSummaries.push(truncateText(artifact.aiSummary, 300));
+    }
+    
+    // Include consultant's manually added notes on artifacts
+    if (artifact.freeformNotes && artifact.freeformNotes.trim()) {
+      consultantNotes.push(truncateText(artifact.freeformNotes, 200));
     }
     
     if (artifact.aiExtractedInsights) {
@@ -175,6 +181,14 @@ async function getEnrichedDiscoveryContext(
       }
     }
   }
+  
+  // Also include artifacts that have notes but aren't AI-processed yet
+  const artifactsWithNotes = artifacts.filter(a => 
+    a.aiProcessingStatus !== 'completed' && a.freeformNotes && a.freeformNotes.trim()
+  );
+  for (const artifact of artifactsWithNotes.slice(0, 3)) {
+    consultantNotes.push(truncateText(artifact.freeformNotes!, 200));
+  }
 
   // Extract Green Sheet data (business context only, no PII)
   const greenSheetData = project?.greenSheetData as any;
@@ -184,6 +198,11 @@ async function getEnrichedDiscoveryContext(
   // Build combined context string for AI prompts - keep compact (~1500 chars max)
   // NOTE: Excludes all PII (names, titles, personal details) - only business context
   const contextParts: string[] = [];
+
+  // Include consultant's manually added notes first (most valuable context)
+  if (consultantNotes.length > 0) {
+    contextParts.push(`Consultant Notes: ${consultantNotes.slice(0, 3).join(' | ')}`);
+  }
 
   if (allSummaries.length > 0) {
     contextParts.push(`Meeting Insights: ${allSummaries.slice(0, 2).join(' | ')}`);
