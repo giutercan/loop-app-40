@@ -88,44 +88,50 @@ export default function Landing() {
         </div>
         
         {/* Feature Cards - Bottom of viewport */}
-        <div className="relative z-10">
-          <div className="container mx-auto max-w-7xl px-6 lg:px-12">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-0">
-              <Link href="/presentation">
+        <div className="relative z-10 pb-8">
+          <div className="container mx-auto max-w-5xl px-6 lg:px-12">
+            <div className="grid grid-cols-3 gap-px bg-white/10">
+              <Link href="/presentation" className="block">
                 <div 
-                  className="bg-[#00634F] p-5 lg:p-6 hover:bg-[#009B77] transition-colors cursor-pointer group"
+                  className="bg-[#00634F] p-6 h-28 flex flex-col justify-between hover:bg-[#009B77] transition-colors cursor-pointer group"
                   data-testid="card-story"
                 >
-                  <p className="text-[10px] uppercase tracking-widest text-white/60 mb-2">The Narrative</p>
-                  <h3 className="text-base lg:text-lg font-bold text-white leading-tight">
-                    WHY PROOF IS THE NEW PITCH
-                  </h3>
-                  <ArrowRight className="w-4 h-4 text-white/60 mt-2 group-hover:translate-x-2 transition-transform" />
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-white/60 mb-1">The Narrative</p>
+                    <h3 className="text-sm lg:text-base font-bold text-white leading-snug">
+                      WHY PROOF IS THE NEW PITCH
+                    </h3>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-white/60 group-hover:translate-x-2 transition-transform" />
                 </div>
               </Link>
               
-              <Link href="/accounts">
+              <Link href="/accounts" className="block">
                 <div 
-                  className="bg-[#005971] p-5 lg:p-6 hover:bg-[#00634F] transition-colors cursor-pointer group"
+                  className="bg-[#005971] p-6 h-28 flex flex-col justify-between hover:bg-[#00634F] transition-colors cursor-pointer group"
                   data-testid="card-platform"
                 >
-                  <p className="text-[10px] uppercase tracking-widest text-white/60 mb-2">The Platform</p>
-                  <h3 className="text-base lg:text-lg font-bold text-white leading-tight">
-                    YOUR COMMERCIAL OPERATING SYSTEM
-                  </h3>
-                  <ArrowRight className="w-4 h-4 text-white/60 mt-2 group-hover:translate-x-2 transition-transform" />
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-white/60 mb-1">The Platform</p>
+                    <h3 className="text-sm lg:text-base font-bold text-white leading-snug">
+                      YOUR COMMERCIAL OS
+                    </h3>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-white/60 group-hover:translate-x-2 transition-transform" />
                 </div>
               </Link>
               
               <div 
-                className="bg-[#A3238E] p-5 lg:p-6"
+                className="bg-[#A3238E] p-6 h-28 flex flex-col justify-between"
                 data-testid="card-vision"
               >
-                <p className="text-[10px] uppercase tracking-widest text-white/60 mb-2">The Vision</p>
-                <h3 className="text-base lg:text-lg font-bold text-white leading-tight">
-                  TRUST EVERYWHERE. PROOF EVERYWHERE.
-                </h3>
-                <Sparkles className="w-4 h-4 text-white/60 mt-2" />
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-white/60 mb-1">The Vision</p>
+                  <h3 className="text-sm lg:text-base font-bold text-white leading-snug">
+                    TRUST & PROOF EVERYWHERE
+                  </h3>
+                </div>
+                <Sparkles className="w-4 h-4 text-white/60" />
               </div>
             </div>
           </div>
