@@ -9157,7 +9157,14 @@ Respond in JSON format:
         commitments = await storage.getKpiCommitments(projectId);
       }
       
-      res.json(commitments);
+      // Add 'name' alias for frontend compatibility (maps to commitmentTitle)
+      const commitmentsWithName = commitments.map(c => ({
+        ...c,
+        name: c.commitmentTitle, // Alias for UI that expects 'name' field
+        description: c.commitmentDescription, // Alias for consistency
+      }));
+      
+      res.json(commitmentsWithName);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -9173,7 +9180,14 @@ Respond in JSON format:
         return res.status(404).json({ error: "Commitment not found" });
       }
       
-      res.json(commitment);
+      // Add 'name' alias for frontend compatibility
+      const commitmentWithName = {
+        ...commitment,
+        name: commitment.commitmentTitle,
+        description: commitment.commitmentDescription,
+      };
+      
+      res.json(commitmentWithName);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -9213,7 +9227,15 @@ Respond in JSON format:
       
       const validated = insertKpiCommitmentSchema.parse(dataToValidate);
       const commitment = await storage.createKpiCommitment(validated);
-      res.status(201).json(commitment);
+      
+      // Add 'name' alias for frontend compatibility
+      const commitmentWithName = {
+        ...commitment,
+        name: commitment.commitmentTitle,
+        description: commitment.commitmentDescription,
+      };
+      
+      res.status(201).json(commitmentWithName);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -9257,7 +9279,15 @@ Respond in JSON format:
       }
       
       const updated = await storage.updateKpiCommitment(id, updateData);
-      res.json(updated);
+      
+      // Add 'name' alias for frontend compatibility
+      const updatedWithName = updated ? {
+        ...updated,
+        name: updated.commitmentTitle,
+        description: updated.commitmentDescription,
+      } : null;
+      
+      res.json(updatedWithName);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -9290,7 +9320,14 @@ Respond in JSON format:
         return res.status(404).json({ error: "Commitment not found" });
       }
       
-      res.json(updated);
+      // Add 'name' alias for frontend compatibility
+      const updatedWithName = {
+        ...updated,
+        name: updated.commitmentTitle,
+        description: updated.commitmentDescription,
+      };
+      
+      res.json(updatedWithName);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
