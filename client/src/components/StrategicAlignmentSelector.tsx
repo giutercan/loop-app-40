@@ -1186,7 +1186,7 @@ export function StrategicAlignmentSelector({
             </CardContent>
           </Card>
 
-          {/* Save Progress & Copy Client Link - Only shows when outcomes exist */}
+          {/* Save Progress, Copy Client Link & Submit to Delivery Handoff - Only shows when outcomes exist */}
           {outcomes.length > 0 && (
             <div className="flex justify-end gap-2">
               <Button 
@@ -1253,6 +1253,16 @@ export function StrategicAlignmentSelector({
               >
                 <Link2 className="w-4 h-4 mr-1" />
                 Copy Client Link
+              </Button>
+              <Button 
+                size="sm"
+                onClick={handleComplete}
+                disabled={selectedOutcomes.size === 0 || saveSelectionMutation.isPending}
+                className="bg-emerald-600 hover:bg-emerald-700"
+                data-testid="button-submit-delivery-handoff"
+              >
+                <ArrowRight className="h-4 w-4 mr-1" />
+                Submit to Delivery Handoff
               </Button>
             </div>
           )}
