@@ -344,56 +344,92 @@ export default function PresentationPage() {
       )
     },
 
-    // Slide 8: Close - The Future of Selling
+    // Slide 8: Close - From Intervention to Impact
     {
       id: "close",
       content: (
-        <div className="h-full flex flex-col bg-[#00173B]">
-          {/* Top section with text */}
-          <div className="flex-1 flex flex-col items-center justify-center px-8 pt-8">
-            <div className="max-w-4xl text-center">
-              <Rocket className="w-10 h-10 text-[#05C690] mx-auto mb-4" />
-              <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white leading-tight mb-3">
-                The future of selling<br/>
-                <span className="text-[#929192]">is not a better pitch deck.</span>
-              </h2>
-              
-              <p className="text-lg md:text-xl text-white/90 mb-6">
-                It's a better system.
-              </p>
-
-              <div className="flex flex-wrap justify-center gap-3 mb-6">
-                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2">
-                  <CircleDot className="w-4 h-4 text-[#05C690] flex-shrink-0" />
-                  <p className="text-sm text-white">One method. One language.</p>
+        <div className="h-full flex flex-col bg-[#00173B] overflow-hidden">
+          {/* Header */}
+          <div className="text-center pt-6 pb-4">
+            <p className="text-[#00ADBB] text-xs uppercase tracking-widest mb-2">From Intervention to Impact</p>
+            <h2 className="text-xl md:text-2xl font-bold text-white">
+              A System for Driving Client KPIs
+            </h2>
+          </div>
+          
+          {/* Infinity Loop Visual */}
+          <div className="flex-1 flex items-center justify-center px-4">
+            <div className="relative w-full max-w-4xl">
+              {/* The infinity loop using two overlapping circles */}
+              <div className="flex items-center justify-center gap-0">
+                {/* Left Circle - Measurable Sales Effectiveness */}
+                <div className="relative w-52 h-52 md:w-64 md:h-64 rounded-full border-4 border-[#00ADBB] flex items-center justify-center bg-[#00173B]/50">
+                  <div className="text-center px-4">
+                    <p className="text-[#00ADBB] text-[10px] uppercase tracking-wide mb-1">A System for</p>
+                    <p className="text-white font-bold text-sm md:text-base leading-tight">Measurable Sales<br/>Effectiveness</p>
+                  </div>
+                  {/* KPIs around left circle */}
+                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#00ADBB]/20 border border-[#00ADBB]/40 rounded px-2 py-0.5">
+                    <span className="text-[10px] text-[#00ADBB]">Deal Size</span>
+                  </div>
+                  <div className="absolute -left-4 top-1/4 bg-[#00ADBB]/20 border border-[#00ADBB]/40 rounded px-2 py-0.5">
+                    <span className="text-[10px] text-[#00ADBB]">Win Rate</span>
+                  </div>
+                  <div className="absolute -left-6 bottom-1/4 bg-[#00ADBB]/20 border border-[#00ADBB]/40 rounded px-2 py-0.5">
+                    <span className="text-[10px] text-[#00ADBB]">A-Player Attrition</span>
+                  </div>
+                  <div className="absolute -bottom-2 left-1/3 bg-[#00ADBB]/20 border border-[#00ADBB]/40 rounded px-2 py-0.5">
+                    <span className="text-[10px] text-[#00ADBB]">Sales Cycle</span>
+                  </div>
+                  <div className="absolute top-1/3 -right-4 bg-[#00ADBB]/20 border border-[#00ADBB]/40 rounded px-2 py-0.5">
+                    <span className="text-[10px] text-[#00ADBB]">New Logos</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2">
-                  <CircleDot className="w-4 h-4 text-[#05C690] flex-shrink-0" />
-                  <p className="text-sm text-white">Intervention to <span className="text-[#05C690]">measurable lift.</span></p>
+                
+                {/* Center connection - the crossover */}
+                <div className="relative z-10 -mx-8 flex flex-col items-center">
+                  <RefreshCcw className="w-8 h-8 text-[#05C690] animate-spin" style={{ animationDuration: '8s' }} />
                 </div>
-                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2">
-                  <CircleDot className="w-4 h-4 text-[#05C690] flex-shrink-0" />
-                  <p className="text-sm text-white">Every lift into <span className="text-[#05C690]">learning.</span></p>
+                
+                {/* Right Circle - Targeted Interventions */}
+                <div className="relative w-52 h-52 md:w-64 md:h-64 rounded-full border-4 border-[#A3238E] flex items-center justify-center bg-[#00173B]/50">
+                  <div className="text-center px-4">
+                    <p className="text-white font-bold text-sm md:text-base leading-tight">Targeted<br/>Interventions</p>
+                    <p className="text-[#929192] text-[10px] mt-1">Across Your Organization</p>
+                  </div>
+                  {/* Intervention types around right circle */}
+                  <div className="absolute -top-2 left-1/3 bg-[#A3238E]/20 border border-[#A3238E]/40 rounded px-2 py-0.5">
+                    <span className="text-[10px] text-[#A3238E]">Talent Excellence</span>
+                  </div>
+                  <div className="absolute -top-2 right-1/4 bg-[#A3238E]/20 border border-[#A3238E]/40 rounded px-2 py-0.5">
+                    <span className="text-[10px] text-[#A3238E]">Precise Execution</span>
+                  </div>
+                  <div className="absolute -right-6 top-1/3 bg-[#A3238E]/20 border border-[#A3238E]/40 rounded px-2 py-0.5">
+                    <span className="text-[10px] text-[#A3238E]">Org Effectiveness</span>
+                  </div>
+                  <div className="absolute -right-4 bottom-1/3 bg-[#A3238E]/20 border border-[#A3238E]/40 rounded px-2 py-0.5">
+                    <span className="text-[10px] text-[#A3238E]">Human + AI</span>
+                  </div>
                 </div>
-              </div>
-              
-              <div className="p-4 rounded-xl bg-gradient-to-r from-[#00634F]/30 to-[#009B77]/30 border border-[#05C690]/40 max-w-md mx-auto">
-                <p className="text-lg text-white font-medium">
-                  Trust everywhere. Proof everywhere.<br/>
-                  <span className="text-[#05C690]">Performance that compounds.</span>
-                </p>
               </div>
             </div>
           </div>
           
-          {/* Bottom section with image */}
-          <div className="px-8 pb-6">
-            <div className="max-w-4xl mx-auto">
-              <img 
-                src={interventionImpactImage} 
-                alt="From Intervention to Impact: A System for Driving Client KPIs"
-                className="w-full h-auto rounded-lg shadow-xl"
-              />
+          {/* Stats at bottom */}
+          <div className="px-4 pb-6">
+            <div className="flex flex-wrap justify-center gap-4 max-w-3xl mx-auto">
+              <div className="flex-1 min-w-[140px] bg-gradient-to-br from-[#00ADBB]/20 to-[#00ADBB]/5 border border-[#00ADBB]/30 rounded-lg p-3 text-center">
+                <p className="text-2xl md:text-3xl font-bold text-[#00ADBB]">40%</p>
+                <p className="text-xs text-white/80">Increase in Win Rate</p>
+              </div>
+              <div className="flex-1 min-w-[140px] bg-gradient-to-br from-[#05C690]/20 to-[#05C690]/5 border border-[#05C690]/30 rounded-lg p-3 text-center">
+                <p className="text-2xl md:text-3xl font-bold text-[#05C690]">30%</p>
+                <p className="text-xs text-white/80">Shorter Sales Cycles</p>
+              </div>
+              <div className="flex-1 min-w-[140px] bg-gradient-to-br from-[#A3238E]/20 to-[#A3238E]/5 border border-[#A3238E]/30 rounded-lg p-3 text-center">
+                <p className="text-2xl md:text-3xl font-bold text-[#A3238E]">6 p.p.</p>
+                <p className="text-xs text-white/80">Reduced A-Player Attrition</p>
+              </div>
             </div>
           </div>
         </div>
