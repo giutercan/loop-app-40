@@ -11,7 +11,6 @@ import {
   TrendingUp,
   Zap,
   ArrowRight,
-  ArrowLeft,
   CheckCircle2,
   Sparkles,
   BarChart3,
@@ -345,86 +344,56 @@ export default function PresentationPage() {
       )
     },
 
-    // Slide 8: Close - The Future of Selling with Impact Loop
+    // Slide 8: Close - The Future of Selling
     {
       id: "close",
       content: (
-        <div className="h-full flex flex-col bg-[#00173B] overflow-hidden">
+        <div className="h-full flex flex-col bg-[#00173B]">
           {/* Top section with text */}
-          <div className="px-8 pt-6 text-center">
-            <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-white leading-tight mb-2">
-              The future of selling <span className="text-[#929192]">is not a better pitch deck.</span>
-            </h2>
-            <p className="text-base text-white/80">It's a better system.</p>
-          </div>
-          
-          {/* Infinity Loop Visual */}
-          <div className="flex-1 flex items-center justify-center px-4">
-            <div className="max-w-5xl w-full">
-              {/* The Loop */}
-              <div className="flex items-center justify-center gap-0">
-                {/* Left Loop - Sales Effectiveness */}
-                <div className="relative">
-                  <div className="w-48 h-48 md:w-56 md:h-56 rounded-full border-4 border-[#00ADBB] flex items-center justify-center bg-[#00ADBB]/10">
-                    <div className="text-center px-4">
-                      <p className="text-xs text-[#00ADBB] uppercase tracking-wide mb-1">A System for</p>
-                      <p className="text-sm md:text-base font-bold text-white leading-tight">Measurable Sales Effectiveness</p>
-                    </div>
-                  </div>
-                  {/* KPI Labels around left loop */}
-                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#00634F] text-white text-[10px] px-2 py-1 rounded">Win Rate</div>
-                  <div className="absolute top-4 -right-4 bg-[#00634F] text-white text-[10px] px-2 py-1 rounded">Deal Size</div>
-                  <div className="absolute bottom-4 -right-4 bg-[#00634F] text-white text-[10px] px-2 py-1 rounded">New Logos</div>
-                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-[#00634F] text-white text-[10px] px-2 py-1 rounded">Sales Cycle</div>
-                  <div className="absolute top-1/2 -left-6 -translate-y-1/2 bg-[#00634F] text-white text-[10px] px-2 py-1 rounded">Attrition</div>
+          <div className="flex-1 flex flex-col items-center justify-center px-8 pt-8">
+            <div className="max-w-4xl text-center">
+              <Rocket className="w-10 h-10 text-[#05C690] mx-auto mb-4" />
+              <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white leading-tight mb-3">
+                The future of selling<br/>
+                <span className="text-[#929192]">is not a better pitch deck.</span>
+              </h2>
+              
+              <p className="text-lg md:text-xl text-white/90 mb-6">
+                It's a better system.
+              </p>
+
+              <div className="flex flex-wrap justify-center gap-3 mb-6">
+                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2">
+                  <CircleDot className="w-4 h-4 text-[#05C690] flex-shrink-0" />
+                  <p className="text-sm text-white">One method. One language.</p>
                 </div>
-                
-                {/* Center Connection - Infinity crossover */}
-                <div className="w-16 md:w-24 flex flex-col items-center justify-center -mx-8 z-10">
-                  <ArrowRight className="w-8 h-8 text-[#05C690] -mb-4" />
-                  <ArrowLeft className="w-8 h-8 text-[#05C690] -mt-4" />
+                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2">
+                  <CircleDot className="w-4 h-4 text-[#05C690] flex-shrink-0" />
+                  <p className="text-sm text-white">Intervention to <span className="text-[#05C690]">measurable lift.</span></p>
                 </div>
-                
-                {/* Right Loop - Targeted Interventions */}
-                <div className="relative">
-                  <div className="w-48 h-48 md:w-56 md:h-56 rounded-full border-4 border-[#009B77] flex items-center justify-center bg-[#009B77]/10">
-                    <div className="text-center px-4">
-                      <p className="text-xs text-[#009B77] uppercase tracking-wide mb-1">Targeted</p>
-                      <p className="text-sm md:text-base font-bold text-white leading-tight">Interventions Across Your Organization</p>
-                    </div>
-                  </div>
-                  {/* Capability Labels around right loop */}
-                  <div className="absolute -top-2 left-1/4 bg-[#009B77] text-white text-[10px] px-2 py-1 rounded">Talent</div>
-                  <div className="absolute -top-2 right-1/4 bg-[#009B77] text-white text-[10px] px-2 py-1 rounded">Execution</div>
-                  <div className="absolute top-1/2 -right-8 -translate-y-1/2 bg-[#009B77] text-white text-[10px] px-2 py-1 rounded">Org Design</div>
-                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-[#009B77] text-white text-[10px] px-2 py-1 rounded">Human + AI</div>
+                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2">
+                  <CircleDot className="w-4 h-4 text-[#05C690] flex-shrink-0" />
+                  <p className="text-sm text-white">Every lift into <span className="text-[#05C690]">learning.</span></p>
                 </div>
               </div>
               
-              {/* Stats Row */}
-              <div className="flex justify-center gap-6 md:gap-12 mt-8">
-                <div className="text-center">
-                  <div className="text-3xl md:text-4xl font-bold text-[#00ADBB]">40%</div>
-                  <p className="text-xs text-white/70">Increase in<br/>Win Rate</p>
-                </div>
-                <div className="text-center border-l border-r border-white/20 px-6 md:px-12">
-                  <div className="text-3xl md:text-4xl font-bold text-[#009B77]">30%</div>
-                  <p className="text-xs text-white/70">Shorter<br/>Sales Cycles</p>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl md:text-4xl font-bold text-[#A3238E]">6 p.p.</div>
-                  <p className="text-xs text-white/70">Reduced<br/>A-Player Attrition</p>
-                </div>
+              <div className="p-4 rounded-xl bg-gradient-to-r from-[#00634F]/30 to-[#009B77]/30 border border-[#05C690]/40 max-w-md mx-auto">
+                <p className="text-lg text-white font-medium">
+                  Trust everywhere. Proof everywhere.<br/>
+                  <span className="text-[#05C690]">Performance that compounds.</span>
+                </p>
               </div>
             </div>
           </div>
           
-          {/* Bottom tagline */}
-          <div className="px-8 pb-6 text-center">
-            <div className="inline-block p-3 rounded-lg bg-gradient-to-r from-[#00634F]/30 to-[#009B77]/30 border border-[#05C690]/40">
-              <p className="text-base text-white font-medium">
-                Trust everywhere. Proof everywhere. <span className="text-[#05C690]">Performance that compounds.</span>
-              </p>
+          {/* Bottom section with image */}
+          <div className="px-8 pb-6">
+            <div className="max-w-4xl mx-auto">
+              <img 
+                src={interventionImpactImage} 
+                alt="From Intervention to Impact: A System for Driving Client KPIs"
+                className="w-full h-auto rounded-lg shadow-xl"
+              />
             </div>
           </div>
         </div>
