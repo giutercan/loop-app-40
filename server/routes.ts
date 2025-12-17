@@ -10508,7 +10508,11 @@ Be concise but helpful. Use the user's context (current account, project, page) 
       
       // Store file in object storage
       const { Client } = await import("@replit/object-storage");
-      const client = new Client();
+      const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+      if (!bucketId) {
+        throw new Error("Object storage is not configured. Please set up object storage first.");
+      }
+      const client = new Client({ bucketId });
       const fileBuffer = Buffer.from(fileContent, 'base64');
       await client.uploadFromBytes(objectStorageKey, fileBuffer);
       
@@ -10580,8 +10584,11 @@ Be concise but helpful. Use the user's context (current account, project, page) 
       if (artifact.objectStorageKey) {
         try {
           const { Client } = await import("@replit/object-storage");
-          const client = new Client();
-          await client.delete(artifact.objectStorageKey);
+          const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+          if (bucketId) {
+            const client = new Client({ bucketId });
+            await client.delete(artifact.objectStorageKey);
+          }
         } catch (storageError) {
           console.error("Error deleting from object storage:", storageError);
         }
