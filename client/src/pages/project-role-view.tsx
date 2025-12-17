@@ -8773,6 +8773,13 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
     const [isCreateHandoffOpen, setIsCreateHandoffOpen] = useState(false);
     const [selectedCommitmentIds, setSelectedCommitmentIds] = useState<number[]>([]);
     const [isConvertingOutcomes, setIsConvertingOutcomes] = useState(false);
+    const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+      discovery: true,
+      engagement: false,
+      outcomes: true
+    });
+    const [handoffNotes, setHandoffNotes] = useState("");
+    const [isConfirmHandoffOpen, setIsConfirmHandoffOpen] = useState(false);
 
     // Fetch commitments
     const { data: commitments = [] } = useQuery({
@@ -8787,6 +8794,75 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
     // Fetch strategy selection to check for pending outcomes
     const { data: strategySelection } = useQuery({
       queryKey: ["/api/projects", projectId, "strategy-selection"],
+    });
+
+    // Fetch discovery data
+    const { data: discoveryInsights = [] } = useQuery<any[]>({
+      queryKey: ["/api/projects", projectId, "insights"],
+    });
+
+    const { data: discoverySynthesis } = useQuery<any>({
+      queryKey: ["/api/projects", projectId, "discovery-insights", "summary"],
+    });
+
+    const { data: jobThemes = [] } = useQuery<any[]>({
+      queryKey: ["/api/projects", projectId, "job-themes"],
+    });
+
+    // Fetch Green Sheet data
+    const { data: greenSheetData } = useQuery<any>({
+      queryKey: ["/api/projects", projectId, "green-sheet"],
+    });
+
+    // Fetch artifacts
+    const { data: artifacts = [] } = useQuery<any[]>({
+      queryKey: ["/api/projects", projectId, "artifacts"],
+    });
+
+    // Toggle section expansion
+    const toggleSection = (section: string) => {
+      setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+    };
+
+    // Confirm handoff mutation - creates handoff packet AND pushes to delivery
+    const confirmHandoffMutation = useMutation({
+      mutationFn: async () => {
+        // Step 1: Create handoff packet with all confirmed commitments
+        const commitmentIds = confirmedCommitments.map((c: any) => c.id);
+        
+        // Create handoff packet with provenance data
+        const packetResponse = await apiRequest("POST", `/api/projects/${projectId}/handoffs`, {
+          commitmentIds,
+          salesOwnerName: "Sales Team",
+          executiveSummary: handoffNotes || `Handoff package containing ${confirmedCommitments.length} confirmed outcomes worth $${(confirmedValue / 1000000).toFixed(2)}M in annual value.`,
+        });
+        const packet = await packetResponse.json();
+        
+        // Step 2: Confirm handoff to mark project as handed off
+        const response = await apiRequest("POST", `/api/projects/${projectId}/confirm-handoff`, {
+          handoffNotes,
+          handoffPacketId: packet.id,
+          confirmedAt: new Date().toISOString(),
+        });
+        return response.json();
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId] });
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "commitments"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "handoffs"] });
+        toast({
+          title: "Handoff Confirmed",
+          description: "Initiative successfully handed off to delivery team.",
+        });
+        setIsConfirmHandoffOpen(false);
+      },
+      onError: (error: any) => {
+        toast({
+          title: "Handoff Failed",
+          description: error?.message || "Unable to complete handoff. Please try again.",
+          variant: "destructive",
+        });
+      },
     });
 
     // Create commitment mutation for converting outcomes
@@ -8944,46 +9020,126 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
       }
     };
 
+    // Compute readiness and provenance data
+    const highPriorityInsights = discoveryInsights.filter((i: any) => i.priority === "high");
+    const allOutcomes = (commitments as any[]);
+    const outcomesWithProvenance = allOutcomes.filter((c: any) => c.provenance?.source || c.sourceAiSuggestion);
+    const isHandoffConfirmed = project?.handoffConfirmedAt;
+
+    // Readiness checks for handoff - focus on confirmed commitments
+    const readinessChecks = [
+      { label: "Client confirmed outcomes", passed: confirmedCommitments.length > 0, icon: CheckCircle2 },
+      { label: "Discovery insights captured", passed: discoveryInsights.length > 0, icon: Lightbulb },
+      { label: "Strategic themes identified", passed: jobThemes.length > 0, icon: Layers },
+      { label: "Value targets established", passed: confirmedCommitments.some((c: any) => c.targetValue != null), icon: TrendingUp },
+      { label: "Baseline values set", passed: confirmedCommitments.some((c: any) => c.baselineValue != null), icon: Target },
+    ];
+    const readinessScore = Math.round((readinessChecks.filter(c => c.passed).length / readinessChecks.length) * 100);
+    const canConfirmHandoff = confirmedCommitments.length > 0;
+
     return (
       <div className="space-y-6">
-        {/* Header */}
-        <Card className="bg-gradient-to-r from-emerald-500/5 to-primary/5 border-emerald-500/20">
+        {/* Header with Handoff Journey Flow */}
+        <Card className="bg-gradient-to-r from-blue-500/5 via-emerald-500/5 to-purple-500/5 border-emerald-500/20">
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                  <ArrowUpRight className="w-6 h-6 text-emerald-600" />
+                  <Send className="w-6 h-6 text-emerald-600" />
                 </div>
                 <div>
-                  <CardTitle>Handoff to Delivery</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    Handoff Package
+                    {isHandoffConfirmed && (
+                      <Badge className="bg-emerald-600 text-white">
+                        <CheckCircle2 className="w-3 h-3 mr-1" />
+                        Confirmed
+                      </Badge>
+                    )}
+                  </CardTitle>
                   <CardDescription>
-                    Bundle confirmed outcomes and send to CSM for delivery tracking
+                    Complete summary connecting discovery, engagement, and outcomes for delivery
                   </CardDescription>
                 </div>
               </div>
-              {confirmedCommitments.length > 0 && (
-                <Badge className="bg-emerald-500/10 text-emerald-600">
-                  {confirmedCommitments.length} Ready
-                </Badge>
+              {!isHandoffConfirmed && (
+                <Button 
+                  size="lg"
+                  onClick={() => setIsConfirmHandoffOpen(true)}
+                  disabled={!canConfirmHandoff}
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                  data-testid="button-approve-handoff"
+                >
+                  <Send className="w-5 h-5 mr-2" />
+                  Approve & Send to Delivery
+                </Button>
               )}
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-4">
+            {/* Journey Flow Visual */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between gap-2 overflow-x-auto py-2">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-blue-500/10 border border-blue-500/20 flex-1">
+                    <Search className="w-5 h-5 text-blue-600 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm">Discovery</p>
+                      <p className="text-xs text-muted-foreground">{discoveryInsights.length} insights</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
+                  <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-amber-500/10 border border-amber-500/20 flex-1">
+                    <MessageSquare className="w-5 h-5 text-amber-600 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm">Engagement</p>
+                      <p className="text-xs text-muted-foreground">{artifacts.length} artifacts</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
+                  <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex-1">
+                    <Target className="w-5 h-5 text-emerald-600 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm">Outcomes</p>
+                      <p className="text-xs text-muted-foreground">{allOutcomes.length} defined</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
+                  <div className={`flex items-center gap-2 px-4 py-3 rounded-lg flex-1 ${
+                    isHandoffConfirmed 
+                      ? "bg-purple-500/10 border border-purple-500/20" 
+                      : "bg-muted/50 border border-dashed"
+                  }`}>
+                    <Briefcase className={`w-5 h-5 shrink-0 ${isHandoffConfirmed ? "text-purple-600" : "text-muted-foreground"}`} />
+                    <div className="min-w-0">
+                      <p className={`font-medium text-sm ${!isHandoffConfirmed && "text-muted-foreground"}`}>Delivery</p>
+                      <p className="text-xs text-muted-foreground">{isHandoffConfirmed ? "Active" : "Pending"}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Stats Summary */}
+            <div className="grid gap-4 md:grid-cols-5">
               <div className="p-4 rounded-lg bg-background border">
-                <p className="text-sm text-muted-foreground">Confirmed Outcomes</p>
-                <p className="text-2xl font-bold text-emerald-600">{confirmedCommitments.length}</p>
+                <p className="text-sm text-muted-foreground">Discovery Insights</p>
+                <p className="text-2xl font-bold text-blue-600">{discoveryInsights.length}</p>
               </div>
               <div className="p-4 rounded-lg bg-background border">
-                <p className="text-sm text-muted-foreground">Handed Off</p>
-                <p className="text-2xl font-bold text-purple-600">{handedOffCommitments.length}</p>
+                <p className="text-sm text-muted-foreground">Strategic Themes</p>
+                <p className="text-2xl font-bold text-indigo-600">{jobThemes.length}</p>
               </div>
               <div className="p-4 rounded-lg bg-background border">
-                <p className="text-sm text-muted-foreground">Handoff Packets Sent</p>
-                <p className="text-2xl font-bold">{(handoffPackets as any[]).length}</p>
+                <p className="text-sm text-muted-foreground">Total Outcomes</p>
+                <p className="text-2xl font-bold text-emerald-600">{allOutcomes.length}</p>
               </div>
               <div className="p-4 rounded-lg bg-background border">
-                <p className="text-sm text-muted-foreground">Value Ready for Handoff</p>
+                <p className="text-sm text-muted-foreground">Client Confirmed</p>
+                <p className="text-2xl font-bold text-purple-600">{confirmedCommitments.length}</p>
+              </div>
+              <div className="p-4 rounded-lg bg-background border">
+                <p className="text-sm text-muted-foreground">Total Value</p>
                 <p className="text-2xl font-bold text-emerald-600">
                   ${(confirmedValue / 1000000).toFixed(1)}M
                 </p>
@@ -8992,135 +9148,308 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
           </CardContent>
         </Card>
 
-        {/* Pending Outcomes to Convert - Proceed to Handoff Section */}
-        {unconvertedOutcomes.length > 0 && (
-          <Card className="border-amber-500/30 bg-amber-500/5">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                    <Sparkles className="w-5 h-5 text-amber-600" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base">Pending Outcomes from Strategy Selection</CardTitle>
-                    <CardDescription>
-                      {unconvertedOutcomes.length} outcome{unconvertedOutcomes.length !== 1 ? 's' : ''} ready to be converted to commitments
-                    </CardDescription>
-                  </div>
-                </div>
-                <Button
-                  onClick={handleProceedToHandoff}
-                  disabled={isConvertingOutcomes}
-                  data-testid="button-proceed-to-handoff"
-                >
-                  {isConvertingOutcomes ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Converting...
-                    </>
-                  ) : (
-                    <>
-                      <ArrowRight className="w-4 h-4 mr-2" />
-                      Proceed to Handoff
-                    </>
-                  )}
-                </Button>
+        {/* Readiness Checklist */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <ClipboardCheck className="w-5 h-5 text-emerald-600" />
+                Handoff Readiness
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <Progress value={readinessScore} className="w-24 h-2" />
+                <span className={`text-sm font-bold ${readinessScore >= 80 ? 'text-emerald-600' : readinessScore >= 60 ? 'text-amber-600' : 'text-red-600'}`}>
+                  {readinessScore}%
+                </span>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {unconvertedOutcomes.slice(0, 5).map((outcome: any, idx: number) => (
-                  <div key={outcome.id || idx} className="p-3 rounded-lg border bg-background">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{outcome.outcomeName}</p>
-                        <p className="text-xs text-muted-foreground line-clamp-1">{outcome.outcomeDescription}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="outline" className="text-xs">
-                            {outcome.valuePillar === 'grow' ? 'Grow' : 
-                             outcome.valuePillar === 'optimise' ? 'Optimise' :
-                             outcome.valuePillar === 'derisk' ? 'De-risk' : 'Strengthen'}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {outcome.kpiDetails?.suggestedBaseline} → {outcome.kpiDetails?.suggestedTarget}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-2 md:grid-cols-5">
+              {readinessChecks.map((check, idx) => {
+                const IconComponent = check.icon;
+                return (
+                  <div key={idx} className={`flex items-center gap-2 p-2 rounded-lg ${check.passed ? 'bg-emerald-500/10' : 'bg-muted/50'}`}>
+                    {check.passed ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    ) : (
+                      <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/30 shrink-0" />
+                    )}
+                    <span className={`text-xs ${check.passed ? '' : 'text-muted-foreground'}`}>{check.label}</span>
                   </div>
-                ))}
-                {unconvertedOutcomes.length > 5 && (
-                  <p className="text-xs text-muted-foreground text-center py-2">
-                    + {unconvertedOutcomes.length - 5} more outcomes
-                  </p>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* SECTION 1: Discovery Summary */}
+        <Card data-testid="card-discovery-summary">
+          <CardHeader 
+            className="cursor-pointer hover-elevate" 
+            onClick={() => toggleSection('discovery')}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                  <Search className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">1. Discovery Summary</CardTitle>
+                  <CardDescription>Key findings, themes, and strategic insights</CardDescription>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline">{discoveryInsights.length} insights</Badge>
+                {expandedSections.discovery ? (
+                  <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
                 )}
               </div>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+          </CardHeader>
+          {expandedSections.discovery && (
+            <CardContent className="space-y-4">
+              {/* Executive Summary */}
+              {discoverySynthesis?.summary && (
+                <div className="p-4 rounded-lg bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border border-blue-500/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="w-4 h-4 text-blue-600" />
+                    <span className="text-sm font-semibold">Executive Summary</span>
+                  </div>
+                  <p className="text-sm leading-relaxed">{discoverySynthesis.summary}</p>
+                </div>
+              )}
 
-        {/* Ready for Handoff */}
-        {confirmedCommitments.length > 0 && (
-          <Card data-demo-step="handoff-section">
-            <CardHeader className="flex flex-row items-center justify-between gap-2">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                  Client-Confirmed Outcomes
-                </CardTitle>
-                <CardDescription>
-                  Select outcomes to include in handoff package
-                </CardDescription>
+              {/* Strategic Themes */}
+              {jobThemes.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Layers className="w-4 h-4 text-indigo-600" />
+                    <span className="text-sm font-semibold">Strategic Themes</span>
+                  </div>
+                  <div className="grid gap-2 md:grid-cols-2">
+                    {jobThemes.slice(0, 4).map((theme: any) => (
+                      <div key={theme.id} className="p-3 rounded-lg border bg-indigo-500/5 border-indigo-500/20">
+                        <p className="font-medium text-sm">{theme.jobTheme || theme.name}</p>
+                        {theme.strategicPriority && (
+                          <p className="text-xs text-muted-foreground mt-1">{theme.strategicPriority}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* High-Priority Insights */}
+              {highPriorityInsights.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Lightbulb className="w-4 h-4 text-amber-600" />
+                    <span className="text-sm font-semibold">Key Insights for Delivery</span>
+                    <Badge variant="outline" className="text-xs">{highPriorityInsights.length} high priority</Badge>
+                  </div>
+                  <div className="space-y-2">
+                    {highPriorityInsights.slice(0, 5).map((insight: any) => (
+                      <div key={insight.id} className="p-3 rounded-lg border bg-amber-500/5 border-amber-500/20">
+                        <p className="text-sm">{insight.content}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          {insight.kornferryPillar && (
+                            <Badge variant="outline" className="text-[10px]">{insight.kornferryPillar}</Badge>
+                          )}
+                          {insight.solutionArea && (
+                            <Badge variant="outline" className="text-[10px]">{insight.solutionArea}</Badge>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {discoveryInsights.length === 0 && jobThemes.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Search className="w-10 h-10 mx-auto mb-3 opacity-50" />
+                  <p className="text-sm">No discovery data captured yet</p>
+                </div>
+              )}
+            </CardContent>
+          )}
+        </Card>
+
+        {/* SECTION 2: Engagement Summary */}
+        <Card data-testid="card-engagement-summary">
+          <CardHeader 
+            className="cursor-pointer hover-elevate" 
+            onClick={() => toggleSection('engagement')}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                  <MessageSquare className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">2. Engagement Context</CardTitle>
+                  <CardDescription>Green Sheet, meetings, and artifacts</CardDescription>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={selectAllConfirmed}>
-                  Select All
-                </Button>
-                <Button 
-                  onClick={() => setIsCreateHandoffOpen(true)}
-                  disabled={selectedCommitmentIds.length === 0}
-                  data-testid="button-create-handoff"
-                >
-                  <ArrowUpRight className="w-4 h-4 mr-2" />
-                  Create Handoff ({selectedCommitmentIds.length})
-                </Button>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline">{artifacts.length} artifacts</Badge>
+                {expandedSections.engagement ? (
+                  <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                )}
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {confirmedCommitments.map((c: any) => {
-                  const journeyTemplate = c.solutionPattern ? OUTCOME_JOURNEY_TEMPLATES[c.solutionPattern as SolutionPatternId] : null;
-                  return (
-                    <div 
-                      key={c.id}
-                      className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                        selectedCommitmentIds.includes(c.id) 
-                          ? "border-primary bg-primary/5" 
-                          : "border-emerald-500/20 bg-emerald-500/5 hover-elevate"
-                      }`}
-                      onClick={() => toggleCommitmentSelection(c.id)}
-                      data-testid={`commitment-select-${c.id}`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-3">
-                          <div className={`mt-1 w-5 h-5 rounded border flex items-center justify-center ${
-                            selectedCommitmentIds.includes(c.id) 
-                              ? "bg-primary border-primary" 
-                              : "border-muted-foreground/30"
-                          }`}>
-                            {selectedCommitmentIds.includes(c.id) && (
-                              <Check className="w-3 h-3 text-primary-foreground" />
-                            )}
+            </div>
+          </CardHeader>
+          {expandedSections.engagement && (
+            <CardContent className="space-y-4">
+              {/* Green Sheet Summary */}
+              {greenSheetData && (
+                <div className="p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+                  <div className="flex items-center gap-2 mb-3">
+                    <FileText className="w-4 h-4 text-emerald-600" />
+                    <span className="text-sm font-semibold">Green Sheet Summary</span>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {greenSheetData.callObjective && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Call Objective</p>
+                        <p className="text-sm">{greenSheetData.callObjective}</p>
+                      </div>
+                    )}
+                    {greenSheetData.desiredOutcome && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Desired Outcome</p>
+                        <p className="text-sm">{greenSheetData.desiredOutcome}</p>
+                      </div>
+                    )}
+                    {greenSheetData.openingStatement && (
+                      <div className="md:col-span-2">
+                        <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Opening Statement</p>
+                        <p className="text-sm">{greenSheetData.openingStatement}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Artifacts */}
+              {artifacts.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Upload className="w-4 h-4 text-violet-600" />
+                    <span className="text-sm font-semibold">Collected Artifacts</span>
+                  </div>
+                  <div className="grid gap-2 md:grid-cols-3">
+                    {artifacts.slice(0, 6).map((artifact: any) => (
+                      <div key={artifact.id} className="p-3 rounded-lg border bg-violet-500/5 border-violet-500/20">
+                        <div className="flex items-start gap-2">
+                          <FileText className="w-4 h-4 text-violet-600 mt-0.5 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm truncate">{artifact.fileName || artifact.name}</p>
+                            <p className="text-xs text-muted-foreground">{artifact.artifactType || 'Document'}</p>
                           </div>
-                          <div className="flex-1">
-                            <h4 className="font-semibold">{c.name}</h4>
-                            
-                            <div className="flex flex-wrap items-center gap-1 mt-1">
-                              {c.solutionPattern && SOLUTION_VALUE_PATTERNS[c.solutionPattern as SolutionPatternId] && (
-                                <Badge variant="outline" className="text-xs border-dashed">
-                                  {SOLUTION_VALUE_PATTERNS[c.solutionPattern as SolutionPatternId].name}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {artifacts.length > 6 && (
+                    <p className="text-xs text-muted-foreground text-center mt-2">
+                      + {artifacts.length - 6} more artifacts
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {!greenSheetData && artifacts.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-50" />
+                  <p className="text-sm">No engagement context captured yet</p>
+                </div>
+              )}
+            </CardContent>
+          )}
+        </Card>
+
+        {/* SECTION 3: Outcomes with Provenance */}
+        <Card data-testid="card-outcomes-provenance">
+          <CardHeader 
+            className="cursor-pointer hover-elevate" 
+            onClick={() => toggleSection('outcomes')}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                  <Target className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">3. Outcomes for Delivery</CardTitle>
+                  <CardDescription>Confirmed outcomes with discovery provenance</CardDescription>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge className="bg-emerald-500/10 text-emerald-600">{confirmedCommitments.length} confirmed</Badge>
+                <Badge variant="outline">${(confirmedValue / 1000000).toFixed(1)}M</Badge>
+                {expandedSections.outcomes ? (
+                  <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                )}
+              </div>
+            </div>
+          </CardHeader>
+          {expandedSections.outcomes && (
+            <CardContent className="space-y-4">
+              {allOutcomes.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Target className="w-10 h-10 mx-auto mb-3 opacity-50" />
+                  <p className="text-sm">No outcomes defined yet</p>
+                  <Button variant="outline" className="mt-4" onClick={() => setActiveTab("value-agreement")}>
+                    Go to Outcome Design
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {allOutcomes.map((c: any) => {
+                    const journeyTemplate = c.solutionPattern ? OUTCOME_JOURNEY_TEMPLATES[c.solutionPattern as SolutionPatternId] : null;
+                    const hasProvenance = c.provenance?.source || c.sourceAiSuggestion;
+                    
+                    return (
+                      <div 
+                        key={c.id}
+                        className={`p-4 rounded-lg border ${
+                          c.status === 'client_confirmed' 
+                            ? 'border-emerald-500/30 bg-emerald-500/5' 
+                            : 'border-muted'
+                        }`}
+                        data-testid={`outcome-handoff-${c.id}`}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="font-semibold">{c.name}</h4>
+                              {c.status === 'client_confirmed' && (
+                                <Badge className="bg-emerald-500/10 text-emerald-600 text-xs">Confirmed</Badge>
+                              )}
+                              {c.status === 'draft' && (
+                                <Badge variant="outline" className="text-xs">Draft</Badge>
+                              )}
+                              {hasProvenance && (
+                                <Badge variant="outline" className="text-[10px] bg-purple-500/10 text-purple-600 border-purple-500/30">
+                                  <Sparkles className="w-3 h-3 mr-1" />
+                                  AI Generated
                                 </Badge>
                               )}
+                            </div>
+
+                            {c.outcomeStatement && (
+                              <p className="text-sm text-muted-foreground mt-1">{c.outcomeStatement}</p>
+                            )}
+
+                            <div className="flex flex-wrap items-center gap-2 mt-2">
                               {c.valuePillar && VALUE_PILLARS[c.valuePillar as ValuePillarId] && (
                                 <Badge className={`text-xs ${
                                   c.valuePillar === 'grow' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30' :
@@ -9131,99 +9460,74 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                                   {VALUE_PILLARS[c.valuePillar as ValuePillarId].name}
                                 </Badge>
                               )}
-                              {(c.implementationTimeline || journeyTemplate?.typicalTimeline) && (
-                                <Badge variant="outline" className="text-[10px] border-dashed">
-                                  <Calendar className="w-3 h-3 mr-0.5" />
-                                  {c.implementationTimeline || journeyTemplate?.typicalTimeline}
-                                </Badge>
-                              )}
-                            </div>
-                            
-                            {c.outcomeStatement && (
-                              <div className="text-xs text-emerald-700 bg-emerald-50 p-2 rounded mt-2 border border-emerald-200">
-                                <strong>Success:</strong> {c.outcomeStatement}
-                              </div>
-                            )}
-                            
-                            {c.description && (
-                              <p className="text-sm text-muted-foreground mt-2">{c.description}</p>
-                            )}
-                            <div className="flex items-center gap-4 mt-2 text-sm">
                               {c.baselineValue !== null && c.targetValue !== null && (
-                                <span className="text-muted-foreground">
+                                <span className="text-sm text-muted-foreground">
                                   {c.baselineValue} → {c.targetValue} {c.kpiUnit || ""}
                                 </span>
                               )}
-                              {c.targetDate && (
-                                <span className="text-muted-foreground">
-                                  Target: {new Date(c.targetDate).toLocaleDateString()}
-                                </span>
+                              {journeyTemplate?.typicalTimeline && (
+                                <Badge variant="outline" className="text-[10px]">
+                                  <Calendar className="w-3 h-3 mr-1" />
+                                  {journeyTemplate.typicalTimeline}
+                                </Badge>
                               )}
                             </div>
-                            
-                            {journeyTemplate && (
-                              <div className="mt-3 pt-3 border-t border-dashed">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Layers className="w-3 h-3 text-blue-500" />
-                                  <span className="text-xs font-medium">Delivery Roadmap</span>
+
+                            {/* Provenance - Connection to Discovery */}
+                            {hasProvenance && (
+                              <div className="mt-3 p-2 rounded-lg bg-purple-500/5 border border-purple-500/10">
+                                <div className="flex items-center gap-2 text-xs">
+                                  <Link2 className="w-3 h-3 text-purple-600" />
+                                  <span className="text-purple-700 font-medium">Discovery Connection:</span>
                                 </div>
-                                <div className="flex gap-1 items-center">
-                                  {journeyTemplate.phases.map((phase, idx) => (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {c.provenance?.kornFerrySolution && `Strategy: ${c.provenance.kornFerrySolution}`}
+                                  {c.sourceAiSuggestion?.sourceInsightTitle && ` • Insight: "${c.sourceAiSuggestion.sourceInsightTitle}"`}
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Delivery Roadmap Preview */}
+                            {journeyTemplate && (
+                              <div className="mt-3 pt-2 border-t border-dashed">
+                                <div className="flex items-center gap-1">
+                                  {journeyTemplate.phases.slice(0, 4).map((phase, idx) => (
                                     <div key={idx} className="flex items-center">
                                       <div className="px-2 py-0.5 rounded text-[10px] bg-blue-50 text-blue-700 border border-blue-200">
                                         {phase.phase}
                                       </div>
-                                      {idx < journeyTemplate.phases.length - 1 && (
+                                      {idx < Math.min(journeyTemplate.phases.length, 4) - 1 && (
                                         <ChevronRight className="w-3 h-3 text-muted-foreground mx-0.5" />
                                       )}
                                     </div>
                                   ))}
                                 </div>
-                                <p className="text-[10px] text-muted-foreground mt-1">
-                                  {journeyTemplate.quickWins.length} quick wins • {journeyTemplate.milestones.length} key milestones
-                                </p>
                               </div>
                             )}
                           </div>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <Badge className="bg-emerald-500/10 text-emerald-600">Confirmed</Badge>
-                          {c.estimatedAnnualValue && (
-                            <p className="text-lg font-bold text-emerald-600 mt-2">
-                              ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr
-                            </p>
-                          )}
+                          
+                          <div className="text-right shrink-0">
+                            {c.estimatedAnnualValue && (
+                              <p className="text-lg font-bold text-emerald-600">
+                                ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
-          </Card>
-        )}
+          )}
+        </Card>
 
-        {/* No Confirmed Outcomes */}
-        {confirmedCommitments.length === 0 && (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <Handshake className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="font-semibold mb-2">No Outcomes Ready</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Confirm outcomes with clients in the Outcome Selection tab before handing off.
-              </p>
-              <Button variant="outline" onClick={() => setActiveTab("value-agreement")}>
-                Go to Outcome Selection
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Existing Handoff Packets */}
+        {/* Handoff History */}
         {(handoffPackets as any[]).length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="text-base flex items-center gap-2">
                 <FileText className="w-5 h-5" />
                 Handoff History
               </CardTitle>
@@ -9251,28 +9555,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                           ${(packet.totalCommittedValue / 1000000).toFixed(2)}M
                         </span>
                       )}
-                      {packet.acceptedAt && (
-                        <span className="text-muted-foreground">
-                          Accepted: {new Date(packet.acceptedAt).toLocaleDateString()}
-                        </span>
-                      )}
                     </div>
-                    {/* Show clarification requests if any */}
-                    {packet.clarificationRequests && (packet.clarificationRequests as any[]).length > 0 && (
-                      <div className="mt-3 pt-3 border-t">
-                        <p className="text-sm font-medium mb-2">Clarification Requests:</p>
-                        {(packet.clarificationRequests as any[]).map((req: any, idx: number) => (
-                          <div key={idx} className="p-2 rounded bg-muted/50 text-sm mb-2">
-                            <p className="font-medium">Q: {req.question}</p>
-                            {req.answer ? (
-                              <p className="text-muted-foreground mt-1">A: {req.answer}</p>
-                            ) : (
-                              <p className="text-blue-600 mt-1">Awaiting your response...</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
@@ -9280,54 +9563,83 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
           </Card>
         )}
 
-        {/* Create Handoff Dialog */}
-        <Dialog open={isCreateHandoffOpen} onOpenChange={setIsCreateHandoffOpen}>
-          <DialogContent>
+        {/* Confirm Handoff Dialog */}
+        <Dialog open={isConfirmHandoffOpen} onOpenChange={setIsConfirmHandoffOpen}>
+          <DialogContent className="max-w-lg" data-testid="dialog-confirm-handoff">
             <DialogHeader>
-              <DialogTitle>Create Handoff Package</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <Send className="w-5 h-5 text-emerald-600" />
+                Confirm Handoff to Delivery
+              </DialogTitle>
               <DialogDescription>
-                Bundle {selectedCommitmentIds.length} outcome(s) and send to the delivery team.
+                This will finalize the handoff package and notify the delivery team.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
-              <div className="p-4 rounded-lg bg-muted/50">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium">Selected Outcomes</span>
-                  <Badge variant="secondary">{selectedCommitmentIds.length}</Badge>
+              <div className="bg-gradient-to-r from-blue-500/10 to-emerald-500/10 rounded-lg p-4 space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Discovery Insights:</span>
+                  <span className="font-semibold">{discoveryInsights.length}</span>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Total Value: ${(confirmedCommitments
-                    .filter(c => selectedCommitmentIds.includes(c.id))
-                    .reduce((sum, c) => sum + (c.estimatedAnnualValue || 0), 0) / 1000000
-                  ).toFixed(2)}M
-                </p>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Strategic Themes:</span>
+                  <span className="font-semibold">{jobThemes.length}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Total Outcomes:</span>
+                  <span className="font-semibold">{allOutcomes.length}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Client Confirmed:</span>
+                  <span className="font-semibold text-emerald-600">{confirmedCommitments.length}</span>
+                </div>
+                <div className="flex justify-between text-sm border-t pt-2">
+                  <span className="text-muted-foreground">Total Annual Value:</span>
+                  <span className="font-bold text-emerald-600">${(confirmedValue / 1000000).toFixed(2)}M</span>
+                </div>
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="executive-summary">Executive Summary (optional)</Label>
+                <Label htmlFor="handoff-notes">Handoff Notes (optional)</Label>
                 <Textarea
-                  id="executive-summary"
-                  placeholder="Provide context for the delivery team..."
-                  value={executiveSummary}
-                  onChange={(e) => setExecutiveSummary(e.target.value)}
-                  data-testid="input-executive-summary"
+                  id="handoff-notes"
+                  placeholder="Add any context or special instructions for the delivery team..."
+                  value={handoffNotes}
+                  onChange={(e) => setHandoffNotes(e.target.value)}
+                  className="min-h-[80px]"
+                  data-testid="input-handoff-notes"
                 />
               </div>
+
+              {readinessScore < 80 && (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                  <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                  <p className="text-xs text-amber-700">
+                    Readiness is at {readinessScore}%. Consider completing more items before handoff for best results.
+                  </p>
+                </div>
+              )}
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateHandoffOpen(false)}>
+            <DialogFooter className="gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setIsConfirmHandoffOpen(false)}
+                data-testid="button-cancel-handoff-confirm"
+              >
                 Cancel
               </Button>
               <Button 
-                onClick={handleCreateHandoff}
-                disabled={createHandoffMutation.isPending}
-                data-testid="button-confirm-handoff"
+                onClick={() => confirmHandoffMutation.mutate()}
+                disabled={confirmHandoffMutation.isPending}
+                className="bg-emerald-600 hover:bg-emerald-700"
+                data-testid="button-final-handoff"
               >
-                {createHandoffMutation.isPending ? (
+                {confirmHandoffMutation.isPending ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
-                  <ArrowUpRight className="w-4 h-4 mr-2" />
+                  <Send className="w-4 h-4 mr-2" />
                 )}
-                Send to Delivery
+                Confirm & Send to Delivery
               </Button>
             </DialogFooter>
           </DialogContent>
