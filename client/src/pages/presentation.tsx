@@ -344,58 +344,56 @@ export default function PresentationPage() {
       )
     },
 
-    // Slide 8: From Intervention to Impact
-    {
-      id: "impact",
-      content: (
-        <div className="h-full flex flex-col items-center justify-center p-8 bg-[#f5f5f5]">
-          <div className="max-w-6xl w-full">
-            <img 
-              src={interventionImpactImage} 
-              alt="From Intervention to Impact: A System for Driving Client KPIs - Up to 40% increase in Win Rate, Shorten Sales Cycles by up to 30%, Reduce A-Player Attrition by up to 6 p.p."
-              className="w-full h-auto rounded-lg shadow-lg"
-            />
-          </div>
-        </div>
-      )
-    },
-
-    // Slide 9: Close
+    // Slide 8: Close - The Future of Selling
     {
       id: "close",
       content: (
-        <div className="h-full flex flex-col items-center justify-center px-8 bg-[#00173B]">
-          <div className="max-w-4xl text-center">
-            <Rocket className="w-14 h-14 text-[#05C690] mx-auto mb-8" />
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight mb-8">
-              The future of selling<br/>
-              <span className="text-[#929192]">is not a better pitch deck.</span>
-            </h2>
-            
-            <p className="text-xl md:text-2xl text-white/90 mb-10">
-              It's a better system.
-            </p>
+        <div className="h-full flex flex-col bg-[#00173B]">
+          {/* Top section with text */}
+          <div className="flex-1 flex flex-col items-center justify-center px-8 pt-8">
+            <div className="max-w-4xl text-center">
+              <Rocket className="w-10 h-10 text-[#05C690] mx-auto mb-4" />
+              <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white leading-tight mb-3">
+                The future of selling<br/>
+                <span className="text-[#929192]">is not a better pitch deck.</span>
+              </h2>
+              
+              <p className="text-lg md:text-xl text-white/90 mb-6">
+                It's a better system.
+              </p>
 
-            <div className="space-y-4 max-w-2xl mx-auto mb-12">
-              <div className="flex items-center gap-4 bg-white/10 backdrop-blur-sm rounded-lg px-6 py-4">
-                <CircleDot className="w-5 h-5 text-[#05C690] flex-shrink-0" />
-                <p className="text-lg text-white text-left">One method. One language. <span className="text-[#05C690]">Embedded in the flow of work.</span></p>
+              <div className="flex flex-wrap justify-center gap-3 mb-6">
+                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2">
+                  <CircleDot className="w-4 h-4 text-[#05C690] flex-shrink-0" />
+                  <p className="text-sm text-white">One method. One language.</p>
+                </div>
+                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2">
+                  <CircleDot className="w-4 h-4 text-[#05C690] flex-shrink-0" />
+                  <p className="text-sm text-white">Intervention to <span className="text-[#05C690]">measurable lift.</span></p>
+                </div>
+                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2">
+                  <CircleDot className="w-4 h-4 text-[#05C690] flex-shrink-0" />
+                  <p className="text-sm text-white">Every lift into <span className="text-[#05C690]">learning.</span></p>
+                </div>
               </div>
-              <div className="flex items-center gap-4 bg-white/10 backdrop-blur-sm rounded-lg px-6 py-4">
-                <CircleDot className="w-5 h-5 text-[#05C690] flex-shrink-0" />
-                <p className="text-lg text-white text-left">A closed loop that turns every intervention into <span className="text-[#05C690]">measurable lift.</span></p>
-              </div>
-              <div className="flex items-center gap-4 bg-white/10 backdrop-blur-sm rounded-lg px-6 py-4">
-                <CircleDot className="w-5 h-5 text-[#05C690] flex-shrink-0" />
-                <p className="text-lg text-white text-left">And every lift into <span className="text-[#05C690]">learning.</span></p>
+              
+              <div className="p-4 rounded-xl bg-gradient-to-r from-[#00634F]/30 to-[#009B77]/30 border border-[#05C690]/40 max-w-md mx-auto">
+                <p className="text-lg text-white font-medium">
+                  Trust everywhere. Proof everywhere.<br/>
+                  <span className="text-[#05C690]">Performance that compounds.</span>
+                </p>
               </div>
             </div>
-            
-            <div className="p-6 rounded-xl bg-gradient-to-r from-[#00634F]/30 to-[#009B77]/30 border border-[#05C690]/40 max-w-xl mx-auto">
-              <p className="text-xl md:text-2xl text-white font-medium">
-                Trust everywhere. Proof everywhere.<br/>
-                <span className="text-[#05C690]">Performance that compounds.</span>
-              </p>
+          </div>
+          
+          {/* Bottom section with image */}
+          <div className="px-8 pb-6">
+            <div className="max-w-4xl mx-auto">
+              <img 
+                src={interventionImpactImage} 
+                alt="From Intervention to Impact: A System for Driving Client KPIs"
+                className="w-full h-auto rounded-lg shadow-xl"
+              />
             </div>
           </div>
         </div>
