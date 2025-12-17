@@ -8819,6 +8819,21 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
       queryKey: ["/api/projects", projectId, "artifacts"],
     });
 
+    // Fetch discovery notes for engagement context
+    const { data: discoveryNotes = [] } = useQuery<any[]>({
+      queryKey: ["/api/projects", projectId, "discovery-notes"],
+    });
+
+    // Fetch strategic recommendations
+    const { data: strategicRecommendations } = useQuery<any>({
+      queryKey: ["/api/projects", projectId, "strategic-recommendations"],
+    });
+
+    // Fetch discovery questions and responses
+    const { data: discoveryQuestions = [] } = useQuery<any[]>({
+      queryKey: ["/api/projects", projectId, "discovery-questions"],
+    });
+
     // Toggle section expansion
     const toggleSection = (section: string) => {
       setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -9093,7 +9108,9 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                     <MessageSquare className="w-5 h-5 text-amber-600 shrink-0" />
                     <div className="min-w-0">
                       <p className="font-medium text-sm">Engagement</p>
-                      <p className="text-xs text-muted-foreground">{artifacts.length} artifacts</p>
+                      <p className="text-xs text-muted-foreground">
+                        {discoveryNotes.length + artifacts.length} items
+                      </p>
                     </div>
                   </div>
                   <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
@@ -9121,7 +9138,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
             </div>
 
             {/* Stats Summary */}
-            <div className="grid gap-4 md:grid-cols-5">
+            <div className="grid gap-4 md:grid-cols-6">
               <div className="p-4 rounded-lg bg-background border">
                 <p className="text-sm text-muted-foreground">Discovery Insights</p>
                 <p className="text-2xl font-bold text-blue-600">{discoveryInsights.length}</p>
@@ -9129,6 +9146,10 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
               <div className="p-4 rounded-lg bg-background border">
                 <p className="text-sm text-muted-foreground">Strategic Themes</p>
                 <p className="text-2xl font-bold text-indigo-600">{jobThemes.length}</p>
+              </div>
+              <div className="p-4 rounded-lg bg-background border">
+                <p className="text-sm text-muted-foreground">Notes & Artifacts</p>
+                <p className="text-2xl font-bold text-amber-600">{discoveryNotes.length + artifacts.length}</p>
               </div>
               <div className="p-4 rounded-lg bg-background border">
                 <p className="text-sm text-muted-foreground">Total Outcomes</p>
@@ -9211,7 +9232,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
           </CardHeader>
           {expandedSections.discovery && (
             <CardContent className="space-y-4">
-              {/* Executive Summary */}
+              {/* Executive Summary from Synthesis */}
               {discoverySynthesis?.summary && (
                 <div className="p-4 rounded-lg bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border border-blue-500/20">
                   <div className="flex items-center gap-2 mb-2">
@@ -9222,12 +9243,36 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 </div>
               )}
 
-              {/* Strategic Themes */}
+              {/* What We Learned - Key Themes from Synthesis */}
+              {discoverySynthesis?.whatWeLearned?.keyThemes?.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Lightbulb className="w-4 h-4 text-blue-600" />
+                    <span className="text-sm font-semibold">What We Learned</span>
+                  </div>
+                  <div className="grid gap-2 md:grid-cols-2">
+                    {discoverySynthesis.whatWeLearned.keyThemes.slice(0, 4).map((theme: any, idx: number) => (
+                      <div key={idx} className="p-3 rounded-lg border bg-blue-500/5 border-blue-500/20">
+                        <p className="font-medium text-sm text-blue-700">{theme.theme}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{theme.insight}</p>
+                        {theme.supportingEvidence?.length > 0 && (
+                          <p className="text-[10px] text-muted-foreground mt-1 italic">
+                            Evidence: {theme.supportingEvidence.slice(0, 2).join("; ")}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Strategic Themes / Job Themes */}
               {jobThemes.length > 0 && (
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <Layers className="w-4 h-4 text-indigo-600" />
                     <span className="text-sm font-semibold">Strategic Themes</span>
+                    <Badge variant="outline" className="text-xs">{jobThemes.length} identified</Badge>
                   </div>
                   <div className="grid gap-2 md:grid-cols-2">
                     {jobThemes.slice(0, 4).map((theme: any) => (
@@ -9236,9 +9281,44 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                         {theme.strategicPriority && (
                           <p className="text-xs text-muted-foreground mt-1">{theme.strategicPriority}</p>
                         )}
+                        {theme.capability && (
+                          <Badge variant="outline" className="text-[10px] mt-1">{theme.capability}</Badge>
+                        )}
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Business Implications from Synthesis */}
+              {discoverySynthesis?.businessImplications && (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {discoverySynthesis.businessImplications.opportunities?.length > 0 && (
+                    <div className="p-3 rounded-lg border bg-emerald-500/5 border-emerald-500/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <TrendingUp className="w-4 h-4 text-emerald-600" />
+                        <span className="text-sm font-semibold text-emerald-700">Opportunities</span>
+                      </div>
+                      <div className="space-y-1">
+                        {discoverySynthesis.businessImplications.opportunities.slice(0, 3).map((opp: any, idx: number) => (
+                          <p key={idx} className="text-xs">• {opp.title || opp}</p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {discoverySynthesis.businessImplications.risks?.length > 0 && (
+                    <div className="p-3 rounded-lg border bg-amber-500/5 border-amber-500/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <AlertCircle className="w-4 h-4 text-amber-600" />
+                        <span className="text-sm font-semibold text-amber-700">Risks to Address</span>
+                      </div>
+                      <div className="space-y-1">
+                        {discoverySynthesis.businessImplications.risks.slice(0, 3).map((risk: any, idx: number) => (
+                          <p key={idx} className="text-xs">• {risk.title || risk}</p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -9254,12 +9334,15 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                     {highPriorityInsights.slice(0, 5).map((insight: any) => (
                       <div key={insight.id} className="p-3 rounded-lg border bg-amber-500/5 border-amber-500/20">
                         <p className="text-sm">{insight.content}</p>
-                        <div className="flex items-center gap-2 mt-2">
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
                           {insight.kornferryPillar && (
                             <Badge variant="outline" className="text-[10px]">{insight.kornferryPillar}</Badge>
                           )}
                           {insight.solutionArea && (
                             <Badge variant="outline" className="text-[10px]">{insight.solutionArea}</Badge>
+                          )}
+                          {insight.classification && (
+                            <Badge variant="outline" className="text-[10px] bg-purple-500/10">{insight.classification}</Badge>
                           )}
                         </div>
                       </div>
@@ -9268,10 +9351,40 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 </div>
               )}
 
-              {discoveryInsights.length === 0 && jobThemes.length === 0 && (
+              {/* Strategic Recommendations Summary */}
+              {strategicRecommendations?.strategies?.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Target className="w-4 h-4 text-purple-600" />
+                    <span className="text-sm font-semibold">AI Strategic Recommendations</span>
+                  </div>
+                  <div className="space-y-2">
+                    {strategicRecommendations.strategies.slice(0, 3).map((strategy: any) => (
+                      <div key={strategy.id} className="p-3 rounded-lg border bg-purple-500/5 border-purple-500/20">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="font-medium text-sm">{strategy.strategyName}</p>
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{strategy.strategyDescription}</p>
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <Badge variant="outline" className="text-[10px]">{strategy.strategicCategory}</Badge>
+                            <Badge variant="outline" className={`text-[10px] ${
+                              strategy.priority === 'high' ? 'bg-red-500/10 text-red-600' :
+                              strategy.priority === 'medium' ? 'bg-amber-500/10 text-amber-600' : 'bg-gray-500/10'
+                            }`}>{strategy.priority}</Badge>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {discoveryInsights.length === 0 && jobThemes.length === 0 && !discoverySynthesis && (
                 <div className="text-center py-8 text-muted-foreground">
                   <Search className="w-10 h-10 mx-auto mb-3 opacity-50" />
                   <p className="text-sm">No discovery data captured yet</p>
+                  <p className="text-xs mt-1">Complete discovery to populate this section</p>
                 </div>
               )}
             </CardContent>
@@ -9295,7 +9408,15 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Badge variant="outline">{artifacts.length} artifacts</Badge>
+                {discoveryNotes.length > 0 && (
+                  <Badge variant="outline">{discoveryNotes.length} notes</Badge>
+                )}
+                {artifacts.length > 0 && (
+                  <Badge variant="outline">{artifacts.length} artifacts</Badge>
+                )}
+                {greenSheetData && (
+                  <Badge variant="outline" className="bg-emerald-500/10">Green Sheet</Badge>
+                )}
                 {expandedSections.engagement ? (
                   <ChevronUp className="w-5 h-5 text-muted-foreground" />
                 ) : (
@@ -9307,7 +9428,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
           {expandedSections.engagement && (
             <CardContent className="space-y-4">
               {/* Green Sheet Summary */}
-              {greenSheetData && (
+              {greenSheetData && (greenSheetData.callObjective || greenSheetData.desiredOutcome || greenSheetData.openingStatement) && (
                 <div className="p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
                   <div className="flex items-center gap-2 mb-3">
                     <FileText className="w-4 h-4 text-emerald-600" />
@@ -9332,6 +9453,82 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                         <p className="text-sm">{greenSheetData.openingStatement}</p>
                       </div>
                     )}
+                    {greenSheetData.primaryContact && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Primary Contact</p>
+                        <p className="text-sm">{greenSheetData.primaryContact}</p>
+                      </div>
+                    )}
+                    {greenSheetData.meetingDate && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Meeting Date</p>
+                        <p className="text-sm">{new Date(greenSheetData.meetingDate).toLocaleDateString()}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Discovery Notes */}
+              {discoveryNotes.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <MessageSquare className="w-4 h-4 text-blue-600" />
+                    <span className="text-sm font-semibold">Conversation Notes</span>
+                    <Badge variant="outline" className="text-xs">{discoveryNotes.length} notes</Badge>
+                  </div>
+                  <div className="space-y-2">
+                    {discoveryNotes.slice(0, 4).map((note: any) => (
+                      <div key={note.id} className="p-3 rounded-lg border bg-blue-500/5 border-blue-500/20">
+                        <p className="text-sm line-clamp-2">{note.content}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          {note.source && (
+                            <Badge variant="outline" className="text-[10px]">{note.source}</Badge>
+                          )}
+                          {note.createdAt && (
+                            <span className="text-[10px] text-muted-foreground">
+                              {new Date(note.createdAt).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    {discoveryNotes.length > 4 && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        + {discoveryNotes.length - 4} more notes
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Discovery Questions & Responses */}
+              {discoveryQuestions.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <HelpCircle className="w-4 h-4 text-purple-600" />
+                    <span className="text-sm font-semibold">Discovery Questions</span>
+                    <Badge variant="outline" className="text-xs">{discoveryQuestions.length} questions</Badge>
+                  </div>
+                  <div className="space-y-2">
+                    {discoveryQuestions.slice(0, 3).map((q: any) => (
+                      <div key={q.id} className="p-3 rounded-lg border bg-purple-500/5 border-purple-500/20">
+                        <p className="text-sm font-medium">{q.question}</p>
+                        {q.responses?.length > 0 && (
+                          <div className="mt-2 pl-3 border-l-2 border-purple-300">
+                            <p className="text-xs text-muted-foreground">{q.responses[0].response}</p>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 mt-2">
+                          {q.methodology && (
+                            <Badge variant="outline" className="text-[10px]">{q.methodology}</Badge>
+                          )}
+                          {q.category && (
+                            <Badge variant="outline" className="text-[10px]">{q.category}</Badge>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -9364,10 +9561,11 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 </div>
               )}
 
-              {!greenSheetData && artifacts.length === 0 && (
+              {!greenSheetData && artifacts.length === 0 && discoveryNotes.length === 0 && discoveryQuestions.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-50" />
                   <p className="text-sm">No engagement context captured yet</p>
+                  <p className="text-xs mt-1">Complete Green Sheet or add notes to populate this section</p>
                 </div>
               )}
             </CardContent>
