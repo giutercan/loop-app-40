@@ -1454,6 +1454,7 @@ export default function ProjectRoleView() {
   const isDeliveryRoleParam = roleParam === "delivery" || roleParam === "csm";
   const [activeTab, setActiveTab] = useState(isSalesRoleParam ? "discover" : "health");
   const [isLogKPIOpen, setIsLogKPIOpen] = useState(false);
+  const [showHandoffConfirmDialog, setShowHandoffConfirmDialog] = useState(false);
   
   // Reset tab when role changes
   useEffect(() => {
@@ -8667,8 +8668,9 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                   </div>
                   <Button 
                     size="lg"
-                    onClick={() => setActiveTab("handoff")}
-                    disabled={commitments.filter((c: any) => c.status === "client_confirmed").length === 0}
+                    onClick={() => setShowHandoffConfirmDialog(true)}
+                    disabled={commitments.length === 0}
+                    className="bg-emerald-600 hover:bg-emerald-700"
                     data-testid="button-submit-handoff"
                   >
                     <ArrowUpRight className="w-5 h-5 mr-2" />
@@ -8677,6 +8679,77 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 </div>
               </CardContent>
             </Card>
+
+            {/* Handoff Confirmation Dialog */}
+            <Dialog open={showHandoffConfirmDialog} onOpenChange={setShowHandoffConfirmDialog}>
+              <DialogContent className="max-w-lg" data-testid="dialog-handoff-confirmation">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                    Confirm Handoff to Delivery
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <p className="text-sm text-muted-foreground">
+                    You are about to finalize these outcomes and hand them off to the Delivery team. 
+                    This will transition the engagement from Sales to Delivery phase.
+                  </p>
+                  
+                  <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Total Outcomes:</span>
+                      <span className="font-semibold">{commitments.length}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Total Annual Value:</span>
+                      <span className="font-semibold text-emerald-600">
+                        ${(commitments.reduce((sum: number, c: any) => sum + (c.estimatedAnnualValue || 0), 0) / 1000000).toFixed(2)}M
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Client Confirmed:</span>
+                      <span className="font-semibold text-blue-600">
+                        {commitments.filter((c: any) => c.status === "client_confirmed").length} outcomes
+                      </span>
+                    </div>
+                  </div>
+
+                  {commitments.filter((c: any) => c.status !== "client_confirmed").length > 0 && (
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                      <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                      <p className="text-xs text-amber-700">
+                        {commitments.filter((c: any) => c.status !== "client_confirmed").length} outcomes are not yet client-confirmed. 
+                        Consider getting client approval before handoff.
+                      </p>
+                    </div>
+                  )}
+                </div>
+                <DialogFooter className="gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowHandoffConfirmDialog(false)}
+                    data-testid="button-cancel-handoff"
+                  >
+                    Go Back
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      setShowHandoffConfirmDialog(false);
+                      setActiveTab("handoff");
+                      toast({
+                        title: "Proceeding to Handoff",
+                        description: "Review and complete the delivery handoff."
+                      });
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                    data-testid="button-confirm-handoff"
+                  >
+                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                    Confirm Handoff
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* STAGE 4: HANDOFF - Transition to Delivery */}
