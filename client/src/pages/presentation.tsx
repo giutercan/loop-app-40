@@ -16,12 +16,14 @@ import {
   BarChart3,
   RefreshCcw,
   CircleDot,
-  Puzzle,
   Rocket,
   Search,
   Shield,
   Handshake,
-  LineChart
+  LineChart,
+  AlertTriangle,
+  Activity,
+  MessageSquare
 } from "lucide-react";
 
 import executiveImage from "@assets/GettyImages-551703701_1765967640588.jpg";
@@ -29,93 +31,38 @@ import buyerImage from "@assets/Picture38_1765967640589.png";
 
 interface Slide {
   id: string;
-  title: string;
   content: JSX.Element;
-  bgClass: string;
 }
 
 export default function PresentationPage() {
   const [currentSlide, setCurrentSlide] = useState(0);
 
   const slides: Slide[] = [
-    // Slide 1: The Hook - 2027 Puzzle
+    // Slide 1: The Future of Buying
     {
-      id: "hook",
-      title: "",
-      bgClass: "bg-white",
+      id: "buying",
       content: (
-        <div className="flex flex-col lg:flex-row items-center justify-center h-full gap-8 lg:gap-16 px-8">
-          <div className="flex-1 max-w-2xl">
-            <div className="mb-6">
-              <span className="text-[#A3238E] text-lg md:text-xl font-semibold tracking-wide">
-                2027
-              </span>
-            </div>
-            <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-[#00173B] leading-tight mb-6">
-              You've got the best tech.
-              <br />
-              <span className="text-[#005971]">The smartest sellers.</span>
-            </h1>
-            <p className="text-xl md:text-2xl text-[#929192] mb-8">
-              So why isn't performance leaping forward?
-            </p>
-            <div className="flex items-center gap-3">
-              <Puzzle className="w-7 h-7 text-[#A3238E]" />
-              <span className="text-lg text-[#00173B]/80">That's the puzzle we're here to solve.</span>
-            </div>
-          </div>
-          <div className="flex-shrink-0">
-            <img 
-              src={executiveImage} 
-              alt="Executive leader" 
-              className="w-64 md:w-80 lg:w-96 h-auto rounded-2xl shadow-xl"
-            />
-          </div>
-        </div>
-      )
-    },
-
-    // Slide 2: The Buyer Has Changed
-    {
-      id: "buyer",
-      title: "",
-      bgClass: "bg-white",
-      content: (
-        <div className="flex flex-col lg:flex-row items-center justify-center h-full gap-8 lg:gap-16 px-8">
-          <div className="flex-shrink-0 order-2 lg:order-1">
-            <img 
-              src={buyerImage} 
-              alt="Modern buyer" 
-              className="w-64 md:w-80 lg:w-96 h-auto rounded-2xl shadow-xl"
-            />
-          </div>
-          <div className="flex-1 max-w-2xl order-1 lg:order-2">
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-[#00173B] leading-tight mb-6">
-              The Buyer Has Changed
-            </h2>
-            <div className="space-y-4 mb-8">
-              <div className="flex items-start gap-3">
-                <Brain className="w-6 h-6 text-[#A3238E] mt-1 flex-shrink-0" />
-                <p className="text-lg text-[#00173B]/80">
-                  They use <span className="font-semibold text-[#005971]">AI to do their research</span>—and come more prepared than ever
-                </p>
-              </div>
-              <div className="flex items-start gap-3">
-                <Search className="w-6 h-6 text-[#005971] mt-1 flex-shrink-0" />
-                <p className="text-lg text-[#00173B]/80">
-                  They want <span className="font-semibold text-[#00634F]">evidence of work done</span>—not promises
-                </p>
-              </div>
-              <div className="flex items-start gap-3">
-                <Shield className="w-6 h-6 text-[#009B77] mt-1 flex-shrink-0" />
-                <p className="text-lg text-[#00173B]/80">
-                  They choose partners based on <span className="font-semibold text-[#009B77]">trust, credibility, and proof</span>
-                </p>
-              </div>
-            </div>
-            <div className="bg-[#00634F]/5 border-l-4 border-[#00634F] p-4 rounded-r-lg">
-              <p className="text-[#00173B] font-medium">
-                AI supports the buyer—but trust and evidence decide who they choose.
+        <div className="relative h-full w-full overflow-hidden">
+          {/* Background image with overlay */}
+          <div 
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: `url(${buyerImage})` }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#00173B]/95 via-[#00173B]/80 to-transparent" />
+          
+          {/* Content */}
+          <div className="relative z-10 h-full flex items-center px-8 md:px-16">
+            <div className="max-w-2xl">
+              <p className="text-[#05C690] text-sm md:text-base uppercase tracking-widest mb-4">
+                The Real Shift
+              </p>
+              <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
+                The future of selling<br/>
+                <span className="text-[#929192]">starts with understanding</span><br/>
+                <span className="text-[#00ADBB]">the future of buying.</span>
+              </h1>
+              <p className="text-lg md:text-xl text-white/80 max-w-xl">
+                Buyers arrive AI-prepared, skeptical, and impatient. They don't need information—they need <span className="text-[#05C690] font-semibold">credibility, evidence, and a conversation that builds confidence.</span>
               </p>
             </div>
           </div>
@@ -123,239 +70,313 @@ export default function PresentationPage() {
       )
     },
 
-    // Slide 3: The Seller Must Rise
+    // Slide 2: The Paradox
     {
-      id: "seller",
-      title: "",
-      bgClass: "bg-white",
+      id: "paradox",
       content: (
-        <div className="flex flex-col items-center justify-center h-full text-center px-8">
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-[#00173B] leading-tight max-w-4xl mb-8">
-            To build credibility with today's buyer,
-            <br />
-            <span className="text-[#005971]">the seller must transform.</span>
-          </h2>
-          
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mt-8">
-            <div className="bg-[#929192]/10 rounded-2xl p-8 border border-[#929192]/20">
-              <div className="text-[#929192] text-sm uppercase tracking-wider mb-4">The Old Unit</div>
-              <div className="flex items-center justify-center gap-3 mb-4">
-                <Users className="w-12 h-12 text-[#929192]" />
-              </div>
-              <h3 className="text-2xl md:text-3xl font-bold text-[#929192]">The Heroic Seller</h3>
-              <p className="text-sm text-[#929192] mt-3">Charisma and relationships alone</p>
-            </div>
+        <div className="h-full flex flex-col items-center justify-center px-8 bg-white">
+          <div className="max-w-4xl text-center">
+            <p className="text-[#A3238E] text-sm uppercase tracking-widest mb-6">
+              The Paradox
+            </p>
+            <h2 className="text-3xl md:text-5xl font-bold text-[#00173B] leading-tight mb-8">
+              Tools don't equal lift.
+            </h2>
+            <p className="text-lg md:text-xl text-[#929192] mb-12">
+              When you have "AI everywhere" but no common method, no shared language, and nothing embedded into the flow of work...
+            </p>
             
-            <div className="bg-gradient-to-br from-[#00634F]/10 to-[#005971]/10 rounded-2xl p-8 border-2 border-[#009B77]">
-              <div className="text-[#009B77] text-sm uppercase tracking-wider mb-4">The New Unit</div>
-              <div className="flex items-center justify-center gap-3 mb-4">
-                <Users className="w-10 h-10 text-[#00634F]" />
-                <span className="text-2xl text-[#009B77]">+</span>
-                <Brain className="w-10 h-10 text-[#A3238E]" />
+            <div className="grid md:grid-cols-2 gap-4 max-w-3xl mx-auto text-left">
+              <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-4">
+                <Activity className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+                <div>
+                  <span className="font-semibold text-[#00173B]">Activity inflation</span>
+                  <p className="text-sm text-[#929192]">More content, more outputs, more noise</p>
+                </div>
               </div>
-              <h3 className="text-2xl md:text-3xl font-bold text-[#00173B]">Seller + AI Orchestrator</h3>
-              <p className="text-sm text-[#00173B]/70 mt-3">Evidence, stories, and data-driven trust</p>
+              <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
+                <div>
+                  <span className="font-semibold text-[#00173B]">Inconsistent execution</span>
+                  <p className="text-sm text-[#929192]">Every rep does it differently</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 bg-orange-50 border border-orange-200 rounded-xl p-4">
+                <RefreshCcw className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
+                <div>
+                  <span className="font-semibold text-[#00173B]">Method decay</span>
+                  <p className="text-sm text-[#929192]">Training doesn't show up in the moment</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 bg-rose-50 border border-rose-200 rounded-xl p-4">
+                <MessageSquare className="w-5 h-5 text-rose-500 mt-0.5 flex-shrink-0" />
+                <div>
+                  <span className="font-semibold text-[#00173B]">Generic conversations</span>
+                  <p className="text-sm text-[#929192]">AI output doesn't translate to credibility</p>
+                </div>
+              </div>
+            </div>
+
+            <p className="mt-10 text-xl font-semibold text-[#005971]">
+              From the CRO's view: motion without lift.
+            </p>
+          </div>
+        </div>
+      )
+    },
+
+    // Slide 3: The CRO's Question
+    {
+      id: "cro",
+      content: (
+        <div className="relative h-full w-full overflow-hidden">
+          {/* Background image with overlay */}
+          <div 
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: `url(${executiveImage})` }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-l from-[#00173B]/95 via-[#00173B]/85 to-[#00173B]/40" />
+          
+          {/* Content */}
+          <div className="relative z-10 h-full flex items-center justify-end px-8 md:px-16">
+            <div className="max-w-2xl text-right">
+              <p className="text-[#00ADBB] text-sm uppercase tracking-widest mb-4">
+                The Real Question
+              </p>
+              <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold text-white leading-tight mb-8">
+                "I have the tech.<br/>
+                I have the people.<br/>
+                <span className="text-[#05C690]">What's actually broken?"</span>
+              </h2>
+              <div className="space-y-3 text-white/80 text-lg">
+                <p>Is it the GTM motion?</p>
+                <p>The process?</p>
+                <p>Seller behaviours?</p>
+                <p className="text-[#05C690] font-medium">Or a leadership system not ready for AI?</p>
+              </div>
             </div>
           </div>
         </div>
       )
     },
 
-    // Slide 4: What Makes the Loop Tight
+    // Slide 4: The Unit of Performance Changed
+    {
+      id: "unit",
+      content: (
+        <div className="h-full flex flex-col items-center justify-center px-8 bg-white">
+          <div className="max-w-4xl text-center">
+            <p className="text-[#A3238E] text-sm uppercase tracking-widest mb-6">
+              The Shift
+            </p>
+            <h2 className="text-3xl md:text-5xl font-bold text-[#00173B] leading-tight mb-10">
+              The unit of performance changed.
+            </h2>
+            
+            <div className="flex items-center justify-center gap-6 md:gap-12 mb-12">
+              <div className="text-center">
+                <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-[#929192]/20 flex items-center justify-center mx-auto mb-3">
+                  <Users className="w-10 h-10 md:w-12 md:h-12 text-[#929192]" />
+                </div>
+                <p className="text-[#929192] font-medium">Heroic Seller</p>
+                <p className="text-xs text-[#929192]">"They just knew"</p>
+              </div>
+              
+              <ArrowRight className="w-8 h-8 text-[#009B77]" />
+              
+              <div className="text-center">
+                <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-gradient-to-br from-[#00634F] to-[#005971] flex items-center justify-center mx-auto mb-3">
+                  <div className="flex items-center gap-1">
+                    <Users className="w-6 h-6 md:w-7 md:h-7 text-white" />
+                    <span className="text-white text-lg">+</span>
+                    <Brain className="w-6 h-6 md:w-7 md:h-7 text-[#05C690]" />
+                  </div>
+                </div>
+                <p className="text-[#00173B] font-semibold">Team + AI</p>
+                <p className="text-xs text-[#929192]">Scales beyond heroics</p>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-r from-[#00634F]/10 to-[#005971]/10 rounded-xl p-6 max-w-2xl mx-auto border border-[#009B77]/20">
+              <p className="text-[#00173B] font-medium mb-4">The seller becomes the orchestrator of trust:</p>
+              <div className="flex flex-wrap justify-center gap-3">
+                <span className="bg-white px-3 py-1 rounded-full text-sm border border-[#00634F]/30 text-[#00634F]">Judgement</span>
+                <span className="bg-white px-3 py-1 rounded-full text-sm border border-[#005971]/30 text-[#005971]">Influence</span>
+                <span className="bg-white px-3 py-1 rounded-full text-sm border border-[#009B77]/30 text-[#009B77]">Navigating complexity</span>
+                <span className="bg-white px-3 py-1 rounded-full text-sm border border-[#A3238E]/30 text-[#A3238E]">Closing</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    },
+
+    // Slide 5: The Missing Piece - Proof
+    {
+      id: "proof",
+      content: (
+        <div className="h-full flex flex-col items-center justify-center px-8 bg-[#00173B]">
+          <div className="max-w-4xl text-center">
+            <Shield className="w-14 h-14 text-[#A3238E] mx-auto mb-6" />
+            <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight mb-6">
+              If you can't prove what moved,<br/>
+              <span className="text-[#929192]">you can't scale it.</span>
+            </h2>
+            <p className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto mb-10">
+              Most organisations see activity, but debate impact. Renewals depend on who tells the best story—not what evidence shows.
+            </p>
+            
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 max-w-2xl mx-auto border border-[#05C690]/30">
+              <p className="text-white text-lg">
+                In the era of AI-powered buying, <span className="text-[#05C690] font-bold">credibility is earned, not claimed.</span>
+              </p>
+            </div>
+
+            <p className="mt-10 text-xl text-[#00ADBB] font-medium">
+              What would a commercial system look like that produces proof continuously?
+            </p>
+          </div>
+        </div>
+      )
+    },
+
+    // Slide 6: The Loop - Commercial OS
     {
       id: "loop",
-      title: "",
-      bgClass: "bg-white",
       content: (
-        <div className="flex flex-col items-center justify-center h-full px-8">
-          <div className="mb-6">
-            <RefreshCcw className="w-14 h-14 text-[#009B77] mx-auto" />
-          </div>
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-[#00173B] leading-tight text-center max-w-4xl mb-4">
-            What Makes the Loop Tight
-          </h2>
-          <p className="text-lg md:text-xl text-[#929192] max-w-3xl text-center mb-10">
-            We embed customer knowledge and align it with outcomes Korn Ferry can deliver.
-          </p>
-          
-          <div className="flex items-center justify-center gap-3 md:gap-6 flex-wrap max-w-5xl">
-            <div className="flex flex-col items-center">
-              <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[#00634F] flex items-center justify-center mb-2">
-                <Search className="w-8 h-8 md:w-10 md:h-10 text-white" />
-              </div>
-              <span className="text-[#00173B] font-semibold text-sm">Understand</span>
-              <span className="text-[#929192] text-xs">Their Strategy</span>
+        <div className="h-full flex flex-col items-center justify-center px-8 bg-white">
+          <div className="max-w-5xl w-full">
+            <div className="text-center mb-10">
+              <p className="text-[#009B77] text-sm uppercase tracking-widest mb-4">
+                The Answer
+              </p>
+              <h2 className="text-3xl md:text-4xl font-bold text-[#00173B] leading-tight mb-4">
+                Commercial Operating System + The Loop
+              </h2>
             </div>
-            <ArrowRight className="w-6 h-6 text-[#009B77] hidden md:block" />
-            <div className="flex flex-col items-center">
-              <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[#005971] flex items-center justify-center mb-2">
-                <Target className="w-8 h-8 md:w-10 md:h-10 text-white" />
+            
+            <div className="grid md:grid-cols-3 gap-6 mb-10">
+              <div className="bg-[#00634F]/5 rounded-xl p-6 border border-[#00634F]/20 text-center">
+                <div className="w-12 h-12 rounded-full bg-[#00634F] flex items-center justify-center mx-auto mb-4">
+                  <Target className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="font-bold text-[#00173B] mb-2">Success Frame</h3>
+                <p className="text-sm text-[#929192]">3-5 KPIs the CRO/CFO actually runs the business on. One small scoreboard everyone agrees on.</p>
               </div>
-              <span className="text-[#00173B] font-semibold text-sm">Align</span>
-              <span className="text-[#929192] text-xs">Outcomes</span>
-            </div>
-            <ArrowRight className="w-6 h-6 text-[#009B77] hidden md:block" />
-            <div className="flex flex-col items-center">
-              <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[#009B77] flex items-center justify-center mb-2">
-                <Zap className="w-8 h-8 md:w-10 md:h-10 text-white" />
+              
+              <div className="bg-[#005971]/5 rounded-xl p-6 border border-[#005971]/20 text-center">
+                <div className="w-12 h-12 rounded-full bg-[#005971] flex items-center justify-center mx-auto mb-4">
+                  <Zap className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="font-bold text-[#00173B] mb-2">Flow-of-Work Enablement</h3>
+                <p className="text-sm text-[#929192]">AI embedded in moments that matter. Method reinforced in the moment—not in training decks.</p>
               </div>
-              <span className="text-[#00173B] font-semibold text-sm">Deliver</span>
-              <span className="text-[#929192] text-xs">Real Impact</span>
-            </div>
-            <ArrowRight className="w-6 h-6 text-[#009B77] hidden md:block" />
-            <div className="flex flex-col items-center">
-              <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[#A3238E] flex items-center justify-center mb-2">
-                <LineChart className="w-8 h-8 md:w-10 md:h-10 text-white" />
+              
+              <div className="bg-[#009B77]/5 rounded-xl p-6 border border-[#009B77]/20 text-center">
+                <div className="w-12 h-12 rounded-full bg-[#009B77] flex items-center justify-center mx-auto mb-4">
+                  <RefreshCcw className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="font-bold text-[#00173B] mb-2">The Closed Loop</h3>
+                <p className="text-sm text-[#929192]">Baseline → change → shift → KPI impact → new baseline. Continuous evidence sponsors can defend.</p>
               </div>
-              <span className="text-[#00173B] font-semibold text-sm">Track</span>
-              <span className="text-[#929192] text-xs">KPIs & Evidence</span>
             </div>
-          </div>
 
-          <div className="mt-10 bg-gradient-to-r from-[#00634F]/10 via-[#005971]/10 to-[#009B77]/10 rounded-xl p-6 max-w-3xl border border-[#009B77]/30">
-            <p className="text-[#00173B] text-center font-medium">
-              Not "believe us, we're Korn Ferry"—but <span className="text-[#009B77] font-bold">hard evidence and tracked KPIs</span> that close the loop on every engagement.
+            {/* Loop visualization */}
+            <div className="flex items-center justify-center gap-2 md:gap-4 flex-wrap">
+              <span className="bg-[#00634F] text-white px-4 py-2 rounded-lg text-sm font-medium">Baseline</span>
+              <ArrowRight className="w-5 h-5 text-[#929192]" />
+              <span className="bg-[#005971] text-white px-4 py-2 rounded-lg text-sm font-medium">What Changed</span>
+              <ArrowRight className="w-5 h-5 text-[#929192]" />
+              <span className="bg-[#009B77] text-white px-4 py-2 rounded-lg text-sm font-medium">KPI Shift</span>
+              <ArrowRight className="w-5 h-5 text-[#929192]" />
+              <span className="bg-[#A3238E] text-white px-4 py-2 rounded-lg text-sm font-medium">New Baseline</span>
+              <RefreshCcw className="w-5 h-5 text-[#009B77]" />
+            </div>
+          </div>
+        </div>
+      )
+    },
+
+    // Slide 7: Why Commercial Effectiveness First
+    {
+      id: "why",
+      content: (
+        <div className="h-full flex flex-col items-center justify-center px-8 bg-gradient-to-br from-[#00634F] to-[#005971]">
+          <div className="max-w-4xl text-center">
+            <BarChart3 className="w-12 h-12 text-[#05C690] mx-auto mb-6" />
+            <h2 className="text-3xl md:text-4xl font-bold text-white leading-tight mb-4">
+              Why start with Commercial Effectiveness?
+            </h2>
+            <p className="text-lg text-white/80 mb-10">
+              It's the fastest proving ground.
             </p>
-          </div>
-        </div>
-      )
-    },
-
-    // Slide 5: Why Commercial Effectiveness First
-    {
-      id: "pilot",
-      title: "",
-      bgClass: "bg-white",
-      content: (
-        <div className="flex flex-col items-center justify-center h-full text-center px-8">
-          <div className="mb-6">
-            <BarChart3 className="w-12 h-12 text-[#005971] mx-auto" />
-          </div>
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-[#00173B] leading-tight max-w-4xl mb-4">
-            Starting with Commercial Effectiveness
-          </h2>
-          <p className="text-lg md:text-xl text-[#929192] max-w-3xl mb-10">
-            The easiest place to measure. Learn fast. Prove the loop works.
-          </p>
-          
-          <div className="grid md:grid-cols-3 gap-6 max-w-4xl">
-            <div className="bg-[#00634F]/5 rounded-xl p-6 border border-[#00634F]/20">
-              <Zap className="w-10 h-10 text-[#00634F] mx-auto mb-4" />
-              <h3 className="text-lg font-bold text-[#00173B] mb-2">Fast Learning</h3>
-              <p className="text-sm text-[#929192]">Immediate feedback loops on seller performance</p>
-            </div>
-            <div className="bg-[#005971]/5 rounded-xl p-6 border border-[#005971]/20">
-              <Target className="w-10 h-10 text-[#005971] mx-auto mb-4" />
-              <h3 className="text-lg font-bold text-[#00173B] mb-2">Measurable Impact</h3>
-              <p className="text-sm text-[#929192]">Clear metrics that prove value delivered</p>
-            </div>
-            <div className="bg-[#A3238E]/5 rounded-xl p-6 border border-[#A3238E]/20">
-              <RefreshCcw className="w-10 h-10 text-[#A3238E] mx-auto mb-4" />
-              <h3 className="text-lg font-bold text-[#00173B] mb-2">Expandable Template</h3>
-              <p className="text-sm text-[#929192]">Leadership, Transformation, Rewards next</p>
-            </div>
-          </div>
-
-          <div className="mt-10 flex items-center gap-2 text-[#929192]">
-            <span>Once proven here</span>
-            <ArrowRight className="w-5 h-5 text-[#009B77]" />
-            <span className="text-[#00173B] font-semibold">Template for all Korn Ferry solutions</span>
-          </div>
-        </div>
-      )
-    },
-
-    // Slide 6: What the Loop Delivers
-    {
-      id: "built",
-      title: "",
-      bgClass: "bg-white",
-      content: (
-        <div className="flex flex-col items-center justify-center h-full px-8">
-          <h2 className="text-3xl md:text-4xl font-bold text-[#00173B] leading-tight text-center max-w-4xl mb-10">
-            What the Loop Delivers
-          </h2>
-          
-          <div className="grid md:grid-cols-2 gap-6 max-w-4xl">
-            <div className="text-left bg-[#00634F]/5 rounded-xl p-6 border border-[#00634F]/20">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-lg bg-[#00634F] flex items-center justify-center">
-                  <Brain className="w-5 h-5 text-white" />
-                </div>
-                <h3 className="text-lg font-bold text-[#00173B]">AI-Powered Discovery</h3>
-              </div>
-              <p className="text-[#929192] text-sm">Customer research, strategic insights, and targeted questions—in minutes, not hours.</p>
-            </div>
             
-            <div className="text-left bg-[#005971]/5 rounded-xl p-6 border border-[#005971]/20">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-lg bg-[#005971] flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-white" />
-                </div>
-                <h3 className="text-lg font-bold text-[#00173B]">Outcome Alignment</h3>
+            <div className="grid md:grid-cols-2 gap-4 max-w-2xl mx-auto text-left">
+              <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-3">
+                <CheckCircle2 className="w-5 h-5 text-[#05C690] flex-shrink-0" />
+                <span className="text-white">Metrics are clean</span>
               </div>
-              <p className="text-[#929192] text-sm">Co-create measurable outcomes with clients. Every promise documented and trackable.</p>
+              <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-3">
+                <CheckCircle2 className="w-5 h-5 text-[#05C690] flex-shrink-0" />
+                <span className="text-white">Urgency is sponsor-owned</span>
+              </div>
+              <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-3">
+                <CheckCircle2 className="w-5 h-5 text-[#05C690] flex-shrink-0" />
+                <span className="text-white">Outcomes tie to revenue</span>
+              </div>
+              <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-3">
+                <CheckCircle2 className="w-5 h-5 text-[#05C690] flex-shrink-0" />
+                <span className="text-white">Forces hardest discipline</span>
+              </div>
             </div>
-            
-            <div className="text-left bg-[#009B77]/5 rounded-xl p-6 border border-[#009B77]/20">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-lg bg-[#009B77] flex items-center justify-center">
-                  <Handshake className="w-5 h-5 text-white" />
-                </div>
-                <h3 className="text-lg font-bold text-[#00173B]">Seamless Handoff</h3>
-              </div>
-              <p className="text-[#929192] text-sm">Sales to delivery without losing context. Delivery tracks KPIs and closes the loop.</p>
-            </div>
-            
-            <div className="text-left bg-[#A3238E]/5 rounded-xl p-6 border border-[#A3238E]/20">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-lg bg-[#A3238E] flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-white" />
-                </div>
-                <h3 className="text-lg font-bold text-[#00173B]">Evidence-Driven Trust</h3>
-              </div>
-              <p className="text-[#929192] text-sm">Hard evidence of impact—not "believe us." Client-visible dashboards prove value.</p>
+
+            <div className="mt-10 p-4 rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 max-w-xl mx-auto">
+              <p className="text-white">
+                Once the loop works here, it becomes a <span className="text-[#05C690] font-bold">template for all outcomes</span>—leadership, transformation, rewards.
+              </p>
             </div>
           </div>
         </div>
       )
     },
 
-    // Slide 7: The Vision - Closing
+    // Slide 8: Close
     {
-      id: "vision",
-      title: "",
-      bgClass: "bg-gradient-to-br from-[#00634F] via-[#005971] to-[#00173B]",
+      id: "close",
       content: (
-        <div className="flex flex-col items-center justify-center h-full text-center px-8">
-          <div className="mb-8">
-            <Rocket className="w-14 h-14 text-[#05C690] mx-auto" />
-          </div>
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight max-w-5xl mb-8">
-            The World's First
-            <br />
-            <span className="text-[#05C690]">Talent-to-Value Platform</span>
-          </h2>
-          
-          <div className="max-w-3xl space-y-5 mt-6">
-            <div className="flex items-center gap-4 text-left bg-white/10 backdrop-blur-sm rounded-lg px-6 py-4">
-              <CircleDot className="w-5 h-5 text-[#05C690] flex-shrink-0" />
-              <p className="text-lg text-white">Selling excellence becomes <span className="text-[#05C690] font-semibold">consistent</span></p>
-            </div>
-            <div className="flex items-center gap-4 text-left bg-white/10 backdrop-blur-sm rounded-lg px-6 py-4">
-              <CircleDot className="w-5 h-5 text-[#05C690] flex-shrink-0" />
-              <p className="text-lg text-white">Buyer trust becomes <span className="text-[#05C690] font-semibold">evidence-driven</span></p>
-            </div>
-            <div className="flex items-center gap-4 text-left bg-white/10 backdrop-blur-sm rounded-lg px-6 py-4">
-              <CircleDot className="w-5 h-5 text-[#05C690] flex-shrink-0" />
-              <p className="text-lg text-white">Korn Ferry becomes <span className="text-[#05C690] font-semibold">essential infrastructure</span></p>
-            </div>
-          </div>
-          
-          <div className="mt-12 p-6 rounded-xl bg-white/15 backdrop-blur-sm border border-[#05C690]/40 max-w-2xl">
-            <p className="text-xl md:text-2xl text-white font-medium">
-              One trusted loop at a time.
+        <div className="h-full flex flex-col items-center justify-center px-8 bg-[#00173B]">
+          <div className="max-w-4xl text-center">
+            <Rocket className="w-14 h-14 text-[#05C690] mx-auto mb-8" />
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight mb-8">
+              The future of selling<br/>
+              <span className="text-[#929192]">is not a better pitch deck.</span>
+            </h2>
+            
+            <p className="text-xl md:text-2xl text-white/90 mb-10">
+              It's a better system.
             </p>
+
+            <div className="space-y-4 max-w-2xl mx-auto mb-12">
+              <div className="flex items-center gap-4 bg-white/10 backdrop-blur-sm rounded-lg px-6 py-4">
+                <CircleDot className="w-5 h-5 text-[#05C690] flex-shrink-0" />
+                <p className="text-lg text-white text-left">One method. One language. <span className="text-[#05C690]">Embedded in the flow of work.</span></p>
+              </div>
+              <div className="flex items-center gap-4 bg-white/10 backdrop-blur-sm rounded-lg px-6 py-4">
+                <CircleDot className="w-5 h-5 text-[#05C690] flex-shrink-0" />
+                <p className="text-lg text-white text-left">A closed loop that turns every intervention into <span className="text-[#05C690]">measurable lift.</span></p>
+              </div>
+              <div className="flex items-center gap-4 bg-white/10 backdrop-blur-sm rounded-lg px-6 py-4">
+                <CircleDot className="w-5 h-5 text-[#05C690] flex-shrink-0" />
+                <p className="text-lg text-white text-left">And every lift into <span className="text-[#05C690]">learning.</span></p>
+              </div>
+            </div>
+            
+            <div className="p-6 rounded-xl bg-gradient-to-r from-[#00634F]/30 to-[#009B77]/30 border border-[#05C690]/40 max-w-xl mx-auto">
+              <p className="text-xl md:text-2xl text-white font-medium">
+                Trust everywhere. Proof everywhere.<br/>
+                <span className="text-[#05C690]">Performance that compounds.</span>
+              </p>
+            </div>
           </div>
         </div>
       )
@@ -363,7 +384,10 @@ export default function PresentationPage() {
   ];
 
   const currentSlideData = slides[currentSlide];
-  const isLightBg = currentSlideData.bgClass === "bg-white";
+  
+  // Determine if current slide has light or dark background for navigation styling
+  const darkBgSlides = ["buying", "cro", "proof", "why", "close"];
+  const isDarkBg = darkBgSlides.includes(currentSlideData.id);
 
   const goToSlide = useCallback((index: number) => {
     if (index >= 0 && index < slides.length) {
@@ -399,14 +423,14 @@ export default function PresentationPage() {
   }, [nextSlide, prevSlide, goToSlide, slides.length]);
 
   return (
-    <div className={`min-h-screen flex flex-col ${currentSlideData.bgClass} transition-all duration-500`}>
+    <div className="h-screen flex flex-col bg-white overflow-hidden">
       {/* Minimal header */}
       <header className="fixed top-0 left-0 right-0 z-50 p-4 flex items-center justify-between">
         <Link href="/accounts">
           <Button 
             variant="ghost" 
             size="icon" 
-            className={isLightBg ? "text-[#00173B]/70 hover:text-[#00173B] hover:bg-[#00173B]/10" : "text-white/70 hover:text-white hover:bg-white/10"}
+            className={isDarkBg ? "text-white/70 hover:text-white hover:bg-white/10" : "text-[#00173B]/70 hover:text-[#00173B] hover:bg-[#00173B]/10"}
             data-testid="button-home"
           >
             <Home className="w-5 h-5" />
@@ -414,7 +438,7 @@ export default function PresentationPage() {
         </Link>
         
         <div className="flex items-center gap-2">
-          <span className={`text-sm font-medium ${isLightBg ? "text-[#929192]" : "text-white/50"}`}>
+          <span className={`text-sm font-medium ${isDarkBg ? "text-white/50" : "text-[#929192]"}`}>
             {currentSlide + 1} / {slides.length}
           </span>
         </div>
@@ -422,7 +446,7 @@ export default function PresentationPage() {
 
       {/* Main slide content */}
       <div 
-        className="flex-1 flex flex-col p-8 pt-20 md:p-16 md:pt-24 overflow-y-auto"
+        className="flex-1 overflow-hidden"
         data-testid={`slide-${currentSlideData.id}`}
       >
         {currentSlideData.content}
@@ -435,9 +459,9 @@ export default function PresentationPage() {
           size="icon"
           onClick={prevSlide}
           disabled={currentSlide === 0}
-          className={isLightBg 
-            ? "text-[#00173B]/70 hover:text-[#00173B] hover:bg-[#00173B]/10 disabled:opacity-30" 
-            : "text-white/70 hover:text-white hover:bg-white/10 disabled:opacity-30"
+          className={isDarkBg 
+            ? "text-white/70 hover:text-white hover:bg-white/10 disabled:opacity-30" 
+            : "text-[#00173B]/70 hover:text-[#00173B] hover:bg-[#00173B]/10 disabled:opacity-30"
           }
           data-testid="button-prev-slide"
         >
@@ -453,9 +477,9 @@ export default function PresentationPage() {
               className={`w-2 h-2 rounded-full transition-all ${
                 index === currentSlide 
                   ? "w-8 bg-[#009B77]" 
-                  : isLightBg 
-                    ? "bg-[#00173B]/20 hover:bg-[#00173B]/40" 
-                    : "bg-white/30 hover:bg-white/50"
+                  : isDarkBg 
+                    ? "bg-white/30 hover:bg-white/50" 
+                    : "bg-[#00173B]/20 hover:bg-[#00173B]/40"
               }`}
               data-testid={`button-slide-dot-${index}`}
             />
@@ -467,9 +491,9 @@ export default function PresentationPage() {
           size="icon"
           onClick={nextSlide}
           disabled={currentSlide === slides.length - 1}
-          className={isLightBg 
-            ? "text-[#00173B]/70 hover:text-[#00173B] hover:bg-[#00173B]/10 disabled:opacity-30" 
-            : "text-white/70 hover:text-white hover:bg-white/10 disabled:opacity-30"
+          className={isDarkBg 
+            ? "text-white/70 hover:text-white hover:bg-white/10 disabled:opacity-30" 
+            : "text-[#00173B]/70 hover:text-[#00173B] hover:bg-[#00173B]/10 disabled:opacity-30"
           }
           data-testid="button-next-slide"
         >

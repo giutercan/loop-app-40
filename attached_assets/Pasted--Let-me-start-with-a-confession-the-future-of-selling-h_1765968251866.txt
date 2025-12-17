@@ -1,0 +1,127 @@
+“Let me start with a confession: ‘the future of selling’ has become a junk phrase. Everyone has a version of it, and none of it matters if we don’t understand the future of buying.
+
+Buyers are using AI to do their homework. They arrive more prepared, more skeptical, and less patient. They don’t need us to recite information—they already have it. What they want is credibility: evidence, clarity, and a conversation that helps them make a confident decision.
+
+So the competitive advantage isn’t ‘who has AI.’ It’s who can build trust faster with evidence—and who can keep that trust through delivery.”
+
+(Beat)
+“And this changes the relationship. Relationship selling doesn’t disappear. It evolves into: relationship + proof + orchestration.”
+
+1:30–3:30 — Make it concrete with the S&P reality
+
+“Take S&P as the perfect example. They’ve got Salesforce. They’ve got Agentforce. They have agents coming out of their ears.
+
+But here’s the paradox: tools don’t equal lift.
+
+When you have ‘AI everywhere’ but no common method, no shared language, and nothing embedded into the actual flow of work, what you get is:
+
+activity inflation—more content, more outputs, more noise
+
+inconsistent execution—every rep does it differently
+
+method decay under pressure—because training doesn’t show up in the moment
+
+and buyer conversations that still feel generic—because the rep can’t translate all that AI output into evidence and a credible story
+
+So from the CRO’s perspective, it looks like motion without lift.”
+
+(Beat)
+“And that is exactly where we should start.”
+
+3:30–5:30 — The CRO’s real question (and why it’s not “deploy AI”)
+
+“Here’s the CRO’s question in plain English:
+
+‘I have the tech. I have the people. I need a step-change in win rate and revenue by 2027. What’s actually broken? Is it my GTM? My process? My seller behaviours? Or is it that my leadership system isn’t ready to run selling in the age of AI?’
+
+Because the risk isn’t failing to deploy. The risk is deploying AI and automating the wrong thing—automating noise—then watching adoption stall and credibility drop.”
+
+5:30–7:30 — Reframe: the unit of performance changed
+
+“The old world ran on heroic sellers. The best sellers just ‘knew.’ Methods lived in training decks and memory.
+
+The new world changes the unit of performance:
+Seller + AI capability. Or more accurately: Team + AI capability, because this has to scale beyond heroics.
+
+But AI only creates advantage if it’s doing specific jobs inside the workflow:
+
+research assistant
+
+pattern recogniser
+
+method coach
+
+story builder
+
+follow-up engine
+
+And the seller becomes the orchestrator of trust: judgement, influence, navigating complexity, closing.
+
+That’s the promise. But there’s a missing piece.”
+
+7:30–9:30 — The missing piece: proof (why value doesn’t compound)
+
+“If you can’t prove what moved, you can’t scale it.
+
+Most organisations can see activity, but they debate impact. They run interventions, but value proof fragments. Renewals and budget decisions depend too much on who tells the best story, not what the evidence shows.
+
+And in the era of AI-powered buying, that’s fatal—because the buyer expects evidence. Credibility is earned, not claimed.”
+
+(Beat)
+“So the question becomes: what would a commercial system look like that improves outcomes and produces proof continuously?”
+
+9:30–12:30 — The answer: Commercial Effectiveness 2.0 (Commercial OS) + KF Loop
+
+“This is where Commercial Effectiveness 2.0 comes in: think of it as a Commercial Operating System.
+
+It has three parts:
+
+Part 1: A Success Frame (the scoreboard).
+We lock 3–5 KPIs the CRO/CFO actually runs the business on:
+win rate, deal size, new logos, cycle time, retention—and where relevant, cost of sale or critical talent attrition.
+
+Not 50 metrics. A small scoreboard everyone agrees matters.
+
+Part 2: Flow-of-work enablement (the behaviour engine).
+AI becomes useful when it’s embedded in the moments that matter:
+meeting prep, discovery planning, deal shaping, story structuring, follow-up, hygiene.
+
+So method doesn’t decay under pressure because it’s reinforced in the moment—without adding admin.
+
+Part 3: The closed loop (the evidence spine).
+This is the part that turns activity into credibility:
+Baseline → what changed → what shifted in behaviours/conditions → what moved in KPIs → new baseline → what we do next.
+
+That’s the loop. It creates a continuous narrative that sponsors can defend and leaders can run.”
+
+(If you show a slide, this is the moment: the loop diagram.)
+
+12:30–14:00 — Why we start with commercial effectiveness (fast pilot, clean proof)
+
+“We start with commercial effectiveness because it’s the fastest proving ground:
+
+the metrics are clean
+
+urgency is sponsor-owned
+
+outcomes tie directly to revenue
+
+and it forces the hardest discipline: one language, one method, embedded in workflow, with proof
+
+Once that loop works, it becomes a template we can extend across other outcomes and lines of business as we align with KFI and the broader KPI libraries.”
+
+14:00–15:00 — Close: buyer trust becomes evidence-driven
+
+“Let me close with the simplest outcome:
+
+In the new era, buyers come AI-prepared. Trust is built through evidence and credible conversation. Sellers need to show up as orchestrators of trust, not presenters of information.
+
+A commercial system that embeds excellence into the flow of work and closes the loop on evidence doesn’t just improve performance—it changes credibility.
+
+And that’s the shift: not ‘AI everywhere,’ but trust everywhere, proof everywhere, and performance that compounds.”
+
+Optional 30-second “mic drop” ending
+
+“The future of selling is not a better pitch deck. It’s a better system.
+One method. One language. Embedded in the flow of work.
+And a closed loop that turns every intervention into measurable lift—and every lift into learning.”
