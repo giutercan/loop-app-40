@@ -226,7 +226,7 @@ export default function PresentationPage() {
               <span className="text-[#929192]">you can't scale it.</span>
             </h2>
             <p className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto mb-10">
-              Most organisations see activity, but debate impact. Renewals depend on who tells the best story—not what evidence shows.
+              Activity is visible. Impact is arguable. If you can't show what moved, you can't scale it—or defend it.
             </p>
             
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 max-w-2xl mx-auto border border-[#05C690]/30">
