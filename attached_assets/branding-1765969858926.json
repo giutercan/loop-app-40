@@ -1,0 +1,108 @@
+{
+  "colorScheme": "light",
+  "fonts": [
+    {
+      "family": "sans-serif",
+      "count": 117
+    },
+    {
+      "family": "Gotham A",
+      "count": 98
+    },
+    {
+      "family": "Gotham B",
+      "count": 98
+    },
+    {
+      "family": "Arial",
+      "count": 30
+    },
+    {
+      "family": "Helvetica",
+      "count": 19
+    }
+  ],
+  "colors": {
+    "primary": "#00634F",
+    "accent": "#053328",
+    "background": "#FFFFFF",
+    "textPrimary": "#053328",
+    "link": "#053328"
+  },
+  "typography": {
+    "fontFamilies": {
+      "primary": "Gotham A",
+      "heading": "Gotham A"
+    },
+    "fontStacks": {
+      "body": [
+        "Gotham A",
+        "Gotham B",
+        "sans-serif"
+      ],
+      "heading": [
+        "Gotham A",
+        "Gotham B",
+        "sans-serif"
+      ],
+      "paragraph": [
+        "Gotham A",
+        "Gotham B",
+        "sans-serif"
+      ]
+    },
+    "fontSizes": {
+      "h1": "120px",
+      "h2": "22px",
+      "body": "18px"
+    }
+  },
+  "spacing": {
+    "baseUnit": 4,
+    "borderRadius": "4px"
+  },
+  "components": {
+    "input": {
+      "background": "#0A241E",
+      "textColor": "#FFFFFF",
+      "borderColor": null,
+      "borderRadius": "0px",
+      "borderRadiusCorners": {
+        "topLeft": "0px",
+        "topRight": "0px",
+        "bottomRight": "0px",
+        "bottomLeft": "0px"
+      },
+      "shadow": "rgb(255, 255, 255) 0px 0px 0px 0px"
+    }
+  },
+  "images": {
+    "logo": "https://www.kornferry.com/content/experience-fragments/kornferry-v2/en/header/master/_jcr_content/root/header/mainHeader%20containerMax%20d-flex%20justify-space-between%20align-center/homepageheaderLogo.coreimg.svg/1739348432386/kf-logo-white.svg",
+    "favicon": "https://www.kornferry.com/etc.clientlibs/kornferry-v2/clientlibs/clientlib-site/resources/images/favicons/safari-pinned-tab.svg",
+    "ogImage": "https://www.kornferry.com/content/dam/be-more-than/banners/BMT_Header_567x677.jpg"
+  },
+  "__framework_hints": [],
+  "__llm_logo_reasoning": {
+    "selectedIndex": 1,
+    "reasoning": "Strong indicators: variant bonus (+8), header logo linking to homepage, header location, visible, top-left position, alt matches logo/brand, src contains logo, class contains logo, alt contains brand name \"Korn Ferry\", reasonable size. Score: 138 (clear winner by 88 points)",
+    "confidence": 0.9
+  },
+  "__llm_button_reasoning": {
+    "primary": {
+      "index": -1,
+      "text": "N/A",
+      "reasoning": "LLM failed"
+    },
+    "secondary": {
+      "index": -1,
+      "text": "N/A",
+      "reasoning": "LLM failed"
+    },
+    "confidence": 0
+  },
+  "confidence": {
+    "buttons": 0,
+    "colors": 0,
+    "overall": 0
+  }
+}
