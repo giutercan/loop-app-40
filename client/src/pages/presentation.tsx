@@ -28,6 +28,7 @@ import {
 
 import executiveImage from "@assets/GettyImages-551703701_1765967640588.jpg";
 import buyerImage from "@assets/Picture38_1765967640589.png";
+import paradoxImage from "@assets/image_1765968794671.png";
 
 interface Slide {
   id: string;
@@ -74,52 +75,54 @@ export default function PresentationPage() {
     {
       id: "paradox",
       content: (
-        <div className="h-full flex flex-col items-center justify-center px-8 bg-white">
-          <div className="max-w-4xl text-center">
-            <p className="text-[#A3238E] text-sm uppercase tracking-widest mb-6">
-              The Paradox
-            </p>
-            <h2 className="text-3xl md:text-5xl font-bold text-[#00173B] leading-tight mb-8">
-              Tools don't equal lift.
-            </h2>
-            <p className="text-lg md:text-xl text-[#929192] mb-12">
-              When you have "AI everywhere" but no common method, no shared language, and nothing embedded into the flow of work...
-            </p>
-            
-            <div className="grid md:grid-cols-2 gap-4 max-w-3xl mx-auto text-left">
-              <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-4">
-                <Activity className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
-                <div>
-                  <span className="font-semibold text-[#00173B]">Activity inflation</span>
-                  <p className="text-sm text-[#929192]">More content, more outputs, more noise</p>
+        <div className="relative h-full w-full overflow-hidden">
+          {/* Background image with overlay */}
+          <div 
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: `url(${paradoxImage})` }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#00173B]/95 via-[#00173B]/85 to-transparent pointer-events-none" />
+          
+          {/* Content on the left */}
+          <div className="relative z-10 h-full flex items-center px-8 md:px-16">
+            <div className="max-w-xl">
+              <p className="text-[#A3238E] text-sm uppercase tracking-widest mb-4">
+                The Paradox
+              </p>
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight mb-6">
+                AI everywhere.<br/>
+                <span className="text-[#929192]">Lift nowhere.</span>
+              </h2>
+              
+              <div className="space-y-3 mb-8">
+                <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-3">
+                  <Activity className="w-5 h-5 text-red-400 flex-shrink-0" />
+                  <span className="text-white">Activity inflation—more noise, not signal</span>
+                </div>
+                <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-3">
+                  <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0" />
+                  <span className="text-white">Inconsistent execution across reps</span>
+                </div>
+                <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-3">
+                  <RefreshCcw className="w-5 h-5 text-orange-400 flex-shrink-0" />
+                  <span className="text-white">Method decay under pressure</span>
+                </div>
+                <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-3">
+                  <BarChart3 className="w-5 h-5 text-rose-400 flex-shrink-0" />
+                  <span className="text-white">Made-up KPIs they can't prove</span>
+                </div>
+                <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-3">
+                  <MessageSquare className="w-5 h-5 text-purple-400 flex-shrink-0" />
+                  <span className="text-white">Unproven resources, generic conversations</span>
                 </div>
               </div>
-              <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
-                <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
-                <div>
-                  <span className="font-semibold text-[#00173B]">Inconsistent execution</span>
-                  <p className="text-sm text-[#929192]">Every rep does it differently</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3 bg-orange-50 border border-orange-200 rounded-xl p-4">
-                <RefreshCcw className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
-                <div>
-                  <span className="font-semibold text-[#00173B]">Method decay</span>
-                  <p className="text-sm text-[#929192]">Training doesn't show up in the moment</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3 bg-rose-50 border border-rose-200 rounded-xl p-4">
-                <MessageSquare className="w-5 h-5 text-rose-500 mt-0.5 flex-shrink-0" />
-                <div>
-                  <span className="font-semibold text-[#00173B]">Generic conversations</span>
-                  <p className="text-sm text-[#929192]">AI output doesn't translate to credibility</p>
-                </div>
+
+              <div className="bg-[#005971]/30 border border-[#00ADBB]/50 rounded-lg p-4">
+                <p className="text-white font-medium">
+                  From the CRO's view: <span className="text-[#05C690]">motion without lift.</span>
+                </p>
               </div>
             </div>
-
-            <p className="mt-10 text-xl font-semibold text-[#005971]">
-              From the CRO's view: motion without lift.
-            </p>
           </div>
         </div>
       )
@@ -386,7 +389,7 @@ export default function PresentationPage() {
   const currentSlideData = slides[currentSlide];
   
   // Determine if current slide has light or dark background for navigation styling
-  const darkBgSlides = ["buying", "cro", "proof", "why", "close"];
+  const darkBgSlides = ["buying", "paradox", "cro", "proof", "why", "close"];
   const isDarkBg = darkBgSlides.includes(currentSlideData.id);
 
   const goToSlide = useCallback((index: number) => {
