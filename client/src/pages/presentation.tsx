@@ -29,6 +29,7 @@ import {
 import executiveImage from "@assets/GettyImages-551703701_1765967640588.jpg";
 import buyerImage from "@assets/Picture38_1765967640589.png";
 import paradoxImage from "@assets/image_1765968794671.png";
+import sellerImage from "@assets/image_1768493241281.png";
 
 interface Slide {
   id: string;
@@ -215,7 +216,72 @@ export default function PresentationPage() {
       )
     },
 
-    // Slide 4: The Unit of Performance Changed
+    // Slide 4: The Impossible Job
+    {
+      id: "impossible",
+      content: (
+        <div className="relative h-full w-full overflow-hidden">
+          {/* Background image with overlay */}
+          <div 
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: `url(${sellerImage})` }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#00173B]/95 via-[#00173B]/85 to-[#00173B]/50 pointer-events-none" />
+          
+          {/* Content */}
+          <div className="relative z-10 h-full flex items-center justify-start px-8 md:px-16">
+            <div className="max-w-2xl text-left">
+              <p className="text-[#A3238E] text-sm uppercase tracking-widest mb-4">
+                The Impossible Job
+              </p>
+              <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold text-white leading-tight mb-8">
+                We turned the seller role<br/>
+                <span className="text-[#929192]">into an impossible job.</span>
+              </h2>
+              
+              {/* Two columns showing tension */}
+              <div className="grid grid-cols-2 gap-6 mb-6">
+                {/* Left: What we ask */}
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+                  <p className="text-[#8DC63F] text-sm font-medium mb-3">What we ask sellers to be</p>
+                  <div className="space-y-2 text-white/80 text-sm">
+                    <p>Relationship builder</p>
+                    <p>Researcher</p>
+                    <p>Portfolio expert</p>
+                    <p>Proposal writer</p>
+                    <p>Workflow manager</p>
+                  </div>
+                </div>
+                
+                {/* Right: What buyers require */}
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+                  <p className="text-[#00ADBB] text-sm font-medium mb-3">What buyers now require</p>
+                  <div className="space-y-2 text-white/80 text-sm">
+                    <p>Prepared for AI scrutiny</p>
+                    <p>Consistent story</p>
+                    <p>Proof at every step</p>
+                    <p>Speed + depth</p>
+                    <p>Trust under pressure</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tension center */}
+              <div className="bg-[#005971]/30 border border-[#00ADBB]/50 rounded-lg p-4">
+                <p className="text-white text-center">
+                  When pressure hits, <span className="text-[#05C690] font-medium">trust-building gives way first.</span>
+                </p>
+                <p className="text-white/70 text-sm text-center mt-2">
+                  Not because sellers aren't capable — but because the system pulls judgment away from where it matters.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    },
+
+    // Slide 5: The Unit of Performance Changed
     {
       id: "unit",
       content: (
