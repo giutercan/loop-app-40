@@ -677,49 +677,6 @@ export default function PresentationPage() {
           </div>
         </div>
       )
-    },
-
-    // Slide 10: How the Loop Shows Up in Practice
-    {
-      id: "practice",
-      content: (
-        <div className="h-full flex flex-col items-center justify-center px-8 bg-white">
-          <div className="max-w-3xl text-center">
-            {/* Title */}
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-[#00173B] leading-tight mb-6">
-              How the Loop shows up in practice
-            </h2>
-            
-            {/* Subhead - the most important line */}
-            <p className="text-lg md:text-xl text-[#929192] mb-16">
-              A shared loop — experienced through the seller, built for the whole team.
-            </p>
-
-            {/* What you're about to see */}
-            <p className="text-sm uppercase tracking-widest text-[#A3238E] mb-10">
-              What you're about to see
-            </p>
-
-            {/* Three anchors - minimal, centered, white space */}
-            <div className="space-y-6 mb-20">
-              <p className="text-2xl md:text-3xl text-[#00173B] font-medium">
-                One seller flow
-              </p>
-              <p className="text-2xl md:text-3xl text-[#00173B] font-medium">
-                One customer
-              </p>
-              <p className="text-2xl md:text-3xl text-[#00173B] font-medium">
-                Provable outcomes — for the customer
-              </p>
-            </div>
-
-            {/* Footer line */}
-            <p className="text-[#929192] text-sm">
-              Context, evidence, and learning carry forward — without rework.
-            </p>
-          </div>
-        </div>
-      )
     }
   ];
 
