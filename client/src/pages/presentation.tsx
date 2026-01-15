@@ -178,18 +178,36 @@ export default function PresentationPage() {
           <div className="relative z-10 h-full flex items-center justify-start px-8 md:px-16">
             <div className="max-w-2xl text-left">
               <p className="text-[#00ADBB] text-sm uppercase tracking-widest mb-4">
-                The Real Question
+                The CRO's Moment
               </p>
+              
+              {/* What I have - visual pills */}
+              <div className="flex flex-wrap gap-3 mb-6">
+                <span className="bg-white/10 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm border border-white/20">Salesforce</span>
+                <span className="bg-white/10 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm border border-white/20">Enablement</span>
+                <span className="bg-white/10 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm border border-white/20">AI pilots</span>
+                <span className="bg-white/10 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm border border-white/20">Good people</span>
+              </div>
+
               <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold text-white leading-tight mb-8">
-                "I have the tech.<br/>
-                I have the people.<br/>
-                <span className="text-[#05C690]">What's actually broken?"</span>
+                <span className="text-[#05C690]">"What's actually broken?"</span>
               </h2>
-              <div className="space-y-3 text-white/80 text-lg">
-                <p>Is it the GTM motion?</p>
-                <p>The process?</p>
-                <p>Seller behaviours?</p>
-                <p className="text-[#05C690] font-medium">Or a leadership system not ready for AI?</p>
+              
+              <div className="flex flex-wrap gap-4 mb-8">
+                <span className="text-white/80 text-lg">GTM motion?</span>
+                <span className="text-white/50">|</span>
+                <span className="text-white/80 text-lg">Process?</span>
+                <span className="text-white/50">|</span>
+                <span className="text-white/80 text-lg">Seller behaviour?</span>
+              </div>
+
+              <div className="bg-[#005971]/30 border border-[#00ADBB]/50 rounded-lg p-4">
+                <p className="text-white">
+                  Or a system <span className="text-[#00ADBB] font-medium">never designed for AI-level complexity?</span>
+                </p>
+                <p className="text-white/80 text-sm mt-2">
+                  We've quietly made the seller role impossible.
+                </p>
               </div>
             </div>
           </div>
