@@ -488,33 +488,39 @@ export default function PresentationPage() {
               </div>
             </div>
 
-            {/* Loop visualization - more visual */}
+            {/* Loop visualization - circular representation */}
             <div className="bg-[#00173B] rounded-xl p-5 mb-6">
-              <p className="text-white/70 text-xs uppercase tracking-widest text-center mb-4">The Loop</p>
-              <div className="flex items-center justify-center gap-2 md:gap-3 flex-wrap">
-                <div className="flex items-center gap-2 bg-[#00634F] text-white px-4 py-2 rounded-full text-sm font-medium">
-                  <CircleDot className="w-4 h-4" />
-                  <span>Baseline</span>
+              <p className="text-white/70 text-xs uppercase tracking-widest text-center mb-4">The Closed Loop</p>
+              <div className="relative">
+                {/* Main flow */}
+                <div className="flex items-center justify-center gap-2 md:gap-3 flex-wrap">
+                  <div className="flex items-center gap-2 bg-[#00634F] text-white px-4 py-2 rounded-full text-sm font-medium">
+                    <CircleDot className="w-4 h-4" />
+                    <span>Baseline</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-[#929192]" />
+                  <div className="flex items-center gap-2 bg-[#005971] text-white px-4 py-2 rounded-full text-sm font-medium">
+                    <RefreshCcw className="w-4 h-4" />
+                    <span>Change</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-[#929192]" />
+                  <div className="flex items-center gap-2 bg-[#A3238E] text-white px-4 py-2 rounded-full text-sm font-medium">
+                    <Users className="w-4 h-4" />
+                    <span>Behavior Shift</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-[#929192]" />
+                  <div className="flex items-center gap-2 bg-[#009B77] text-white px-4 py-2 rounded-full text-sm font-medium">
+                    <TrendingUp className="w-4 h-4" />
+                    <span>KPI Impact</span>
+                  </div>
                 </div>
-                <ArrowRight className="w-4 h-4 text-[#929192]" />
-                <div className="flex items-center gap-2 bg-[#005971] text-white px-4 py-2 rounded-full text-sm font-medium">
-                  <RefreshCcw className="w-4 h-4" />
-                  <span>Change</span>
-                </div>
-                <ArrowRight className="w-4 h-4 text-[#929192]" />
-                <div className="flex items-center gap-2 bg-[#A3238E] text-white px-4 py-2 rounded-full text-sm font-medium">
-                  <Users className="w-4 h-4" />
-                  <span>Behavior Shift</span>
-                </div>
-                <ArrowRight className="w-4 h-4 text-[#929192]" />
-                <div className="flex items-center gap-2 bg-[#009B77] text-white px-4 py-2 rounded-full text-sm font-medium">
-                  <TrendingUp className="w-4 h-4" />
-                  <span>KPI Impact</span>
-                </div>
-                <ArrowRight className="w-4 h-4 text-[#929192]" />
-                <div className="flex items-center gap-2 bg-[#8DC63F] text-white px-4 py-2 rounded-full text-sm font-medium">
-                  <Sparkles className="w-4 h-4" />
-                  <span>New Baseline</span>
+                {/* Loop back arrow */}
+                <div className="flex items-center justify-center mt-4">
+                  <div className="flex items-center gap-3 bg-[#8DC63F]/20 border border-[#8DC63F]/50 px-6 py-2 rounded-full">
+                    <RefreshCcw className="w-5 h-5 text-[#8DC63F]" />
+                    <span className="text-[#8DC63F] text-sm font-medium">New Baseline feeds back</span>
+                    <ArrowRight className="w-4 h-4 text-[#8DC63F] rotate-180" />
+                  </div>
                 </div>
               </div>
             </div>
