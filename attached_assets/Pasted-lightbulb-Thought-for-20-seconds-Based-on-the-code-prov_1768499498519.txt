@@ -1,0 +1,54 @@
+lightbulb
+Thought for 20 seconds
+Based on the code provided, here is a detailed breakdown of the Evidence Pack Studio.
+Executive Summary
+Evidence Pack Studio is a governance and operations dashboard designed for enterprises using Generative AI in their sales process.
+When a large enterprise sells complex solutions, they generate "Evidence Packs"—collections of claims ("We reduce latency by 30%") backed by proof sources (PDFs, case studies). This application manages the lifecycle of these packs, ensuring that AI-generated claims are verified by humans before reaching the buyer.
+1. The Core Concept: What is an "Evidence Pack"?
+In your data model (types.ts), an Evidence Pack is a digital envelope containing:
+The Claim: The value proposition (e.g., "Reduces review time by 25%").
+The Proof: A list of sources (URLs, PDFs) that substantiate the claim.
+AI Lineage: The modelUsage field tracks which AI model (e.g., kf-genai-riskscore) generated the content and the prompt used.
+Quality Score: A composite metric (0-100) calculated from:
+Provenance: Does the source exist?
+Confidence: How sure is the AI?
+Assumptions: Did the AI make guesses?
+Manager: Human subjective score.
+2. The Application Workflow (Lifecycle)
+The application visualizes a strict pipeline (components/Lifecycle.tsx) to prevent "hallucinations" from reaching clients:
+Create & Model: An AI agent generates a draft pack based on CRM data.
+Score: The system runs automated checks (Calculating Provenance/Confidence scores).
+The Gate (Automated):
+< 50 Score: Automatically Blocked (Fail).
+50 - 69 Score: Conditional (Requires Human Review).
+≥ 70 Score: Pass (Auto-approved or Light Review).
+Manager Verify: A human reviews flagged items in the "Manager Console."
+Buyer Consumption: The validated pack is exposed via API to the buyer.
+3. Key Modules & Features
+A. Pilot Dashboard (components/PilotDashboard.tsx)
+Purpose: Executive view of the pilot program's health.
+Features:
+Global Filtering: Top-level filters for Region, Archetype (Sales role), Product Line, and Deal Size updates all downstream components.
+Drilldown: Clicking "Quality by Archetype" or KPI tiles switches the view to the Manager Console, filtered for that specific segment.
+Heatmap: Visualizes "Readiness" by comparing Deal Size vs. Quality Score (helps prioritize high-value, low-quality packs for review).
+B. Manager Inspection Console (components/ManagerConsole.tsx)
+Purpose: The operational work surface for humans (Human-in-the-Loop).
+Features:
+Inspection Queue: A list of packs waiting for review, color-coded by their automated quality score.
+Detailed Inspector: A view of the selected pack showing claims, sources, and audit logs.
+Action Bar: Managers can mark a pack as Pass, Fail, or Conditional, and add coaching notes.
+Buyer Simulator: A button that runs a mock "Buyer Agent" check to predict if the client's automated procurement systems will reject the evidence.
+C. Technical View (components/SchemaExplorer.tsx & Architecture.tsx)
+Purpose: Documentation for developers and compliance officers.
+Features:
+Schema Explorer: Interactive tree view of the JSON data structure with tooltips explaining data provenance (e.g., which field comes from Salesforce vs. LLM).
+Architecture Diagram: Visualizes how the Seller UI, Evidence Store (S3), and Model Registry connect, with tooltips regarding security and governance (PII redaction, WORM storage).
+4. Integration Requirements
+To add this to your existing project, you need:
+Data Source: A stream of objects matching the EvidencePack interface in types.ts.
+State Management: The app currently uses local React state (useState). For a real app, you would connect the ManagerConsole actions (Pass/Fail) to your backend API to update the database.
+Calculations: The "Evidence Quality Score" logic currently exists in the mock data generation. In a real scenario, this logic (Provenance + Confidence + Assumptions) should run on your backend (Python/Node) immediately after the AI generates the content.
+5. Why use this? (The Value Proposition)
+Trust & Safety: It provides a "paper trail" (auditLog) for every AI-generated claim.
+Latency vs. Accuracy: It allows high-confidence items to flow through quickly while catching low-confidence items for human review.
+Feedback Loop: The "Manager Decision" feeds back into the system to fine-tune the AI models (RLHF - Reinforcement Learning from Human Feedback).
