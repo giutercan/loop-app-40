@@ -49,14 +49,14 @@ export default function PresentationPage() {
             className="absolute inset-0 bg-cover bg-center"
             style={{ backgroundImage: `url(${buyerImage})` }}
           />
-          <div className="absolute inset-0 bg-gradient-to-l from-[#00173B]/98 via-[#00173B]/90 to-[#00173B]/70 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-l from-[#00173B] via-[#00173B]/95 to-[#00173B]/90 pointer-events-none" />
           
           {/* Content */}
           <div className="relative z-10 h-full flex items-center justify-end px-8 md:px-16">
             <div className="max-w-3xl text-right">
               <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
                 The future of selling<br/>
-                <span className="text-[#DAD8D6]">starts with understanding</span><br/>
+                <span className="text-white/90">starts with understanding</span><br/>
                 <span className="text-[#00ADBB]">the future of buying.</span>
               </h1>
               
