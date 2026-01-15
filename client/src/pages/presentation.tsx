@@ -56,14 +56,12 @@ export default function PresentationPage() {
             <div className="max-w-3xl text-right">
               <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
                 The future of selling<br/>
-                <span className="text-white/90">in the era of AI starts with understanding</span><br/>
-                <span className="text-[#00ADBB]">the future of buying.</span>
+                <span className="text-[#00ADBB]">starts with the buyer.</span>
               </h1>
               
               {/* Key message - the shift */}
-              <p className="text-xl md:text-2xl text-white font-medium mb-10">
-                The shift isn't just on the seller side.<br/>
-                <span className="text-[#05C690]">It's on the buyer side too.</span>
+              <p className="text-xl md:text-2xl text-white font-medium mb-6">
+                Today's buyers arrive:
               </p>
 
               {/* Buyer state - visual icons with clear labels */}
