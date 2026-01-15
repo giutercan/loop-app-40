@@ -23,7 +23,9 @@ import {
   LineChart,
   AlertTriangle,
   Activity,
-  MessageSquare
+  MessageSquare,
+  Layers,
+  Workflow
 } from "lucide-react";
 
 import executiveImage from "@assets/GettyImages-551703701_1765967640588.jpg";
@@ -609,43 +611,69 @@ export default function PresentationPage() {
       )
     },
 
-    // Slide 8: Close - The Future of Selling
+    // Slide 9: Close - The Future of Selling
     {
       id: "close",
       content: (
-        <div className="h-full flex flex-col items-center justify-center px-8 bg-[#00173B]">
+        <div className="h-full flex flex-col items-center justify-center px-8 bg-gradient-to-br from-[#00173B] via-[#00173B] to-[#00634F]">
           <div className="max-w-4xl text-center">
-            <Rocket className="w-14 h-14 text-[#05C690] mx-auto mb-8" />
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight mb-8">
-              The future of selling<br/>
-              <span className="text-[#929192]">is not a better pitch deck.</span>
+            {/* Bold opening */}
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight mb-3">
+              The future of selling
             </h2>
+            <p className="text-xl md:text-2xl text-[#929192] mb-8">
+              is not a better pitch deck.
+            </p>
             
-            <p className="text-xl md:text-2xl text-white/90 mb-10">
+            <p className="text-2xl md:text-3xl text-[#05C690] font-bold mb-10">
               It's a better system.
             </p>
 
-            <div className="space-y-4 max-w-2xl mx-auto mb-12">
-              <div className="flex items-center gap-4 bg-white/10 backdrop-blur-sm rounded-lg px-6 py-4">
-                <CircleDot className="w-5 h-5 text-[#05C690] flex-shrink-0" />
-                <p className="text-lg text-white text-left">One method. One language. <span className="text-[#05C690]">Embedded in the flow of work.</span></p>
+            {/* Visual system elements */}
+            <div className="flex flex-wrap justify-center gap-4 mb-8">
+              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-5 py-3 rounded-full border border-white/20">
+                <Layers className="w-5 h-5 text-[#8DC63F]" />
+                <span className="text-white font-medium">One method</span>
               </div>
-              <div className="flex items-center gap-4 bg-white/10 backdrop-blur-sm rounded-lg px-6 py-4">
-                <CircleDot className="w-5 h-5 text-[#05C690] flex-shrink-0" />
-                <p className="text-lg text-white text-left">A closed loop that turns every intervention into <span className="text-[#05C690]">measurable lift.</span></p>
+              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-5 py-3 rounded-full border border-white/20">
+                <MessageSquare className="w-5 h-5 text-[#00ADBB]" />
+                <span className="text-white font-medium">One language</span>
               </div>
-              <div className="flex items-center gap-4 bg-white/10 backdrop-blur-sm rounded-lg px-6 py-4">
-                <CircleDot className="w-5 h-5 text-[#05C690] flex-shrink-0" />
-                <p className="text-lg text-white text-left">And every lift into <span className="text-[#05C690]">learning.</span></p>
+              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-5 py-3 rounded-full border border-white/20">
+                <Workflow className="w-5 h-5 text-[#A3238E]" />
+                <span className="text-white font-medium">Embedded in the flow</span>
               </div>
             </div>
-            
-            <div className="p-6 rounded-xl bg-gradient-to-r from-[#00634F]/30 to-[#009B77]/30 border border-[#05C690]/40 max-w-xl mx-auto">
-              <p className="text-xl md:text-2xl text-white font-medium">
-                Trust everywhere. Proof everywhere.<br/>
-                <span className="text-[#05C690]">Performance that compounds.</span>
-              </p>
+
+            {/* The loop visual */}
+            <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 mb-8 border border-white/10">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <RefreshCcw className="w-6 h-6 text-[#05C690]" />
+                <p className="text-white">A closed loop that turns every intervention into <span className="text-[#05C690] font-bold">measurable lift</span></p>
+              </div>
+              <p className="text-white/80">— and every lift into <span className="text-[#8DC63F] font-bold">learning</span>.</p>
             </div>
+
+            {/* Power closing */}
+            <div className="flex flex-wrap justify-center gap-3 mb-8">
+              <div className="flex items-center gap-2 bg-[#009B77] px-4 py-2 rounded-full">
+                <Shield className="w-4 h-4 text-white" />
+                <span className="text-white text-sm font-medium">Trust everywhere</span>
+              </div>
+              <div className="flex items-center gap-2 bg-[#00ADBB] px-4 py-2 rounded-full">
+                <CheckCircle2 className="w-4 h-4 text-white" />
+                <span className="text-white text-sm font-medium">Proof everywhere</span>
+              </div>
+              <div className="flex items-center gap-2 bg-[#A3238E] px-4 py-2 rounded-full">
+                <TrendingUp className="w-4 h-4 text-white" />
+                <span className="text-white text-sm font-medium">Performance that compounds</span>
+              </div>
+            </div>
+
+            {/* Final punch */}
+            <p className="text-2xl md:text-3xl text-white font-bold">
+              That's the <span className="text-[#05C690]">Loop</span>.
+            </p>
           </div>
         </div>
       )
