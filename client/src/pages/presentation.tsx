@@ -434,57 +434,96 @@ export default function PresentationPage() {
       )
     },
 
-    // Slide 6: The Loop - Commercial OS
+    // Slide 7: The Loop - Commercial OS
     {
       id: "loop",
       content: (
         <div className="h-full flex flex-col items-center justify-center px-8 bg-white">
           <div className="max-w-5xl w-full">
-            <div className="text-center mb-10">
-              <p className="text-[#009B77] text-sm uppercase tracking-widest mb-4">
+            <div className="text-center mb-6">
+              <p className="text-[#009B77] text-sm uppercase tracking-widest mb-3">
                 The Answer
               </p>
-              <h2 className="text-3xl md:text-4xl font-bold text-[#00173B] leading-tight mb-4">
+              <h2 className="text-3xl md:text-4xl font-bold text-[#00173B] leading-tight mb-3">
                 Commercial Operating System + The Loop
               </h2>
+              {/* Dismissal */}
+              <div className="flex justify-center gap-4 mb-2">
+                <span className="text-[#929192] text-sm line-through">Not a tool</span>
+                <span className="text-[#929192]">|</span>
+                <span className="text-[#929192] text-sm line-through">Not automation theatre</span>
+              </div>
             </div>
             
-            <div className="grid md:grid-cols-3 gap-6 mb-10">
-              <div className="bg-[#00634F]/5 rounded-xl p-6 border border-[#00634F]/20 text-center">
-                <div className="w-12 h-12 rounded-full bg-[#00634F] flex items-center justify-center mx-auto mb-4">
-                  <Target className="w-6 h-6 text-white" />
+            {/* Three parts - streamlined */}
+            <div className="grid md:grid-cols-3 gap-4 mb-6">
+              <div className="bg-[#00634F]/5 rounded-xl p-5 border border-[#00634F]/20">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-[#00634F] flex items-center justify-center flex-shrink-0">
+                    <Target className="w-5 h-5 text-white" />
+                  </div>
+                  <h3 className="font-bold text-[#00173B]">Success Frame</h3>
                 </div>
-                <h3 className="font-bold text-[#00173B] mb-2">Success Frame</h3>
-                <p className="text-sm text-[#929192]">3-5 KPIs the CRO/CFO actually runs the business on. One small scoreboard everyone agrees on.</p>
+                <p className="text-sm text-[#929192]">3-5 KPIs. One scoreboard everyone agrees on.</p>
               </div>
               
-              <div className="bg-[#005971]/5 rounded-xl p-6 border border-[#005971]/20 text-center">
-                <div className="w-12 h-12 rounded-full bg-[#005971] flex items-center justify-center mx-auto mb-4">
-                  <Zap className="w-6 h-6 text-white" />
+              <div className="bg-[#005971]/5 rounded-xl p-5 border border-[#005971]/20">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-[#005971] flex items-center justify-center flex-shrink-0">
+                    <Zap className="w-5 h-5 text-white" />
+                  </div>
+                  <h3 className="font-bold text-[#00173B]">Flow-of-Work</h3>
                 </div>
-                <h3 className="font-bold text-[#00173B] mb-2">Flow-of-Work Enablement</h3>
-                <p className="text-sm text-[#929192]">AI embedded in moments that matter. Method reinforced in the moment—not in training decks.</p>
+                <p className="text-sm text-[#929192]">AI at moments that matter. Method in the work.</p>
               </div>
               
-              <div className="bg-[#009B77]/5 rounded-xl p-6 border border-[#009B77]/20 text-center">
-                <div className="w-12 h-12 rounded-full bg-[#009B77] flex items-center justify-center mx-auto mb-4">
-                  <RefreshCcw className="w-6 h-6 text-white" />
+              <div className="bg-[#009B77]/5 rounded-xl p-5 border border-[#009B77]/20">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-[#009B77] flex items-center justify-center flex-shrink-0">
+                    <RefreshCcw className="w-5 h-5 text-white" />
+                  </div>
+                  <h3 className="font-bold text-[#00173B]">The Closed Loop</h3>
                 </div>
-                <h3 className="font-bold text-[#00173B] mb-2">The Closed Loop</h3>
-                <p className="text-sm text-[#929192]">Baseline → change → shift → KPI impact → new baseline. Continuous evidence sponsors can defend.</p>
+                <p className="text-sm text-[#929192]">Evidence that compounds, not decays.</p>
               </div>
             </div>
 
-            {/* Loop visualization */}
-            <div className="flex items-center justify-center gap-2 md:gap-4 flex-wrap">
-              <span className="bg-[#00634F] text-white px-4 py-2 rounded-lg text-sm font-medium">Baseline</span>
-              <ArrowRight className="w-5 h-5 text-[#929192]" />
-              <span className="bg-[#005971] text-white px-4 py-2 rounded-lg text-sm font-medium">What Changed</span>
-              <ArrowRight className="w-5 h-5 text-[#929192]" />
-              <span className="bg-[#009B77] text-white px-4 py-2 rounded-lg text-sm font-medium">KPI Shift</span>
-              <ArrowRight className="w-5 h-5 text-[#929192]" />
-              <span className="bg-[#A3238E] text-white px-4 py-2 rounded-lg text-sm font-medium">New Baseline</span>
-              <RefreshCcw className="w-5 h-5 text-[#009B77]" />
+            {/* Loop visualization - more visual */}
+            <div className="bg-[#00173B] rounded-xl p-5 mb-6">
+              <p className="text-white/70 text-xs uppercase tracking-widest text-center mb-4">The Loop</p>
+              <div className="flex items-center justify-center gap-2 md:gap-3 flex-wrap">
+                <div className="flex items-center gap-2 bg-[#00634F] text-white px-4 py-2 rounded-full text-sm font-medium">
+                  <CircleDot className="w-4 h-4" />
+                  <span>Baseline</span>
+                </div>
+                <ArrowRight className="w-4 h-4 text-[#929192]" />
+                <div className="flex items-center gap-2 bg-[#005971] text-white px-4 py-2 rounded-full text-sm font-medium">
+                  <RefreshCcw className="w-4 h-4" />
+                  <span>Change</span>
+                </div>
+                <ArrowRight className="w-4 h-4 text-[#929192]" />
+                <div className="flex items-center gap-2 bg-[#A3238E] text-white px-4 py-2 rounded-full text-sm font-medium">
+                  <Users className="w-4 h-4" />
+                  <span>Behavior Shift</span>
+                </div>
+                <ArrowRight className="w-4 h-4 text-[#929192]" />
+                <div className="flex items-center gap-2 bg-[#009B77] text-white px-4 py-2 rounded-full text-sm font-medium">
+                  <TrendingUp className="w-4 h-4" />
+                  <span>KPI Impact</span>
+                </div>
+                <ArrowRight className="w-4 h-4 text-[#929192]" />
+                <div className="flex items-center gap-2 bg-[#8DC63F] text-white px-4 py-2 rounded-full text-sm font-medium">
+                  <Sparkles className="w-4 h-4" />
+                  <span>New Baseline</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Closing punch */}
+            <div className="text-center">
+              <p className="text-[#00173B]">
+                Not perfect attribution. <span className="font-bold text-[#009B77]">Disciplined evidence sponsors can defend.</span>
+              </p>
             </div>
           </div>
         </div>
