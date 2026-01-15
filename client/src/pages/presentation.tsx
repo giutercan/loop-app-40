@@ -29,7 +29,7 @@ import {
 import executiveImage from "@assets/GettyImages-551703701_1765967640588.jpg";
 import buyerImage from "@assets/Picture38_1765967640589.png";
 import paradoxImage from "@assets/image_1765968794671.png";
-import sellerImage from "@assets/image_1768493241281.png";
+import sellerImage from "@assets/image_1768493517409.png";
 
 interface Slide {
   id: string;
@@ -226,11 +226,11 @@ export default function PresentationPage() {
             className="absolute inset-0 bg-cover bg-center"
             style={{ backgroundImage: `url(${sellerImage})` }}
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#00173B]/95 via-[#00173B]/85 to-[#00173B]/50 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-l from-transparent via-[#00173B]/70 to-[#00173B]/95 pointer-events-none" />
           
-          {/* Content */}
+          {/* Content on left side */}
           <div className="relative z-10 h-full flex items-center justify-start px-8 md:px-16">
-            <div className="max-w-2xl text-left">
+            <div className="max-w-lg text-left">
               <p className="text-[#A3238E] text-sm uppercase tracking-widest mb-4">
                 The Impossible Job
               </p>
@@ -239,40 +239,38 @@ export default function PresentationPage() {
                 <span className="text-[#929192]">into an impossible job.</span>
               </h2>
               
-              {/* Two columns showing tension */}
-              <div className="grid grid-cols-2 gap-6 mb-6">
-                {/* Left: What we ask */}
-                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-                  <p className="text-[#8DC63F] text-sm font-medium mb-3">What we ask sellers to be</p>
-                  <div className="space-y-2 text-white/80 text-sm">
-                    <p>Relationship builder</p>
-                    <p>Researcher</p>
-                    <p>Portfolio expert</p>
-                    <p>Proposal writer</p>
-                    <p>Workflow manager</p>
-                  </div>
+              {/* Icon-based visual - what we ask sellers to do */}
+              <p className="text-white/70 text-sm mb-4">We ask sellers to be everything:</p>
+              <div className="flex flex-wrap gap-3 mb-8">
+                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 border border-white/20">
+                  <Search className="w-4 h-4 text-[#8DC63F]" />
+                  <span className="text-white text-sm">Research</span>
                 </div>
-                
-                {/* Right: What buyers require */}
-                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-                  <p className="text-[#00ADBB] text-sm font-medium mb-3">What buyers now require</p>
-                  <div className="space-y-2 text-white/80 text-sm">
-                    <p>Prepared for AI scrutiny</p>
-                    <p>Consistent story</p>
-                    <p>Proof at every step</p>
-                    <p>Speed + depth</p>
-                    <p>Trust under pressure</p>
-                  </div>
+                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 border border-white/20">
+                  <Handshake className="w-4 h-4 text-[#00ADBB]" />
+                  <span className="text-white text-sm">Relationships</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 border border-white/20">
+                  <Target className="w-4 h-4 text-[#A3238E]" />
+                  <span className="text-white text-sm">Method</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 border border-white/20">
+                  <MessageSquare className="w-4 h-4 text-[#009B77]" />
+                  <span className="text-white text-sm">Proposals</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 border border-white/20">
+                  <BarChart3 className="w-4 h-4 text-[#05C690]" />
+                  <span className="text-white text-sm">Reporting</span>
                 </div>
               </div>
 
-              {/* Tension center */}
-              <div className="bg-[#005971]/30 border border-[#00ADBB]/50 rounded-lg p-4">
-                <p className="text-white text-center">
+              {/* Tension statement */}
+              <div className="bg-[#005971]/40 border border-[#00ADBB]/50 rounded-lg p-4">
+                <p className="text-white">
                   When pressure hits, <span className="text-[#05C690] font-medium">trust-building gives way first.</span>
                 </p>
-                <p className="text-white/70 text-sm text-center mt-2">
-                  Not because sellers aren't capable — but because the system pulls judgment away from where it matters.
+                <p className="text-white/70 text-sm mt-2">
+                  The system pulls judgment away from where it matters most.
                 </p>
               </div>
             </div>
