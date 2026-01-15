@@ -2346,3 +2346,269 @@ export const insertSalesforceSyncLogSchema = createInsertSchema(salesforceSyncLo
 });
 export type InsertSalesforceSyncLog = z.infer<typeof insertSalesforceSyncLogSchema>;
 export type SalesforceSyncLog = typeof salesforceSyncLogs.$inferSelect;
+
+// ============================================================================
+// EVIDENCE PACK - Living document for AI-generated claims with proof sources
+// ============================================================================
+
+// Evidence Packs - The living envelope for each project/initiative
+export const evidencePacks = pgTable("evidence_packs", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  accountId: integer("account_id").references(() => accounts.id, { onDelete: "set null" }),
+  
+  // Pack metadata
+  title: text("title").notNull(), // e.g., "Acme Corp - Leadership Transformation Value Case"
+  description: text("description"), // Executive summary of the pack
+  version: integer("version").notNull().default(1), // Version number for tracking iterations
+  
+  // Quality scoring (0-100 composite)
+  qualityScore: integer("quality_score"), // Overall quality score
+  provenanceScore: integer("provenance_score"), // Do sources exist and are they valid?
+  confidenceScore: integer("confidence_score"), // How confident is the AI in claims?
+  assumptionsScore: integer("assumptions_score"), // Are there undisclosed assumptions?
+  leaderScore: integer("leader_score"), // Manager's subjective assessment
+  
+  // Workflow status
+  status: text("status", { 
+    enum: ["draft", "pending_review", "in_review", "approved", "rejected", "shared"] 
+  }).notNull().default("draft"),
+  
+  // AI generation metadata
+  aiGeneratedAt: timestamp("ai_generated_at"), // When AI last enriched the pack
+  aiModelUsed: text("ai_model_used"), // e.g., "gpt-4o"
+  aiPromptContext: text("ai_prompt_context"), // Context used to generate recommendations
+  
+  // Leader review tracking
+  reviewerId: text("reviewer_id"), // Leader assigned to review
+  reviewerName: text("reviewer_name"),
+  reviewStartedAt: timestamp("review_started_at"),
+  reviewCompletedAt: timestamp("review_completed_at"),
+  reviewNotes: text("review_notes"), // Overall feedback from leader
+  
+  // Seller/owner
+  ownerId: text("owner_id"), // Seller who owns this pack
+  ownerName: text("owner_name"),
+  
+  // Sharing
+  shareToken: text("share_token").unique(), // For shareable link to buyers
+  sharedAt: timestamp("shared_at"),
+  sharedWithEmail: text("shared_with_email"),
+  
+  // Lifecycle timestamps
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertEvidencePackSchema = createInsertSchema(evidencePacks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertEvidencePack = z.infer<typeof insertEvidencePackSchema>;
+export type EvidencePack = typeof evidencePacks.$inferSelect;
+
+// Evidence Pack Items - Individual claims with their supporting evidence
+export const evidencePackItems = pgTable("evidence_pack_items", {
+  id: serial("id").primaryKey(),
+  packId: integer("pack_id").notNull().references(() => evidencePacks.id, { onDelete: "cascade" }),
+  
+  // Item type and source reference
+  itemType: text("item_type", { 
+    enum: ["claim", "insight", "outcome", "success_story", "benchmark", "testimonial", "artifact"] 
+  }).notNull(),
+  
+  // Source references (which entity this item came from)
+  sourceType: text("source_type", {
+    enum: ["discovery_insight", "outcome", "success_story", "kpi_commitment", "evidence_artefact", "manual", "ai_generated"]
+  }),
+  sourceId: integer("source_id"), // ID in the source table
+  
+  // The claim/statement
+  claim: text("claim").notNull(), // The value proposition/claim being made
+  claimContext: text("claim_context"), // Additional context for the claim
+  
+  // Supporting evidence
+  proofSources: jsonb("proof_sources").$type<Array<{
+    type: "url" | "pdf" | "case_study" | "benchmark" | "testimonial" | "data_point";
+    title: string;
+    url?: string;
+    excerpt?: string;
+    source?: string;
+    confidence?: "high" | "medium" | "low";
+  }>>(),
+  
+  // AI provenance - tracking AI generation lineage
+  aiGenerated: boolean("ai_generated").notNull().default(false),
+  aiProvenance: jsonb("ai_provenance").$type<{
+    model: string;
+    prompt: string;
+    generatedAt: string;
+    confidence: number;
+    reasoning?: string;
+  }>(),
+  
+  // Quality metrics for this item
+  itemConfidenceScore: integer("item_confidence_score"), // 0-100 how confident in this claim
+  provenanceVerified: boolean("provenance_verified").notNull().default(false), // Has source been verified?
+  
+  // Review status
+  itemStatus: text("item_status", { 
+    enum: ["pending", "approved", "flagged", "rejected", "needs_evidence"] 
+  }).notNull().default("pending"),
+  reviewerComment: text("reviewer_comment"), // Leader's feedback on this specific item
+  reviewedAt: timestamp("reviewed_at"),
+  reviewedBy: text("reviewed_by"),
+  
+  // Coaching notes for seller
+  coachingTip: text("coaching_tip"), // AI-generated coaching for improving this claim
+  
+  // Ordering
+  displayOrder: integer("display_order").notNull().default(0),
+  section: text("section"), // Grouping label (e.g., "Value Proposition", "ROI Claims", "Implementation")
+  
+  // Value pillar alignment
+  valuePillar: text("value_pillar", { enum: ["grow", "optimise", "derisk", "strengthen"] }),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertEvidencePackItemSchema = createInsertSchema(evidencePackItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertEvidencePackItem = z.infer<typeof insertEvidencePackItemSchema>;
+export type EvidencePackItem = typeof evidencePackItems.$inferSelect;
+
+// Evidence Pack Comments - Communication thread between leader and seller
+export const evidencePackComments = pgTable("evidence_pack_comments", {
+  id: serial("id").primaryKey(),
+  packId: integer("pack_id").notNull().references(() => evidencePacks.id, { onDelete: "cascade" }),
+  itemId: integer("item_id").references(() => evidencePackItems.id, { onDelete: "cascade" }), // Optional: specific item comment
+  
+  // Comment content
+  content: text("content").notNull(),
+  
+  // Author info
+  authorId: text("author_id").notNull(),
+  authorName: text("author_name").notNull(),
+  authorRole: text("author_role", { enum: ["seller", "leader", "system"] }).notNull(),
+  
+  // Comment type
+  commentType: text("comment_type", { 
+    enum: ["feedback", "question", "coaching", "approval", "rejection", "suggestion"] 
+  }).notNull().default("feedback"),
+  
+  // Resolution tracking
+  isResolved: boolean("is_resolved").notNull().default(false),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedBy: text("resolved_by"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertEvidencePackCommentSchema = createInsertSchema(evidencePackComments).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertEvidencePackComment = z.infer<typeof insertEvidencePackCommentSchema>;
+export type EvidencePackComment = typeof evidencePackComments.$inferSelect;
+
+// Evidence Pack Audit Log - Track all changes for compliance
+export const evidencePackAuditLog = pgTable("evidence_pack_audit_log", {
+  id: serial("id").primaryKey(),
+  packId: integer("pack_id").notNull().references(() => evidencePacks.id, { onDelete: "cascade" }),
+  itemId: integer("item_id").references(() => evidencePackItems.id, { onDelete: "set null" }),
+  
+  // Action tracking
+  action: text("action", { 
+    enum: ["created", "updated", "item_added", "item_removed", "item_approved", "item_rejected", 
+           "submitted_for_review", "review_started", "approved", "rejected", "shared", "exported"] 
+  }).notNull(),
+  
+  // Actor info
+  actorId: text("actor_id").notNull(),
+  actorName: text("actor_name").notNull(),
+  actorRole: text("actor_role"),
+  
+  // Change details
+  previousValue: jsonb("previous_value"), // State before change
+  newValue: jsonb("new_value"), // State after change
+  notes: text("notes"), // Additional context
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertEvidencePackAuditLogSchema = createInsertSchema(evidencePackAuditLog).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertEvidencePackAuditLog = z.infer<typeof insertEvidencePackAuditLogSchema>;
+export type EvidencePackAuditLog = typeof evidencePackAuditLog.$inferSelect;
+
+// Evidence Pack with Items - Combined type for API responses
+export const evidencePackWithItemsSchema = z.object({
+  pack: z.object({
+    id: z.number(),
+    projectId: z.number(),
+    accountId: z.number().nullable().optional(),
+    title: z.string(),
+    description: z.string().nullable().optional(),
+    version: z.number(),
+    qualityScore: z.number().nullable().optional(),
+    provenanceScore: z.number().nullable().optional(),
+    confidenceScore: z.number().nullable().optional(),
+    assumptionsScore: z.number().nullable().optional(),
+    leaderScore: z.number().nullable().optional(),
+    status: z.enum(["draft", "pending_review", "in_review", "approved", "rejected", "shared"]),
+    reviewerId: z.string().nullable().optional(),
+    reviewerName: z.string().nullable().optional(),
+    ownerId: z.string().nullable().optional(),
+    ownerName: z.string().nullable().optional(),
+    shareToken: z.string().nullable().optional(),
+    createdAt: z.any(),
+    updatedAt: z.any(),
+  }),
+  items: z.array(z.object({
+    id: z.number(),
+    packId: z.number(),
+    itemType: z.enum(["claim", "insight", "outcome", "success_story", "benchmark", "testimonial", "artifact"]),
+    sourceType: z.enum(["discovery_insight", "outcome", "success_story", "kpi_commitment", "evidence_artefact", "manual", "ai_generated"]).nullable().optional(),
+    sourceId: z.number().nullable().optional(),
+    claim: z.string(),
+    claimContext: z.string().nullable().optional(),
+    proofSources: z.array(z.object({
+      type: z.enum(["url", "pdf", "case_study", "benchmark", "testimonial", "data_point"]),
+      title: z.string(),
+      url: z.string().optional(),
+      excerpt: z.string().optional(),
+      source: z.string().optional(),
+      confidence: z.enum(["high", "medium", "low"]).optional(),
+    })).nullable().optional(),
+    aiGenerated: z.boolean(),
+    itemConfidenceScore: z.number().nullable().optional(),
+    provenanceVerified: z.boolean(),
+    itemStatus: z.enum(["pending", "approved", "flagged", "rejected", "needs_evidence"]),
+    reviewerComment: z.string().nullable().optional(),
+    coachingTip: z.string().nullable().optional(),
+    displayOrder: z.number(),
+    section: z.string().nullable().optional(),
+    valuePillar: z.enum(["grow", "optimise", "derisk", "strengthen"]).nullable().optional(),
+    createdAt: z.any(),
+    updatedAt: z.any(),
+  })),
+  comments: z.array(z.object({
+    id: z.number(),
+    packId: z.number(),
+    itemId: z.number().nullable().optional(),
+    content: z.string(),
+    authorName: z.string(),
+    authorRole: z.enum(["seller", "leader", "system"]),
+    commentType: z.enum(["feedback", "question", "coaching", "approval", "rejection", "suggestion"]),
+    isResolved: z.boolean(),
+    createdAt: z.any(),
+  })).optional(),
+});
+export type EvidencePackWithItems = z.infer<typeof evidencePackWithItemsSchema>;

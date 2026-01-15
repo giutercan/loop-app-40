@@ -24,6 +24,9 @@ import CompanionCanvas from "@/pages/companion-canvas";
 import ProjectLayout from "@/components/ProjectLayout";
 import HandoffHub from "@/pages/handoff-hub";
 import Integrations from "@/pages/integrations";
+import LeaderWorkspace from "@/pages/LeaderWorkspace";
+import LeaderPackReview from "@/pages/LeaderPackReview";
+import SharedEvidencePack from "@/pages/SharedEvidencePack";
 import { CommandPalette } from "@/components/CommandPalette";
 import { CompanionProvider } from "@/components/AICompanionPanel";
 import { ScrollToTop } from "@/components/ScrollToTop";
@@ -104,6 +107,9 @@ function Router() {
       <Route path="/presentation" component={Presentation} />
       <Route path="/companion" component={CompanionCanvas} />
       <Route path="/integrations" component={Integrations} />
+      <Route path="/leader" component={LeaderWorkspace} />
+      <Route path="/leader/review/:id" component={LeaderPackReview} />
+      <Route path="/evidence/:token" component={SharedEvidencePack} />
       <Route component={NotFound} />
     </Switch>
     </>

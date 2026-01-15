@@ -36,6 +36,7 @@ import { PhaseChecklist } from "@/components/PhaseChecklist";
 import { LogoEditDialog } from "@/components/LogoEditDialog";
 import { CommandPaletteHint } from "@/components/CommandPalette";
 import { LoopContextIndicator } from "@/components/LoopContextIndicator";
+import { EvidencePackPanel } from "@/components/EvidencePackPanel";
 import type { Project, Account } from "@shared/schema";
 
 interface ProjectLayoutProps {
@@ -339,6 +340,10 @@ export default function ProjectLayout({
             </div>
 
             <div className="flex items-center gap-4">
+              <EvidencePackPanel 
+                projectId={projectId} 
+                projectName={project?.companyName}
+              />
               <LoopContextIndicator />
               <CommandPaletteHint />
               <div className="flex items-center gap-2">

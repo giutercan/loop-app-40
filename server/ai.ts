@@ -4795,3 +4795,240 @@ Make the narrative emotionally compelling while grounded in data. Use specific n
     throw error;
   }
 }
+
+// ============================================================================
+// EVIDENCE PACK AI RECOMMENDATIONS
+// ============================================================================
+
+export interface EvidenceRecommendation {
+  claim: string;
+  itemType: "insight" | "outcome" | "success_story" | "benchmark" | "claim" | "testimonial";
+  valuePillar: "grow" | "optimise" | "derisk" | "strengthen" | null;
+  section: string;
+  confidence: number;
+  reasoning: string;
+  proofSources: Array<{
+    title: string;
+    type: string;
+    relevance: string;
+  }>;
+  coachingTip: string | null;
+}
+
+export interface EvidencePackRecommendationsResult {
+  recommendations: EvidenceRecommendation[];
+  packCoaching: string;
+  suggestedSections: string[];
+  qualityAssessment: {
+    overallStrength: "strong" | "moderate" | "weak";
+    gaps: string[];
+    recommendations: string[];
+  };
+  generatedAt: string;
+}
+
+const evidenceRecommendationsSchema = z.object({
+  recommendations: z.array(z.object({
+    claim: z.string(),
+    itemType: z.enum(["insight", "outcome", "success_story", "benchmark", "claim", "testimonial"]),
+    valuePillar: z.enum(["grow", "optimise", "derisk", "strengthen"]).nullable(),
+    section: z.string(),
+    confidence: z.number().min(0).max(100),
+    reasoning: z.string(),
+    proofSources: z.array(z.object({
+      title: z.string(),
+      type: z.string(),
+      relevance: z.string()
+    })),
+    coachingTip: z.string().nullable()
+  })),
+  packCoaching: z.string(),
+  suggestedSections: z.array(z.string()),
+  qualityAssessment: z.object({
+    overallStrength: z.enum(["strong", "moderate", "weak"]),
+    gaps: z.array(z.string()),
+    recommendations: z.array(z.string())
+  })
+});
+
+export async function generateEvidencePackRecommendations(context: {
+  companyName: string;
+  sector?: string;
+  discoveryTheme?: string;
+  discoveryInsights?: Array<{ label: string; value: string; confidence?: string }>;
+  outcomes?: Array<{ title: string; kpiName?: string; targetValue?: number; }>;
+  successStories?: Array<{ title: string; industry?: string; outcome?: string }>;
+  existingItems?: Array<{ claim: string; itemType: string; valuePillar?: string }>;
+  phase?: string;
+}): Promise<EvidencePackRecommendationsResult> {
+  const { 
+    companyName, 
+    sector, 
+    discoveryTheme, 
+    discoveryInsights = [], 
+    outcomes = [],
+    successStories = [],
+    existingItems = [],
+    phase = "discovery"
+  } = context;
+
+  const knowledgeBase = getSolutionSummary();
+
+  const prompt = `You are a Korn Ferry evidence pack curator helping sellers build compelling proof packages for client validation.
+
+CONTEXT:
+Company: ${companyName}${sector ? ` (${sector} sector)` : ''}
+Discovery Theme: ${discoveryTheme || 'General consulting engagement'}
+Current Phase: ${phase}
+
+DISCOVERY INSIGHTS:
+${discoveryInsights.length > 0 
+  ? discoveryInsights.map(d => `- ${d.label}: ${d.value} (${d.confidence || 'medium'} confidence)`).join('\n')
+  : 'No discovery insights collected yet'}
+
+COMMITTED OUTCOMES:
+${outcomes.length > 0
+  ? outcomes.map(o => `- ${o.title}${o.kpiName ? ` (KPI: ${o.kpiName})` : ''}${o.targetValue ? ` - Target: ${o.targetValue}` : ''}`).join('\n')
+  : 'No outcomes defined yet'}
+
+RELEVANT SUCCESS STORIES:
+${successStories.length > 0
+  ? successStories.map(s => `- ${s.title}${s.industry ? ` (${s.industry})` : ''}${s.outcome ? `: ${s.outcome}` : ''}`).join('\n')
+  : 'No matching success stories available'}
+
+EXISTING PACK ITEMS:
+${existingItems.length > 0
+  ? existingItems.map(i => `- [${i.itemType}] ${i.claim}${i.valuePillar ? ` (${i.valuePillar})` : ''}`).join('\n')
+  : 'No items in pack yet'}
+
+KORN FERRY CAPABILITIES:
+${knowledgeBase}
+
+VALUE PILLARS (use these for categorization):
+- grow: Revenue growth, market expansion, new capabilities
+- optimise: Cost reduction, efficiency, productivity gains
+- derisk: Risk mitigation, compliance, talent retention
+- strengthen: Cultural transformation, leadership development, succession
+
+TASK: Generate evidence recommendations to strengthen this Evidence Pack. Focus on:
+1. Claims that can be substantiated with Korn Ferry data, research, or client outcomes
+2. Benchmarks that provide industry context
+3. Success stories that mirror this client's situation
+4. Insights derived from the discovery data
+5. Avoid duplicating existing pack items
+
+Return JSON with these elements:
+{
+  "recommendations": [
+    {
+      "claim": "Specific, defensible statement (quantified where possible)",
+      "itemType": "insight|outcome|success_story|benchmark|claim|testimonial",
+      "valuePillar": "grow|optimise|derisk|strengthen|null",
+      "section": "Suggested section name for organizing (e.g., 'ROI Evidence', 'Industry Context', 'Client Success')",
+      "confidence": 0-100,
+      "reasoning": "Why this claim is valuable for this specific client",
+      "proofSources": [{"title": "Source name", "type": "research|case_study|benchmark|client_outcome", "relevance": "How this source supports the claim"}],
+      "coachingTip": "Advice for the seller on how to present this claim effectively, or null if none needed"
+    }
+  ],
+  "packCoaching": "Overall coaching advice for the seller about building a strong evidence pack for this engagement",
+  "suggestedSections": ["Recommended sections to organize the pack"],
+  "qualityAssessment": {
+    "overallStrength": "strong|moderate|weak",
+    "gaps": ["Areas where more evidence is needed"],
+    "recommendations": ["Specific actions to strengthen the pack"]
+  }
+}
+
+Generate 5-8 high-quality recommendations. Prioritize claims that:
+1. Are directly relevant to this client's discovery insights and challenges
+2. Can be substantiated with credible sources
+3. Align with the committed outcomes
+4. Cover multiple value pillars for comprehensive value articulation`;
+
+  try {
+    console.log(`[AI Evidence Pack] Generating recommendations for ${companyName}`);
+    
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 3000,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    
+    if (!content) {
+      throw new Error("AI returned empty response");
+    }
+    
+    const parsedContent = JSON.parse(content);
+    
+    const validationResult = evidenceRecommendationsSchema.safeParse(parsedContent);
+    if (!validationResult.success) {
+      console.error("[AI Evidence Pack] Validation failed:", validationResult.error);
+      throw new Error(`AI evidence recommendations validation failed: ${validationResult.error.message}`);
+    }
+    
+    console.log(`[AI Evidence Pack] Success! Generated ${validationResult.data.recommendations.length} recommendations for ${companyName}`);
+    return {
+      ...validationResult.data,
+      generatedAt: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error("[AI Evidence Pack] Error:", error);
+    throw error;
+  }
+}
+
+export async function generateItemCoaching(item: {
+  claim: string;
+  itemType: string;
+  valuePillar?: string | null;
+  proofSources?: any[];
+  companyName: string;
+  sector?: string;
+}): Promise<{ tip: string; strengthScore: number; improvements: string[] }> {
+  const prompt = `You are a Korn Ferry sales coach reviewing an evidence pack item for quality.
+
+CLAIM: ${item.claim}
+TYPE: ${item.itemType}
+VALUE PILLAR: ${item.valuePillar || 'Not specified'}
+PROOF SOURCES: ${item.proofSources?.length || 0} sources attached
+CLIENT: ${item.companyName}${item.sector ? ` (${item.sector})` : ''}
+
+Evaluate this claim and provide coaching. Return JSON:
+{
+  "tip": "A specific, actionable coaching tip for improving or presenting this claim (max 100 words)",
+  "strengthScore": 0-100,
+  "improvements": ["List of 2-3 specific improvements to strengthen this claim"]
+}
+
+Consider:
+- Is the claim specific and quantified?
+- Is there sufficient proof/evidence?
+- Is it relevant to the client's situation?
+- Is the value pillar appropriate?
+- Would a senior leader approve this claim?`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 500,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error("Empty response");
+    
+    return JSON.parse(content);
+  } catch (error) {
+    console.error("[AI Item Coaching] Error:", error);
+    return {
+      tip: "Consider adding more specific evidence to support this claim.",
+      strengthScore: 50,
+      improvements: ["Add quantified results", "Include a relevant case study reference"]
+    };
+  }
+}

@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "./storage";
-import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale, generateStrategicPillars, generateStorySuggestion, generateDiscoveryKpiSuggestions, enrichContactWithAI, openai, generateCompetitiveIntelligence, generateKPIValueCaseRecommendations, generateLiveIntelligence } from "./ai";
+import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale, generateStrategicPillars, generateStorySuggestion, generateDiscoveryKpiSuggestions, enrichContactWithAI, openai, generateCompetitiveIntelligence, generateKPIValueCaseRecommendations, generateLiveIntelligence, generateEvidencePackRecommendations, generateItemCoaching } from "./ai";
 import { z } from "zod";
 import crypto from "crypto";
 import { OUTCOME_JOURNEY_TEMPLATES, type SolutionPatternId } from "@shared/value-frameworks";
@@ -45,7 +45,11 @@ import {
   insertKpiCommitmentSchema,
   insertHandoffPacketSchema,
   lifecyclePhases,
-  type LifecyclePhase
+  type LifecyclePhase,
+  insertEvidencePackSchema,
+  insertEvidencePackItemSchema,
+  insertEvidencePackCommentSchema,
+  insertEvidencePackAuditLogSchema
 } from "@shared/schema";
 
 // Helper function for robust HTML/script sanitization
@@ -11105,6 +11109,635 @@ Provide a JSON response with:
       
       res.json({ logs });
     } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // EVIDENCE PACK API ROUTES
+  // ============================================================================
+
+  // GET /api/evidence-packs - Get all evidence packs (for leader workspace)
+  app.get("/api/evidence-packs", async (req, res) => {
+    try {
+      const { reviewerId, status } = req.query;
+      let packs;
+      
+      if (reviewerId) {
+        packs = await storage.getEvidencePacksForLeader(reviewerId as string);
+      } else {
+        packs = await storage.getAllEvidencePacks();
+      }
+      
+      // Filter by status if provided
+      if (status) {
+        packs = packs.filter(p => p.status === status);
+      }
+      
+      res.json(packs);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/evidence-packs/:id - Get evidence pack with items and comments
+  app.get("/api/evidence-packs/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const pack = await storage.getEvidencePack(id);
+      
+      if (!pack) {
+        return res.status(404).json({ error: "Evidence pack not found" });
+      }
+      
+      const items = await storage.getEvidencePackItems(id);
+      const comments = await storage.getEvidencePackComments(id);
+      
+      res.json({ pack, items, comments });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/projects/:projectId/evidence-pack - Get evidence pack for a project
+  app.get("/api/projects/:projectId/evidence-pack", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const pack = await storage.getEvidencePackByProject(projectId);
+      
+      if (!pack) {
+        return res.json({ pack: null, items: [], comments: [] });
+      }
+      
+      const items = await storage.getEvidencePackItems(pack.id);
+      const comments = await storage.getEvidencePackComments(pack.id);
+      
+      res.json({ pack, items, comments });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/projects/:projectId/evidence-pack - Create evidence pack for project
+  app.post("/api/projects/:projectId/evidence-pack", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      
+      // Check if pack already exists
+      const existing = await storage.getEvidencePackByProject(projectId);
+      if (existing) {
+        return res.status(400).json({ error: "Evidence pack already exists for this project" });
+      }
+      
+      // Get project for default title
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const packData = insertEvidencePackSchema.parse({
+        projectId,
+        accountId: project.accountId,
+        title: req.body.title || `${project.companyName} - Evidence Pack`,
+        description: req.body.description,
+        ownerName: req.body.ownerName,
+        ownerId: req.body.ownerId,
+      });
+      
+      const pack = await storage.createEvidencePack(packData);
+      
+      // Create audit log entry
+      await storage.createEvidencePackAuditLogEntry({
+        packId: pack.id,
+        action: "created",
+        actorId: req.body.ownerId || "system",
+        actorName: req.body.ownerName || "System",
+        actorRole: "seller",
+        notes: "Evidence pack created",
+      });
+      
+      res.status(201).json(pack);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // PATCH /api/evidence-packs/:id - Update evidence pack
+  app.patch("/api/evidence-packs/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const existing = await storage.getEvidencePack(id);
+      
+      if (!existing) {
+        return res.status(404).json({ error: "Evidence pack not found" });
+      }
+      
+      const updates = req.body;
+      
+      // Track status changes for audit log
+      const statusChanged = updates.status && updates.status !== existing.status;
+      
+      const updated = await storage.updateEvidencePack(id, updates);
+      
+      if (statusChanged) {
+        let action: any = "updated";
+        if (updates.status === "pending_review") action = "submitted_for_review";
+        if (updates.status === "in_review") action = "review_started";
+        if (updates.status === "approved") action = "approved";
+        if (updates.status === "rejected") action = "rejected";
+        if (updates.status === "shared") action = "shared";
+        
+        await storage.createEvidencePackAuditLogEntry({
+          packId: id,
+          action,
+          actorId: updates.actorId || "system",
+          actorName: updates.actorName || "System",
+          actorRole: updates.actorRole || "system",
+          previousValue: { status: existing.status },
+          newValue: { status: updates.status },
+          notes: updates.reviewNotes,
+        });
+      }
+      
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/evidence-packs/:id - Delete evidence pack
+  app.delete("/api/evidence-packs/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteEvidencePack(id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/evidence-packs/:id/share - Generate share token for pack
+  app.post("/api/evidence-packs/:id/share", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const pack = await storage.getEvidencePack(id);
+      
+      if (!pack) {
+        return res.status(404).json({ error: "Evidence pack not found" });
+      }
+      
+      // Only allow sharing of approved packs
+      if (pack.status !== "approved") {
+        return res.status(400).json({ error: "Only approved packs can be shared" });
+      }
+      
+      const shareToken = pack.shareToken || crypto.randomBytes(32).toString("hex");
+      
+      const updated = await storage.updateEvidencePack(id, {
+        shareToken,
+        sharedAt: new Date(),
+        sharedWithEmail: req.body.email,
+        status: "shared",
+      });
+      
+      await storage.createEvidencePackAuditLogEntry({
+        packId: id,
+        action: "shared",
+        actorId: req.body.actorId || "system",
+        actorName: req.body.actorName || "System",
+        actorRole: "seller",
+        notes: `Shared with ${req.body.email || "external recipient"}`,
+      });
+      
+      res.json({ shareToken, shareUrl: `/evidence-pack/${shareToken}` });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/evidence-pack/share/:token - Get shared evidence pack (public)
+  app.get("/api/evidence-pack/share/:token", async (req, res) => {
+    try {
+      const token = req.params.token;
+      const pack = await storage.getEvidencePackByToken(token);
+      
+      if (!pack) {
+        return res.status(404).json({ error: "Evidence pack not found" });
+      }
+      
+      if (pack.status !== "shared" && pack.status !== "approved") {
+        return res.status(403).json({ error: "This pack is not available for viewing" });
+      }
+      
+      const items = await storage.getEvidencePackItems(pack.id);
+      
+      // Only return approved items for external view
+      const approvedItems = items.filter(item => item.itemStatus === "approved");
+      
+      // Get project info for context
+      const project = await storage.getProject(pack.projectId);
+      
+      res.json({ 
+        pack: {
+          title: pack.title,
+          description: pack.description,
+          qualityScore: pack.qualityScore,
+          ownerName: pack.ownerName,
+        },
+        items: approvedItems,
+        projectName: project?.companyName,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // EVIDENCE PACK ITEMS
+  // ============================================================================
+
+  // GET /api/evidence-packs/:packId/items - Get items for a pack
+  app.get("/api/evidence-packs/:packId/items", async (req, res) => {
+    try {
+      const packId = parseInt(req.params.packId);
+      const items = await storage.getEvidencePackItems(packId);
+      res.json(items);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/evidence-packs/:packId/items - Add item to pack
+  app.post("/api/evidence-packs/:packId/items", async (req, res) => {
+    try {
+      const packId = parseInt(req.params.packId);
+      
+      const pack = await storage.getEvidencePack(packId);
+      if (!pack) {
+        return res.status(404).json({ error: "Evidence pack not found" });
+      }
+      
+      // Get current max order
+      const existingItems = await storage.getEvidencePackItems(packId);
+      const maxOrder = existingItems.length > 0 
+        ? Math.max(...existingItems.map(i => i.displayOrder)) 
+        : -1;
+      
+      const itemData = insertEvidencePackItemSchema.parse({
+        packId,
+        itemType: req.body.itemType || "claim",
+        sourceType: req.body.sourceType,
+        sourceId: req.body.sourceId,
+        claim: req.body.claim,
+        claimContext: req.body.claimContext,
+        proofSources: req.body.proofSources,
+        aiGenerated: req.body.aiGenerated || false,
+        aiProvenance: req.body.aiProvenance,
+        displayOrder: req.body.displayOrder ?? maxOrder + 1,
+        section: req.body.section,
+        valuePillar: req.body.valuePillar,
+        coachingTip: req.body.coachingTip,
+      });
+      
+      const item = await storage.createEvidencePackItem(itemData);
+      
+      await storage.createEvidencePackAuditLogEntry({
+        packId,
+        itemId: item.id,
+        action: "item_added",
+        actorId: req.body.actorId || "system",
+        actorName: req.body.actorName || "System",
+        actorRole: req.body.actorRole || "seller",
+        newValue: { claim: item.claim, itemType: item.itemType },
+      });
+      
+      res.status(201).json(item);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // PATCH /api/evidence-pack-items/:id - Update item
+  app.patch("/api/evidence-pack-items/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const existing = await storage.getEvidencePackItem(id);
+      
+      if (!existing) {
+        return res.status(404).json({ error: "Evidence pack item not found" });
+      }
+      
+      const updates = req.body;
+      
+      // Track status changes
+      const statusChanged = updates.itemStatus && updates.itemStatus !== existing.itemStatus;
+      
+      if (statusChanged) {
+        updates.reviewedAt = new Date();
+        updates.reviewedBy = req.body.reviewedBy;
+      }
+      
+      const updated = await storage.updateEvidencePackItem(id, updates);
+      
+      if (statusChanged) {
+        let action: any = "updated";
+        if (updates.itemStatus === "approved") action = "item_approved";
+        if (updates.itemStatus === "rejected") action = "item_rejected";
+        
+        await storage.createEvidencePackAuditLogEntry({
+          packId: existing.packId,
+          itemId: id,
+          action,
+          actorId: req.body.actorId || "system",
+          actorName: req.body.actorName || "System",
+          actorRole: req.body.actorRole || "leader",
+          previousValue: { itemStatus: existing.itemStatus },
+          newValue: { itemStatus: updates.itemStatus },
+          notes: updates.reviewerComment,
+        });
+      }
+      
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/evidence-pack-items/:id - Delete item
+  app.delete("/api/evidence-pack-items/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const item = await storage.getEvidencePackItem(id);
+      
+      if (item) {
+        await storage.createEvidencePackAuditLogEntry({
+          packId: item.packId,
+          itemId: id,
+          action: "item_removed",
+          actorId: req.body.actorId || "system",
+          actorName: req.body.actorName || "System",
+          actorRole: req.body.actorRole || "seller",
+          previousValue: { claim: item.claim },
+        });
+      }
+      
+      await storage.deleteEvidencePackItem(id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // EVIDENCE PACK COMMENTS
+  // ============================================================================
+
+  // GET /api/evidence-packs/:packId/comments - Get comments for pack
+  app.get("/api/evidence-packs/:packId/comments", async (req, res) => {
+    try {
+      const packId = parseInt(req.params.packId);
+      const comments = await storage.getEvidencePackComments(packId);
+      res.json(comments);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/evidence-packs/:packId/comments - Add comment
+  app.post("/api/evidence-packs/:packId/comments", async (req, res) => {
+    try {
+      const packId = parseInt(req.params.packId);
+      
+      const commentData = insertEvidencePackCommentSchema.parse({
+        packId,
+        itemId: req.body.itemId,
+        content: req.body.content,
+        authorId: req.body.authorId,
+        authorName: req.body.authorName,
+        authorRole: req.body.authorRole,
+        commentType: req.body.commentType || "feedback",
+      });
+      
+      const comment = await storage.createEvidencePackComment(commentData);
+      res.status(201).json(comment);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // PATCH /api/evidence-pack-comments/:id/resolve - Resolve a comment
+  app.patch("/api/evidence-pack-comments/:id/resolve", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updated = await storage.updateEvidencePackComment(id, {
+        isResolved: true,
+        resolvedAt: new Date(),
+        resolvedBy: req.body.resolvedBy,
+      });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // EVIDENCE PACK AUDIT LOG
+  // ============================================================================
+
+  // GET /api/evidence-packs/:packId/audit-log - Get audit log for pack
+  app.get("/api/evidence-packs/:packId/audit-log", async (req, res) => {
+    try {
+      const packId = parseInt(req.params.packId);
+      const log = await storage.getEvidencePackAuditLog(packId);
+      res.json(log);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // EVIDENCE PACK PDF EXPORT
+  // ============================================================================
+
+  // GET /api/evidence-packs/:packId/export/pdf - Generate PDF export
+  app.get("/api/evidence-packs/:packId/export/pdf", async (req, res) => {
+    try {
+      const packId = parseInt(req.params.packId);
+      const pack = await storage.getEvidencePack(packId);
+      
+      if (!pack) {
+        return res.status(404).json({ error: "Evidence pack not found" });
+      }
+      
+      const items = await storage.getEvidencePackItems(packId);
+      const project = await storage.getProject(pack.projectId);
+      
+      const { generateEvidencePackPDF } = await import("./pdfExport");
+      const pdfBuffer = await generateEvidencePackPDF(pack, items, project?.companyName);
+      
+      const filename = `evidence-pack-${pack.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(pdfBuffer);
+    } catch (error: any) {
+      console.error("PDF export error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // LEADER WORKSPACE - Aggregated views
+  // ============================================================================
+
+  // GET /api/leader/dashboard - Get leader dashboard summary
+  app.get("/api/leader/dashboard", async (req, res) => {
+    try {
+      const packs = await storage.getAllEvidencePacks();
+      
+      // Calculate summary metrics
+      const summary = {
+        totalPacks: packs.length,
+        pendingReview: packs.filter(p => p.status === "pending_review").length,
+        inReview: packs.filter(p => p.status === "in_review").length,
+        approved: packs.filter(p => p.status === "approved").length,
+        rejected: packs.filter(p => p.status === "rejected").length,
+        shared: packs.filter(p => p.status === "shared").length,
+        avgQualityScore: packs.filter(p => p.qualityScore != null).length > 0
+          ? Math.round(packs.filter(p => p.qualityScore != null).reduce((acc, p) => acc + (p.qualityScore || 0), 0) / packs.filter(p => p.qualityScore != null).length)
+          : null,
+        packsNeedingAttention: packs.filter(p => 
+          p.status === "pending_review" || 
+          (p.qualityScore != null && p.qualityScore < 70)
+        ),
+      };
+      
+      // Get recent packs with project info
+      const recentPacks = await Promise.all(
+        packs.slice(0, 10).map(async (pack) => {
+          const project = await storage.getProject(pack.projectId);
+          const items = await storage.getEvidencePackItems(pack.id);
+          return {
+            ...pack,
+            projectName: project?.companyName,
+            itemCount: items.length,
+            approvedItems: items.filter(i => i.itemStatus === "approved").length,
+            flaggedItems: items.filter(i => i.itemStatus === "flagged").length,
+          };
+        })
+      );
+      
+      res.json({ summary, recentPacks });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // EVIDENCE PACK AI RECOMMENDATIONS
+  // ============================================================================
+
+  // POST /api/evidence-packs/:packId/recommendations - Generate AI recommendations for pack
+  app.post("/api/evidence-packs/:packId/recommendations", async (req, res) => {
+    try {
+      const packId = parseInt(req.params.packId);
+      const pack = await storage.getEvidencePack(packId);
+      
+      if (!pack) {
+        return res.status(404).json({ error: "Evidence pack not found" });
+      }
+      
+      const project = await storage.getProject(pack.projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Gather discovery insights
+      const dataPoints = await storage.getCompanyDataPoints(pack.projectId);
+      const discoveryInsights = dataPoints.map(dp => ({
+        label: dp.label,
+        value: dp.value,
+        confidence: dp.confidence
+      }));
+      
+      // Gather outcomes
+      const valueCases = await storage.getValueCases(pack.projectId);
+      const outcomes = valueCases.map(vc => ({
+        title: vc.title || vc.jobToComplete,
+        kpiName: vc.commitmentSummary || undefined,
+        targetValue: undefined
+      }));
+      
+      // Get success stories in library for matching
+      const successStories = await storage.getSuccessStoryLibrary();
+      const storyRefs = successStories.map(s => ({
+        title: s.title,
+        industry: s.industry || undefined,
+        outcome: s.summary || undefined
+      }));
+      
+      // Get existing items
+      const existingItems = await storage.getEvidencePackItems(packId);
+      const existingClaims = existingItems.map(i => ({
+        claim: i.claim,
+        itemType: i.itemType,
+        valuePillar: i.valuePillar || undefined
+      }));
+      
+      const recommendations = await generateEvidencePackRecommendations({
+        companyName: project.companyName,
+        sector: project.sector || undefined,
+        discoveryTheme: req.body.discoveryTheme,
+        discoveryInsights,
+        outcomes,
+        successStories: storyRefs,
+        existingItems: existingClaims,
+        phase: req.body.phase || "discovery"
+      });
+      
+      res.json(recommendations);
+    } catch (error: any) {
+      console.error("[Evidence Pack Recommendations] Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/evidence-pack-items/:itemId/coaching - Get AI coaching for specific item
+  app.post("/api/evidence-pack-items/:itemId/coaching", async (req, res) => {
+    try {
+      const itemId = parseInt(req.params.itemId);
+      const item = await storage.getEvidencePackItem(itemId);
+      
+      if (!item) {
+        return res.status(404).json({ error: "Item not found" });
+      }
+      
+      const pack = await storage.getEvidencePack(item.packId);
+      if (!pack) {
+        return res.status(404).json({ error: "Pack not found" });
+      }
+      
+      const project = await storage.getProject(pack.projectId);
+      
+      const coaching = await generateItemCoaching({
+        claim: item.claim,
+        itemType: item.itemType,
+        valuePillar: item.valuePillar,
+        proofSources: item.proofSources as any[] || [],
+        companyName: project?.companyName || "Unknown",
+        sector: project?.sector || undefined
+      });
+      
+      // Optionally update the item with the coaching tip
+      if (coaching.tip && req.body.saveCoaching) {
+        await storage.updateEvidencePackItem(itemId, {
+          coachingTip: coaching.tip
+        });
+      }
+      
+      res.json(coaching);
+    } catch (error: any) {
+      console.error("[Evidence Pack Item Coaching] Error:", error);
       res.status(500).json({ error: error.message });
     }
   });

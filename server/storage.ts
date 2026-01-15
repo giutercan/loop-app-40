@@ -60,7 +60,11 @@ import type {
   AiMessage, InsertAiMessage,
   ProjectIntelligence, InsertProjectIntelligence,
   MeetingProfile, InsertMeetingProfile,
-  InteractionArtifact, InsertInteractionArtifact
+  InteractionArtifact, InsertInteractionArtifact,
+  EvidencePack, InsertEvidencePack,
+  EvidencePackItem, InsertEvidencePackItem,
+  EvidencePackComment, InsertEvidencePackComment,
+  EvidencePackAuditLog, InsertEvidencePackAuditLog
 } from "@shared/schema";
 
 export interface IStorage {
@@ -421,6 +425,37 @@ export interface IStorage {
   createInteractionArtifact(artifact: InsertInteractionArtifact): Promise<InteractionArtifact>;
   updateInteractionArtifact(id: number, artifact: Partial<InsertInteractionArtifact>): Promise<InteractionArtifact | undefined>;
   deleteInteractionArtifact(id: number): Promise<void>;
+  
+  // ============================================================================
+  // EVIDENCE PACKS - Living documents for AI-generated claims with proof sources
+  // ============================================================================
+  
+  // Evidence Packs
+  getEvidencePack(id: number): Promise<EvidencePack | undefined>;
+  getEvidencePackByProject(projectId: number): Promise<EvidencePack | undefined>;
+  getEvidencePackByToken(token: string): Promise<EvidencePack | undefined>;
+  getEvidencePacksForLeader(reviewerId?: string): Promise<EvidencePack[]>;
+  getAllEvidencePacks(): Promise<EvidencePack[]>;
+  createEvidencePack(pack: InsertEvidencePack): Promise<EvidencePack>;
+  updateEvidencePack(id: number, pack: Partial<InsertEvidencePack>): Promise<EvidencePack | undefined>;
+  deleteEvidencePack(id: number): Promise<void>;
+  
+  // Evidence Pack Items
+  getEvidencePackItems(packId: number): Promise<EvidencePackItem[]>;
+  getEvidencePackItem(id: number): Promise<EvidencePackItem | undefined>;
+  createEvidencePackItem(item: InsertEvidencePackItem): Promise<EvidencePackItem>;
+  updateEvidencePackItem(id: number, item: Partial<InsertEvidencePackItem>): Promise<EvidencePackItem | undefined>;
+  deleteEvidencePackItem(id: number): Promise<void>;
+  
+  // Evidence Pack Comments
+  getEvidencePackComments(packId: number): Promise<EvidencePackComment[]>;
+  getEvidencePackCommentsByItem(itemId: number): Promise<EvidencePackComment[]>;
+  createEvidencePackComment(comment: InsertEvidencePackComment): Promise<EvidencePackComment>;
+  updateEvidencePackComment(id: number, comment: Partial<InsertEvidencePackComment>): Promise<EvidencePackComment | undefined>;
+  
+  // Evidence Pack Audit Log
+  getEvidencePackAuditLog(packId: number): Promise<EvidencePackAuditLog[]>;
+  createEvidencePackAuditLogEntry(entry: InsertEvidencePackAuditLog): Promise<EvidencePackAuditLog>;
 }
 
 export class DbStorage implements IStorage {
@@ -2347,6 +2382,132 @@ export class DbStorage implements IStorage {
   
   async deleteInteractionArtifact(id: number): Promise<void> {
     await db.delete(schema.interactionArtifacts).where(eq(schema.interactionArtifacts.id, id));
+  }
+  
+  // ============================================================================
+  // EVIDENCE PACKS - Living documents for AI-generated claims with proof sources
+  // ============================================================================
+  
+  async getEvidencePack(id: number): Promise<EvidencePack | undefined> {
+    const results = await db.select().from(schema.evidencePacks)
+      .where(eq(schema.evidencePacks.id, id));
+    return results[0];
+  }
+  
+  async getEvidencePackByProject(projectId: number): Promise<EvidencePack | undefined> {
+    const results = await db.select().from(schema.evidencePacks)
+      .where(eq(schema.evidencePacks.projectId, projectId))
+      .orderBy(desc(schema.evidencePacks.createdAt))
+      .limit(1);
+    return results[0];
+  }
+  
+  async getEvidencePackByToken(token: string): Promise<EvidencePack | undefined> {
+    const results = await db.select().from(schema.evidencePacks)
+      .where(eq(schema.evidencePacks.shareToken, token));
+    return results[0];
+  }
+  
+  async getEvidencePacksForLeader(reviewerId?: string): Promise<EvidencePack[]> {
+    if (reviewerId) {
+      return await db.select().from(schema.evidencePacks)
+        .where(eq(schema.evidencePacks.reviewerId, reviewerId))
+        .orderBy(desc(schema.evidencePacks.updatedAt));
+    }
+    // Return all packs that are pending review or in review
+    return await db.select().from(schema.evidencePacks)
+      .where(inArray(schema.evidencePacks.status, ["pending_review", "in_review"]))
+      .orderBy(desc(schema.evidencePacks.updatedAt));
+  }
+  
+  async getAllEvidencePacks(): Promise<EvidencePack[]> {
+    return await db.select().from(schema.evidencePacks)
+      .orderBy(desc(schema.evidencePacks.updatedAt));
+  }
+  
+  async createEvidencePack(pack: InsertEvidencePack): Promise<EvidencePack> {
+    const results = await db.insert(schema.evidencePacks).values(pack).returning();
+    return results[0];
+  }
+  
+  async updateEvidencePack(id: number, pack: Partial<InsertEvidencePack>): Promise<EvidencePack | undefined> {
+    const results = await db.update(schema.evidencePacks)
+      .set({ ...pack, updatedAt: new Date() })
+      .where(eq(schema.evidencePacks.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deleteEvidencePack(id: number): Promise<void> {
+    await db.delete(schema.evidencePacks).where(eq(schema.evidencePacks.id, id));
+  }
+  
+  // Evidence Pack Items
+  async getEvidencePackItems(packId: number): Promise<EvidencePackItem[]> {
+    return await db.select().from(schema.evidencePackItems)
+      .where(eq(schema.evidencePackItems.packId, packId))
+      .orderBy(schema.evidencePackItems.displayOrder);
+  }
+  
+  async getEvidencePackItem(id: number): Promise<EvidencePackItem | undefined> {
+    const results = await db.select().from(schema.evidencePackItems)
+      .where(eq(schema.evidencePackItems.id, id));
+    return results[0];
+  }
+  
+  async createEvidencePackItem(item: InsertEvidencePackItem): Promise<EvidencePackItem> {
+    const results = await db.insert(schema.evidencePackItems).values(item).returning();
+    return results[0];
+  }
+  
+  async updateEvidencePackItem(id: number, item: Partial<InsertEvidencePackItem>): Promise<EvidencePackItem | undefined> {
+    const results = await db.update(schema.evidencePackItems)
+      .set({ ...item, updatedAt: new Date() })
+      .where(eq(schema.evidencePackItems.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deleteEvidencePackItem(id: number): Promise<void> {
+    await db.delete(schema.evidencePackItems).where(eq(schema.evidencePackItems.id, id));
+  }
+  
+  // Evidence Pack Comments
+  async getEvidencePackComments(packId: number): Promise<EvidencePackComment[]> {
+    return await db.select().from(schema.evidencePackComments)
+      .where(eq(schema.evidencePackComments.packId, packId))
+      .orderBy(schema.evidencePackComments.createdAt);
+  }
+  
+  async getEvidencePackCommentsByItem(itemId: number): Promise<EvidencePackComment[]> {
+    return await db.select().from(schema.evidencePackComments)
+      .where(eq(schema.evidencePackComments.itemId, itemId))
+      .orderBy(schema.evidencePackComments.createdAt);
+  }
+  
+  async createEvidencePackComment(comment: InsertEvidencePackComment): Promise<EvidencePackComment> {
+    const results = await db.insert(schema.evidencePackComments).values(comment).returning();
+    return results[0];
+  }
+  
+  async updateEvidencePackComment(id: number, comment: Partial<InsertEvidencePackComment>): Promise<EvidencePackComment | undefined> {
+    const results = await db.update(schema.evidencePackComments)
+      .set(comment)
+      .where(eq(schema.evidencePackComments.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  // Evidence Pack Audit Log
+  async getEvidencePackAuditLog(packId: number): Promise<EvidencePackAuditLog[]> {
+    return await db.select().from(schema.evidencePackAuditLog)
+      .where(eq(schema.evidencePackAuditLog.packId, packId))
+      .orderBy(desc(schema.evidencePackAuditLog.createdAt));
+  }
+  
+  async createEvidencePackAuditLogEntry(entry: InsertEvidencePackAuditLog): Promise<EvidencePackAuditLog> {
+    const results = await db.insert(schema.evidencePackAuditLog).values(entry).returning();
+    return results[0];
   }
 }
 
