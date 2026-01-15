@@ -254,6 +254,27 @@ export default function AccountsDashboard() {
     },
   });
 
+  const deleteInitiativeMutation = useMutation({
+    mutationFn: async (initiativeId: number) => {
+      const response = await apiRequest("DELETE", `/api/projects/${initiativeId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      toast({
+        title: "Initiative deleted",
+        description: "The initiative has been permanently removed.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to delete initiative.",
+      });
+    },
+  });
+
   const handleCreateAccount = () => {
     if (!newAccountName.trim()) {
       toast({
@@ -418,6 +439,8 @@ export default function AccountsDashboard() {
                   toggleAccountExpanded={toggleAccountExpanded}
                   onDelete={(id) => deleteAccountMutation.mutate(id)}
                   isDeleting={deleteAccountMutation.isPending}
+                  onDeleteInitiative={(id) => deleteInitiativeMutation.mutate(id)}
+                  isDeletingInitiative={deleteInitiativeMutation.isPending}
                 />
               ))}
             </div>
@@ -435,7 +458,9 @@ function AccountCard({
   expandedAccounts, 
   toggleAccountExpanded,
   onDelete,
-  isDeleting
+  isDeleting,
+  onDeleteInitiative,
+  isDeletingInitiative
 }: { 
   account: Account; 
   logo: string | null;
@@ -444,9 +469,12 @@ function AccountCard({
   toggleAccountExpanded: (id: number) => void;
   onDelete: (id: number) => void;
   isDeleting: boolean;
+  onDeleteInitiative: (id: number) => void;
+  isDeletingInitiative: boolean;
 }) {
   const [imageError, setImageError] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [initiativeToDelete, setInitiativeToDelete] = useState<Project | null>(null);
   const health = getHealthStatus(account.healthScore);
   const isExpanded = expandedAccounts[account.id];
 
@@ -595,7 +623,19 @@ function AccountCard({
                       {/* Initiative Name */}
                       <div className="flex items-center gap-2 min-w-0">
                         <Layers className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                        <span className="text-sm font-medium truncate">{project.name}</span>
+                        <span className="text-sm font-medium truncate flex-1">{project.name}</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0 text-muted-foreground"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setInitiativeToDelete(project);
+                          }}
+                          data-testid={`button-delete-initiative-${project.id}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
                       </div>
                       
                       {/* Workflow Stage Stepper */}
@@ -773,10 +813,37 @@ function AccountCard({
             <AlertDialogAction 
               onClick={handleDelete} 
               disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground"
               data-testid="button-confirm-delete"
             >
               {isDeleting ? "Deleting..." : "Delete Account"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!initiativeToDelete} onOpenChange={(open) => !open && setInitiativeToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete "{initiativeToDelete?.name}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this initiative and all associated data including KPIs, insights, and progress tracking. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingInitiative}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (initiativeToDelete) {
+                  onDeleteInitiative(initiativeToDelete.id);
+                  setInitiativeToDelete(null);
+                }
+              }} 
+              disabled={isDeletingInitiative}
+              className="bg-destructive text-destructive-foreground"
+              data-testid="button-confirm-delete-initiative"
+            >
+              {isDeletingInitiative ? "Deleting..." : "Delete Initiative"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
