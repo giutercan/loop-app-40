@@ -536,43 +536,73 @@ export default function PresentationPage() {
       )
     },
 
-    // Slide 7: Why Commercial Effectiveness First
+    // Slide 8: Why Commercial Effectiveness First
     {
       id: "why",
       content: (
-        <div className="h-full flex flex-col items-center justify-center px-8 bg-gradient-to-br from-[#00634F] to-[#005971]">
-          <div className="max-w-4xl text-center">
-            <BarChart3 className="w-12 h-12 text-[#05C690] mx-auto mb-6" />
-            <h2 className="text-3xl md:text-4xl font-bold text-white leading-tight mb-4">
-              Why start with Commercial Effectiveness?
-            </h2>
-            <p className="text-lg text-white/80 mb-10">
-              It's the fastest proving ground.
-            </p>
+        <div className="h-full flex flex-col items-center justify-center px-8 bg-white">
+          <div className="max-w-4xl w-full">
+            <div className="text-center mb-8">
+              <p className="text-[#A3238E] text-sm uppercase tracking-widest mb-3">
+                The Starting Point
+              </p>
+              <h2 className="text-3xl md:text-4xl font-bold text-[#00173B] leading-tight mb-2">
+                Why start with Commercial Effectiveness?
+              </h2>
+              <p className="text-[#929192]">The fastest proving ground.</p>
+            </div>
             
-            <div className="grid md:grid-cols-2 gap-4 max-w-2xl mx-auto text-left">
-              <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-3">
-                <CheckCircle2 className="w-5 h-5 text-[#05C690] flex-shrink-0" />
-                <span className="text-white">Metrics are clean</span>
+            {/* 3 Visual pillars */}
+            <div className="grid md:grid-cols-3 gap-6 mb-8">
+              <div className="text-center">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#00634F] to-[#009B77] flex items-center justify-center mx-auto mb-3 shadow-lg">
+                  <BarChart3 className="w-8 h-8 text-white" />
+                </div>
+                <p className="font-bold text-[#00173B]">Clean Metrics</p>
+                <p className="text-sm text-[#929192]">Numbers that don't lie</p>
               </div>
-              <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-3">
-                <CheckCircle2 className="w-5 h-5 text-[#05C690] flex-shrink-0" />
-                <span className="text-white">Urgency is sponsor-owned</span>
+              
+              <div className="text-center">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#005971] to-[#00ADBB] flex items-center justify-center mx-auto mb-3 shadow-lg">
+                  <Target className="w-8 h-8 text-white" />
+                </div>
+                <p className="font-bold text-[#00173B]">Sponsor-Owned Urgency</p>
+                <p className="text-sm text-[#929192]">Real accountability</p>
               </div>
-              <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-3">
-                <CheckCircle2 className="w-5 h-5 text-[#05C690] flex-shrink-0" />
-                <span className="text-white">Outcomes tie to revenue</span>
-              </div>
-              <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-3">
-                <CheckCircle2 className="w-5 h-5 text-[#05C690] flex-shrink-0" />
-                <span className="text-white">Forces hardest discipline</span>
+              
+              <div className="text-center">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#A3238E] to-[#8DC63F] flex items-center justify-center mx-auto mb-3 shadow-lg">
+                  <TrendingUp className="w-8 h-8 text-white" />
+                </div>
+                <p className="font-bold text-[#00173B]">Ties to Revenue</p>
+                <p className="text-sm text-[#929192]">Direct line to results</p>
               </div>
             </div>
 
-            <div className="mt-10 p-4 rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 max-w-xl mx-auto">
+            {/* Tension point */}
+            <div className="bg-[#00173B] rounded-xl p-4 mb-8 text-center">
               <p className="text-white">
-                Once the loop works here, it becomes a <span className="text-[#05C690] font-bold">template for all outcomes</span>—leadership, transformation, rewards.
+                This is where <span className="text-[#A3238E] font-bold">discipline breaks first</span> under pressure.
               </p>
+            </div>
+
+            {/* Template expansion */}
+            <div className="text-center">
+              <p className="text-[#929192] text-sm mb-4">Once the loop works here, it becomes a template for:</p>
+              <div className="flex flex-wrap justify-center gap-3">
+                <div className="flex items-center gap-2 bg-[#00634F]/10 px-5 py-2 rounded-full border border-[#00634F]/30">
+                  <Users className="w-4 h-4 text-[#00634F]" />
+                  <span className="text-[#00634F] font-medium">Leadership</span>
+                </div>
+                <div className="flex items-center gap-2 bg-[#005971]/10 px-5 py-2 rounded-full border border-[#005971]/30">
+                  <RefreshCcw className="w-4 h-4 text-[#005971]" />
+                  <span className="text-[#005971] font-medium">Transformation</span>
+                </div>
+                <div className="flex items-center gap-2 bg-[#A3238E]/10 px-5 py-2 rounded-full border border-[#A3238E]/30">
+                  <Sparkles className="w-4 h-4 text-[#A3238E]" />
+                  <span className="text-[#A3238E] font-medium">Rewards</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
