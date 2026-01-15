@@ -49,7 +49,7 @@ export default function PresentationPage() {
             className="absolute inset-0 bg-cover bg-center"
             style={{ backgroundImage: `url(${buyerImage})` }}
           />
-          <div className="absolute inset-0 bg-gradient-to-l from-[#00173B] via-[#00173B]/95 to-[#00173B]/90 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-l from-[#00173B]/95 via-[#00173B]/80 to-transparent pointer-events-none" />
           
           {/* Content */}
           <div className="relative z-10 h-full flex items-center justify-end px-8 md:px-16">
