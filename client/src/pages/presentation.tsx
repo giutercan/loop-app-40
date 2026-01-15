@@ -49,22 +49,67 @@ export default function PresentationPage() {
             className="absolute inset-0 bg-cover bg-center"
             style={{ backgroundImage: `url(${buyerImage})` }}
           />
-          <div className="absolute inset-0 bg-gradient-to-l from-[#00173B]/95 via-[#00173B]/80 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-l from-[#00173B]/98 via-[#00173B]/90 to-[#00173B]/60 pointer-events-none" />
           
           {/* Content */}
           <div className="relative z-10 h-full flex items-center justify-end px-8 md:px-16">
-            <div className="max-w-2xl text-right">
+            <div className="max-w-3xl text-right">
               <p className="text-[#05C690] text-sm md:text-base uppercase tracking-widest mb-4">
                 The Real Shift
               </p>
-              <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
+              <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-8">
                 The future of selling<br/>
                 <span className="text-[#929192]">starts with understanding</span><br/>
                 <span className="text-[#00ADBB]">the future of buying.</span>
               </h1>
-              <p className="text-lg md:text-xl text-white/80 max-w-xl">
-                Buyers arrive AI-prepared, skeptical, and impatient. They don't need information—they need <span className="text-[#05C690] font-semibold">credibility, evidence, and a conversation that builds confidence.</span>
-              </p>
+              
+              {/* Visual representation of the shift */}
+              <div className="flex items-center justify-end gap-4 mb-8">
+                <div className="text-center">
+                  <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[#929192]/30 border-2 border-[#929192]/50 flex items-center justify-center mb-2">
+                    <Users className="w-8 h-8 md:w-10 md:h-10 text-[#929192]" />
+                  </div>
+                  <span className="text-xs text-[#929192]">Seller side</span>
+                </div>
+                <ArrowRight className="w-6 h-6 text-[#929192]/50" />
+                <div className="text-center">
+                  <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[#00ADBB]/20 border-2 border-[#00ADBB] flex items-center justify-center mb-2 relative">
+                    <Search className="w-8 h-8 md:w-10 md:h-10 text-[#00ADBB]" />
+                    <Brain className="w-4 h-4 text-[#05C690] absolute -top-1 -right-1" />
+                  </div>
+                  <span className="text-xs text-[#00ADBB] font-medium">Buyer side</span>
+                </div>
+              </div>
+
+              {/* Visual icons for buyer traits */}
+              <div className="flex items-center justify-end gap-3 mb-6">
+                <div className="flex items-center gap-2 bg-white/5 backdrop-blur-sm rounded-full px-4 py-2 border border-white/10">
+                  <Brain className="w-4 h-4 text-[#00ADBB]" />
+                  <span className="text-sm text-white/90">AI-prepared</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white/5 backdrop-blur-sm rounded-full px-4 py-2 border border-white/10">
+                  <Shield className="w-4 h-4 text-[#A3238E]" />
+                  <span className="text-sm text-white/90">Skeptical</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white/5 backdrop-blur-sm rounded-full px-4 py-2 border border-white/10">
+                  <TrendingUp className="w-4 h-4 text-amber-400" />
+                  <span className="text-sm text-white/90">Under pressure</span>
+                </div>
+              </div>
+
+              {/* Trust equation visual */}
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-[#05C690]/30 max-w-lg ml-auto">
+                <p className="text-xs text-[#929192] uppercase tracking-wider mb-2">What buyers need</p>
+                <div className="flex items-center justify-center gap-3 flex-wrap">
+                  <span className="bg-[#05C690]/20 text-[#05C690] font-semibold px-3 py-1 rounded-lg text-sm">Coherence</span>
+                  <span className="text-white/50">+</span>
+                  <span className="bg-[#05C690]/20 text-[#05C690] font-semibold px-3 py-1 rounded-lg text-sm">Consistency</span>
+                  <span className="text-white/50">+</span>
+                  <span className="bg-[#05C690]/20 text-[#05C690] font-semibold px-3 py-1 rounded-lg text-sm">Proof</span>
+                  <span className="text-white/50">=</span>
+                  <span className="bg-[#00ADBB] text-white font-bold px-4 py-1 rounded-lg text-sm">Defensible Trust</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
