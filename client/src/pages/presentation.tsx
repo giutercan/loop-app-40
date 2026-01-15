@@ -130,32 +130,32 @@ export default function PresentationPage() {
               
               <div className="space-y-3 mb-8">
                 <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-3">
-                  <Activity className="w-5 h-5 text-red-400 flex-shrink-0" />
-                  <span className="text-white">Activity inflation—more noise, not signal</span>
+                  <Activity className="w-5 h-5 text-[#A3238E] flex-shrink-0" />
+                  <span className="text-white">More activity, but less signal</span>
                 </div>
                 <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-3">
-                  <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0" />
+                  <AlertTriangle className="w-5 h-5 text-[#8DC63F] flex-shrink-0" />
                   <span className="text-white">Inconsistent execution across reps</span>
                 </div>
                 <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-3">
-                  <RefreshCcw className="w-5 h-5 text-orange-400 flex-shrink-0" />
-                  <span className="text-white">Method decay under pressure</span>
+                  <RefreshCcw className="w-5 h-5 text-[#00ADBB] flex-shrink-0" />
+                  <span className="text-white">Methods that decay under pressure</span>
                 </div>
                 <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-3">
-                  <BarChart3 className="w-5 h-5 text-rose-400 flex-shrink-0" />
-                  <span className="text-white">Made-up KPIs they can't prove</span>
-                </div>
-                <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-3">
-                  <MessageSquare className="w-5 h-5 text-purple-400 flex-shrink-0" />
-                  <span className="text-white">Unproven resources, generic conversations</span>
+                  <BarChart3 className="w-5 h-5 text-[#009B77] flex-shrink-0" />
+                  <span className="text-white">KPIs that sound plausible but can't be proven</span>
                 </div>
               </div>
 
-              <div className="bg-[#005971]/30 border border-[#00ADBB]/50 rounded-lg p-4">
+              <div className="bg-[#005971]/30 border border-[#00ADBB]/50 rounded-lg p-4 mb-4">
                 <p className="text-white font-medium">
                   From the CRO's view: <span className="text-[#05C690]">motion without lift.</span>
                 </p>
               </div>
+
+              <p className="text-white/90 text-lg">
+                The quiet casualty? <span className="text-[#00ADBB] font-medium">Human judgment under pressure.</span>
+              </p>
             </div>
           </div>
         </div>
