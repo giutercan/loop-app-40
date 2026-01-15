@@ -364,30 +364,71 @@ export default function PresentationPage() {
       )
     },
 
-    // Slide 5: The Missing Piece - Proof
+    // Slide 6: The Missing Piece - Proof
     {
       id: "proof",
       content: (
         <div className="h-full flex flex-col items-center justify-center px-8 bg-[#00173B]">
           <div className="max-w-4xl text-center">
-            <Shield className="w-14 h-14 text-[#A3238E] mx-auto mb-6" />
-            <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight mb-6">
+            <p className="text-[#A3238E] text-sm uppercase tracking-widest mb-4">
+              The Credibility Gap
+            </p>
+            <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight mb-8">
               If you can't prove what moved,<br/>
               <span className="text-[#929192]">you can't scale it.</span>
             </h2>
-            <p className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto mb-10">
-              Activity is visible. Impact is arguable. If you can't show what moved, you can't scale it—or defend it.
-            </p>
             
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 max-w-2xl mx-auto border border-[#05C690]/30">
-              <p className="text-white text-lg">
-                In the era of AI-powered buying, <span className="text-[#05C690] font-bold">credibility is earned, not claimed.</span>
-              </p>
+            {/* Activity vs Impact visual */}
+            <div className="flex items-center justify-center gap-6 md:gap-12 mb-8">
+              <div className="text-center">
+                <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/10 border-2 border-[#929192]/50 flex items-center justify-center mx-auto mb-2">
+                  <Activity className="w-8 h-8 md:w-10 md:h-10 text-[#929192]" />
+                </div>
+                <p className="text-white font-medium text-sm">Activity</p>
+                <p className="text-[#929192] text-xs">Visible</p>
+              </div>
+              
+              <div className="text-[#929192] text-2xl">vs</div>
+              
+              <div className="text-center">
+                <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/10 border-2 border-dashed border-[#A3238E]/50 flex items-center justify-center mx-auto mb-2">
+                  <TrendingUp className="w-8 h-8 md:w-10 md:h-10 text-[#A3238E]" />
+                </div>
+                <p className="text-white font-medium text-sm">Impact</p>
+                <p className="text-[#A3238E] text-xs">Arguable</p>
+              </div>
             </div>
 
-            <p className="mt-10 text-xl text-[#00ADBB] font-medium">
-              What would a commercial system look like that produces proof continuously?
-            </p>
+            {/* What you must prove */}
+            <p className="text-white/70 text-sm mb-4">If you can't show:</p>
+            <div className="flex flex-wrap justify-center gap-3 mb-8">
+              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-[#05C690]/40">
+                <RefreshCcw className="w-4 h-4 text-[#05C690]" />
+                <span className="text-white text-sm">What changed</span>
+              </div>
+              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-[#00ADBB]/40">
+                <ArrowRight className="w-4 h-4 text-[#00ADBB]" />
+                <span className="text-white text-sm">What shifted</span>
+              </div>
+              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-[#8DC63F]/40">
+                <LineChart className="w-4 h-4 text-[#8DC63F]" />
+                <span className="text-white text-sm">What moved the number</span>
+              </div>
+            </div>
+
+            {/* Consequences */}
+            <div className="flex justify-center gap-4 mb-8">
+              <span className="text-[#929192] text-sm">You can't <span className="text-white font-medium">scale it</span></span>
+              <span className="text-[#929192]">|</span>
+              <span className="text-[#929192] text-sm">You can't <span className="text-white font-medium">defend it at renewal</span></span>
+            </div>
+
+            {/* Credibility closing */}
+            <div className="bg-[#005971]/30 border border-[#00ADBB]/50 rounded-xl p-5 max-w-xl mx-auto">
+              <p className="text-white text-lg">
+                In this era, <span className="text-[#05C690] font-bold">credibility is earned, not claimed.</span>
+              </p>
+            </div>
           </div>
         </div>
       )
