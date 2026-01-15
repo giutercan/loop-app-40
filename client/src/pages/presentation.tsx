@@ -679,7 +679,7 @@ export default function PresentationPage() {
       )
     },
 
-    // Slide 10: How This Shows Up in Practice
+    // Slide 10: How the Loop Shows Up in Practice
     {
       id: "practice",
       content: (
@@ -687,12 +687,12 @@ export default function PresentationPage() {
           <div className="max-w-3xl text-center">
             {/* Title */}
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-[#00173B] leading-tight mb-6">
-              How this shows up in practice
+              How the Loop shows up in practice
             </h2>
             
-            {/* Subhead */}
+            {/* Subhead - the most important line */}
             <p className="text-lg md:text-xl text-[#929192] mb-16">
-              Not a rollout. Not a transformation. One loop, in the flow of real work.
+              A shared loop — experienced through the seller, built for the whole team.
             </p>
 
             {/* What you're about to see */}
@@ -703,19 +703,19 @@ export default function PresentationPage() {
             {/* Three anchors - minimal, centered, white space */}
             <div className="space-y-6 mb-20">
               <p className="text-2xl md:text-3xl text-[#00173B] font-medium">
-                One sponsor
+                One seller flow
               </p>
               <p className="text-2xl md:text-3xl text-[#00173B] font-medium">
-                One outcome
+                One customer
               </p>
               <p className="text-2xl md:text-3xl text-[#00173B] font-medium">
-                One closed loop
+                Provable outcomes — for the customer
               </p>
             </div>
 
             {/* Footer line */}
             <p className="text-[#929192] text-sm">
-              Everything else scales only if this works.
+              Context, evidence, and learning carry forward — without rework.
             </p>
           </div>
         </div>
