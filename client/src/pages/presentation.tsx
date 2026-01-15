@@ -285,45 +285,79 @@ export default function PresentationPage() {
       content: (
         <div className="h-full flex flex-col items-center justify-center px-8 bg-white">
           <div className="max-w-4xl text-center">
-            <p className="text-[#A3238E] text-sm uppercase tracking-widest mb-6">
+            <p className="text-[#A3238E] text-sm uppercase tracking-widest mb-4">
               The Shift
             </p>
-            <h2 className="text-3xl md:text-5xl font-bold text-[#00173B] leading-tight mb-10">
+            <h2 className="text-3xl md:text-5xl font-bold text-[#00173B] leading-tight mb-8">
               The unit of performance changed.
             </h2>
             
-            <div className="flex items-center justify-center gap-6 md:gap-12 mb-12">
-              <div className="text-center">
-                <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-[#929192]/20 flex items-center justify-center mx-auto mb-3">
-                  <Users className="w-10 h-10 md:w-12 md:h-12 text-[#929192]" />
+            {/* Visual transformation */}
+            <div className="flex items-center justify-center gap-4 md:gap-8 mb-8">
+              {/* Old: Heroic Seller - faded */}
+              <div className="text-center opacity-50">
+                <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[#929192]/20 border-2 border-dashed border-[#929192]/40 flex items-center justify-center mx-auto mb-2">
+                  <Users className="w-8 h-8 md:w-10 md:h-10 text-[#929192]" />
                 </div>
-                <p className="text-[#929192] font-medium">Heroic Seller</p>
-                <p className="text-xs text-[#929192]">"They just knew"</p>
+                <p className="text-[#929192] text-sm font-medium">Heroic Seller</p>
+                <p className="text-xs text-[#929192]/70">"They just knew"</p>
               </div>
               
-              <ArrowRight className="w-8 h-8 text-[#009B77]" />
+              <ArrowRight className="w-6 h-6 md:w-8 md:h-8 text-[#009B77]" />
               
+              {/* New: Team + AI - vibrant */}
               <div className="text-center">
-                <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-gradient-to-br from-[#00634F] to-[#005971] flex items-center justify-center mx-auto mb-3">
+                <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-[#00634F] to-[#005971] flex items-center justify-center mx-auto mb-2 shadow-lg">
                   <div className="flex items-center gap-1">
-                    <Users className="w-6 h-6 md:w-7 md:h-7 text-white" />
-                    <span className="text-white text-lg">+</span>
-                    <Brain className="w-6 h-6 md:w-7 md:h-7 text-[#05C690]" />
+                    <Users className="w-5 h-5 md:w-6 md:h-6 text-white" />
+                    <span className="text-white text-sm">+</span>
+                    <Brain className="w-5 h-5 md:w-6 md:h-6 text-[#05C690]" />
                   </div>
                 </div>
-                <p className="text-[#00173B] font-semibold">Team + AI</p>
-                <p className="text-xs text-[#929192]">Scales beyond heroics</p>
+                <p className="text-[#00173B] font-semibold text-sm">Team + AI</p>
+              </div>
+
+              <ArrowRight className="w-6 h-6 md:w-8 md:h-8 text-[#009B77]" />
+
+              {/* Result: Orchestrator of Trust */}
+              <div className="text-center">
+                <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-[#A3238E] to-[#00634F] flex items-center justify-center mx-auto mb-2 shadow-lg ring-2 ring-[#05C690]/30">
+                  <Handshake className="w-8 h-8 md:w-10 md:h-10 text-white" />
+                </div>
+                <p className="text-[#00173B] font-bold text-sm">Orchestrator</p>
+                <p className="text-xs text-[#A3238E]">of Trust</p>
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-[#00634F]/10 to-[#005971]/10 rounded-xl p-6 max-w-2xl mx-auto border border-[#009B77]/20">
-              <p className="text-[#00173B] font-medium mb-4">The seller becomes the orchestrator of trust:</p>
-              <div className="flex flex-wrap justify-center gap-3">
-                <span className="bg-white px-3 py-1 rounded-full text-sm border border-[#00634F]/30 text-[#00634F]">Judgement</span>
-                <span className="bg-white px-3 py-1 rounded-full text-sm border border-[#005971]/30 text-[#005971]">Influence</span>
-                <span className="bg-white px-3 py-1 rounded-full text-sm border border-[#009B77]/30 text-[#009B77]">Navigating complexity</span>
-                <span className="bg-white px-3 py-1 rounded-full text-sm border border-[#A3238E]/30 text-[#A3238E]">Closing</span>
+            {/* What only humans do - icon pills */}
+            <p className="text-[#929192] text-sm mb-4">What only humans do still matters most:</p>
+            <div className="flex flex-wrap justify-center gap-3 mb-8">
+              <div className="flex items-center gap-2 bg-[#00634F]/10 px-4 py-2 rounded-full border border-[#00634F]/30">
+                <Brain className="w-4 h-4 text-[#00634F]" />
+                <span className="text-[#00634F] font-medium text-sm">Judgment</span>
               </div>
+              <div className="flex items-center gap-2 bg-[#005971]/10 px-4 py-2 rounded-full border border-[#005971]/30">
+                <Users className="w-4 h-4 text-[#005971]" />
+                <span className="text-[#005971] font-medium text-sm">Influence</span>
+              </div>
+              <div className="flex items-center gap-2 bg-[#009B77]/10 px-4 py-2 rounded-full border border-[#009B77]/30">
+                <CircleDot className="w-4 h-4 text-[#009B77]" />
+                <span className="text-[#009B77] font-medium text-sm">Navigating complexity</span>
+              </div>
+              <div className="flex items-center gap-2 bg-[#A3238E]/10 px-4 py-2 rounded-full border border-[#A3238E]/30">
+                <CheckCircle2 className="w-4 h-4 text-[#A3238E]" />
+                <span className="text-[#A3238E] font-medium text-sm">Closing</span>
+              </div>
+            </div>
+
+            {/* Closing tension */}
+            <div className="bg-[#00173B] rounded-xl p-5 max-w-2xl mx-auto">
+              <p className="text-white">
+                But the system around the seller has to change —
+              </p>
+              <p className="text-[#929192] text-sm mt-1">
+                or that judgment gets <span className="text-[#00ADBB]">diluted</span>, <span className="text-[#00ADBB]">inconsistent</span>, and eventually <span className="text-[#00ADBB]">exhausted</span>.
+              </p>
             </div>
           </div>
         </div>
