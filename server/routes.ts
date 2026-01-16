@@ -12108,4 +12108,84 @@ Provide a JSON response with:
       res.status(500).json({ error: error.message });
     }
   });
+
+  // ----------------------
+  // AI INFERENCE LAYER (Infer First, Confirm Second)
+  // ----------------------
+  
+  const inferRequestSchema = z.object({
+    targetPersona: z.enum(["seller", "manager"]).optional().default("seller")
+  });
+  
+  const processEventRequestSchema = z.object({
+    eventType: z.string().min(1, "eventType is required"),
+    eventData: z.record(z.any()).optional().default({})
+  });
+  
+  const confirmInferenceRequestSchema = z.object({
+    confirmed: z.boolean(),
+    notes: z.string().optional()
+  });
+  
+  // POST /api/evidence-packs/:packId/infer - Generate AI inferences for evidence pack
+  app.post("/api/evidence-packs/:packId/infer", async (req, res) => {
+    try {
+      const packId = parseInt(req.params.packId);
+      const validatedBody = inferRequestSchema.parse(req.body);
+      
+      const { getInferredSuggestionsForPack } = await import("./evidence-pack-ai");
+      const suggestions = await getInferredSuggestionsForPack(packId, validatedBody.targetPersona);
+      
+      res.json(suggestions);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Invalid request body", details: error.errors });
+      }
+      console.error("[AI Inference] Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // POST /api/evidence-packs/:packId/process-event - Process lifecycle event with AI
+  app.post("/api/evidence-packs/:packId/process-event", async (req, res) => {
+    try {
+      const packId = parseInt(req.params.packId);
+      const validatedBody = processEventRequestSchema.parse(req.body);
+      
+      const pack = await storage.getEvidencePack(packId);
+      if (!pack) {
+        return res.status(404).json({ error: "Evidence pack not found" });
+      }
+      
+      const { processLifecycleEvent } = await import("./evidence-pack-ai");
+      const result = await processLifecycleEvent(packId, pack.projectId, validatedBody.eventType, validatedBody.eventData);
+      
+      res.json(result);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Invalid request body", details: error.errors });
+      }
+      console.error("[AI Inference] Error processing event:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // POST /api/guidance/:id/confirm - Confirm or dismiss AI inference
+  app.post("/api/guidance/:id/confirm", async (req, res) => {
+    try {
+      const guidanceEventId = parseInt(req.params.id);
+      const validatedBody = confirmInferenceRequestSchema.parse(req.body);
+      
+      const { confirmInference } = await import("./evidence-pack-ai");
+      await confirmInference(guidanceEventId, validatedBody.confirmed, validatedBody.notes);
+      
+      res.json({ success: true, confirmed: validatedBody.confirmed });
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Invalid request body", details: error.errors });
+      }
+      console.error("[AI Inference] Error confirming:", error);
+      res.status(400).json({ error: error.message });
+    }
+  });
 }
