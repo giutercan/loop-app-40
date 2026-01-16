@@ -8179,12 +8179,65 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
         return res.status(404).json({ error: "Project not found" });
       }
       
-      // Get pre-meeting artifacts with extracted text
+      // Get pre-meeting artifacts
       const artifacts = await storage.getInteractionArtifactsByContext(projectId, "pre_meeting");
+      
+      if (artifacts.length === 0) {
+        return res.status(400).json({ error: "No pre-meeting documents found. Please upload documents in the 'Pre-Meeting' section first." });
+      }
+      
+      // Try to extract text from artifacts that don't have it yet
+      for (const artifact of artifacts) {
+        if (!artifact.extractedText && !artifact.freeformNotes && artifact.objectStorageKey) {
+          try {
+            console.log("[Green Sheet Enrich] Extracting text from:", artifact.objectStorageKey);
+            const { Client } = await import("@replit/object-storage");
+            const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+            if (bucketId) {
+              const client = new Client({ bucketId });
+              const fileBuffer = await client.downloadAsBytes(artifact.objectStorageKey);
+              
+              if (fileBuffer.ok && fileBuffer.value) {
+                const uint8Array = fileBuffer.value;
+                const buffer = Buffer.from(uint8Array.buffer, uint8Array.byteOffset, uint8Array.byteLength);
+                let extractedText = "";
+                
+                if (artifact.mimeType === 'text/plain' || artifact.mimeType === 'text/csv' || artifact.mimeType === 'application/json') {
+                  extractedText = buffer.toString('utf-8');
+                } else if (artifact.mimeType === 'application/pdf') {
+                  const pdfParse = (await import('pdf-parse')).default || (await import('pdf-parse'));
+                  const pdfData = await pdfParse(buffer);
+                  extractedText = pdfData.text;
+                } else if (artifact.mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || 
+                           artifact.mimeType === 'application/msword') {
+                  const mammoth = await import('mammoth');
+                  const result = await mammoth.extractRawText({ buffer: buffer });
+                  extractedText = result.value;
+                }
+                
+                if (extractedText) {
+                  await storage.updateInteractionArtifact(artifact.id, { 
+                    extractedText: extractedText.substring(0, 50000),
+                    aiProcessingStatus: 'completed'
+                  });
+                  (artifact as any).extractedText = extractedText;
+                  console.log("[Green Sheet Enrich] Text extracted, length:", extractedText.length);
+                }
+              }
+            }
+          } catch (extractError) {
+            console.error("[Green Sheet Enrich] Failed to extract text from artifact:", artifact.id, extractError);
+          }
+        }
+      }
+      
       const artifactsWithContent = artifacts.filter(a => a.extractedText || a.freeformNotes);
       
       if (artifactsWithContent.length === 0) {
-        return res.status(400).json({ error: "No pre-meeting documents or notes found to analyze" });
+        return res.status(400).json({ 
+          error: "Unable to read document content. Please try re-uploading your documents, or add notes to them manually.",
+          documentsCount: artifacts.length
+        });
       }
       
       // Combine all artifact content
@@ -10775,8 +10828,17 @@ Be concise but helpful. Use the user's context (current account, project, page) 
         } catch (pdfError) {
           console.error("PDF parsing error:", pdfError);
         }
+      } else if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || 
+                 mimeType === 'application/msword') {
+        // Use mammoth for Word document extraction
+        try {
+          const mammoth = await import('mammoth');
+          const result = await mammoth.extractRawText({ buffer: fileBuffer });
+          extractedText = result.value;
+        } catch (docError) {
+          console.error("Word document parsing error:", docError);
+        }
       }
-      // Note: Word doc extraction would require additional library (mammoth)
       
       // Create artifact record
       const artifact = await storage.createInteractionArtifact({
@@ -10895,6 +10957,16 @@ Be concise but helpful. Use the user's context (current account, project, page) 
                   console.log("[Artifact Process] PDF text extracted, length:", contentToAnalyze?.length || 0);
                 } catch (pdfError) {
                   console.error("[Artifact Process] PDF parsing error:", pdfError);
+                }
+              } else if (artifact.mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || 
+                         artifact.mimeType === 'application/msword') {
+                try {
+                  const mammoth = await import('mammoth');
+                  const result = await mammoth.extractRawText({ buffer: buffer });
+                  contentToAnalyze = result.value;
+                  console.log("[Artifact Process] Word document text extracted, length:", contentToAnalyze?.length || 0);
+                } catch (docError) {
+                  console.error("[Artifact Process] Word document parsing error:", docError);
                 }
               }
               
