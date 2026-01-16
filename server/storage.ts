@@ -64,7 +64,13 @@ import type {
   EvidencePack, InsertEvidencePack,
   EvidencePackItem, InsertEvidencePackItem,
   EvidencePackComment, InsertEvidencePackComment,
-  EvidencePackAuditLog, InsertEvidencePackAuditLog
+  EvidencePackAuditLog, InsertEvidencePackAuditLog,
+  SuccessFrameSnapshot, InsertSuccessFrameSnapshot,
+  BehaviouralConditionLog, InsertBehaviouralConditionLog,
+  KPIMovementView, InsertKPIMovementView,
+  SponsorNarrativeSpine, InsertSponsorNarrativeSpine,
+  AIGuidanceEvent, InsertAIGuidanceEvent,
+  EvidencePackLifecycleEvent, InsertEvidencePackLifecycleEvent
 } from "@shared/schema";
 
 export interface IStorage {
@@ -456,6 +462,46 @@ export interface IStorage {
   // Evidence Pack Audit Log
   getEvidencePackAuditLog(packId: number): Promise<EvidencePackAuditLog[]>;
   createEvidencePackAuditLogEntry(entry: InsertEvidencePackAuditLog): Promise<EvidencePackAuditLog>;
+  
+  // ============================================================================
+  // EVIDENCE PACK LIVING DOCUMENT ARTIFACTS
+  // ============================================================================
+  
+  // Success Frame Snapshots
+  getSuccessFrameSnapshot(packId: number): Promise<SuccessFrameSnapshot | undefined>;
+  getSuccessFrameSnapshotById(id: number): Promise<SuccessFrameSnapshot | undefined>;
+  createSuccessFrameSnapshot(snapshot: InsertSuccessFrameSnapshot): Promise<SuccessFrameSnapshot>;
+  updateSuccessFrameSnapshot(id: number, snapshot: Partial<InsertSuccessFrameSnapshot>): Promise<SuccessFrameSnapshot | undefined>;
+  
+  // Behavioural Condition Logs
+  getBehaviouralConditionLog(packId: number): Promise<BehaviouralConditionLog | undefined>;
+  getBehaviouralConditionLogById(id: number): Promise<BehaviouralConditionLog | undefined>;
+  createBehaviouralConditionLog(log: InsertBehaviouralConditionLog): Promise<BehaviouralConditionLog>;
+  updateBehaviouralConditionLog(id: number, log: Partial<InsertBehaviouralConditionLog>): Promise<BehaviouralConditionLog | undefined>;
+  
+  // KPI Movement Views
+  getKPIMovementView(packId: number): Promise<KPIMovementView | undefined>;
+  getKPIMovementViewById(id: number): Promise<KPIMovementView | undefined>;
+  createKPIMovementView(view: InsertKPIMovementView): Promise<KPIMovementView>;
+  updateKPIMovementView(id: number, view: Partial<InsertKPIMovementView>): Promise<KPIMovementView | undefined>;
+  
+  // Sponsor Narrative Spines
+  getSponsorNarrativeSpine(packId: number): Promise<SponsorNarrativeSpine | undefined>;
+  getSponsorNarrativeSpineById(id: number): Promise<SponsorNarrativeSpine | undefined>;
+  createSponsorNarrativeSpine(spine: InsertSponsorNarrativeSpine): Promise<SponsorNarrativeSpine>;
+  updateSponsorNarrativeSpine(id: number, spine: Partial<InsertSponsorNarrativeSpine>): Promise<SponsorNarrativeSpine | undefined>;
+  
+  // AI Guidance Events
+  getAIGuidanceEvents(projectId: number, persona?: string): Promise<AIGuidanceEvent[]>;
+  getPendingAIGuidanceEvents(projectId: number, persona: string): Promise<AIGuidanceEvent[]>;
+  createAIGuidanceEvent(event: InsertAIGuidanceEvent): Promise<AIGuidanceEvent>;
+  updateAIGuidanceEvent(id: number, event: Partial<InsertAIGuidanceEvent>): Promise<AIGuidanceEvent | undefined>;
+  
+  // Evidence Pack Lifecycle Events
+  getEvidencePackLifecycleEvents(packId: number): Promise<EvidencePackLifecycleEvent[]>;
+  getUnprocessedLifecycleEvents(packId: number): Promise<EvidencePackLifecycleEvent[]>;
+  createEvidencePackLifecycleEvent(event: InsertEvidencePackLifecycleEvent): Promise<EvidencePackLifecycleEvent>;
+  markLifecycleEventProcessed(id: number, resultingUpdates: any): Promise<EvidencePackLifecycleEvent | undefined>;
 }
 
 export class DbStorage implements IStorage {
@@ -2507,6 +2553,192 @@ export class DbStorage implements IStorage {
   
   async createEvidencePackAuditLogEntry(entry: InsertEvidencePackAuditLog): Promise<EvidencePackAuditLog> {
     const results = await db.insert(schema.evidencePackAuditLog).values(entry).returning();
+    return results[0];
+  }
+  
+  // ============================================================================
+  // EVIDENCE PACK LIVING DOCUMENT ARTIFACTS
+  // ============================================================================
+  
+  // Success Frame Snapshots
+  async getSuccessFrameSnapshot(packId: number): Promise<SuccessFrameSnapshot | undefined> {
+    const results = await db.select().from(schema.successFrameSnapshots)
+      .where(and(
+        eq(schema.successFrameSnapshots.packId, packId),
+        eq(schema.successFrameSnapshots.isCurrentVersion, true)
+      ));
+    return results[0];
+  }
+  
+  async getSuccessFrameSnapshotById(id: number): Promise<SuccessFrameSnapshot | undefined> {
+    const results = await db.select().from(schema.successFrameSnapshots)
+      .where(eq(schema.successFrameSnapshots.id, id));
+    return results[0];
+  }
+  
+  async createSuccessFrameSnapshot(snapshot: InsertSuccessFrameSnapshot): Promise<SuccessFrameSnapshot> {
+    const results = await db.insert(schema.successFrameSnapshots).values(snapshot as any).returning();
+    return results[0];
+  }
+  
+  async updateSuccessFrameSnapshot(id: number, snapshot: Partial<InsertSuccessFrameSnapshot>): Promise<SuccessFrameSnapshot | undefined> {
+    const results = await db.update(schema.successFrameSnapshots)
+      .set({ ...snapshot as any, updatedAt: new Date() })
+      .where(eq(schema.successFrameSnapshots.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  // Behavioural Condition Logs
+  async getBehaviouralConditionLog(packId: number): Promise<BehaviouralConditionLog | undefined> {
+    const results = await db.select().from(schema.behaviouralConditionLogs)
+      .where(eq(schema.behaviouralConditionLogs.packId, packId))
+      .orderBy(desc(schema.behaviouralConditionLogs.version))
+      .limit(1);
+    return results[0];
+  }
+  
+  async getBehaviouralConditionLogById(id: number): Promise<BehaviouralConditionLog | undefined> {
+    const results = await db.select().from(schema.behaviouralConditionLogs)
+      .where(eq(schema.behaviouralConditionLogs.id, id));
+    return results[0];
+  }
+  
+  async createBehaviouralConditionLog(log: InsertBehaviouralConditionLog): Promise<BehaviouralConditionLog> {
+    const results = await db.insert(schema.behaviouralConditionLogs).values(log as any).returning();
+    return results[0];
+  }
+  
+  async updateBehaviouralConditionLog(id: number, log: Partial<InsertBehaviouralConditionLog>): Promise<BehaviouralConditionLog | undefined> {
+    const results = await db.update(schema.behaviouralConditionLogs)
+      .set({ ...log as any, updatedAt: new Date() })
+      .where(eq(schema.behaviouralConditionLogs.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  // KPI Movement Views
+  async getKPIMovementView(packId: number): Promise<KPIMovementView | undefined> {
+    const results = await db.select().from(schema.kpiMovementViews)
+      .where(eq(schema.kpiMovementViews.packId, packId));
+    return results[0];
+  }
+  
+  async getKPIMovementViewById(id: number): Promise<KPIMovementView | undefined> {
+    const results = await db.select().from(schema.kpiMovementViews)
+      .where(eq(schema.kpiMovementViews.id, id));
+    return results[0];
+  }
+  
+  async createKPIMovementView(view: InsertKPIMovementView): Promise<KPIMovementView> {
+    const results = await db.insert(schema.kpiMovementViews).values(view as any).returning();
+    return results[0];
+  }
+  
+  async updateKPIMovementView(id: number, view: Partial<InsertKPIMovementView>): Promise<KPIMovementView | undefined> {
+    const results = await db.update(schema.kpiMovementViews)
+      .set({ ...view as any, updatedAt: new Date() })
+      .where(eq(schema.kpiMovementViews.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  // Sponsor Narrative Spines
+  async getSponsorNarrativeSpine(packId: number): Promise<SponsorNarrativeSpine | undefined> {
+    const results = await db.select().from(schema.sponsorNarrativeSpines)
+      .where(eq(schema.sponsorNarrativeSpines.packId, packId))
+      .orderBy(desc(schema.sponsorNarrativeSpines.version))
+      .limit(1);
+    return results[0];
+  }
+  
+  async getSponsorNarrativeSpineById(id: number): Promise<SponsorNarrativeSpine | undefined> {
+    const results = await db.select().from(schema.sponsorNarrativeSpines)
+      .where(eq(schema.sponsorNarrativeSpines.id, id));
+    return results[0];
+  }
+  
+  async createSponsorNarrativeSpine(spine: InsertSponsorNarrativeSpine): Promise<SponsorNarrativeSpine> {
+    const results = await db.insert(schema.sponsorNarrativeSpines).values(spine as any).returning();
+    return results[0];
+  }
+  
+  async updateSponsorNarrativeSpine(id: number, spine: Partial<InsertSponsorNarrativeSpine>): Promise<SponsorNarrativeSpine | undefined> {
+    const results = await db.update(schema.sponsorNarrativeSpines)
+      .set({ ...spine as any, updatedAt: new Date() })
+      .where(eq(schema.sponsorNarrativeSpines.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  // AI Guidance Events
+  async getAIGuidanceEvents(projectId: number, persona?: string): Promise<AIGuidanceEvent[]> {
+    if (persona) {
+      return await db.select().from(schema.aiGuidanceEvents)
+        .where(and(
+          eq(schema.aiGuidanceEvents.projectId, projectId),
+          eq(schema.aiGuidanceEvents.targetPersona, persona)
+        ))
+        .orderBy(desc(schema.aiGuidanceEvents.createdAt));
+    }
+    return await db.select().from(schema.aiGuidanceEvents)
+      .where(eq(schema.aiGuidanceEvents.projectId, projectId))
+      .orderBy(desc(schema.aiGuidanceEvents.createdAt));
+  }
+  
+  async getPendingAIGuidanceEvents(projectId: number, persona: string): Promise<AIGuidanceEvent[]> {
+    return await db.select().from(schema.aiGuidanceEvents)
+      .where(and(
+        eq(schema.aiGuidanceEvents.projectId, projectId),
+        eq(schema.aiGuidanceEvents.targetPersona, persona),
+        eq(schema.aiGuidanceEvents.status, "pending")
+      ))
+      .orderBy(desc(schema.aiGuidanceEvents.createdAt));
+  }
+  
+  async createAIGuidanceEvent(event: InsertAIGuidanceEvent): Promise<AIGuidanceEvent> {
+    const results = await db.insert(schema.aiGuidanceEvents).values(event as any).returning();
+    return results[0];
+  }
+  
+  async updateAIGuidanceEvent(id: number, event: Partial<InsertAIGuidanceEvent>): Promise<AIGuidanceEvent | undefined> {
+    const results = await db.update(schema.aiGuidanceEvents)
+      .set(event as any)
+      .where(eq(schema.aiGuidanceEvents.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  // Evidence Pack Lifecycle Events
+  async getEvidencePackLifecycleEvents(packId: number): Promise<EvidencePackLifecycleEvent[]> {
+    return await db.select().from(schema.evidencePackLifecycleEvents)
+      .where(eq(schema.evidencePackLifecycleEvents.packId, packId))
+      .orderBy(desc(schema.evidencePackLifecycleEvents.createdAt));
+  }
+  
+  async getUnprocessedLifecycleEvents(packId: number): Promise<EvidencePackLifecycleEvent[]> {
+    return await db.select().from(schema.evidencePackLifecycleEvents)
+      .where(and(
+        eq(schema.evidencePackLifecycleEvents.packId, packId),
+        eq(schema.evidencePackLifecycleEvents.processed, false)
+      ))
+      .orderBy(schema.evidencePackLifecycleEvents.createdAt);
+  }
+  
+  async createEvidencePackLifecycleEvent(event: InsertEvidencePackLifecycleEvent): Promise<EvidencePackLifecycleEvent> {
+    const results = await db.insert(schema.evidencePackLifecycleEvents).values(event as any).returning();
+    return results[0];
+  }
+  
+  async markLifecycleEventProcessed(id: number, resultingUpdates: any): Promise<EvidencePackLifecycleEvent | undefined> {
+    const results = await db.update(schema.evidencePackLifecycleEvents)
+      .set({
+        processed: true,
+        processedAt: new Date(),
+        resultingUpdates: resultingUpdates
+      } as any)
+      .where(eq(schema.evidencePackLifecycleEvents.id, id))
+      .returning();
     return results[0];
   }
 }

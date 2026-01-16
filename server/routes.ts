@@ -11741,4 +11741,371 @@ Provide a JSON response with:
       res.status(500).json({ error: error.message });
     }
   });
+
+  // ============================================================================
+  // EVIDENCE PACK LIVING DOCUMENT ARTIFACTS
+  // ============================================================================
+
+  // ----------------------
+  // SUCCESS FRAME SNAPSHOTS
+  // ----------------------
+  
+  // GET /api/evidence-packs/:packId/success-frame - Get current success frame
+  app.get("/api/evidence-packs/:packId/success-frame", async (req, res) => {
+    try {
+      const packId = parseInt(req.params.packId);
+      const snapshot = await storage.getSuccessFrameSnapshot(packId);
+      res.json(snapshot || null);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // POST /api/evidence-packs/:packId/success-frame - Create success frame
+  app.post("/api/evidence-packs/:packId/success-frame", async (req, res) => {
+    try {
+      const packId = parseInt(req.params.packId);
+      const pack = await storage.getEvidencePack(packId);
+      if (!pack) {
+        return res.status(404).json({ error: "Evidence pack not found" });
+      }
+      
+      const snapshot = await storage.createSuccessFrameSnapshot({
+        packId,
+        projectId: pack.projectId,
+        kpis: req.body.kpis || [],
+        uncertaintyStatement: req.body.uncertaintyStatement,
+        assumptionsNotes: req.body.assumptionsNotes,
+        aiInferred: req.body.aiInferred || false,
+        aiInferenceSource: req.body.aiInferenceSource,
+      });
+      
+      res.status(201).json(snapshot);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+  
+  // PATCH /api/success-frames/:id - Update success frame
+  app.patch("/api/success-frames/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const snapshot = await storage.updateSuccessFrameSnapshot(id, req.body);
+      if (!snapshot) {
+        return res.status(404).json({ error: "Success frame not found" });
+      }
+      res.json(snapshot);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+  
+  // POST /api/success-frames/:id/lock - Lock the success frame
+  app.post("/api/success-frames/:id/lock", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const snapshot = await storage.updateSuccessFrameSnapshot(id, {
+        isLocked: true,
+        lockedAt: new Date(),
+        lockedBy: req.body.lockedBy || "System",
+      });
+      if (!snapshot) {
+        return res.status(404).json({ error: "Success frame not found" });
+      }
+      res.json(snapshot);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+  
+  // POST /api/success-frames/:id/confirm-ai - Confirm AI inference
+  app.post("/api/success-frames/:id/confirm-ai", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const snapshot = await storage.updateSuccessFrameSnapshot(id, {
+        aiConfirmedBy: req.body.confirmedBy || "User",
+        aiConfirmedAt: new Date(),
+      });
+      if (!snapshot) {
+        return res.status(404).json({ error: "Success frame not found" });
+      }
+      res.json(snapshot);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // ----------------------
+  // BEHAVIOURAL CONDITION LOGS
+  // ----------------------
+  
+  // GET /api/evidence-packs/:packId/behavioural-log - Get behavioural condition log
+  app.get("/api/evidence-packs/:packId/behavioural-log", async (req, res) => {
+    try {
+      const packId = parseInt(req.params.packId);
+      const log = await storage.getBehaviouralConditionLog(packId);
+      res.json(log || null);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // POST /api/evidence-packs/:packId/behavioural-log - Create behavioural log
+  app.post("/api/evidence-packs/:packId/behavioural-log", async (req, res) => {
+    try {
+      const packId = parseInt(req.params.packId);
+      const pack = await storage.getEvidencePack(packId);
+      if (!pack) {
+        return res.status(404).json({ error: "Evidence pack not found" });
+      }
+      
+      const log = await storage.createBehaviouralConditionLog({
+        packId,
+        projectId: pack.projectId,
+        conditions: req.body.conditions || [],
+        aiSuggestedConditions: req.body.aiSuggestedConditions,
+      });
+      
+      res.status(201).json(log);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+  
+  // PATCH /api/behavioural-logs/:id - Update behavioural log
+  app.patch("/api/behavioural-logs/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const log = await storage.updateBehaviouralConditionLog(id, req.body);
+      if (!log) {
+        return res.status(404).json({ error: "Behavioural log not found" });
+      }
+      res.json(log);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // ----------------------
+  // KPI MOVEMENT VIEWS
+  // ----------------------
+  
+  // GET /api/evidence-packs/:packId/kpi-movement - Get KPI movement view
+  app.get("/api/evidence-packs/:packId/kpi-movement", async (req, res) => {
+    try {
+      const packId = parseInt(req.params.packId);
+      const view = await storage.getKPIMovementView(packId);
+      res.json(view || null);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // POST /api/evidence-packs/:packId/kpi-movement - Create KPI movement view
+  app.post("/api/evidence-packs/:packId/kpi-movement", async (req, res) => {
+    try {
+      const packId = parseInt(req.params.packId);
+      const pack = await storage.getEvidencePack(packId);
+      if (!pack) {
+        return res.status(404).json({ error: "Evidence pack not found" });
+      }
+      
+      const successFrame = await storage.getSuccessFrameSnapshot(packId);
+      
+      const view = await storage.createKPIMovementView({
+        packId,
+        projectId: pack.projectId,
+        successFrameId: successFrame?.id,
+        movements: req.body.movements || [],
+        overallHealthScore: req.body.overallHealthScore,
+        overallNarrative: req.body.overallNarrative,
+      });
+      
+      res.status(201).json(view);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+  
+  // PATCH /api/kpi-movements/:id - Update KPI movement view
+  app.patch("/api/kpi-movements/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const view = await storage.updateKPIMovementView(id, req.body);
+      if (!view) {
+        return res.status(404).json({ error: "KPI movement view not found" });
+      }
+      res.json(view);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // ----------------------
+  // SPONSOR NARRATIVE SPINES
+  // ----------------------
+  
+  // GET /api/evidence-packs/:packId/narrative-spine - Get narrative spine
+  app.get("/api/evidence-packs/:packId/narrative-spine", async (req, res) => {
+    try {
+      const packId = parseInt(req.params.packId);
+      const spine = await storage.getSponsorNarrativeSpine(packId);
+      res.json(spine || null);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // POST /api/evidence-packs/:packId/narrative-spine - Create narrative spine
+  app.post("/api/evidence-packs/:packId/narrative-spine", async (req, res) => {
+    try {
+      const packId = parseInt(req.params.packId);
+      const pack = await storage.getEvidencePack(packId);
+      if (!pack) {
+        return res.status(404).json({ error: "Evidence pack not found" });
+      }
+      
+      const spine = await storage.createSponsorNarrativeSpine({
+        packId,
+        projectId: pack.projectId,
+        spine: req.body.spine,
+        aiGenerated: req.body.aiGenerated || false,
+        aiGeneratedAt: req.body.aiGenerated ? new Date() : undefined,
+        aiModel: req.body.aiModel,
+        aiConfidence: req.body.aiConfidence,
+      });
+      
+      res.status(201).json(spine);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+  
+  // PATCH /api/narrative-spines/:id - Update narrative spine
+  app.patch("/api/narrative-spines/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const spine = await storage.updateSponsorNarrativeSpine(id, req.body);
+      if (!spine) {
+        return res.status(404).json({ error: "Narrative spine not found" });
+      }
+      res.json(spine);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // ----------------------
+  // AI GUIDANCE EVENTS
+  // ----------------------
+  
+  // GET /api/projects/:projectId/guidance - Get AI guidance for a project
+  app.get("/api/projects/:projectId/guidance", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const persona = req.query.persona as string | undefined;
+      const events = await storage.getAIGuidanceEvents(projectId, persona);
+      res.json(events);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // GET /api/projects/:projectId/guidance/pending - Get pending guidance
+  app.get("/api/projects/:projectId/guidance/pending", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const persona = (req.query.persona as string) || "seller";
+      const events = await storage.getPendingAIGuidanceEvents(projectId, persona);
+      res.json(events);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // PATCH /api/guidance/:id - Update guidance event status
+  app.patch("/api/guidance/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const event = await storage.updateAIGuidanceEvent(id, {
+        status: req.body.status,
+        viewedAt: req.body.status === "viewed" ? new Date() : undefined,
+        actedOnAt: req.body.status === "acted_on" ? new Date() : undefined,
+        dismissedAt: req.body.status === "dismissed" ? new Date() : undefined,
+        dismissReason: req.body.dismissReason,
+        wasHelpful: req.body.wasHelpful,
+        helpfulnessNotes: req.body.helpfulnessNotes,
+      });
+      if (!event) {
+        return res.status(404).json({ error: "Guidance event not found" });
+      }
+      res.json(event);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // ----------------------
+  // EVIDENCE PACK LIFECYCLE EVENTS
+  // ----------------------
+  
+  // POST /api/evidence-packs/:packId/lifecycle-event - Create lifecycle event
+  app.post("/api/evidence-packs/:packId/lifecycle-event", async (req, res) => {
+    try {
+      const packId = parseInt(req.params.packId);
+      const pack = await storage.getEvidencePack(packId);
+      if (!pack) {
+        return res.status(404).json({ error: "Evidence pack not found" });
+      }
+      
+      const event = await storage.createEvidencePackLifecycleEvent({
+        packId,
+        projectId: pack.projectId,
+        eventType: req.body.eventType,
+        eventData: req.body.eventData,
+      });
+      
+      res.status(201).json(event);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+  
+  // GET /api/evidence-packs/:packId/lifecycle-events - Get lifecycle events
+  app.get("/api/evidence-packs/:packId/lifecycle-events", async (req, res) => {
+    try {
+      const packId = parseInt(req.params.packId);
+      const events = await storage.getEvidencePackLifecycleEvents(packId);
+      res.json(events);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ----------------------
+  // COMBINED ARTIFACTS ENDPOINT
+  // ----------------------
+  
+  // GET /api/evidence-packs/:packId/artifacts - Get all living document artifacts
+  app.get("/api/evidence-packs/:packId/artifacts", async (req, res) => {
+    try {
+      const packId = parseInt(req.params.packId);
+      
+      const [successFrame, behaviouralLog, kpiMovement, narrativeSpine] = await Promise.all([
+        storage.getSuccessFrameSnapshot(packId),
+        storage.getBehaviouralConditionLog(packId),
+        storage.getKPIMovementView(packId),
+        storage.getSponsorNarrativeSpine(packId),
+      ]);
+      
+      res.json({
+        successFrame: successFrame || null,
+        behaviouralLog: behaviouralLog || null,
+        kpiMovement: kpiMovement || null,
+        narrativeSpine: narrativeSpine || null,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 }

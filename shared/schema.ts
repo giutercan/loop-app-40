@@ -2612,3 +2612,441 @@ export const evidencePackWithItemsSchema = z.object({
   })).optional(),
 });
 export type EvidencePackWithItems = z.infer<typeof evidencePackWithItemsSchema>;
+
+// ============================================================================
+// EVIDENCE PACK LIVING DOCUMENT ARTIFACTS
+// Four core artifacts that make the Evidence Pack a living cognitive surface
+// ============================================================================
+
+// 1️⃣ Success Frame Snapshot - Sponsor-owned KPIs with baselines, targets, confidence
+// This is Evidence Definition - what becomes true for the sponsor
+export const successFrameSnapshots = pgTable("success_frame_snapshots", {
+  id: serial("id").primaryKey(),
+  packId: integer("pack_id").notNull().references(() => evidencePacks.id, { onDelete: "cascade" }),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  
+  // Snapshot versioning (living document pattern)
+  version: integer("version").notNull().default(1),
+  isCurrentVersion: boolean("is_current_version").notNull().default(true),
+  previousVersionId: integer("previous_version_id"), // Link to superseded version
+  
+  // 3-5 Sponsor-owned KPIs
+  kpis: jsonb("kpis").$type<Array<{
+    id: string;
+    kpiName: string;
+    baseline: string | null;
+    baselineDate: string | null;
+    baselineSource: string | null;
+    target: string | null; // Can be direction (e.g., "improve by 10%") not just absolute
+    targetTimeframe: string | null; // e.g., "Q4 2025", "12 months"
+    confidenceLevel: "high" | "medium" | "exploratory";
+    ownerName: string | null; // CRO/CFO who owns this KPI
+    ownerRole: string | null;
+    notes: string | null;
+    linkedJobThemeKPIId: number | null; // Link to existing KPI if applicable
+  }>>().notNull().default([]),
+  
+  // Uncertainty acknowledgment (critical for sponsor trust)
+  uncertaintyStatement: text("uncertainty_statement"), // Explicit acknowledgment of what we don't know
+  assumptionsNotes: text("assumptions_notes"), // Key assumptions made
+  
+  // Lock state
+  isLocked: boolean("is_locked").notNull().default(false), // Once agreed with sponsor, lock it
+  lockedAt: timestamp("locked_at"),
+  lockedBy: text("locked_by"),
+  
+  // AI inference tracking
+  aiInferred: boolean("ai_inferred").notNull().default(false),
+  aiInferenceSource: text("ai_inference_source"), // What triggered AI to suggest this
+  aiConfirmedBy: text("ai_confirmed_by"), // Who confirmed the AI suggestion
+  aiConfirmedAt: timestamp("ai_confirmed_at"),
+  
+  // Review/approval
+  sponsorApproved: boolean("sponsor_approved").notNull().default(false),
+  sponsorApprovedAt: timestamp("sponsor_approved_at"),
+  sponsorApprovedBy: text("sponsor_approved_by"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertSuccessFrameSnapshotSchema = createInsertSchema(successFrameSnapshots).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertSuccessFrameSnapshot = z.infer<typeof insertSuccessFrameSnapshotSchema>;
+export type SuccessFrameSnapshot = typeof successFrameSnapshots.$inferSelect;
+
+// 2️⃣ Behavioural Condition Log - The most important and most neglected layer
+// Tracks: What did we deliberately try to change?
+export const behaviouralConditionLogs = pgTable("behavioural_condition_logs", {
+  id: serial("id").primaryKey(),
+  packId: integer("pack_id").notNull().references(() => evidencePacks.id, { onDelete: "cascade" }),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  
+  // Max 5 conditions - enforced at application level
+  conditions: jsonb("conditions").$type<Array<{
+    id: string;
+    conditionName: string; // e.g., "Deal shaping quality", "Coaching cadence"
+    description: string | null;
+    
+    // Lever → Behaviour → KPI hypothesis (one line each)
+    lever: string; // The KF lever applied
+    targetBehaviour: string; // What behaviour we're trying to change
+    expectedKPIImpact: string; // Which KPI(s) this should influence
+    hypothesis: string; // The explicit hypothesis linking lever to outcome
+    
+    // Where it shows up
+    workflowLocation: string | null; // Where this appears in daily workflow
+    measurementMethod: string | null; // How we observe this condition
+    
+    // RAG status + narrative note
+    ragStatus: "red" | "amber" | "green" | null;
+    narrativeNote: string | null; // Interpretation, not explanation
+    
+    // Tracking
+    observedBehaviourShift: string | null; // What actually changed
+    linkedKPIIds: string[] | null; // KPIs this condition is linked to
+    
+    // Timestamps
+    establishedAt: string | null;
+    lastObservedAt: string | null;
+    lastUpdatedAt: string;
+  }>>().notNull().default([]),
+  
+  // AI inference
+  aiSuggestedConditions: jsonb("ai_suggested_conditions").$type<Array<{
+    conditionName: string;
+    lever: string;
+    targetBehaviour: string;
+    expectedKPIImpact: string;
+    confidence: number;
+    reasoning: string;
+    suggestedAt: string;
+  }>>(),
+  
+  // Version tracking
+  version: integer("version").notNull().default(1),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertBehaviouralConditionLogSchema = createInsertSchema(behaviouralConditionLogs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertBehaviouralConditionLog = z.infer<typeof insertBehaviouralConditionLogSchema>;
+export type BehaviouralConditionLog = typeof behaviouralConditionLogs.$inferSelect;
+
+// 3️⃣ KPI Movement View - Baseline → Current → Trend with RAG status
+// Visual representation of progress against success frame KPIs
+export const kpiMovementViews = pgTable("kpi_movement_views", {
+  id: serial("id").primaryKey(),
+  packId: integer("pack_id").notNull().references(() => evidencePacks.id, { onDelete: "cascade" }),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  successFrameId: integer("success_frame_id").references(() => successFrameSnapshots.id, { onDelete: "set null" }),
+  
+  // KPI movement records
+  movements: jsonb("movements").$type<Array<{
+    id: string;
+    kpiId: string; // Reference to success frame KPI
+    kpiName: string;
+    
+    // Movement data
+    baseline: string;
+    baselineDate: string;
+    current: string;
+    currentDate: string;
+    target: string;
+    
+    // Trend calculation
+    trendDirection: "up" | "down" | "flat";
+    trendPercentage: number | null; // Calculated percentage change
+    trendDescription: string | null; // e.g., "Improved 15% from baseline"
+    
+    // RAG status with note
+    ragStatus: "red" | "amber" | "green";
+    ragNote: string | null; // Interpretive note, not explanation
+    
+    // Progress against target
+    progressPercentage: number | null; // 0-100% toward target
+    projectedCompletionDate: string | null;
+    
+    // Historical readings (for sparkline/trend visualization)
+    readings: Array<{
+      value: string;
+      date: string;
+      source: string | null;
+    }>;
+    
+    // Linked interventions
+    linkedInterventionIds: number[] | null;
+    linkedBehaviouralConditionIds: string[] | null;
+  }>>().notNull().default([]),
+  
+  // Overall summary
+  overallHealthScore: integer("overall_health_score"), // 0-100
+  overallNarrative: text("overall_narrative"), // AI-generated summary of KPI health
+  
+  // Auto-calculation metadata
+  lastCalculatedAt: timestamp("last_calculated_at").defaultNow(),
+  calculationSource: text("calculation_source"), // What triggered recalculation
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertKPIMovementViewSchema = createInsertSchema(kpiMovementViews).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertKPIMovementView = z.infer<typeof insertKPIMovementViewSchema>;
+export type KPIMovementView = typeof kpiMovementViews.$inferSelect;
+
+// 4️⃣ Sponsor Narrative Spine - Auto-generated, reusable story structure
+// A single, repeatable structure that can become any artifact (QBR, renewal, ExCo update)
+export const sponsorNarrativeSpines = pgTable("sponsor_narrative_spines", {
+  id: serial("id").primaryKey(),
+  packId: integer("pack_id").notNull().references(() => evidencePacks.id, { onDelete: "cascade" }),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  
+  // Version tracking (narrative accumulates, never restarts)
+  version: integer("version").notNull().default(1),
+  previousVersionId: integer("previous_version_id"), // For audit trail
+  
+  // The Narrative Spine structure (each section auto-assembled from evidence)
+  spine: jsonb("spine").$type<{
+    // 1. What we agreed success meant
+    agreedSuccess: {
+      summary: string;
+      kpiSummary: string;
+      sponsorQuote: string | null;
+      agreedAt: string | null;
+      sourceSuccessFrameId: number | null;
+    };
+    
+    // 2. Where we started
+    startingPoint: {
+      summary: string;
+      keyBaselines: Array<{ kpi: string; baseline: string; date: string }>;
+      initialChallenges: string[];
+      contextNotes: string | null;
+    };
+    
+    // 3. What we deliberately changed
+    deliberateChanges: {
+      summary: string;
+      interventions: Array<{
+        intervention: string;
+        rationale: string;
+        lever: string | null;
+      }>;
+      sourceBehaviouralConditionIds: string[] | null;
+    };
+    
+    // 4. What behaviours shifted (or didn't)
+    behaviourShifts: {
+      summary: string;
+      shifts: Array<{
+        behaviour: string;
+        shifted: boolean;
+        evidence: string | null;
+        impact: string | null;
+      }>;
+      unshiftedBehaviours: string[];
+    };
+    
+    // 5. What moved in the numbers
+    numberMovements: {
+      summary: string;
+      movements: Array<{
+        kpi: string;
+        from: string;
+        to: string;
+        change: string;
+        ragStatus: "red" | "amber" | "green";
+      }>;
+      overallProgress: string;
+      sourceKPIMovementViewId: number | null;
+    };
+    
+    // 6. What we learned
+    learnings: {
+      summary: string;
+      keyLearnings: string[];
+      surprises: string[] | null;
+      whatWorked: string[] | null;
+      whatDidnt: string[] | null;
+    };
+    
+    // 7. What we will do next
+    nextSteps: {
+      summary: string;
+      plannedActions: Array<{
+        action: string;
+        owner: string | null;
+        timeline: string | null;
+      }>;
+      openQuestions: string[] | null;
+    };
+  }>().notNull(),
+  
+  // AI generation metadata
+  aiGenerated: boolean("ai_generated").notNull().default(false),
+  aiGeneratedAt: timestamp("ai_generated_at"),
+  aiModel: text("ai_model"),
+  aiConfidence: integer("ai_confidence"), // 0-100
+  
+  // Human review
+  humanReviewedAt: timestamp("human_reviewed_at"),
+  humanReviewedBy: text("human_reviewed_by"),
+  humanEdits: jsonb("human_edits").$type<Array<{
+    section: string;
+    originalText: string;
+    editedText: string;
+    editedAt: string;
+    editedBy: string;
+  }>>(),
+  
+  // Export tracking
+  lastExportedAs: text("last_exported_as"), // "qbr_deck", "renewal_brief", "exec_update"
+  lastExportedAt: timestamp("last_exported_at"),
+  exportHistory: jsonb("export_history").$type<Array<{
+    format: string;
+    exportedAt: string;
+    exportedBy: string;
+  }>>(),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertSponsorNarrativeSpineSchema = createInsertSchema(sponsorNarrativeSpines).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertSponsorNarrativeSpine = z.infer<typeof insertSponsorNarrativeSpineSchema>;
+export type SponsorNarrativeSpine = typeof sponsorNarrativeSpines.$inferSelect;
+
+// ============================================================================
+// AI GUIDANCE SYSTEM - Next Best Action engine for Sellers and Managers
+// ============================================================================
+
+// AI Guidance Events - Event-triggered AI suggestions for sellers/managers
+export const aiGuidanceEvents = pgTable("ai_guidance_events", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  packId: integer("pack_id").references(() => evidencePacks.id, { onDelete: "set null" }),
+  
+  // Target persona
+  targetPersona: text("target_persona", { enum: ["seller", "manager"] }).notNull(),
+  
+  // Guidance type (maps to the three surfaces per persona)
+  guidanceType: text("guidance_type", {
+    // Seller surfaces
+    // "what_matters" = situational awareness
+    // "whats_missing" = AI-detected gaps
+    // "next_action" = guided recommendations
+    // Manager surfaces  
+    // "confidence_breakdown" = pattern recognition
+    // "coach_vs_intervene" = AI-guided decisions
+    // "whats_scaling" = reusable patterns
+    enum: ["what_matters", "whats_missing", "next_action", "confidence_breakdown", "coach_vs_intervene", "whats_scaling"]
+  }).notNull(),
+  
+  // The guidance content
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  priority: text("priority", { enum: ["high", "medium", "low"] }).notNull().default("medium"),
+  
+  // What triggered this guidance
+  triggerEvent: text("trigger_event", {
+    enum: ["deal_stage_change", "meeting_held", "stakeholder_added", "outcome_discussed", 
+           "qbr_completed", "kpi_updated", "phase_transition", "time_based", "gap_detected", "manual"]
+  }).notNull(),
+  triggerDetails: jsonb("trigger_details"), // Context about the trigger
+  
+  // Suggested actions
+  suggestedActions: jsonb("suggested_actions").$type<Array<{
+    action: string;
+    rationale: string;
+    effort: "low" | "medium" | "high";
+    impact: "low" | "medium" | "high";
+    route: string | null; // Where to navigate in the app
+  }>>(),
+  
+  // Status tracking
+  status: text("status", { 
+    enum: ["pending", "viewed", "acted_on", "dismissed", "snoozed"] 
+  }).notNull().default("pending"),
+  viewedAt: timestamp("viewed_at"),
+  actedOnAt: timestamp("acted_on_at"),
+  dismissedAt: timestamp("dismissed_at"),
+  dismissReason: text("dismiss_reason"),
+  snoozedUntil: timestamp("snoozed_until"),
+  
+  // AI metadata
+  aiModel: text("ai_model"),
+  aiConfidence: integer("ai_confidence"), // 0-100
+  aiReasoning: text("ai_reasoning"),
+  
+  // Effectiveness tracking
+  wasHelpful: boolean("was_helpful"), // User feedback
+  helpfulnessNotes: text("helpfulness_notes"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at"), // Guidance can expire
+});
+
+export const insertAIGuidanceEventSchema = createInsertSchema(aiGuidanceEvents).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertAIGuidanceEvent = z.infer<typeof insertAIGuidanceEventSchema>;
+export type AIGuidanceEvent = typeof aiGuidanceEvents.$inferSelect;
+
+// Evidence Pack Lifecycle Events - For event-triggered updates
+export const evidencePackLifecycleEvents = pgTable("evidence_pack_lifecycle_events", {
+  id: serial("id").primaryKey(),
+  packId: integer("pack_id").notNull().references(() => evidencePacks.id, { onDelete: "cascade" }),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  
+  // Event type
+  eventType: text("event_type", {
+    enum: ["deal_stage_change", "meeting_held", "stakeholder_added", "kpi_updated",
+           "intervention_added", "qbr_completed", "phase_transition", "evidence_added",
+           "behaviour_observed", "narrative_updated", "artifact_created"]
+  }).notNull(),
+  
+  // Event details
+  eventData: jsonb("event_data").notNull(), // Flexible event payload
+  
+  // Processing status
+  processed: boolean("processed").notNull().default(false),
+  processedAt: timestamp("processed_at"),
+  
+  // What was updated as result
+  resultingUpdates: jsonb("resulting_updates").$type<Array<{
+    artifactType: "success_frame" | "behavioural_log" | "kpi_movement" | "narrative_spine";
+    updateType: "created" | "updated" | "enriched";
+    details: string;
+  }>>(),
+  
+  // AI guidance generated
+  guidanceGenerated: boolean("guidance_generated").notNull().default(false),
+  guidanceEventIds: integer("guidance_event_ids").array(),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertEvidencePackLifecycleEventSchema = createInsertSchema(evidencePackLifecycleEvents).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertEvidencePackLifecycleEvent = z.infer<typeof insertEvidencePackLifecycleEventSchema>;
+export type EvidencePackLifecycleEvent = typeof evidencePackLifecycleEvents.$inferSelect;
