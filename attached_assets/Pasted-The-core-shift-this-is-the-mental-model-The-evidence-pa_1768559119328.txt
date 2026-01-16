@@ -1,0 +1,1249 @@
+The core shift (this is the mental model)
+
+The evidence pack is not a document.
+It is the output of disciplined movement through the Loop.
+
+So implementation means:
+
+Evidence is generated as a by-product of work
+
+Evidence is updated continuously
+
+Evidence is re-used across sales, delivery, renewal
+
+Evidence is structured for sponsor judgment, not KF storytelling
+
+Think of the Loop as an evidence engine, not a sales tool.
+
+1. Where the evidence pack lives in the Loop (structurally)
+
+Inside the Loop, evidence sits in three fixed locations — never everywhere.
+
+1️⃣ Success Frame (front of the Loop)
+
+This is Evidence Definition, not measurement.
+
+What becomes true here:
+
+3–5 sponsor-owned KPIs
+
+Baselines locked
+
+Time horizon agreed
+
+Explicit acknowledgment of uncertainty
+
+Evidence artifact created:
+
+Success Frame Snapshot
+A one-screen view:
+
+KPI
+
+Baseline
+
+Target / direction
+
+Timeframe
+
+Confidence level (High / Medium / Exploratory)
+
+This is not KF-owned.
+This is CRO + CFO owned.
+
+2️⃣ Behaviour & Lever Trace (middle of the Loop)
+
+This is the most important and most neglected layer.
+
+Here, evidence answers:
+
+“What did we deliberately try to change?”
+
+You do not track everything.
+You track chosen behavioural conditions.
+
+Examples:
+
+Deal shaping quality
+
+Coaching cadence
+
+Cross-seller collaboration
+
+Use of solution tools
+
+Decision clarity in buying group
+
+Each condition is explicitly linked to:
+
+The KF lever applied
+
+Where it shows up in workflow
+
+Which KPI(s) it is expected to influence
+
+Evidence artifacts created:
+
+Behavioural Condition Log (short, structured)
+
+Lever → Behaviour → KPI hypothesis (one line each)
+
+RAG status + narrative note (not explanation, interpretation)
+
+This is where trust is built — because you’re not claiming certainty.
+
+3️⃣ Outcome & Narrative Spine (end of the Loop)
+
+This is Evidence Use, not reporting.
+
+Here, evidence is shaped for:
+
+QBRs
+
+Renewals
+
+Expansion conversations
+
+ExCo updates
+
+Evidence artifact created:
+
+Sponsor Narrative Spine
+
+A single, repeatable structure:
+
+What we agreed success meant
+
+Where we started
+
+What we deliberately changed
+
+What behaviours shifted (or didn’t)
+
+What moved in the numbers
+
+What we learned
+
+What we will do next
+
+No slides yet.
+Just a spine that can become any artifact.
+
+2. How evidence is generated (without adding admin)
+
+This is critical.
+
+Rule:
+If evidence requires sellers or consultants to “fill something in”, adoption dies.
+
+So evidence is generated through:
+
+Workflow interactions
+
+Decisions already being made
+
+AI summarisation and patterning
+
+Light confirmation, not creation
+
+Practical implementation rules
+
+Sellers select, not write
+(choose KPIs, behaviours, levers from constrained sets)
+
+AI summarises, humans sanction
+(“Is this a fair reflection?” yes / adjust)
+
+Evidence is event-triggered, not periodic
+(deal stage change, QBR, renewal checkpoint)
+
+Narrative is assembled, not authored
+(the Loop stitches it together)
+
+This aligns perfectly with your “AI as stabiliser of discipline” principle.
+
+3. What must become true for the evidence pack to work
+
+Anchor this to sponsor confidence.
+
+For the CRO
+
+Evidence shows coherence, not just uplift
+
+The same story can be told across regions and sellers
+
+Decisions feel less risky because learning is explicit
+
+For the CFO
+
+KPIs are limited, stable, and sponsor-owned
+
+Attribution claims are modest and transparent
+
+Trade-offs and uncertainty are visible, not hidden
+
+For Sellers
+
+Evidence helps them win and renew, not report
+
+No duplicate admin
+
+The story gets easier every time, not harder
+
+4. Minimum viable evidence pack (inside the Loop)
+
+If you do nothing else, implement only these four artefacts:
+
+Success Frame Snapshot
+(locked early, revisited quarterly)
+
+Behavioural Condition Log
+(3–5 conditions max, always explicit)
+
+KPI Movement View
+(baseline → current → trend, RAG + note)
+
+Sponsor Narrative Spine
+(auto-generated, reused everywhere)
+
+That’s it.
+
+Anything beyond this is optional until proof accumulates.
+
+5. What this unlocks (strategically)
+
+Once implemented this way, the Loop does something very rare:
+
+Evidence compounds instead of resetting
+
+Learning becomes reusable
+
+Renewals stop depending on who tells the best story
+
+AI enhances judgment without replacing it
+
+Korn Ferry’s differentiation becomes structural, not rhetorical
+
+You are no longer arguing for value.
+You are showing a system that makes value legible over time.
+
+The key discipline to protect
+
+Never let the evidence pack become:
+
+A PDF
+
+A dashboard for its own sake
+
+A marketing artifact
+
+A post-hoc justification
+
+It must remain:
+
+A confidence engine for human judgment under uncertainty
+
+That’s the Loop’s real job.
+
+If you want, next we can:
+
+Translate this into system requirements
+
+Define exact data fields and triggers
+
+Or design a pilot evidence cadence for the first hero case
+
+All three are implementation-ready paths.
+
+I want it to be part of the seller and the manager persona. and I want it to be part of the flow of work where AI will help guide the seller and manager on what to do next as well as this being a living document that will enrich more and more as the sales and relationship with the customer  progresses. 
+
+Good. This is the right ambition — and it forces a very specific design discipline.
+
+What you’re really saying is:
+
+The evidence pack is not an output.
+It is a shared cognitive surface that travels with the deal, the account, and the relationship — and AI uses it to guide action.
+
+I’ll break this into five concrete design moves, all grounded in seller + manager reality and flow of work.
+
+1. Reframe the evidence pack as a Role-Based Companion, not a document
+
+The mistake to avoid:
+One “evidence pack” that everyone looks at.
+
+Instead, you design one underlying spine, with two lived experiences:
+
+Seller persona:
+“Help me move this deal forward without losing trust or discipline.”
+
+Manager persona:
+“Help me see where to intervene, what to reinforce, and what to stop.”
+
+Same evidence.
+Different lenses.
+Same flow.
+
+2. Seller persona: evidence as next-best sense-making
+What the seller experiences (in flow)
+
+The seller never thinks:
+
+“I’m updating evidence.”
+
+They experience:
+
+“The system is helping me decide what to do next.”
+
+So the evidence pack shows up as three lightweight surfaces in the seller’s flow.
+
+A. “What matters right now” (situational awareness)
+
+AI continuously answers for the seller:
+
+What outcomes are we aiming at in this account?
+
+Which stakeholders are tied to which outcomes?
+
+What has already been agreed vs assumed?
+
+This is Success Frame + context, not a report.
+
+Evidence role:
+
+Anchors the seller’s judgment
+
+Prevents story drift
+
+Keeps the seller aligned to sponsor language
+
+B. “What’s missing or weak” (discipline under pressure)
+
+This is where AI guides, not commands.
+
+Examples of AI prompts:
+
+“We have a target outcome, but no explicit behavioural condition agreed yet.”
+
+“You’ve had three interactions with buying group members, but the economic buyer hasn’t validated success criteria.”
+
+“This deal is progressing, but evidence linking your proposal to the agreed KPI hasn’t been captured.”
+
+Evidence role:
+
+Makes gaps visible before they become risks
+
+Reinforces method without forcing it
+
+Keeps trust intact under speed
+
+C. “What should I do next?” (action guidance)
+
+AI does not say:
+
+“Do a blue sheet.”
+
+It says:
+
+“The next best move to strengthen confidence here is to align on X.”
+
+“Deals like this typically stall when Y isn’t clarified — do you want to address it now?”
+
+“Based on what’s changed, here are two credible next steps.”
+
+Evidence role:
+
+Converts learning into action
+
+Protects seller judgment
+
+Reduces cognitive load
+
+The seller remains the orchestrator.
+AI is the stabiliser.
+
+3. Manager persona: evidence as intervention intelligence
+
+Managers don’t need more dashboards.
+They need clarity on where to lean in.
+
+So for managers, the evidence pack shows up differently.
+
+A. “Where is confidence breaking down?”
+
+The manager sees:
+
+Which deals lack an agreed Success Frame
+
+Where behaviour change was targeted but not observed
+
+Which accounts rely on narrative rather than evidence
+
+This is pattern recognition, not micromanagement.
+
+Evidence role:
+
+Focuses manager attention
+
+Prevents reactive coaching
+
+Enables trust-based intervention
+
+B. “Where should I coach vs intervene?”
+
+AI guides the manager:
+
+“This seller needs support on deal shaping.”
+
+“This looks like a reward/process misalignment, not a skill issue.”
+
+“This account is ready for executive involvement.”
+
+Evidence role:
+
+Separates performance problems from system problems
+
+Stops managers defaulting to generic coaching
+
+Makes leadership leverage explicit
+
+C. “What’s scaling — and what’s noise?”
+
+Over time, managers see:
+
+Which behaviours actually correlate with KPI movement
+
+Which plays repeat across accounts
+
+Where KF levers are compounding vs stalling
+
+Evidence role:
+
+Turns local wins into reusable patterns
+
+Creates managerial confidence to standardise
+
+Feeds learning back into the system
+
+This is how the Loop becomes organisational memory.
+
+4. How AI makes it a living document (without admin)
+
+The evidence pack must grow automatically as work happens.
+
+Design rules (non-negotiable)
+
+Evidence is inferred first, confirmed second
+AI drafts → humans validate or adjust
+
+Updates are event-triggered, not manual
+
+Meeting held
+
+Deal stage changed
+
+Stakeholder added
+
+Outcome discussed
+
+QBR completed
+
+Narrative accumulates, it doesn’t restart
+Each loop adds:
+
+What we tried
+
+What shifted
+
+What we learned
+
+Nothing is ever “final”
+Evidence is:
+
+Versioned
+
+Time-stamped
+
+Contextual
+
+This mirrors how real selling actually works.
+
+5. The hidden power move: shared seller–manager cognition
+
+When you do this right, something subtle but profound happens:
+
+Sellers and managers are no longer arguing opinions
+
+They are looking at the same evidence spine
+
+Conversations shift from “what do you think?” to
+“what does the system suggest, and do we agree?”
+
+This is how:
+
+Trust scales
+
+Coaching improves
+
+AI adoption sticks
+
+KF differentiation becomes structural
+
+The simplest way to sanity-check the design
+
+Ask three questions of every screen, prompt, or feature:
+
+Does this reduce cognitive load for the seller?
+
+Does this increase confidence for the manager to act?
+
+Does this enrich the evidence spine without extra work?
+
+If the answer isn’t yes to all three — it doesn’t belong.
+
+Bottom line
+
+You’re not building:
+
+An evidence pack
+
+A reporting layer
+
+A sales tool
+
+You’re building:
+
+A shared sense-making system that grows smarter with every interaction.
+
+That is exactly what AI is good at — when it is used to stabilise human judgment, not replace it.
+
+Next, if you want, we can:
+
+Map this into exact system components
+
+Define AI prompt patterns for seller vs manager
+
+Or design a day-in-the-life walkthrough of a deal progressing through the Loop
+
+All three will sharpen implementation fast.
+
+ok, give me a full replit instruction in details, of what this should contain, by persona ( seller, manager and delivery) 
+
+Below is a full “Replit build instruction” for implementing the Living Evidence Pack inside the Loop, by persona (Seller, Manager, Delivery), with AI guidance in the flow of work, and a shared evidence spine that compounds over time.
+
+This is written like you’d hand it to someone vibe-coding in Replit: what to build, what screens, what data, what events trigger updates, what the AI should do, and what “done” looks like.
+
+0) Product goal and non-negotiables
+Goal
+
+Build a shared, living Evidence Spine that:
+
+travels with an Account + Opportunity + Engagement (delivery)
+
+is viewed differently by Seller / Manager / Delivery
+
+is updated automatically from work events (meetings, stage changes, deliverables)
+
+powers Next Best Actions (NBA) guidance for each persona
+
+outputs Sponsor-ready artifacts (QBR spine, renewal narrative, value proof objects)
+
+Non-negotiables
+
+No extra admin: AI drafts, humans confirm.
+
+Evidence ≠ dashboard: evidence is a confidence engine (judgment under uncertainty).
+
+Same spine, different lenses: one truth source, persona views.
+
+Event-driven updates: evidence updates when work happens.
+
+Versioned & timestamped: confidence increases with time + validations.
+
+1) Replit tech setup
+Stack (recommended for Replit)
+
+Frontend: Next.js + React + Tailwind
+
+Backend: Next.js API routes (or Express)
+
+DB: Postgres (Neon/Supabase) or SQLite (prototype)
+
+Auth: simple email+password or magic link (prototype ok)
+
+AI: OpenAI API (or your chosen LLM provider)
+
+Optional integrations later: CRM (Salesforce), Calendar (Google/M365), Docs (Drive/SharePoint)
+
+Folder structure (suggested)
+
+/app (Next.js routes + pages)
+
+/components (UI components)
+
+/lib (db, auth, AI client, utilities)
+
+/api (API handlers)
+
+/prompts (prompt templates and schemas)
+
+/db (schema + migrations)
+
+/seed (seed data + demo org)
+
+2) Core objects (data model)
+
+You’re building one evidence spine. Everything else references it.
+
+Entities
+2.1 Account
+
+id, name, industry, region
+
+strategic themes (tags)
+
+sponsor map (stakeholders)
+
+2.2 Opportunity (Sales motion)
+
+id, account_id
+
+name, stage, forecast category, close date
+
+buying group (stakeholders linked)
+
+success_frame_id (active)
+
+evidence_spine_id (active)
+
+2.3 Engagement (Delivery motion)
+
+id, account_id, opportunity_id (optional but preferred)
+
+scope, start/end, delivery milestones
+
+value hypothesis link to success frame
+
+evidence_spine_id (shared with opp, or linked)
+
+2.4 Evidence Spine (the living record)
+
+id, account_id, opportunity_id, engagement_id
+
+status: Draft / Active / At-risk / Complete
+
+confidence_score (0–100)
+
+last_updated_at
+
+2.5 Evidence Items (atomic, versioned)
+
+Each item is:
+
+id, spine_id
+
+type: KPI, Baseline, Target, Assumption, StakeholderClaim, MeetingInsight, BehaviorSignal, LeverApplied, OutcomeSignal, Risk, Decision, Commitment, Deliverable, ProofObject
+
+content (json)
+
+source: Human, AI_draft, System_event, Integration
+
+validated_by (user_id), validated_at
+
+confidence_level: High / Medium / Exploratory
+
+timestamp
+
+links: stakeholder_id, meeting_id, stage_event_id etc.
+
+2.6 Success Frame
+
+id, spine_id
+
+3–5 KPIs max:
+
+KPI name
+
+baseline
+
+direction/target
+
+time horizon
+
+owner (stakeholder)
+
+measurement approach
+
+confidence
+
+2.7 Behavioral Conditions (the “middle layer”)
+
+id, spine_id
+
+condition (picklist + custom)
+
+hypothesis link to KPIs
+
+signals (observations + proxies)
+
+status: Not started / In progress / Seen / Stalled
+
+2.8 Stakeholders
+
+id, account_id
+
+name, role (Economic buyer, Champion, User lead, Procurement, Delivery sponsor)
+
+influence + stance + proof
+
+linked KPIs
+
+2.9 Events (triggers)
+
+meeting logged
+
+deal stage changed
+
+stakeholder added/changed
+
+deliverable submitted
+
+QBR scheduled/completed
+
+renewal initiated
+
+risk flagged
+
+Each event triggers AI summarisation + evidence item creation.
+
+3) Core system behavior: how the spine “lives”
+3.1 Evidence is created in 3 ways
+
+Event-driven AI draft
+ex: Meeting logged → AI drafts “MeetingInsight”, “Decision”, “Risk”, “Commitment”
+
+User confirmation & quick edits
+user clicks: Confirm / Edit / Reject
+
+System updates
+Stage changes, milestone completion, timestamps
+
+3.2 Confidence scoring (simple v1)
+
+Spine confidence increases when:
+
+success frame is complete (+)
+
+economic buyer validated items (+)
+
+commitments are confirmed (+)
+
+behavioral signals are observed (+)
+
+proof objects attached (+)
+
+Confidence decreases when:
+
+stage advances with missing essentials (-)
+
+contradictory items (-)
+
+stale items (-)
+
+risks unaddressed (-)
+
+This enables “what’s missing/weak” guidance.
+
+4) Persona experiences (what to build)
+
+You will build three persona dashboards, each showing the same spine through a different lens.
+
+A) SELLER persona build
+A.1 Seller Home
+
+Cards:
+
+My opportunities (stage, confidence, next action)
+
+Accounts with upcoming meetings / QBRs
+
+“At-risk because…” list (AI generated)
+
+A.2 Opportunity Workspace (Seller)
+
+Four tabs:
+
+Tab 1: Now
+
+Purpose: situational awareness
+
+Current stage + confidence
+
+Success Frame snapshot (3–5 KPIs)
+
+Buying group map (who owns which KPI)
+
+“What has been agreed vs assumed” (AI compares validated vs draft items)
+
+Tab 2: What’s Missing
+
+Purpose: discipline under pressure
+
+“Stage readiness checklist” (dynamic)
+
+Success Frame locked?
+
+Econ buyer validated?
+
+Behavior conditions defined?
+
+Proof object present?
+
+AI flags gaps:
+
+“You’ve advanced to stage X without Y”
+
+“KPI targets exist but baseline missing”
+
+“Champion aligned, CFO not engaged”
+
+Tab 3: Next Best Actions
+
+Purpose: action guidance
+
+AI suggests 2–4 actions, each with:
+
+“Why this matters” (linked to trust / confidence)
+
+“What to do” (a minimal step)
+
+“Template” (message/email/agenda)
+
+“Evidence to capture from it” (what the system will extract)
+
+Actions always map to:
+
+a KPI, a stakeholder, or a behavioral condition
+
+Tab 4: Evidence Spine (Seller view)
+
+Purpose: living record
+
+Timeline of evidence items
+
+Filters: KPI / stakeholders / risks / commitments
+
+“Draft items awaiting confirmation”
+
+“Sponsor narrative spine draft” auto-assembled
+
+A.3 Seller flow-of-work triggers
+
+You must implement these actions as buttons:
+
+Log meeting (paste notes/transcript) → AI extracts & drafts evidence items
+
+Update stage → system runs readiness check → suggests actions
+
+Add stakeholder → AI prompts: “which KPI do they own?” “stance?”
+
+Generate sponsor update → outputs narrative spine
+
+A.4 Seller AI prompt patterns (implement as templates)
+
+Meeting → Evidence extraction
+
+Extract: decisions, commitments, stakeholder positions, risks, value claims, KPIs mentioned
+
+Write as structured JSON evidence items + confidence
+
+Stage readiness check
+
+Given stage + spine contents, produce:
+
+missing essentials
+
+risk list
+
+3 recommended next actions
+
+Narrative spine assembly
+
+Produce 7-part sponsor narrative:
+1 success definition, 2 baseline, 3 changes attempted, 4 behavior shifts, 5 KPI movement, 6 learning, 7 next steps
+
+B) MANAGER persona build
+B.1 Manager Home
+
+Cards:
+
+Team pipeline overview (not just numbers—confidence + evidence coverage)
+
+“Where confidence is breaking down” heatmap
+
+“Where to intervene this week” list (AI ranked)
+
+B.2 Team View (Manager)
+
+Grid of opportunities with:
+
+stage
+
+confidence score
+
+success frame completeness
+
+econ buyer validation status
+
+behavioral conditions status
+
+stale evidence indicator
+
+Click into any opportunity.
+
+B.3 Opportunity Workspace (Manager)
+
+Four tabs:
+
+Tab 1: Intervention
+
+Purpose: where to lean in
+
+AI: “This deal likely stalls because…”
+
+“Top 3 coaching prompts”
+
+“Recommended leadership move”
+
+bring exec sponsor? pricing support? scope control?
+
+Tab 2: Coaching
+
+Purpose: coach behavior, not activity
+
+Behavioral conditions being targeted
+
+Evidence of adoption (signals)
+
+Suggested coaching plan:
+
+“reinforce X”
+
+“stop doing Y”
+
+“run 1 specific meeting with agenda Z”
+
+Tab 3: Standardisation
+
+Purpose: scale what works
+
+“Plays that are working” (pattern mining)
+
+“Common failure mode this month”
+
+“Reusable proof objects”
+
+Tab 4: Evidence Spine (Manager view)
+
+Purpose: shared truth, managerial lens
+
+Key evidence timeline + unresolved risks
+
+Contradictions or gaps flagged
+
+“What I would ask in pipeline review”
+
+B.4 Manager AI prompt patterns
+
+Intervention recommender
+
+Input: opportunity state + spine items
+
+Output: intervention type (coach / exec / process fix), reason, and minimal action steps
+
+Coaching prompt generator
+
+Provide 5 tight questions manager can ask that force clarity (not updates)
+
+Pattern mining (team-level)
+
+Identify top 3 repeating gaps across team and proposed enablement
+
+C) DELIVERY persona build
+
+This is the big differentiator: delivery turns the Loop into compounding trust instead of “sale ends, memory resets.”
+
+C.1 Delivery Home
+
+Active engagements (milestones, confidence, risks)
+
+Accounts entering renewal window
+
+“Value delivery evidence missing” list
+
+C.2 Engagement Workspace (Delivery)
+
+Four tabs:
+
+Tab 1: Outcomes & Scope
+
+Purpose: align delivery to success frame
+
+Pull the same Success Frame snapshot
+
+Map delivery milestones → KPI outcomes
+
+AI: “What must become true in delivery to support KPI movement?”
+
+Tab 2: Evidence Capture
+
+Purpose: make proof objects
+
+Templates for proof objects:
+
+baseline capture
+
+adoption metrics
+
+before/after process snapshots
+
+stakeholder testimonials (short)
+
+performance indicators
+
+AI drafts “Proof Object” from milestone notes
+
+Tab 3: Risks & Trust
+
+Purpose: protect sponsor confidence
+
+Flag misalignment early:
+
+“scope creep threatens KPI outcome”
+
+“stakeholder expectations diverging”
+
+AI suggests “trust repair moves”:
+
+clarify decision rights
+
+align on what success means this quarter
+
+confirm what will be measured
+
+Tab 4: Sponsor Narrative
+
+Purpose: QBR/renewal-ready
+
+Auto-generates QBR story:
+
+committed outcomes
+
+progress evidence
+
+what changed
+
+next quarter plan
+
+C.3 Delivery AI prompt patterns
+
+Milestone → proof extraction
+
+Input: milestone notes + artifacts
+
+Output: proof object drafts + what it supports (KPI link)
+
+Handoff coherence check
+
+Compare sales assumptions vs delivery reality
+
+Surface mismatches + suggested alignment conversation
+
+Renewal readiness
+
+Identify missing proof, shaky stakeholder confidence, unclear outcomes
+
+Generate actions for delivery + seller joint plan
+
+5) Shared features across personas
+5.1 “Living Evidence Spine” viewer (shared component)
+
+Timeline
+
+Filters by type
+
+Draft vs validated
+
+Confidence indicators
+
+Link each evidence item to source event
+
+5.2 Proof Object Builder
+
+A proof object is the “boring enough to trust” artifact.
+
+Type (case note, KPI snapshot, stakeholder confirmation, adoption metric)
+
+Linked KPI(s)
+
+Source
+
+AI draft summary
+
+Human confirm
+
+5.3 Sponsor Narrative Generator (output)
+
+Outputs:
+
+1-page narrative spine
+
+QBR-ready outline
+
+Renewal-ready “promised vs delivered” summary
+
+Keep it structured, not slide-y.
+
+6) Workflows and triggers (must implement)
+Trigger list v1 (no integrations needed)
+
+Meeting logged (paste notes/transcript)
+
+Stage changed
+
+Stakeholder updated
+
+Milestone completed
+
+Risk flagged
+
+QBR generated
+
+Renewal initiated
+
+Each trigger should:
+
+create an event record
+
+call AI to draft evidence items
+
+queue drafts in “Needs confirmation”
+
+7) AI guardrails and behavior
+AI must behave like a stabiliser
+
+Always explain why a next action matters (trust/confidence link)
+
+Always show what evidence it will capture if user does it
+
+Always offer 2–3 options, not one command
+
+Always label uncertainty:
+
+“Exploratory” vs “High confidence”
+
+Never invent facts; if missing, ask for minimal input:
+
+“Which KPI matters most here: X/Y/Z?”
+
+Implement “confirmations” as first-class UX
+
+Every AI draft evidence item must have:
+
+Confirm ✅
+
+Edit ✏️
+
+Reject ❌
+
+Mark “needs stakeholder validation” 🔒
+
+8) MVP scope (what to build first in Replit)
+
+Build in this order:
+
+Phase 1: Spine + Seller flow (MVP)
+
+Auth
+
+Accounts, opportunities
+
+Evidence spine + evidence items
+
+Success Frame builder
+
+Meeting log → AI extraction
+
+Stage readiness check → next actions
+
+Narrative generator
+
+Phase 2: Manager view + coaching intelligence
+
+Team overview
+
+Intervention recommender
+
+Coaching prompts
+
+Pattern mining (simple)
+
+Phase 3: Delivery view + proof objects + renewal readiness
+
+Engagement workspace
+
+Milestone → proof extraction
+
+Handoff coherence check
+
+Renewal readiness report
+
+9) Acceptance criteria (“done means…”)
+Seller success
+
+Seller can run a deal without writing an evidence doc
+
+AI identifies missing essentials before stage advances
+
+One-click sponsor update generated from the spine
+
+Manager success
+
+Manager can see where confidence breaks across team
+
+Manager gets coaching prompts tied to evidence gaps, not generic advice
+
+Delivery success
+
+Delivery can produce proof objects linked to success frame KPIs
+
+Renewal story is assembled from actual evidence, not memory
+
+System success
+
+Evidence compounds and becomes more complete over time
+
+Items are versioned + validated, confidence score evolves
+
+10) What to hand your Replit coder as “build tickets”
+
+Here are build tickets you can paste directly into Replit tasks:
+
+Create DB schema for Account, Opportunity, Engagement, EvidenceSpine, EvidenceItem, Stakeholder, Event
+
+Build Seller Opportunity Workspace with tabs: Now / Missing / Next Actions / Evidence
+
+Implement Meeting Log input → AI extraction → create draft EvidenceItems
+
+Implement Stage Change → readiness checklist → AI next actions
+
+Implement Success Frame builder (3–5 KPIs max) + validation status
+
+Implement Narrative Spine generator output (7-part structure)
+
+Build Manager Team Overview + Opportunity drill-down + Intervention tab
+
+Build Delivery Engagement Workspace + Proof Object Builder + Handoff coherence check
+
+Add confidence scoring function and “stale evidence” indicator
+
+Add “Draft evidence queue” + confirm/edit/reject workflow
