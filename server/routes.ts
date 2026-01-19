@@ -1773,15 +1773,21 @@ Return as JSON:
         return res.status(404).json({ error: "No attendees found. Please add attendees to research." });
       }
       
-      // Get participants to research (all or specific ones)
-      let participantsToResearch = profile.participants;
+      // Get participants to research (only client-side attendees, not internal team)
+      let participantsToResearch = profile.participants.filter((p: any) => 
+        (p.affiliation || "client") === "client"
+      );
+      
+      // If specific IDs provided, filter further
       if (participantIds && Array.isArray(participantIds) && participantIds.length > 0) {
-        participantsToResearch = profile.participants.filter(p => participantIds.includes(p.id));
+        participantsToResearch = participantsToResearch.filter((p: any) => participantIds.includes(p.id));
       }
       
       if (participantsToResearch.length === 0) {
-        return res.status(400).json({ error: "No valid participants selected for research" });
+        return res.status(400).json({ error: "No client-side attendees to research. Internal team members don't need external research." });
       }
+      
+      console.log(`[Attendee Research] Found ${participantsToResearch.length} client attendees to research (skipping internal team)`);
       
       // Build context about the company and industry
       const companyContext = `
@@ -1830,14 +1836,14 @@ ${companyContext}
 ATTENDEE TO RESEARCH:
 - Name: ${participant.name}
 - Current Title: ${participant.title || "Unknown"}
-- Role Type: ${participant.role} (${
+- Role Type: ${participant.role || "Unknown"} (${
   participant.role === 'economic_buyer' ? 'Budget holder/decision maker' :
   participant.role === 'user_buyer' ? 'End user of the solution' :
   participant.role === 'technical_buyer' ? 'Evaluates technical fit' :
   participant.role === 'coach' ? 'Internal guide/advisor' :
-  participant.role === 'champion' ? 'Internal advocate' : 'Stakeholder'
+  participant.role === 'champion' ? 'Internal advocate' : 'Client stakeholder'
 })
-- Influence Level: ${participant.influence}
+- Influence Level: ${participant.influence || "Not specified"}
 - Known Concerns: ${participant.knownConcerns || "None captured yet"}
 - Preferred Outcomes: ${participant.preferredOutcomes || "None captured yet"}
 

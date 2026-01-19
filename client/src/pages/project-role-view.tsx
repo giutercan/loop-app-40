@@ -1831,7 +1831,10 @@ export default function ProjectRoleView() {
   
   // Enhanced Green Sheet state - Meeting Contact Context
   type BuyingRole = "economic_buyer" | "user_buyer" | "technical_buyer" | "coach" | "champion";
+  type InternalRole = "account_lead" | "delivery_lead" | "consultant" | "subject_expert" | "executive_sponsor";
+  type AttendeeRole = BuyingRole | InternalRole;
   type InfluenceLevel = "high" | "medium" | "low";
+  type Affiliation = "client" | "internal";
   
   const [meetingContact, setMeetingContact] = useState<{
     name: string;
@@ -1865,8 +1868,9 @@ export default function ProjectRoleView() {
     id: string;
     name: string;
     title: string;
-    role: BuyingRole;
-    influence: InfluenceLevel;
+    affiliation: Affiliation;
+    role: AttendeeRole;
+    influence?: InfluenceLevel; // Optional - only applicable for client attendees
     knownConcerns: string;
     preferredOutcomes: string;
     personalRapport: string;
@@ -6937,14 +6941,20 @@ export default function ProjectRoleView() {
                         <h4 className="font-semibold text-sm flex items-center gap-2 text-emerald-800">
                           <Users className="w-5 h-5" />
                           Meeting Attendees ({meetingAttendees.length})
-                          <span className="text-xs font-normal text-muted-foreground">(Add all stakeholders)</span>
+                          {meetingAttendees.length > 0 && (
+                            <span className="text-xs font-normal text-muted-foreground">
+                              ({meetingAttendees.filter(a => (a.affiliation || "client") === "client").length} Client
+                              {meetingAttendees.filter(a => a.affiliation === "internal").length > 0 && 
+                                ` • ${meetingAttendees.filter(a => a.affiliation === "internal").length} Internal`})
+                            </span>
+                          )}
                         </h4>
                         <div className="flex items-center gap-2">
-                          {meetingAttendees.length > 0 && (
+                          {meetingAttendees.filter(a => (a.affiliation || "client") === "client").length > 0 && (
                             <Button
                               variant="outline"
                               size="sm"
-                              className="gap-1.5 text-purple-600 border-purple-500/30 hover:bg-purple-500/10"
+                              className="gap-1.5 text-purple-600 border-purple-500/30"
                               onClick={() => researchAttendeesMutation.mutate()}
                               disabled={researchAttendeesMutation.isPending}
                               data-testid="button-research-attendees"
@@ -6954,13 +6964,13 @@ export default function ProjectRoleView() {
                               ) : (
                                 <Sparkles className="w-3.5 h-3.5" />
                               )}
-                              {researchAttendeesMutation.isPending ? "Researching..." : "Research Attendees"}
+                              {researchAttendeesMutation.isPending ? "Researching..." : "Research Client Attendees"}
                             </Button>
                           )}
                           <Button
                             variant="outline"
                             size="sm"
-                            className="gap-1.5 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10"
+                            className="gap-1.5 text-emerald-600 border-emerald-500/30"
                             onClick={() => {
                               setEditingAttendee(null);
                               setShowAddAttendeeDialog(true);
@@ -6985,19 +6995,38 @@ export default function ProjectRoleView() {
                           {meetingAttendees.map((attendee, index) => (
                             <div
                               key={`attendee-${index}`}
-                              className="p-3 rounded-lg border bg-white flex items-start justify-between gap-3"
+                              className={`p-3 rounded-lg border flex items-start justify-between gap-3 ${
+                                (attendee.affiliation || "client") === "internal" 
+                                  ? "bg-blue-50 border-blue-200" 
+                                  : "bg-white"
+                              }`}
                               data-testid={`card-attendee-${index}`}
                             >
                               <div className="flex-1 min-w-0">
-                                <div className="font-medium text-sm truncate" data-testid={`text-attendee-name-${index}`}>{attendee.name}</div>
+                                <div className="flex items-center gap-2">
+                                  <div className="font-medium text-sm truncate" data-testid={`text-attendee-name-${index}`}>{attendee.name}</div>
+                                  <Badge 
+                                    variant="outline" 
+                                    className={`text-[10px] ${
+                                      (attendee.affiliation || "client") === "internal"
+                                        ? "bg-blue-100 text-blue-700 border-blue-300"
+                                        : "bg-emerald-100 text-emerald-700 border-emerald-300"
+                                    }`}
+                                    data-testid={`badge-attendee-affiliation-${index}`}
+                                  >
+                                    {(attendee.affiliation || "client") === "internal" ? "Internal" : "Client"}
+                                  </Badge>
+                                </div>
                                 <div className="text-xs text-muted-foreground truncate" data-testid={`text-attendee-title-${index}`}>{attendee.title}</div>
                                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                                   <Badge variant="secondary" className="text-xs" data-testid={`badge-attendee-role-${index}`}>
                                     {attendee.role?.replace("_", " ") || "Unknown Role"}
                                   </Badge>
-                                  <Badge variant="outline" className="text-xs" data-testid={`badge-attendee-influence-${index}`}>
-                                    {attendee.influence || "Unknown"} Influence
-                                  </Badge>
+                                  {(attendee.affiliation || "client") === "client" && attendee.influence && (
+                                    <Badge variant="outline" className="text-xs" data-testid={`badge-attendee-influence-${index}`}>
+                                      {attendee.influence} Influence
+                                    </Badge>
+                                  )}
                                 </div>
                               </div>
                               <div className="flex items-center gap-1">
@@ -11480,11 +11509,29 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 <Input
                   placeholder="e.g., Sarah Chen"
                   value={editingAttendee?.name || ""}
-                  onChange={(e) => setEditingAttendee(prev => prev ? { ...prev, name: e.target.value } : { id: `temp-${Date.now()}`, name: e.target.value, title: "", role: undefined, influence: undefined, knownConcerns: "", personalRapport: "" })}
+                  onChange={(e) => setEditingAttendee(prev => prev ? { ...prev, name: e.target.value } : { id: `temp-${Date.now()}`, name: e.target.value, title: "", affiliation: "client", role: undefined, influence: undefined, knownConcerns: "", personalRapport: "" })}
                   className="h-9"
                   data-testid="input-attendee-name"
                 />
               </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Affiliation *</Label>
+                <Select
+                  value={editingAttendee?.affiliation || "client"}
+                  onValueChange={(v) => setEditingAttendee(prev => prev ? { ...prev, affiliation: v as Affiliation } : null)}
+                >
+                  <SelectTrigger className="h-9" data-testid="select-attendee-affiliation">
+                    <SelectValue placeholder="Select side..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="client">Client (Customer Side)</SelectItem>
+                    <SelectItem value="internal">Internal (Korn Ferry)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground">Title</Label>
                 <Input
@@ -11495,27 +11542,49 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                   data-testid="input-attendee-title"
                 />
               </div>
+              {(editingAttendee?.affiliation || "client") === "client" ? (
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Buying Role</Label>
+                  <Select
+                    value={editingAttendee?.role || undefined}
+                    onValueChange={(v) => setEditingAttendee(prev => prev ? { ...prev, role: v as any } : null)}
+                  >
+                    <SelectTrigger className="h-9" data-testid="select-attendee-role">
+                      <SelectValue placeholder="Select role..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="economic_buyer">Economic Buyer</SelectItem>
+                      <SelectItem value="user_buyer">User Buyer</SelectItem>
+                      <SelectItem value="technical_buyer">Technical Buyer</SelectItem>
+                      <SelectItem value="coach">Coach</SelectItem>
+                      <SelectItem value="champion">Champion</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Internal Role</Label>
+                  <Select
+                    value={editingAttendee?.role || undefined}
+                    onValueChange={(v) => setEditingAttendee(prev => prev ? { ...prev, role: v as any } : null)}
+                  >
+                    <SelectTrigger className="h-9" data-testid="select-attendee-internal-role">
+                      <SelectValue placeholder="Select role..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="account_lead">Account Lead</SelectItem>
+                      <SelectItem value="delivery_lead">Delivery Lead</SelectItem>
+                      <SelectItem value="consultant">Consultant</SelectItem>
+                      <SelectItem value="subject_expert">Subject Matter Expert</SelectItem>
+                      <SelectItem value="executive_sponsor">Executive Sponsor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
 
+            {(editingAttendee?.affiliation || "client") === "client" && (
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Buying Role</Label>
-                <Select
-                  value={editingAttendee?.role || undefined}
-                  onValueChange={(v) => setEditingAttendee(prev => prev ? { ...prev, role: v as any } : null)}
-                >
-                  <SelectTrigger className="h-9" data-testid="select-attendee-role">
-                    <SelectValue placeholder="Select role..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="economic_buyer">Economic Buyer</SelectItem>
-                    <SelectItem value="user_buyer">User Buyer</SelectItem>
-                    <SelectItem value="technical_buyer">Technical Buyer</SelectItem>
-                    <SelectItem value="coach">Coach</SelectItem>
-                    <SelectItem value="champion">Champion</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground">Influence Level</Label>
                 <Select
@@ -11533,6 +11602,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 </Select>
               </div>
             </div>
+            )}
 
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground">Known Concerns / Priorities</Label>
