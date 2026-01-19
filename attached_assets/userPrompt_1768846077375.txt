@@ -1,0 +1,31 @@
+<task>
+<objective>Create a Strategic Selling® Blue Sheet (JSON) from the provided deal artifacts.</objective>
+
+<sources>
+<source1><![CDATA[
+{{SOURCE1}}
+]]></source1>
+<source2><![CDATA[
+{{SOURCE2}}
+]]></source2>
+<user_provided_info type="additional_context" priority="high"><![CDATA[
+{{ADDITIONAL_INFO}}
+]]></user_provided_info>
+</sources>
+
+<instructions>
+<rule>Populate all top-level fields and arrays per the JSON Schema.</rule>
+<rule>Everything must tie back to advancing or threatening the Single Sales Objective (SSO).</rule>
+<rule>If sources are insufficient (less than 50 words or no sales context), return minimal structure with values "Unknown" and empty arrays.</rule>
+<rule>If a critical value is missing, keep the value "Unknown" AND set the corresponding Marker to "RedFlag" AND add at least one action to resolve it.</rule>
+<rule>DO NOT guess or fabricate facts; only infer classification fields when strongly supported.</rule>
+<rule>DO NOT use placeholder or example data from the schema descriptions - extract only from the actual sources provided.</rule>
+</instructions>
+
+<multi_source_guidelines>
+<rule>Compare information across all sources for the same fields and identify conflicts.</rule>
+<rule>When information exists in multiple sources, prioritize the most recent or authoritative source.</rule>
+<rule>Document conflicts in the conflicts array with: field, sourceValues (from each source), conflictDescription, and severity (High/Medium/Low based on deal impact).</rule>
+<rule>If no conflicts exist, return empty conflicts array [].</rule>
+</multi_source_guidelines>
+</task>

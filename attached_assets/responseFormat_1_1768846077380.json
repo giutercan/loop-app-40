@@ -1,0 +1,306 @@
+{
+    "type": "object",
+    "properties": {
+        "singleSalesObjective": { 
+            "type": "string", 
+            "description": "Single Sales Objective (SSO). Must be ONE saleable decision in Strategic Selling terms. Use the canonical form: 'To sell [product/service/solution] to/for [customer] by [close date]'. Must be specific, definable, measurable, and tied to a close date. Avoid 'and' bundling. If the close date is not stated, use 'Unknown' and set singleSalesObjectiveMarker to 'RedFlag'." 
+        },
+        "singleSalesObjectiveMarker": { 
+            "type": "string", 
+            "enum": ["RedFlag", "Strength", "Unknown"],
+            "description": "Indicator for the sales objective status" 
+        },
+        "customerTimingForPriorities": { 
+            "type": "string", 
+            "enum": ["Urgent", "Later", "Unknown"],
+            "description": "Priority of the customer's stated objective. Urgent: Indicates that the customer has a pressing need or desire to progress with the objective, reflecting a high level of priority or urgency. Example: 'Our sales organization is planning a huge sales kick off in 4 months; we need to have this project done well in advance of that.' Active: Suggests that the customer is actively pursuing the objective, indicating that it's a current priority. Example: 'Our issue is forecast accuracy. If I have one more bluebird come in during the last week of the quarter, I'm going to lose my job.' Later: Signifies that the customer does not consider the objective as an immediate priority. Example: 'If we don't start the project now, it will likely wait until next fiscal year budgeting cycle.'" 
+        },
+        "customerTimingForPrioritiesMarker": { 
+            "type": "string", 
+            "enum": ["RedFlag", "Strength", "Unknown"],
+            "description": "Indicator for timing status" 
+        },
+        "customersStatedObjectives": { 
+            "type": "string", 
+            "description": "Customer's Stated Objective (CSO). The customer-business objective in the customer's words: a threat to resolve or opportunity to capitalize on. Must be independent of the seller's solution; do not describe training/workshops/methodology unless the customer explicitly states that as their objective." 
+        },
+        "evaluationOfObjective": { 
+            "type"  : "string", 
+            "description": "Evaluation of the Customer's Stated Objective. Describe effects, implications, and benefits if achieved vs consequences if not achieved. Do NOT evaluate how well the seller solution fits." 
+        },
+        "evaluationOfObjectiveMarker": { 
+            "type": "string", 
+            "enum": ["RedFlag", "Strength", "Unknown"],
+            "description": "Indicator for objective evaluation" 
+        },
+        "currentPosition": { 
+            "type": "string", 
+            "enum": ["Best", "SharedBest", "Shared", "Trailing", "Panic", "Unknown"],
+            "description": "How the seller feels about the opportunity. Options: Euphoria, Great, Secure, Comfort, ok, Concern, Discomfort, Worry, Fear, Panic. (Selected by seller, not typically extracted from customer conversation unless internal/coaching transcript)" 
+        },
+        "currentPositionMarker": { 
+            "type": "string", 
+            "enum": ["RedFlag", "Strength", "Unknown"],
+            "description": "Indicator for current position status" 
+        },
+        "competitions": {
+            "type": "array",
+            "description": "Competitive landscape and threats. States what type of competition the seller is facing.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "competitorType": {
+                        "type": "string",
+                        "enum": ["BuyingFromSomeoneElse", "DoNothing", "UsingBudgetForSomethingElse", "UsingInternalResources"],
+                        "description": "Type of competition / alternative choice. Map to Strategic Selling categories: BuyingFromSomeoneElse=Buy elsewhere, UsingBudgetForSomethingElse=Reuse funds/spend elsewhere, UsingInternalResources=Internal, DoNothing=Do nothing. Do NOT treat internal budget gates as a 'competitorName'; capture as Red Flag / constraint instead."
+                    },
+                    "competitorTypeMarker": {
+                        "type": "string",
+                        "enum": ["RedFlag", "Strength", "Unknown"],
+                        "description": "Indicator for competitor type"
+                    },
+                    "competitorName": { 
+                        "type": "string", 
+                        "description": "Captures any explicit reference or mention of competitors, highlighting instances where the customer compares or brings up other brands or services. Example: 'In the past we've worked with Sandler training but we feel their offering is outdated and we want to explore other options.' Extract: 'Sander'" 
+                    },
+                    "competitorNameMarker": {
+                        "type": "string",
+                        "enum": ["RedFlag", "Strength", "Unknown"],
+                        "description": "Indicator for competitor name"
+                    },
+                    "positionVsCompetitor": {
+                        "type": "string",
+                        "enum": ["Plus", "Zero", "Minus", "Unknown"],
+                        "description": "The standing of the seller's company relative to competitors from the customer's viewpoint (competitiveness). OnlyAlternative/Plus: Indicates that the customer views the seller's company as the sole or preferred option, without considering any other competitors. Example: 'Your company comes highly recommended so we aren't currently talking to any other providers.' Extract: 'Only Alternative'. FrontRunner/Plus: Suggests the seller's company is highly considered and leading among other potential options, but not the sole contender. Example: 'In the past we've worked with Sandler training but we feel their offering is outdated and we want to explore other options.' Extract: 'Front Runner'. Shared: Signifies that the customer is considering multiple vendors, including the seller's company, as potential options. Example: 'We have two other companies we are talking to right now- ABC and XYZ.' Extract: 'Shared'. Zero/Minus: Implies that there is no clear indication that the seller's company is being considered as a potential option. Example: 'Our last integration was done with Armanino, which was about a year ago.' Extract: 'Zero'"
+                    },
+                    "positionVsCompetitorMarker": {
+                        "type": "string",
+                        "enum": ["RedFlag", "Strength", "Unknown"],
+                        "description": "Indicator for competitive position"
+                    },
+                    "competitiveDetail": { 
+                        "type": "string", 
+                        "description": "Any detail provided about the competitor. Example: 'In the past we've worked with Sandler training but we feel their offering is outdated and we want to explore other options.' Extract: 'Their offering is outdated and we want to explore other options'" 
+                    },
+                    "competitiveDetailMarker": {
+                        "type": "string",
+                        "enum": ["RedFlag", "Strength", "Unknown"],
+                        "description": "Indicator for competitive details"
+                    }
+                },
+                "required": ["competitorType", "competitorTypeMarker", "competitorName", "competitorNameMarker", "positionVsCompetitor", "positionVsCompetitorMarker", "competitiveDetail", "competitiveDetailMarker"],
+                "additionalProperties": false
+            }
+        },
+        "buyingInfluences": {
+            "type": "array",
+            "description": "Key stakeholders and their buying influence characteristics. This is a meeting participant who may be attending the meeting or mentioned in the meeting.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "contactName": { 
+                        "type": "string", 
+                        "description": "Full name of the buying influence. This is a meeting participant who may be attending the meeting or mentioned in the meeting. Example: 'I'll go first with introductions. I'm Jeff Williams, in charge of Sales and Business Operations.' Extract: 'Jeff Williams'" 
+                    },
+                    "degreeOfInfluence": {
+                        "type": "string",
+                        "enum": ["High", "Medium", "Low", "Unknown"],
+                        "description": "The degree of influence of the individual or group in the buying process. Low: Indicates the individual or group has minor influence or control in the purchasing decision-making process. Example: 'I'll have to defer to Brenda on the final decision.' Extract: 'Low'. Medium: Suggests the individual or group has moderate influence, and contributes to the buying decision but doesn't have final say. Example: 'Let me get the team together offline to discuss further and we'll get back to you.' Extract: 'Medium'. High: Signifies the individual or group has substantial, often decisive influence over the purchasing decision. Example: 'As head of global operations I'll be taking the recommendation to the board for final sign off.' Extract: 'High'"
+                    },
+                    "degreeOfInfluenceMarker": {
+                        "type": "string",
+                        "enum": ["RedFlag", "Strength", "Unknown"],
+                        "description": "Indicator for degree of influence"
+                    },
+                    "buyingMode": {
+                        "type": "string",
+                        "enum": ["Growth", "Trouble", "EvenKeel", "OverConfident", "Unknown"],
+                        "description": "The motivation behind the buying needs by an individual or group. Growth: Reflects a need for improvement or expansion, indicating a gap between current outcomes and desired results, driving the need for change. Example: 'We want to expand our market penetration. Im looking for an improved experience for our customers. We have the capacity for greater output and we're not using it.' Extract: 'Growth'. Trouble: Denotes an urgent need to rectify a problematic situation or issue, compelling a potential purchase to fix the identified problem. Example: 'The restructuring of a business unit caused collateral damage to my department. A recent event exposed a weakness we thought we'd have time to correct.' Extract: 'Trouble'. EvenKeel: Suggests a contentment with the status quo, showing no perceived gap between current reality and desired results, hence no immediate need for change. Example: 'We don't see a need for that. We have many other pressing priorities that they want our people to focus on. Why do I need to make a change?' Extract: 'EvenKeel'. OverConfident: Signifies a mismatch between perception and reality, with the belief that current results are optimal and no need for external proposals or change. Example: 'It's never been better. Who needs your proposal? Not me.' Extract: 'OverConfident'"
+                    },
+                    "buyingModeMarker": {
+                        "type": "string",
+                        "enum": ["RedFlag", "Strength", "Unknown"],
+                        "description": "Indicator for buying mode"
+                    },
+                    "competitivePreference": {
+                        "type": "string",
+                        "enum": ["Us", "Them", "UsingBudgetForSomethingElse", "DoNothing", "UsingInternalResources", "Unknown"],
+                        "description": "Competitive Preference (Strategic Selling categories). Use schema enums but interpret as: Us=Buy from us, Them=Buy elsewhere, UsingBudgetForSomethingElse=Reuse funds/spend elsewhere, UsingInternalResources=Internal, DoNothing=Do nothing, Unknown=Unknown."
+                    },
+                    "competitivePreferenceMarker": {
+                        "type": "string",
+                        "enum": ["RedFlag", "Strength", "Unknown"],
+                        "description": "Indicator for competitive preference"
+                    },
+                    "personalWins": { 
+                        "type": "string", 
+                        "description": "Wins are personal and describe how the Buying Influence's self-interest is served. Example: 'If we get this integration done on time and under budget I'll be in a position to get more funding and get our next project moving forward.' Extract: 'Being in a position to get more funding'" 
+                    },
+                    "personalWinsMarker": {
+                        "type": "string",
+                        "enum": ["RedFlag", "Strength", "Unknown"],
+                        "description": "Indicator for personal wins"
+                    },
+                    "rating": { 
+                        "type": "number",
+                        "description": "Rating of the buyer's feeling about buying from us on the Strategic Selling -5 to +5 scale. +5 champion, +3 strong supporter, +1 mild positive, 0 unknown/neutral, -1 mild negative, -3 resistant, -5 blocker. Must be supported by ratingEvidence; if evidence is missing, set rating=0 and ratingMarker='RedFlag'.",
+                        "minimum": -5,
+                        "maximum": 5
+                    },
+                    "ratingText": { 
+                        "type": "string", 
+                        "description": "Text description of the rating (e.g., 'extremely_negative', 'very_negative', 'negative', 'moderately_negative', 'neutral_negative', 'neutral_positive', 'moderately_positive', 'positive', 'very_positive', 'extremely_positive')" 
+                    },
+                    "ratingMarker": {
+                        "type": "string",
+                        "enum": ["RedFlag", "Strength", "Unknown"],
+                        "description": "Indicator for rating status"
+                    },
+                    "buyingInfluenceRoles": {
+                        "type": "array",
+                        "description": "The role of the individual or group in the buying process. Economic: Refers to the role having final approval authority, primarily focusing on the financial impact and overall value to the organization. Example: 'Hello, I'm Casey Doggins, chief revenue officer, I'm responsible for the organization hitting our targets.' Extract: 'Economic'. Technical: Implies a role centered on technical specification alignment and expertise, often screening potential solutions based on these criteria. Example: 'Hello, I'm Wei Ping, my role is Salesforce administrator. I work with sales leaders and business ops to integrate new solutions.' Extract: 'Technical'. User: Signifies a role that assesses the impact of a product or solution on their job performance, concentrating on its usability and functionality. Example: 'All I know is the system we use now is terrible, slow performance and doesn't have modern features.' Extract: 'User'. Coach: A guiding role that focuses on ensuring the success of the proposal, often providing insight into the decision-making process and stakeholders. Example: 'Tony, let's meet offline after this call and I'll review some of the stakeholders you may want to meet with next.' Extract: 'Coach'",
+                        "items": {
+                            "type": "string",
+                            "enum": ["Economic", "Technical", "User", "Coach"]
+                        }
+                    },
+                    "buyingInfluenceRoleMarker": {
+                        "type": "string",
+                        "enum": ["RedFlag", "Strength", "Unknown"],
+                        "description": "Indicator for role coverage"
+                    },
+                    "searchCompetitorName": { 
+                        "type": "string", 
+                        "description": "Competitor this buying influence prefers (if applicable)" 
+                    },
+                    "businessResults": { 
+                        "type": "string", 
+                        "description": "Results are product/service related; they describe your product's impact on the Buying Influence's business processes. Example: 'I have the responsibility to increase productivity by 20% quarterly, this is a significant rise in demand from the organization.' Extract: 'Increase productivity by 20% quarterly.'" 
+                    },
+                    "businessResultsMarker": {
+                        "type": "string",
+                        "enum": ["RedFlag", "Strength", "Unknown"],
+                        "description": "Indicator for business results"
+                    },
+                    "ratingEvidence": { 
+                        "type": "string", 
+                        "description": "Evidence behind the positive-negative rating for selecting our product. Explicit statements you've heard directly. Example: 'Your solution is in alignment with the goals and objectives we have as an organization, I'm ready to take it forward to the board.' Extract: 'Goal and objective alignments'" 
+                    },
+                    "ratingEvidenceMarker": {
+                        "type": "string",
+                        "enum": ["RedFlag", "Strength", "Unknown"],
+                        "description": "Indicator for rating evidence quality"
+                    }
+                },
+                "required": ["contactName", "degreeOfInfluence", "degreeOfInfluenceMarker", "buyingMode", "buyingModeMarker", "competitivePreference", "competitivePreferenceMarker", "personalWins", "personalWinsMarker", "rating", "ratingText", "ratingMarker", "buyingInfluenceRoles", "buyingInfluenceRoleMarker", "searchCompetitorName", "businessResults", "businessResultsMarker", "ratingEvidence", "ratingEvidenceMarker"],
+                "additionalProperties": false
+            }
+        },
+        "summaryOfPositions": {
+            "type": "array",
+            "description": "Encapsulates a brief assessment of our product's standing from the customer's perspective. Summary of strengths and red flags.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": ["RedFlag", "Strength"],
+                        "description": "Type of position summary. Strength: Encapsulates positive aspects of our product as perceived by the customer, showcasing its advantages or fulfilling criteria. Example: 'Your solution meets all of our criteria, which is great.' Extract: 'Strength'. RedFlag: Identifies potential obstacles or concerns from the customer that could hinder the selection of our product. Example: 'Your solution is too expensive and it is not generating enough value.' Extract: 'RedFlag'"
+                    },
+                    "summary": { 
+                        "type": "string", 
+                        "description": "A brief, concise title encapsulating the main point of the position summary. Example: 'Have you done this work for other fintech companies? you know we have very rigorous security policies that this solution will need to adhere to.' Extract: 'Rigorous security policies'" 
+                    },
+                    "description": { 
+                        "type": "string", 
+                        "description": "Elaborating on the position summary. It specifies the features, attributes or capabilities of our product that have been discussed and acknowledged by the customer. Example: '(Seller) We can absolutely accommodate that request. Our solution provides access to the learning library, the application in the CRM and access to all the tools.' Extract: 'Access to the learning library, the application in the CRM and access to all the tools'" 
+                    }
+                },
+                "required": ["type", "summary", "description"],
+                "additionalProperties": false
+            }
+        },
+        "actionPlans": {
+            "type": "array",
+            "description": "This is a sequence of steps that must be taken, or activities that must be performed, for a sales strategy to proceed. They detail the specific actions needed to achieve set goals, typically within a set timeline. Action items and next steps.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "subject": { 
+                        "type": "string", 
+                        "description": "Title of the action plan. Action subject/title. Example: 'As a next step, I'll set up a review with senior leadership to go over the proposal in detail. How does that sound? I'll invite Tom, Harry and Marvin as well as everyone here in this meeting.' Extract: 'Review with Senior Leadership'" 
+                    },
+                    "description": { 
+                        "type": "string", 
+                        "description": "Detailed action description" 
+                    },
+                    "customActionType": {
+                        "type": "string",
+                        "enum": ["Email", "Call", "Meeting", "Task", "Proposal", "Other"],
+                        "description": "Type of action plan to be executed. Email: email action type. Example: 'I'll follow up with a detailed email today to aid your decision-making.' Extract: 'Email'. Call: the intention of arranging a phone or virtual conversation, distinct from physical meetings or emails. Example: 'Let's set up a call with your IT lead next week to discuss technical aspects.' Extract: 'Call'. Meeting: indicates the proposal to schedule a formal, physical or virtual interaction, differing from phone or email communications. Example: 'How about scheduling a meeting with our product specialist for an in-depth discussion?' Extract: 'Meeting'. Other: other action type. Example: 'I'd recommend a demo of our platform, so you can see its potential firsthand. How does scheduling a guided tour for Thursday sound?' Extract: 'Other'"
+                    },
+                    "assignedTo": { 
+                        "type": "string", 
+                        "description": "Who is responsible for this action" 
+                    },
+                    "customPlanPriority": {
+                        "type": "string",
+                        "enum": ["High", "Medium", "Low"],
+                        "description": "Priority level of this action"
+                    },
+                    "contactName": { 
+                        "type": "string", 
+                        "description": "Contact name from meeting discussion to be reached out in the action plan. Example: 'In order to take this to the next level I think we need to get IT involved so they can start asking questions regarding integration. Let's target next week to schedule a meeting.' Extract: 'IT'" 
+                    },
+                    "scheduledStart": { 
+                        "type": "string", 
+                        "description": "Start date to execute the action. Scheduled start date/time (ISO 8601 format). Example: 'Let's pencil in next Monday, the 19th, for the start of your product demo.' Extract: '19th'" 
+                    },
+                    "scheduledEnd": { 
+                        "type": "string", 
+                        "description": "Deadline to execute the action. Scheduled end date/time (ISO 8601 format). Example: 'Assuming a two-week implementation, we'll aim for completion by July 3rd.' Extract: 'July 3rd'" 
+                    }
+                },
+                "required": ["subject", "description", "customActionType", "assignedTo", "customPlanPriority", "contactName", "scheduledStart", "scheduledEnd"],
+                "additionalProperties": false
+            }
+        },
+        "conflicts": {
+            "type": "array",
+            "description": "Conflicts between information from different sources (source1, source2, userProvidedInfo, etc.). Identifies when the same information appears differently across sources.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "field": {
+                        "type": "string",
+                        "description": "The field or area where the conflict exists (e.g., 'singleSalesObjective', 'customerTimingForPriorities', 'competitions', etc.)"
+                    },
+                    "sourceValues": {
+                        "type": "object",
+                        "description": "Object containing values from each source where conflicts exist. Keys are source names (e.g., 'source1', 'source2', 'userProvidedInfo') and values are the information as stated in that source.",
+                        "patternProperties": {
+                            "^(source\\d+|userProvidedInfo)$": {
+                                "type": "string",
+                                "description": "Value from a source (e.g., source1, source2, userProvidedInfo, etc.)"
+                            }
+                        },
+                        "additionalProperties": false
+                    },
+                    "conflictDescription": {
+                        "type": "string",
+                        "description": "A detailed description of the conflict and how the information differs between sources"
+                    },
+                    "severity": {
+                        "type": "string",
+                        "enum": ["High", "Medium", "Low"],
+                        "description": "The severity of the conflict. High: Critical information that could significantly impact the deal. Medium: Important but not deal-breaking differences. Low: Minor inconsistencies that may not affect the outcome."
+                    }
+                },
+                "required": ["field", "conflictDescription", "severity"],
+                "additionalProperties": false
+            }
+        }
+    },
+    "required": ["singleSalesObjective", "singleSalesObjectiveMarker", "customerTimingForPriorities", "customerTimingForPrioritiesMarker", "customersStatedObjectives", "evaluationOfObjective", "evaluationOfObjectiveMarker", "currentPosition", "currentPositionMarker", "competitions", "buyingInfluences", "summaryOfPositions", "actionPlans", "conflicts"],
+    "additionalProperties": false
+}
