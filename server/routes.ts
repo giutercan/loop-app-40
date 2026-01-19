@@ -13328,19 +13328,83 @@ Provide a JSON response with:
         "champion": "Coach" // Champions are a type of Coach
       };
       
+      // Customer company name for validation
+      const customerCompanyName = project.companyName.toLowerCase();
+      const customerCompanyWords = customerCompanyName.split(/\s+/).filter(w => w.length > 2);
+      
+      // Comprehensive filter function to exclude internal Korn Ferry users
+      const internalPatterns = [
+        "korn ferry", "kornferry", "kf ", " kf", "@kornferry", "consultant", "internal",
+        "sales rep", "account manager", "client partner", "practice lead",
+        "engagement manager", "delivery lead", "project manager", "associate",
+        "partner", "advisor", "analyst", "coach", "facilitator", "presenter"
+      ];
+      
+      // Check if person is from customer company (positive match)
+      const isCustomerSide = (name: string, title: string, company?: string): boolean => {
+        const lowerCompany = (company || "").toLowerCase();
+        const lowerTitle = (title || "").toLowerCase();
+        
+        // Positive match: company field contains customer company name
+        if (lowerCompany && customerCompanyWords.some(word => lowerCompany.includes(word))) {
+          return true;
+        }
+        
+        // Title suggests customer role (C-suite, VP, Director, Manager at client)
+        const customerRoles = ["ceo", "cfo", "coo", "cto", "chro", "cmo", "cio", 
+                               "president", "vp ", "vice president", "director", 
+                               "head of", "manager", "lead", "owner", "founder"];
+        if (customerRoles.some(role => lowerTitle.includes(role))) {
+          // But ensure not KF role
+          if (!lowerTitle.includes("korn") && !lowerTitle.includes("kornferry")) {
+            return true;
+          }
+        }
+        
+        return false;
+      };
+      
+      const isInternalUser = (name: string, title: string, company?: string): boolean => {
+        const lowerName = (name || "").toLowerCase();
+        const lowerTitle = (title || "").toLowerCase();
+        const lowerCompany = (company || "").toLowerCase();
+        
+        // Explicitly from Korn Ferry
+        if (lowerCompany.includes("korn ferry") || lowerCompany.includes("kornferry")) {
+          return true;
+        }
+        
+        // Check internal patterns
+        if (internalPatterns.some(pattern => lowerName.includes(pattern) || lowerTitle.includes(pattern))) {
+          return true;
+        }
+        
+        return false;
+      };
+      
+      // Filter function for text mentions
+      const isInternalMention = (mention: string): boolean => {
+        const lower = (mention || "").toLowerCase();
+        return internalPatterns.some(pattern => lower.includes(pattern));
+      };
+      
       const knownBuyingInfluences: Array<{name: string; title: string; role: string; influence: string; concerns: string}> = [];
       if (meetingContact?.name && meetingContact?.role) {
-        knownBuyingInfluences.push({
-          name: meetingContact.name,
-          title: meetingContact.title || "Unknown",
-          role: roleMapping[meetingContact.role] || meetingContact.role,
-          influence: meetingContact.influence || "unknown",
-          concerns: meetingContact.knownConcerns || ""
-        });
+        // Only add if not an internal Korn Ferry user
+        if (!isInternalUser(meetingContact.name, meetingContact.title)) {
+          knownBuyingInfluences.push({
+            name: meetingContact.name,
+            title: meetingContact.title || "Unknown",
+            role: roleMapping[meetingContact.role] || meetingContact.role,
+            influence: meetingContact.influence || "unknown",
+            concerns: meetingContact.knownConcerns || ""
+          });
+        }
       }
 
-      // Extract stakeholders from enriched context
-      const stakeholderMentions = enrichedContext.artifactInsights.stakeholderMentions || [];
+      // Extract stakeholders from enriched context and filter out internal users
+      const rawStakeholderMentions = enrichedContext.artifactInsights.stakeholderMentions || [];
+      const stakeholderMentions = rawStakeholderMentions.filter((mention: string) => !isInternalMention(mention));
 
       // Build Korn Ferry solution context from strategy selection
       const selectedStrategies = (strategySelection?.selectedStrategiesData as any)?.strategies || [];
@@ -13364,6 +13428,9 @@ Provide a JSON response with:
         };
       }).filter(qa => qa.answer);
 
+      // Extract discovery synthesis (executive summary data)
+      const discoverySynthesis = project.discoverySynthesis as any;
+      
       // Build context for AI (use sector as fallback for industry)
       const context = {
         companyName: project.companyName,
@@ -13382,11 +13449,38 @@ Provide a JSON response with:
         greenSheet: enrichedContext.greenSheet,
         callObjective: enrichedContext.greenSheet.callPlanner?.objective,
         desiredOutcome: enrichedContext.greenSheet.callPlanner?.desiredOutcome,
+        // Discovery synthesis data
+        discoverySynthesis: discoverySynthesis ? {
+          whatWeLearned: discoverySynthesis.whatWeLearned || [],
+          businessImplications: discoverySynthesis.businessImplications || [],
+          stakeholderSignals: discoverySynthesis.stakeholderSignals || [],
+          readinessToBuildValue: discoverySynthesis.readinessToBuildValue || null,
+        } : null,
       };
+
+      // Get current date for SSO generation
+      const currentDate = new Date();
+      const currentYear = currentDate.getFullYear();
+      const currentMonth = currentDate.getMonth() + 1;
+      const currentQuarter = Math.ceil(currentMonth / 3);
+      const dateContext = `Current date: ${currentDate.toISOString().split('T')[0]}. Current quarter: Q${currentQuarter} ${currentYear}.`;
 
       // Generate Blue Sheet using OpenAI with comprehensive Miller Heiman methodology
       const systemPrompt = `You are an expert Miller Heiman Strategic Selling® Blue Sheet analyst for Korn Ferry.
 Your job is to convert discovery artifacts into a comprehensive Blue Sheet JSON following the exact methodology.
+
+## CRITICAL DATE RULES
+${dateContext}
+- ALL dates in the Blue Sheet MUST be in the present or future (${currentYear} or later)
+- SSO target dates should be realistic future timeframes (Q${currentQuarter} ${currentYear} or later)
+- NEVER use historical dates like 2024 or earlier
+- Typical SSO timeframes: Q${currentQuarter} ${currentYear}, Q${currentQuarter + 1 > 4 ? 1 : currentQuarter + 1} ${currentQuarter + 1 > 4 ? currentYear + 1 : currentYear}, or within 6-12 months
+
+## BUYING INFLUENCES FILTER
+- ONLY include CUSTOMER-SIDE stakeholders (employees of the client company)
+- EXCLUDE all Korn Ferry internal users, consultants, and team members
+- EXCLUDE any stakeholders identified as "internal", "KF", "Korn Ferry", or consultant roles
+- Buying Influences are people AT THE CUSTOMER who make or influence the buying decision
 
 ## MILLER HEIMAN BLUE SHEET METHODOLOGY
 
@@ -13394,6 +13488,7 @@ Your job is to convert discovery artifacts into a comprehensive Blue Sheet JSON 
 The SSO is the anchor for the entire Blue Sheet. Format: "To sell [Korn Ferry solution/outcome] to [customer company] by [target date/timeframe]"
 - Must tie to specific Korn Ferry solutions when available
 - Should reflect the discovery theme and customer priorities
+- Target date MUST be present or future (${currentYear} or later)
 - Mark as RedFlag if unclear, Strength if well-defined
 
 ### BUYING INFLUENCES (Critical)
@@ -13411,12 +13506,12 @@ For each Buying Influence, identify:
 - businessResults: What organizational outcomes they seek
 
 ### COMPETITION ANALYSIS
-Identify competitors in this solution space:
-- For Leadership/Talent: Heidrick & Struggles, Spencer Stuart, Russell Reynolds, Egon Zehnder, Aon Hewitt, Mercer
-- For Sales Effectiveness: Corporate Visions, Richardson, RAIN Group, Sandler, Challenger
-- For Assessment: SHL, Hogan, DDI, CCL
-- Include "Do Nothing" and "Internal Solution" as competitors
-- Rate their position: Best, SharedBest, Shared, Trailing, or Unknown
+Use ONLY competitors identified in the discovery research data provided below.
+- Do NOT invent generic competitor lists - use what was discovered during research
+- If discovery data includes competitive intelligence, use those specific competitors
+- Include "Do Nothing" and "Internal Solution" as default competitors
+- Only add industry-specific competitors if explicitly mentioned in the discovery data
+- Rate their position based on discovery insights: Best, SharedBest, Shared, Trailing, or Unknown
 
 ### SUMMARY OF POSITIONS
 List all Strengths and RedFlags:
@@ -13486,6 +13581,25 @@ Generate 10+ specific, actionable items to:
 5. Generate minimum 10 action items
 6. Output ONLY valid JSON - no markdown, no commentary`;
 
+      // Build discovery synthesis section for prompt
+      const synthesisSummary = context.discoverySynthesis ? `
+## DISCOVERY SYNTHESIS (Executive Summary)
+### What We Learned
+${context.discoverySynthesis.whatWeLearned?.map((w: any) => `- ${w.insight}${w.evidence?.length ? ` (Evidence: ${w.evidence.join(", ")})` : ""}`).join("\n") || "None captured"}
+
+### Business Implications
+${context.discoverySynthesis.businessImplications?.map((b: any) => `- [${b.urgency?.toUpperCase() || 'MEDIUM'}] ${b.implication}${b.kornFerryAlignment ? ` → KF: ${b.kornFerryAlignment}` : ""}`).join("\n") || "None captured"}
+
+### Stakeholder Signals (Customer-side only)
+${context.discoverySynthesis.stakeholderSignals?.map((s: any) => `- ${s.signal} (${s.stakeholderType || "Unknown"}, Sentiment: ${s.sentiment || "neutral"})`).join("\n") || "None captured"}
+
+### Readiness to Build Value
+${context.discoverySynthesis.readinessToBuildValue ? `Score: ${context.discoverySynthesis.readinessToBuildValue.score}/100
+Rationale: ${context.discoverySynthesis.readinessToBuildValue.rationale}
+Gaps: ${context.discoverySynthesis.readinessToBuildValue.gaps?.join("; ") || "None"}
+Next Steps: ${context.discoverySynthesis.readinessToBuildValue.nextSteps?.join("; ") || "None"}` : "Not assessed"}
+` : "";
+
       const userPrompt = `Generate a comprehensive Miller Heiman Blue Sheet for this opportunity:
 
 ## COMPANY & CONTEXT
@@ -13499,24 +13613,27 @@ ${context.kornFerrySolutions.length > 0 ? context.kornFerrySolutions.join(", ") 
 ## CALL OBJECTIVE & DESIRED OUTCOME
 Objective: ${context.callObjective || "Not defined"}
 Desired Outcome: ${context.desiredOutcome || "Not defined"}
-
-## KNOWN BUYING INFLUENCES (from Green Sheet)
+${synthesisSummary}
+## KNOWN BUYING INFLUENCES (from Green Sheet - CUSTOMER-SIDE ONLY)
+IMPORTANT: Only include people who work at ${context.companyName}. Do NOT include Korn Ferry consultants or internal team members.
 ${context.knownBuyingInfluences.length > 0 
   ? context.knownBuyingInfluences.map(bi => 
       `- ${bi.name} (${bi.title}): Role=${bi.role}, Influence=${bi.influence}${bi.concerns ? `, Concerns: ${bi.concerns}` : ""}`
     ).join("\n")
   : "None identified - create RedFlags for missing buying influences"}
 
-## STAKEHOLDER MENTIONS (from Discovery Artifacts)
+## STAKEHOLDER MENTIONS (from Discovery Artifacts - CUSTOMER-SIDE ONLY)
+Filter to only include stakeholders at ${context.companyName}, exclude any Korn Ferry/KF/internal mentions:
 ${context.stakeholderMentions.length > 0 ? context.stakeholderMentions.join(", ") : "None captured"}
 
-## COMPETITIVE LANDSCAPE
+## COMPETITIVE LANDSCAPE (Use discovery research data ONLY)
+Use ONLY the competitors and insights identified below from discovery research. Do NOT add generic competitor lists.
 ${context.competitors.length > 0 
   ? context.competitors.map(c => 
-      `- ${c.name}: Strengths: ${c.strengths?.slice(0,2).join("; ") || "Unknown"}, Weaknesses: ${c.weaknesses?.slice(0,2).join("; ") || "Unknown"}`
+      `- ${c.name}: Strengths: ${c.strengths?.slice(0,3).join("; ") || "Unknown"}, Weaknesses: ${c.weaknesses?.slice(0,3).join("; ") || "Unknown"}, Positioning: ${c.positioning || "Unknown"}`
     ).join("\n")
-  : "No competitors identified - include typical competitors for this solution area"}
-${context.competitiveSummary ? `\nCompetitive Summary: ${context.competitiveSummary}` : ""}
+  : "No specific competitors identified in discovery - use only 'Do Nothing' and 'Internal Solution' as competitors"}
+${context.competitiveSummary ? `\nCompetitive Summary from Research: ${context.competitiveSummary}` : ""}
 
 ## DISCOVERY INSIGHTS
 ${context.jobThemes.map(jt => `Theme: ${jt.theme} - ${jt.summary || "No summary"}`).join("\n") || "None captured"}
@@ -13534,10 +13651,16 @@ Action Items: ${context.enrichedInsights.actionItems?.join("; ") || "None"}
 ## DISCOVERY NOTES
 ${context.discoveryNotes || "None captured"}
 
-## INTELLIGENCE DATA
-${context.intelligenceData ? JSON.stringify(context.intelligenceData, null, 2).slice(0, 2000) : "None captured"}
+## INTELLIGENCE DATA (Industry & Company Research)
+${context.intelligenceData ? JSON.stringify(context.intelligenceData, null, 2).slice(0, 3000) : "None captured"}
 
-Generate a complete Blue Sheet JSON with all sections populated. Every unknown should be a RedFlag with corresponding actions.`;
+## INSTRUCTIONS
+1. Generate a complete Blue Sheet JSON with all sections populated
+2. SSO target date MUST be in ${currentYear} or later (current: Q${currentQuarter} ${currentYear})
+3. Buying Influences MUST be customer-side stakeholders at ${context.companyName} only
+4. Competitors MUST come from the discovery research data above, not generic lists
+5. Use the Discovery Synthesis insights to inform Strengths and RedFlags
+6. Every unknown should be a RedFlag with corresponding actions`;
 
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -13550,6 +13673,92 @@ Generate a complete Blue Sheet JSON with all sections populated. Every unknown s
       });
 
       const blueSheetData = JSON.parse(completion.choices[0].message.content || "{}");
+
+      // Post-process to validate and fix SSO dates (ensure present/future dates)
+      if (blueSheetData.singleSalesObjective) {
+        let sso = blueSheetData.singleSalesObjective;
+        
+        // Replace any historical year with current year
+        sso = sso.replace(/\b(202[0-5]|201\d|200\d)\b/g, String(currentYear));
+        
+        // Handle quarter references - ensure they're in present/future
+        const quarterYearMatch = sso.match(/Q([1-4])\s*(\d{4})/i);
+        if (quarterYearMatch) {
+          const quarter = parseInt(quarterYearMatch[1]);
+          const year = parseInt(quarterYearMatch[2]);
+          if (year < currentYear || (year === currentYear && quarter < currentQuarter)) {
+            // Replace with current or next quarter
+            const nextQuarter = currentQuarter >= 4 ? 1 : currentQuarter + 1;
+            const nextYear = currentQuarter >= 4 ? currentYear + 1 : currentYear;
+            sso = sso.replace(/Q[1-4]\s*\d{4}/i, `Q${nextQuarter} ${nextYear}`);
+          }
+        }
+        
+        // Handle standalone quarter references (e.g., "Q1" without year)
+        const standaloneQuarterMatch = sso.match(/\bQ([1-4])\b(?!\s*\d{4})/i);
+        if (standaloneQuarterMatch) {
+          const quarter = parseInt(standaloneQuarterMatch[1]);
+          // Add current year and ensure it's future
+          const targetYear = quarter < currentQuarter ? currentYear + 1 : currentYear;
+          sso = sso.replace(/\bQ([1-4])\b(?!\s*\d{4})/i, `Q$1 ${targetYear}`);
+        }
+        
+        // Handle month references without year (e.g., "by March", "in June")
+        const monthNames = ["january", "february", "march", "april", "may", "june", 
+                           "july", "august", "september", "october", "november", "december"];
+        const monthMatch = sso.toLowerCase().match(new RegExp(`\\b(${monthNames.join("|")})\\b(?!\\s*\\d{4})`));
+        if (monthMatch) {
+          const monthIndex = monthNames.indexOf(monthMatch[1].toLowerCase()) + 1;
+          // Add year if month is in the past for current year
+          const targetYear = monthIndex < currentMonth ? currentYear + 1 : currentYear;
+          sso = sso.replace(
+            new RegExp(`\\b(${monthMatch[1]})\\b(?!\\s*\\d{4})`, "i"), 
+            `$1 ${targetYear}`
+          );
+        }
+        
+        blueSheetData.singleSalesObjective = sso;
+      }
+
+      // Ensure SSO has a valid future date - add fallback if no date detected
+      if (blueSheetData.singleSalesObjective) {
+        const hasYear = /\b20\d{2}\b/.test(blueSheetData.singleSalesObjective);
+        const hasQuarter = /\bQ[1-4]\b/i.test(blueSheetData.singleSalesObjective);
+        const hasMonth = monthNames.some(m => blueSheetData.singleSalesObjective.toLowerCase().includes(m));
+        
+        if (!hasYear && !hasQuarter && !hasMonth) {
+          // No explicit date found - append a default future timeframe
+          const nextQuarter = currentQuarter >= 4 ? 1 : currentQuarter + 1;
+          const nextYear = currentQuarter >= 4 ? currentYear + 1 : currentYear;
+          blueSheetData.singleSalesObjective = blueSheetData.singleSalesObjective.replace(
+            /\s*$/,
+            ` by Q${nextQuarter} ${nextYear}`
+          );
+        }
+      }
+
+      // Post-process buying influences: keep only customer-side, remove internal users
+      if (blueSheetData.buyingInfluences && Array.isArray(blueSheetData.buyingInfluences)) {
+        blueSheetData.buyingInfluences = blueSheetData.buyingInfluences.filter((bi: any) => {
+          const name = bi.name || "";
+          const title = bi.title || "";
+          const company = bi.company || bi.organization || "";
+          
+          // Reject if internal user
+          if (isInternalUser(name, title, company)) {
+            return false;
+          }
+          
+          // Accept if customer-side or if company matches customer
+          if (isCustomerSide(name, title, company)) {
+            return true;
+          }
+          
+          // If neither explicitly internal nor customer, keep if title suggests customer role
+          const customerRoles = ["ceo", "cfo", "coo", "cto", "chro", "cmo", "president", "vp", "director", "head", "manager", "lead", "owner"];
+          return customerRoles.some(role => title.toLowerCase().includes(role));
+        });
+      }
 
       // Calculate section completion
       const sectionCompletion = {
