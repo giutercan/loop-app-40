@@ -6171,6 +6171,36 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                             })) || [],
                             annualReportSummary: liveIntelligence.annualReportSummary,
                             earningsCallHighlights: liveIntelligence.earningsCallHighlights,
+                            meetingAttendees: meetingAttendees.map(a => ({
+                              name: a.name,
+                              title: a.title,
+                              role: a.role,
+                              influence: a.influence,
+                              affiliation: a.affiliation
+                            })),
+                            greenSheet: {
+                              objective: greenSheetEdits.objective,
+                              desiredOutcome: greenSheetEdits.desiredOutcome,
+                              openingStatement: greenSheetEdits.openingStatement,
+                              bestActionCommitment: greenSheetEdits.bestActionCommitment
+                            },
+                            discoveryQuestions: myCallFlow.map(q => ({
+                              question: q.question,
+                              answer: questionAnswers[q.id] || "",
+                              methodology: q.methodology
+                            })),
+                            storyCoaching: storyBuilderData ? {
+                              keyMessage: storyBuilderData.before?.singleMessage || "",
+                              emotionalGoal: storyBuilderData.before?.emotionalReaction || "",
+                              openingHook: storyBuilderData.before?.startingHook || "",
+                              turningPoint: storyBuilderData.during?.turningPoint || "",
+                              callToAction: storyBuilderData.after?.callToAction || "",
+                              tensionQuestions: (storyBuilderData.before?.tensionQuestions || []).map(q => ({
+                                prompt: q.prompt,
+                                response: q.response,
+                                methodology: q.methodology
+                              }))
+                            } : undefined
                           };
                           generateIntelligencePPT(exportData);
                         }}
@@ -6189,6 +6219,36 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                             })) || [],
                             annualReportSummary: liveIntelligence.annualReportSummary,
                             earningsCallHighlights: liveIntelligence.earningsCallHighlights,
+                            meetingAttendees: meetingAttendees.map(a => ({
+                              name: a.name,
+                              title: a.title,
+                              role: a.role,
+                              influence: a.influence,
+                              affiliation: a.affiliation
+                            })),
+                            greenSheet: {
+                              objective: greenSheetEdits.objective,
+                              desiredOutcome: greenSheetEdits.desiredOutcome,
+                              openingStatement: greenSheetEdits.openingStatement,
+                              bestActionCommitment: greenSheetEdits.bestActionCommitment
+                            },
+                            discoveryQuestions: myCallFlow.map(q => ({
+                              question: q.question,
+                              answer: questionAnswers[q.id] || "",
+                              methodology: q.methodology
+                            })),
+                            storyCoaching: storyBuilderData ? {
+                              keyMessage: storyBuilderData.before?.singleMessage || "",
+                              emotionalGoal: storyBuilderData.before?.emotionalReaction || "",
+                              openingHook: storyBuilderData.before?.startingHook || "",
+                              turningPoint: storyBuilderData.during?.turningPoint || "",
+                              callToAction: storyBuilderData.after?.callToAction || "",
+                              tensionQuestions: (storyBuilderData.before?.tensionQuestions || []).map(q => ({
+                                prompt: q.prompt,
+                                response: q.response,
+                                methodology: q.methodology
+                              }))
+                            } : undefined
                           };
                           generateIntelligencePDF(exportData);
                         }}

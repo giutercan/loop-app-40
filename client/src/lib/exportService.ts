@@ -45,6 +45,36 @@ interface IntelligenceExportData {
     question: string;
     answer: string;
   }>;
+  meetingAttendees?: Array<{
+    name: string;
+    title?: string;
+    role?: string;
+    influence?: string;
+    affiliation?: string;
+  }>;
+  greenSheet?: {
+    objective?: string;
+    desiredOutcome?: string;
+    openingStatement?: string;
+    bestActionCommitment?: string;
+  };
+  discoveryQuestions?: Array<{
+    question: string;
+    answer?: string;
+    methodology?: string;
+  }>;
+  storyCoaching?: {
+    keyMessage?: string;
+    emotionalGoal?: string;
+    openingHook?: string;
+    turningPoint?: string;
+    callToAction?: string;
+    tensionQuestions?: Array<{
+      prompt: string;
+      response?: string;
+      methodology?: string;
+    }>;
+  };
 }
 
 interface OutcomeExportData {
@@ -366,7 +396,208 @@ export function generateIntelligencePPT(data: IntelligenceExportData): void {
     addKFFooter(ecSlide, pageNum);
   }
 
-  pres.writeFile({ fileName: `${data.companyName}_Intelligence_Report.pptx` });
+  // Meeting Attendees slide
+  if (data.meetingAttendees && data.meetingAttendees.length > 0) {
+    pageNum++;
+    const attendeesSlide = pres.addSlide();
+    addKFHeader(pres, attendeesSlide, "Meeting Attendees");
+
+    const attendeeRows: pptxgen.TableRow[] = [
+      [
+        { text: "Name", options: { bold: true, fill: { color: KORN_FERRY_COLORS.primary.replace("#", "") }, color: KORN_FERRY_COLORS.white.replace("#", "") } },
+        { text: "Title", options: { bold: true, fill: { color: KORN_FERRY_COLORS.primary.replace("#", "") }, color: KORN_FERRY_COLORS.white.replace("#", "") } },
+        { text: "Role", options: { bold: true, fill: { color: KORN_FERRY_COLORS.primary.replace("#", "") }, color: KORN_FERRY_COLORS.white.replace("#", "") } },
+        { text: "Influence", options: { bold: true, fill: { color: KORN_FERRY_COLORS.primary.replace("#", "") }, color: KORN_FERRY_COLORS.white.replace("#", "") } },
+      ],
+    ];
+
+    data.meetingAttendees.slice(0, 8).forEach((attendee) => {
+      attendeeRows.push([
+        { text: attendee.name || "", options: { fontSize: 10 } },
+        { text: attendee.title || "", options: { fontSize: 10 } },
+        { text: attendee.role || "", options: { fontSize: 10 } },
+        { text: attendee.influence || "", options: { fontSize: 10 } },
+      ]);
+    });
+
+    attendeesSlide.addTable(attendeeRows, {
+      x: 0.5,
+      y: 1.2,
+      w: 9,
+      fontFace: FONTS.body,
+      fontSize: 10,
+      border: { type: "solid", pt: 0.5, color: KORN_FERRY_COLORS.muted.replace("#", "") },
+    });
+
+    addKFFooter(attendeesSlide, pageNum);
+  }
+
+  // Green Sheet / Call Planner slide
+  if (data.greenSheet && (data.greenSheet.objective || data.greenSheet.desiredOutcome)) {
+    pageNum++;
+    const gsSlide = pres.addSlide();
+    addKFHeader(pres, gsSlide, "Call Planner (Green Sheet)");
+
+    let yPos = 1.2;
+    const sections = [
+      { label: "Call Objective", value: data.greenSheet.objective },
+      { label: "Desired Outcome", value: data.greenSheet.desiredOutcome },
+      { label: "Opening Statement", value: data.greenSheet.openingStatement },
+      { label: "Best Action Commitment", value: data.greenSheet.bestActionCommitment },
+    ];
+
+    sections.forEach((section) => {
+      if (section.value) {
+        gsSlide.addText(section.label, {
+          x: 0.5,
+          y: yPos,
+          w: 9,
+          h: 0.25,
+          fontSize: 12,
+          fontFace: FONTS.heading,
+          color: KORN_FERRY_COLORS.primary.replace("#", ""),
+          bold: true,
+        });
+        yPos += 0.3;
+        gsSlide.addText(section.value, {
+          x: 0.5,
+          y: yPos,
+          w: 9,
+          h: 0.6,
+          fontSize: 10,
+          fontFace: FONTS.body,
+          color: KORN_FERRY_COLORS.text.replace("#", ""),
+          valign: "top",
+        });
+        yPos += 0.7;
+      }
+    });
+
+    addKFFooter(gsSlide, pageNum);
+  }
+
+  // Discovery Questions slide
+  if (data.discoveryQuestions && data.discoveryQuestions.length > 0) {
+    pageNum++;
+    const questionsSlide = pres.addSlide();
+    addKFHeader(pres, questionsSlide, "Discovery Questions & Responses");
+
+    let yPos = 1.2;
+    data.discoveryQuestions.slice(0, 5).forEach((q, idx) => {
+      questionsSlide.addText(`${idx + 1}. ${q.question}`, {
+        x: 0.5,
+        y: yPos,
+        w: 9,
+        h: 0.3,
+        fontSize: 11,
+        fontFace: FONTS.heading,
+        color: KORN_FERRY_COLORS.primary.replace("#", ""),
+        bold: true,
+      });
+      yPos += 0.35;
+      if (q.answer) {
+        questionsSlide.addText(q.answer, {
+          x: 0.7,
+          y: yPos,
+          w: 8.5,
+          h: 0.5,
+          fontSize: 10,
+          fontFace: FONTS.body,
+          color: KORN_FERRY_COLORS.text.replace("#", ""),
+          valign: "top",
+        });
+        yPos += 0.55;
+      }
+      if (q.methodology) {
+        questionsSlide.addText(`[${q.methodology}]`, {
+          x: 0.7,
+          y: yPos - 0.1,
+          w: 1.5,
+          h: 0.2,
+          fontSize: 8,
+          fontFace: FONTS.body,
+          color: KORN_FERRY_COLORS.muted.replace("#", ""),
+        });
+      }
+      yPos += 0.2;
+    });
+
+    addKFFooter(questionsSlide, pageNum);
+  }
+
+  // Story Coaching slide
+  if (data.storyCoaching && (data.storyCoaching.keyMessage || data.storyCoaching.openingHook)) {
+    pageNum++;
+    const storySlide = pres.addSlide();
+    addKFHeader(pres, storySlide, "Story Coaching Framework");
+
+    let yPos = 1.2;
+    const storyElements = [
+      { label: "Key Message", value: data.storyCoaching.keyMessage },
+      { label: "Emotional Goal", value: data.storyCoaching.emotionalGoal },
+      { label: "Opening Hook", value: data.storyCoaching.openingHook },
+      { label: "Turning Point", value: data.storyCoaching.turningPoint },
+      { label: "Call to Action", value: data.storyCoaching.callToAction },
+    ];
+
+    storyElements.forEach((element) => {
+      if (element.value) {
+        storySlide.addText(element.label, {
+          x: 0.5,
+          y: yPos,
+          w: 2,
+          h: 0.25,
+          fontSize: 10,
+          fontFace: FONTS.heading,
+          color: KORN_FERRY_COLORS.primary.replace("#", ""),
+          bold: true,
+        });
+        storySlide.addText(element.value, {
+          x: 2.5,
+          y: yPos,
+          w: 7,
+          h: 0.4,
+          fontSize: 10,
+          fontFace: FONTS.body,
+          color: KORN_FERRY_COLORS.text.replace("#", ""),
+          valign: "top",
+        });
+        yPos += 0.5;
+      }
+    });
+
+    // Tension Questions
+    if (data.storyCoaching.tensionQuestions && data.storyCoaching.tensionQuestions.length > 0) {
+      yPos += 0.2;
+      storySlide.addText("Tension Questions", {
+        x: 0.5,
+        y: yPos,
+        w: 9,
+        h: 0.25,
+        fontSize: 12,
+        fontFace: FONTS.heading,
+        color: KORN_FERRY_COLORS.secondary.replace("#", ""),
+        bold: true,
+      });
+      yPos += 0.35;
+      data.storyCoaching.tensionQuestions.slice(0, 4).forEach((tq) => {
+        storySlide.addText(`• ${tq.prompt}`, {
+          x: 0.7,
+          y: yPos,
+          w: 8.5,
+          h: 0.3,
+          fontSize: 10,
+          fontFace: FONTS.body,
+          color: KORN_FERRY_COLORS.text.replace("#", ""),
+        });
+        yPos += 0.35;
+      });
+    }
+
+    addKFFooter(storySlide, pageNum);
+  }
+
+  pres.writeFile({ fileName: `${data.companyName}_Discovery_Report.pptx` });
 }
 
 export function generateIntelligencePDF(data: IntelligenceExportData): void {
@@ -470,11 +701,183 @@ export function generateIntelligencePDF(data: IntelligenceExportData): void {
     }
   }
 
+  // Meeting Attendees section
+  if (data.meetingAttendees && data.meetingAttendees.length > 0) {
+    doc.addPage();
+    yPos = 20;
+    
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(10, 34, 64);
+    doc.text("Meeting Attendees", margin, yPos);
+    
+    yPos += 10;
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(30, 41, 59);
+    
+    data.meetingAttendees.forEach((attendee) => {
+      if (yPos > 270) {
+        doc.addPage();
+        yPos = 20;
+      }
+      doc.setFont("helvetica", "bold");
+      doc.text(`• ${attendee.name}`, margin, yPos);
+      doc.setFont("helvetica", "normal");
+      const details = [attendee.title, attendee.role, attendee.influence].filter(Boolean).join(" | ");
+      if (details) {
+        doc.text(`  ${details}`, margin + 5, yPos + 5);
+        yPos += 12;
+      } else {
+        yPos += 7;
+      }
+    });
+  }
+
+  // Green Sheet section
+  if (data.greenSheet && (data.greenSheet.objective || data.greenSheet.desiredOutcome)) {
+    if (yPos > 200) {
+      doc.addPage();
+      yPos = 20;
+    } else {
+      yPos += 10;
+    }
+    
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(10, 34, 64);
+    doc.text("Call Planner (Green Sheet)", margin, yPos);
+    yPos += 10;
+
+    const sections = [
+      { label: "Call Objective", value: data.greenSheet.objective },
+      { label: "Desired Outcome", value: data.greenSheet.desiredOutcome },
+      { label: "Opening Statement", value: data.greenSheet.openingStatement },
+      { label: "Best Action Commitment", value: data.greenSheet.bestActionCommitment },
+    ];
+
+    sections.forEach((section) => {
+      if (section.value) {
+        if (yPos > 250) {
+          doc.addPage();
+          yPos = 20;
+        }
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(10, 34, 64);
+        doc.text(section.label, margin, yPos);
+        yPos += 6;
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(30, 41, 59);
+        const lines = doc.splitTextToSize(section.value, pageWidth - margin * 2);
+        doc.text(lines, margin, yPos);
+        yPos += lines.length * 5 + 8;
+      }
+    });
+  }
+
+  // Discovery Questions section
+  if (data.discoveryQuestions && data.discoveryQuestions.length > 0) {
+    doc.addPage();
+    yPos = 20;
+    
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(10, 34, 64);
+    doc.text("Discovery Questions & Responses", margin, yPos);
+    yPos += 10;
+
+    data.discoveryQuestions.forEach((q, idx) => {
+      if (yPos > 240) {
+        doc.addPage();
+        yPos = 20;
+      }
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(10, 34, 64);
+      doc.text(`${idx + 1}. ${q.question}`, margin, yPos);
+      yPos += 6;
+      
+      if (q.answer) {
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(30, 41, 59);
+        const answerLines = doc.splitTextToSize(q.answer, pageWidth - margin * 2 - 10);
+        doc.text(answerLines, margin + 5, yPos);
+        yPos += answerLines.length * 5 + 3;
+      }
+      
+      if (q.methodology) {
+        doc.setFontSize(8);
+        doc.setTextColor(100, 116, 139);
+        doc.text(`[${q.methodology}]`, margin + 5, yPos);
+        yPos += 5;
+      }
+      yPos += 3;
+    });
+  }
+
+  // Story Coaching section
+  if (data.storyCoaching && (data.storyCoaching.keyMessage || data.storyCoaching.openingHook)) {
+    doc.addPage();
+    yPos = 20;
+    
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(10, 34, 64);
+    doc.text("Story Coaching Framework", margin, yPos);
+    yPos += 12;
+
+    const storyElements = [
+      { label: "Key Message", value: data.storyCoaching.keyMessage },
+      { label: "Emotional Goal", value: data.storyCoaching.emotionalGoal },
+      { label: "Opening Hook", value: data.storyCoaching.openingHook },
+      { label: "Turning Point", value: data.storyCoaching.turningPoint },
+      { label: "Call to Action", value: data.storyCoaching.callToAction },
+    ];
+
+    storyElements.forEach((element) => {
+      if (element.value) {
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(10, 34, 64);
+        doc.text(`${element.label}:`, margin, yPos);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(30, 41, 59);
+        const lines = doc.splitTextToSize(element.value, pageWidth - margin * 2 - 40);
+        doc.text(lines, margin + 40, yPos);
+        yPos += Math.max(lines.length * 5, 6) + 4;
+      }
+    });
+
+    // Tension Questions
+    if (data.storyCoaching.tensionQuestions && data.storyCoaching.tensionQuestions.length > 0) {
+      yPos += 5;
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(255, 107, 53);
+      doc.text("Tension Questions", margin, yPos);
+      yPos += 8;
+      
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(30, 41, 59);
+      data.storyCoaching.tensionQuestions.forEach((tq) => {
+        if (yPos > 270) {
+          doc.addPage();
+          yPos = 20;
+        }
+        doc.text(`• ${tq.prompt}`, margin + 5, yPos);
+        yPos += 6;
+      });
+    }
+  }
+
   doc.setFontSize(8);
   doc.setTextColor(100, 116, 139);
   doc.text("Confidential - Korn Ferry", pageWidth - margin - 40, doc.internal.pageSize.getHeight() - 10);
 
-  doc.save(`${data.companyName}_Intelligence_Report.pdf`);
+  doc.save(`${data.companyName}_Discovery_Report.pdf`);
 }
 
 export function generateOutcomesPPT(data: OutcomeExportData): void {
