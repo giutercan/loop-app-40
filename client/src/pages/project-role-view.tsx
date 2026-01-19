@@ -8580,8 +8580,8 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
       </TabsContent>
 
           {/* STAGE 1.5: STRATEGY - Miller Heiman Blue Sheet */}
-          <TabsContent value="strategy" className="space-y-6">
-            <Card className="bg-gradient-to-r from-blue-500/5 via-indigo-500/5 to-purple-500/5 border-blue-500/20">
+          <TabsContent value="strategy" className="space-y-6" data-testid="tab-content-strategy">
+            <Card className="bg-gradient-to-r from-blue-500/5 via-indigo-500/5 to-purple-500/5 border-blue-500/20" data-testid="card-bluesheet">
               <CardHeader>
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <div className="flex items-center gap-3">
@@ -8591,7 +8591,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                     <div>
                       <CardTitle className="flex items-center gap-2">
                         Strategic Blue Sheet
-                        <Badge className="bg-blue-500/10 text-blue-600 text-xs">Miller Heiman</Badge>
+                        <Badge className="bg-blue-500/10 text-blue-600 text-xs" data-testid="badge-miller-heiman">Miller Heiman</Badge>
                       </CardTitle>
                       <CardDescription>
                         AI-powered strategic selling analysis to map buying influences, competition, and action plans
@@ -8600,7 +8600,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                   </div>
                   <div className="flex items-center gap-2">
                     {blueSheet?.aiGenerated && (
-                      <Badge variant="outline" className="text-emerald-600 border-emerald-300 text-xs">
+                      <Badge variant="outline" className="text-emerald-600 border-emerald-300 text-xs" data-testid="badge-ai-generated">
                         AI Generated
                       </Badge>
                     )}
@@ -8632,10 +8632,10 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                     <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
                   </div>
                 ) : blueSheet?.data ? (
-                  <div className="space-y-6">
+                  <div className="space-y-6" data-testid="bluesheet-content">
                     {/* Single Sales Objective */}
                     {blueSheet.data.singleSalesObjective && (
-                      <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/20">
+                      <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/20" data-testid="section-sso">
                         <div className="flex items-center gap-2 mb-2">
                           <Target className="w-4 h-4 text-blue-600" />
                           <span className="font-medium text-sm">Single Sales Objective</span>
@@ -8648,27 +8648,28 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                                   ? "bg-red-500/10 text-red-600"
                                   : "bg-amber-500/10 text-amber-600"
                               }`}
+                              data-testid="badge-sso-marker"
                             >
                               {blueSheet.data.singleSalesObjectiveMarker}
                             </Badge>
                           )}
                         </div>
-                        <p className="text-sm">{blueSheet.data.singleSalesObjective}</p>
+                        <p className="text-sm" data-testid="text-sso">{blueSheet.data.singleSalesObjective}</p>
                       </div>
                     )}
 
                     {/* Buying Influences */}
                     {blueSheet.data.buyingInfluences?.length > 0 && (
-                      <div>
+                      <div data-testid="section-buying-influences">
                         <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
                           <Users className="w-4 h-4" />
                           Buying Influences ({blueSheet.data.buyingInfluences.length})
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           {blueSheet.data.buyingInfluences.map((influence: any, idx: number) => (
-                            <div key={idx} className="p-3 rounded-lg border bg-card">
+                            <div key={idx} className="p-3 rounded-lg border bg-card" data-testid={`card-influence-${idx}`}>
                               <div className="flex items-center justify-between mb-2">
-                                <span className="font-medium text-sm">{influence.name}</span>
+                                <span className="font-medium text-sm" data-testid={`text-influence-name-${idx}`}>{influence.name}</span>
                                 <Badge 
                                   className={`text-xs ${
                                     influence.role === "Economic" ? "bg-purple-500/10 text-purple-600" :
@@ -8676,6 +8677,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                                     influence.role === "Technical" ? "bg-amber-500/10 text-amber-600" :
                                     "bg-emerald-500/10 text-emerald-600"
                                   }`}
+                                  data-testid={`badge-influence-role-${idx}`}
                                 >
                                   {influence.role}
                                 </Badge>
@@ -8692,7 +8694,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
 
                     {/* Summary of Positions (Red Flags & Strengths) */}
                     {blueSheet.data.summaryOfPositions?.length > 0 && (
-                      <div>
+                      <div data-testid="section-positions">
                         <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
                           <AlertTriangle className="w-4 h-4" />
                           Strengths & Red Flags
@@ -8706,6 +8708,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                                   ? "bg-red-500/5 border-red-500/20" 
                                   : "bg-emerald-500/5 border-emerald-500/20"
                               }`}
+                              data-testid={`card-position-${idx}`}
                             >
                               <div className="flex items-center gap-2 mb-1">
                                 <Badge 
@@ -8714,6 +8717,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                                       ? "bg-red-500/10 text-red-600" 
                                       : "bg-emerald-500/10 text-emerald-600"
                                   }`}
+                                  data-testid={`badge-position-type-${idx}`}
                                 >
                                   {position.type}
                                 </Badge>
@@ -8723,7 +8727,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                                   </Badge>
                                 )}
                               </div>
-                              <p className="text-sm">{position.description}</p>
+                              <p className="text-sm" data-testid={`text-position-${idx}`}>{position.description}</p>
                             </div>
                           ))}
                         </div>
@@ -8732,19 +8736,19 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
 
                     {/* Action Plans */}
                     {blueSheet.data.actionPlans?.length > 0 && (
-                      <div>
+                      <div data-testid="section-action-plans">
                         <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
                           <CheckCircle className="w-4 h-4" />
                           Action Plans ({blueSheet.data.actionPlans.length})
                         </h4>
                         <div className="space-y-2">
                           {blueSheet.data.actionPlans.slice(0, 5).map((action: any, idx: number) => (
-                            <div key={idx} className="p-3 rounded-lg border bg-card flex items-start gap-3">
+                            <div key={idx} className="p-3 rounded-lg border bg-card flex items-start gap-3" data-testid={`card-action-${idx}`}>
                               <div className="w-6 h-6 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                                 <span className="text-xs font-medium text-blue-600">{idx + 1}</span>
                               </div>
                               <div className="flex-1">
-                                <p className="text-sm">{action.action}</p>
+                                <p className="text-sm" data-testid={`text-action-${idx}`}>{action.action}</p>
                                 {action.owner && (
                                   <p className="text-xs text-muted-foreground mt-1">Owner: {action.owner}</p>
                                 )}
@@ -8752,7 +8756,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                             </div>
                           ))}
                           {blueSheet.data.actionPlans.length > 5 && (
-                            <p className="text-xs text-muted-foreground text-center pt-2">
+                            <p className="text-xs text-muted-foreground text-center pt-2" data-testid="text-more-actions">
                               +{blueSheet.data.actionPlans.length - 5} more actions
                             </p>
                           )}
