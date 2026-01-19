@@ -107,6 +107,7 @@ import {
   Upload
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Project, JobTheme } from "@shared/schema";
@@ -8580,10 +8581,11 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
         )}
       </TabsContent>
 
-          {/* STAGE 1.5: STRATEGY - Miller Heiman Blue Sheet */}
+          {/* STAGE 1.5: STRATEGY - Miller Heiman Blue Sheet (Modernized) */}
           <TabsContent value="strategy" className="space-y-6" data-testid="tab-content-strategy">
+            {/* Header Card */}
             <Card className="bg-gradient-to-r from-blue-500/5 via-indigo-500/5 to-purple-500/5 border-blue-500/20" data-testid="card-bluesheet">
-              <CardHeader>
+              <CardHeader className="pb-4">
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500/20 to-indigo-500/20 flex items-center justify-center">
@@ -8591,11 +8593,21 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                     </div>
                     <div>
                       <CardTitle className="flex items-center gap-2">
-                        Strategic Blue Sheet
-                        <Badge className="bg-blue-500/10 text-blue-600 text-xs" data-testid="badge-miller-heiman">Miller Heiman</Badge>
+                        Deal Strategy Canvas
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge className="bg-blue-500/10 text-blue-600 text-xs cursor-help" data-testid="badge-miller-heiman">
+                              Miller Heiman
+                              <HelpCircle className="w-3 h-3 ml-1" />
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="max-w-xs">
+                            <p className="text-xs">Based on the Miller Heiman Strategic Selling methodology - a proven framework for navigating complex B2B sales with multiple decision makers.</p>
+                          </TooltipContent>
+                        </Tooltip>
                       </CardTitle>
                       <CardDescription>
-                        AI-powered strategic selling analysis to map buying influences, competition, and action plans
+                        AI-powered strategy to understand your deal, map decision makers, and plan your path to win
                       </CardDescription>
                     </div>
                   </div>
@@ -8615,12 +8627,12 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                       {generateBlueSheetMutation.isPending ? (
                         <>
                           <Loader2 className="w-3 h-3 animate-spin" />
-                          Generating...
+                          Analyzing...
                         </>
                       ) : (
                         <>
                           <Sparkles className="w-3 h-3" />
-                          {blueSheet ? "Regenerate" : "Generate Blue Sheet"}
+                          {blueSheet ? "Regenerate" : "Generate Strategy"}
                         </>
                       )}
                     </Button>
@@ -8630,19 +8642,135 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
               <CardContent>
                 {blueSheetLoading ? (
                   <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                    <div className="text-center">
+                      <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-3" />
+                      <p className="text-sm text-muted-foreground">Loading your deal strategy...</p>
+                    </div>
                   </div>
                 ) : blueSheet?.data ? (
                   <div className="space-y-6" data-testid="bluesheet-content">
-                    {/* Single Sales Objective */}
+                    
+                    {/* DEAL HEALTH DASHBOARD */}
+                    <div className="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-900/50 dark:to-blue-900/20 border" data-testid="section-deal-health">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Activity className="w-4 h-4 text-blue-600" />
+                        <span className="font-semibold text-sm">Deal Health Dashboard</span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent side="right" className="max-w-xs">
+                            <p className="text-xs">A quick overview of your deal's strategic health based on coverage of key decision makers, identified risks, and action readiness.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {/* Strategy Score */}
+                        <div className="text-center">
+                          <div className="relative w-16 h-16 mx-auto mb-2">
+                            <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
+                              <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" strokeWidth="3" className="text-muted/20" />
+                              <circle 
+                                cx="18" cy="18" r="15" fill="none" stroke="currentColor" strokeWidth="3" 
+                                strokeDasharray={`${Math.min(100, (blueSheet.sectionCompletion?.overall || 0))} 100`}
+                                className="text-blue-500 transition-all duration-500"
+                                strokeLinecap="round"
+                              />
+                            </svg>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className="text-sm font-bold">{blueSheet.sectionCompletion?.overall || 0}%</span>
+                            </div>
+                          </div>
+                          <p className="text-xs font-medium">Strategy Score</p>
+                        </div>
+                        
+                        {/* Decision Makers */}
+                        <div className="text-center">
+                          <div className="relative w-16 h-16 mx-auto mb-2">
+                            <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
+                              <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" strokeWidth="3" className="text-muted/20" />
+                              <circle 
+                                cx="18" cy="18" r="15" fill="none" stroke="currentColor" strokeWidth="3" 
+                                strokeDasharray={`${Math.min(100, (blueSheet.data.buyingInfluences?.length || 0) * 25)} 100`}
+                                className="text-purple-500 transition-all duration-500"
+                                strokeLinecap="round"
+                              />
+                            </svg>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className="text-sm font-bold">{blueSheet.data.buyingInfluences?.length || 0}</span>
+                            </div>
+                          </div>
+                          <p className="text-xs font-medium">Decision Makers</p>
+                        </div>
+                        
+                        {/* Risk Score */}
+                        <div className="text-center">
+                          <div className="relative w-16 h-16 mx-auto mb-2">
+                            {(() => {
+                              const redFlags = blueSheet.data.summaryOfPositions?.filter((p: any) => p.type === "RedFlag")?.length || 0;
+                              const riskLevel = redFlags === 0 ? "low" : redFlags <= 2 ? "medium" : "high";
+                              const riskColor = riskLevel === "low" ? "text-emerald-500" : riskLevel === "medium" ? "text-amber-500" : "text-red-500";
+                              const riskPercent = riskLevel === "low" ? 25 : riskLevel === "medium" ? 60 : 90;
+                              return (
+                                <>
+                                  <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
+                                    <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" strokeWidth="3" className="text-muted/20" />
+                                    <circle 
+                                      cx="18" cy="18" r="15" fill="none" stroke="currentColor" strokeWidth="3" 
+                                      strokeDasharray={`${riskPercent} 100`}
+                                      className={`${riskColor} transition-all duration-500`}
+                                      strokeLinecap="round"
+                                    />
+                                  </svg>
+                                  <div className="absolute inset-0 flex items-center justify-center">
+                                    <span className="text-sm font-bold">{redFlags}</span>
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </div>
+                          <p className="text-xs font-medium">Risk Flags</p>
+                        </div>
+                        
+                        {/* Actions Ready */}
+                        <div className="text-center">
+                          <div className="relative w-16 h-16 mx-auto mb-2">
+                            <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
+                              <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" strokeWidth="3" className="text-muted/20" />
+                              <circle 
+                                cx="18" cy="18" r="15" fill="none" stroke="currentColor" strokeWidth="3" 
+                                strokeDasharray={`${Math.min(100, (blueSheet.data.actionPlans?.length || 0) * 10)} 100`}
+                                className="text-emerald-500 transition-all duration-500"
+                                strokeLinecap="round"
+                              />
+                            </svg>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className="text-sm font-bold">{blueSheet.data.actionPlans?.length || 0}</span>
+                            </div>
+                          </div>
+                          <p className="text-xs font-medium">Action Items</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* DEAL GOAL & TIMELINE (was SSO) */}
                     {blueSheet.data.singleSalesObjective && (
                       <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/20" data-testid="section-sso">
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-center gap-2 mb-3">
                           <Target className="w-4 h-4 text-blue-600" />
-                          <span className="font-medium text-sm">Single Sales Objective</span>
+                          <span className="font-semibold text-sm">Deal Goal & Timeline</span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="max-w-xs">
+                              <p className="text-xs">Your single, clear sales objective - what you're selling, to whom, when, and for how much. This keeps everyone aligned on the goal.</p>
+                            </TooltipContent>
+                          </Tooltip>
                           {blueSheet.data.singleSalesObjectiveMarker && (
                             <Badge 
-                              className={`text-xs ${
+                              className={`text-xs ml-auto ${
                                 blueSheet.data.singleSalesObjectiveMarker === "Strength" 
                                   ? "bg-emerald-500/10 text-emerald-600"
                                   : blueSheet.data.singleSalesObjectiveMarker === "RedFlag"
@@ -8651,128 +8779,432 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                               }`}
                               data-testid="badge-sso-marker"
                             >
-                              {blueSheet.data.singleSalesObjectiveMarker}
+                              {blueSheet.data.singleSalesObjectiveMarker === "RedFlag" ? "Needs Attention" : blueSheet.data.singleSalesObjectiveMarker}
                             </Badge>
                           )}
                         </div>
-                        <p className="text-sm" data-testid="text-sso">{blueSheet.data.singleSalesObjective}</p>
+                        <p className="text-sm leading-relaxed" data-testid="text-sso">{blueSheet.data.singleSalesObjective}</p>
                       </div>
                     )}
 
-                    {/* Buying Influences */}
+                    {/* KEY DECISION MAKERS (was Buying Influences) */}
                     {blueSheet.data.buyingInfluences?.length > 0 && (
                       <div data-testid="section-buying-influences">
-                        <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
-                          <Users className="w-4 h-4" />
-                          Buying Influences ({blueSheet.data.buyingInfluences.length})
-                        </h4>
+                        <div className="flex items-center gap-2 mb-4">
+                          <Users className="w-4 h-4 text-purple-600" />
+                          <h4 className="font-semibold text-sm">Key Decision Makers</h4>
+                          <Badge variant="outline" className="text-xs">{blueSheet.data.buyingInfluences.length}</Badge>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="max-w-xs">
+                              <p className="text-xs mb-2">People who influence the buying decision. Each plays a different role:</p>
+                              <ul className="text-xs space-y-1">
+                                <li><strong>Economic:</strong> Controls budget, final approval</li>
+                                <li><strong>User:</strong> Will use your solution daily</li>
+                                <li><strong>Technical:</strong> Evaluates feasibility (IT, Legal)</li>
+                                <li><strong>Coach:</strong> Your internal champion</li>
+                              </ul>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {blueSheet.data.buyingInfluences.map((influence: any, idx: number) => (
-                            <div key={idx} className="p-3 rounded-lg border bg-card" data-testid={`card-influence-${idx}`}>
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="font-medium text-sm" data-testid={`text-influence-name-${idx}`}>{influence.name}</span>
-                                <Badge 
-                                  className={`text-xs ${
-                                    influence.role === "Economic" ? "bg-purple-500/10 text-purple-600" :
-                                    influence.role === "User" ? "bg-blue-500/10 text-blue-600" :
-                                    influence.role === "Technical" ? "bg-amber-500/10 text-amber-600" :
-                                    "bg-emerald-500/10 text-emerald-600"
-                                  }`}
-                                  data-testid={`badge-influence-role-${idx}`}
-                                >
-                                  {influence.role}
-                                </Badge>
+                          {blueSheet.data.buyingInfluences.map((influence: any, idx: number) => {
+                            const roleColors: Record<string, string> = {
+                              "Economic": "border-l-purple-500 bg-purple-500/5",
+                              "EconomicBuyer": "border-l-purple-500 bg-purple-500/5",
+                              "User": "border-l-blue-500 bg-blue-500/5",
+                              "UserBuyer": "border-l-blue-500 bg-blue-500/5",
+                              "Technical": "border-l-amber-500 bg-amber-500/5",
+                              "TechnicalBuyer": "border-l-amber-500 bg-amber-500/5",
+                              "Coach": "border-l-emerald-500 bg-emerald-500/5",
+                            };
+                            const roleBadgeColors: Record<string, string> = {
+                              "Economic": "bg-purple-500/10 text-purple-600",
+                              "EconomicBuyer": "bg-purple-500/10 text-purple-600",
+                              "User": "bg-blue-500/10 text-blue-600",
+                              "UserBuyer": "bg-blue-500/10 text-blue-600",
+                              "Technical": "bg-amber-500/10 text-amber-600",
+                              "TechnicalBuyer": "bg-amber-500/10 text-amber-600",
+                              "Coach": "bg-emerald-500/10 text-emerald-600",
+                            };
+                            const modeDescriptions: Record<string, { label: string; color: string; tip: string }> = {
+                              "growth": { label: "Growth", color: "text-emerald-600 bg-emerald-50", tip: "Actively seeking improvement - show them what's possible" },
+                              "trouble": { label: "Trouble", color: "text-red-600 bg-red-50", tip: "Facing urgent problems - focus on solving their pain" },
+                              "even_keel": { label: "Even Keel", color: "text-slate-600 bg-slate-100", tip: "Content with status quo - help them see hidden risks" },
+                              "overconfident": { label: "Overconfident", color: "text-amber-600 bg-amber-50", tip: "Thinks they're ahead - respectfully challenge assumptions" },
+                            };
+                            const mode = influence.mode?.toLowerCase().replace(/\s+/g, '_') || "";
+                            const modeInfo = modeDescriptions[mode];
+                            const roleKey = influence.role || "";
+                            const roleLabel = roleKey.replace(/Buyer$/i, '');
+                            
+                            return (
+                              <div 
+                                key={idx} 
+                                className={`p-4 rounded-lg border-l-4 ${roleColors[roleKey] || "border-l-slate-400 bg-slate-50/50"}`}
+                                data-testid={`card-influence-${idx}`}
+                              >
+                                <div className="flex items-start justify-between gap-2 mb-2">
+                                  <div className="flex-1 min-w-0">
+                                    <span className="font-semibold text-sm block truncate" data-testid={`text-influence-name-${idx}`}>
+                                      {influence.name}
+                                    </span>
+                                    {influence.title && (
+                                      <p className="text-xs text-muted-foreground truncate">{influence.title}</p>
+                                    )}
+                                  </div>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Badge 
+                                        className={`text-xs cursor-help whitespace-nowrap ${roleBadgeColors[roleKey] || "bg-slate-200 text-slate-600"}`}
+                                        data-testid={`badge-influence-role-${idx}`}
+                                      >
+                                        {roleLabel}
+                                      </Badge>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="left" className="max-w-xs">
+                                      <p className="text-xs">
+                                        {roleKey.includes("Economic") && "Controls budget and gives final approval. Your deal doesn't close without them."}
+                                        {roleKey.includes("User") && "Will use your solution daily. Cares about usability and workflow impact."}
+                                        {roleKey.includes("Technical") && "Evaluates feasibility - IT, security, legal. Can block deals with objections."}
+                                        {roleKey === "Coach" && "Your internal champion. Provides intel and builds momentum for you."}
+                                      </p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </div>
+                                
+                                {modeInfo && (
+                                  <div className="flex items-center gap-2 mt-2">
+                                    <span className="text-xs text-muted-foreground">Mindset:</span>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Badge variant="outline" className={`text-xs cursor-help ${modeInfo.color}`}>
+                                          {modeInfo.label}
+                                        </Badge>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="bottom" className="max-w-xs">
+                                        <p className="text-xs">{modeInfo.tip}</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </div>
+                                )}
+                                
+                                {/* Win-Result if available */}
+                                {influence.personalWins && (
+                                  <div className="mt-3 p-2 rounded bg-white/50 dark:bg-slate-800/50 border border-dashed">
+                                    <div className="flex items-center gap-1 mb-1">
+                                      <Trophy className="w-3 h-3 text-amber-500" />
+                                      <span className="text-xs font-medium text-amber-700 dark:text-amber-400">What they want to achieve:</span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">{influence.personalWins}</p>
+                                  </div>
+                                )}
                               </div>
-                              {influence.title && <p className="text-xs text-muted-foreground">{influence.title}</p>}
-                              {influence.mode && (
-                                <p className="text-xs mt-1">Mode: <span className="font-medium">{influence.mode}</span></p>
-                              )}
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     )}
 
-                    {/* Summary of Positions (Red Flags & Strengths) */}
+                    {/* SMART RECOMMENDATIONS PANEL */}
+                    {(() => {
+                      const recommendations: Array<{ type: "warning" | "info" | "success"; icon: any; title: string; action: string }> = [];
+                      const influences = blueSheet.data.buyingInfluences || [];
+                      const redFlags = blueSheet.data.summaryOfPositions?.filter((p: any) => p.type === "RedFlag") || [];
+                      
+                      // Check for missing Economic Buyer
+                      if (!influences.some((i: any) => i.role?.includes("Economic"))) {
+                        recommendations.push({
+                          type: "warning",
+                          icon: AlertCircle,
+                          title: "No Economic Buyer identified",
+                          action: "Schedule a meeting with someone who controls budget decisions"
+                        });
+                      }
+                      
+                      // Check for missing Coach
+                      if (!influences.some((i: any) => i.role === "Coach")) {
+                        recommendations.push({
+                          type: "warning",
+                          icon: UserCheck,
+                          title: "No internal champion found",
+                          action: "Build a relationship with someone who can advocate for you internally"
+                        });
+                      }
+                      
+                      // Check if single-threaded
+                      if (influences.length === 1) {
+                        recommendations.push({
+                          type: "warning",
+                          icon: Users,
+                          title: "Single-threaded deal risk",
+                          action: "Expand to more contacts - deals with one contact are fragile"
+                        });
+                      }
+                      
+                      // Red flags need attention
+                      if (redFlags.length > 2) {
+                        recommendations.push({
+                          type: "warning",
+                          icon: AlertTriangle,
+                          title: `${redFlags.length} risk areas need attention`,
+                          action: "Review red flags below and prioritize addressing the most critical"
+                        });
+                      }
+                      
+                      // Good coverage
+                      if (influences.length >= 3 && influences.some((i: any) => i.role?.includes("Economic")) && influences.some((i: any) => i.role === "Coach")) {
+                        recommendations.push({
+                          type: "success",
+                          icon: CheckCircle2,
+                          title: "Good stakeholder coverage",
+                          action: "Focus on deepening relationships and addressing any objections"
+                        });
+                      }
+                      
+                      if (recommendations.length === 0) return null;
+                      
+                      return (
+                        <div className="p-4 rounded-lg bg-gradient-to-br from-amber-50/50 to-orange-50/50 dark:from-amber-900/10 dark:to-orange-900/10 border border-amber-200/50" data-testid="section-recommendations">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Lightbulb className="w-4 h-4 text-amber-600" />
+                            <span className="font-semibold text-sm">Smart Recommendations</span>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="max-w-xs">
+                                <p className="text-xs">AI-generated suggestions based on gaps in your deal strategy. Address these to strengthen your position.</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                          <div className="space-y-2">
+                            {recommendations.slice(0, 4).map((rec, idx) => (
+                              <div 
+                                key={idx} 
+                                className={`p-3 rounded-lg border flex items-start gap-3 ${
+                                  rec.type === "warning" ? "bg-amber-50/50 dark:bg-amber-900/10 border-amber-200/50" :
+                                  rec.type === "success" ? "bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-200/50" :
+                                  "bg-blue-50/50 dark:bg-blue-900/10 border-blue-200/50"
+                                }`}
+                              >
+                                <rec.icon className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                                  rec.type === "warning" ? "text-amber-600" :
+                                  rec.type === "success" ? "text-emerald-600" :
+                                  "text-blue-600"
+                                }`} />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium">{rec.title}</p>
+                                  <p className="text-xs text-muted-foreground mt-0.5">{rec.action}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* STRENGTHS & RISKS (was Red Flags) */}
                     {blueSheet.data.summaryOfPositions?.length > 0 && (
                       <div data-testid="section-positions">
-                        <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
-                          <AlertTriangle className="w-4 h-4" />
-                          Strengths & Red Flags
-                        </h4>
-                        <div className="space-y-2">
-                          {blueSheet.data.summaryOfPositions.map((position: any, idx: number) => (
-                            <div 
-                              key={idx} 
-                              className={`p-3 rounded-lg border ${
-                                position.type === "RedFlag" 
-                                  ? "bg-red-500/5 border-red-500/20" 
-                                  : "bg-emerald-500/5 border-emerald-500/20"
-                              }`}
-                              data-testid={`card-position-${idx}`}
-                            >
-                              <div className="flex items-center gap-2 mb-1">
-                                <Badge 
-                                  className={`text-xs ${
-                                    position.type === "RedFlag" 
-                                      ? "bg-red-500/10 text-red-600" 
-                                      : "bg-emerald-500/10 text-emerald-600"
-                                  }`}
-                                  data-testid={`badge-position-type-${idx}`}
+                        <div className="flex items-center gap-2 mb-4">
+                          <Shield className="w-4 h-4 text-slate-600" />
+                          <h4 className="font-semibold text-sm">Strengths & Risks</h4>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="max-w-xs">
+                              <p className="text-xs">
+                                <strong>Strengths:</strong> Competitive advantages to leverage<br/>
+                                <strong>Risks:</strong> Gaps in knowledge or influence that could stall your deal. Identifying risks is the first step to addressing them.
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Strengths Column */}
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium text-emerald-600 mb-2 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3" />
+                              Your Strengths ({blueSheet.data.summaryOfPositions.filter((p: any) => p.type !== "RedFlag").length})
+                            </p>
+                            {blueSheet.data.summaryOfPositions
+                              .filter((p: any) => p.type !== "RedFlag")
+                              .slice(0, 4)
+                              .map((position: any, idx: number) => (
+                                <div 
+                                  key={idx} 
+                                  className="p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20"
+                                  data-testid={`card-strength-${idx}`}
                                 >
-                                  {position.type}
-                                </Badge>
-                                {position.priority && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {position.priority}
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-sm" data-testid={`text-position-${idx}`}>{position.description}</p>
-                            </div>
-                          ))}
+                                  <p className="text-sm">{position.description}</p>
+                                </div>
+                              ))}
+                            {blueSheet.data.summaryOfPositions.filter((p: any) => p.type !== "RedFlag").length === 0 && (
+                              <p className="text-xs text-muted-foreground italic p-3 border border-dashed rounded-lg">No strengths identified yet</p>
+                            )}
+                          </div>
+                          
+                          {/* Risks Column */}
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium text-red-600 mb-2 flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" />
+                              Risks to Address ({blueSheet.data.summaryOfPositions.filter((p: any) => p.type === "RedFlag").length})
+                            </p>
+                            {blueSheet.data.summaryOfPositions
+                              .filter((p: any) => p.type === "RedFlag")
+                              .slice(0, 4)
+                              .map((position: any, idx: number) => (
+                                <div 
+                                  key={idx} 
+                                  className="p-3 rounded-lg bg-red-500/5 border border-red-500/20"
+                                  data-testid={`card-risk-${idx}`}
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <p className="text-sm flex-1">{position.description}</p>
+                                    {position.priority && (
+                                      <Badge variant="outline" className="text-xs flex-shrink-0">
+                                        P{position.priority}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  {position.actionRequired && (
+                                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                                      <ArrowRight className="w-3 h-3" />
+                                      {position.actionRequired}
+                                    </p>
+                                  )}
+                                </div>
+                              ))}
+                            {blueSheet.data.summaryOfPositions.filter((p: any) => p.type === "RedFlag").length === 0 && (
+                              <p className="text-xs text-emerald-600 p-3 border border-emerald-200 bg-emerald-50/50 rounded-lg flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3" />
+                                No major risks identified
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
                     )}
 
-                    {/* Action Plans */}
+                    {/* NEXT STEPS (was Action Plans) */}
                     {blueSheet.data.actionPlans?.length > 0 && (
                       <div data-testid="section-action-plans">
-                        <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
-                          <CheckCircle className="w-4 h-4" />
-                          Action Plans ({blueSheet.data.actionPlans.length})
-                        </h4>
+                        <div className="flex items-center gap-2 mb-4">
+                          <Zap className="w-4 h-4 text-blue-600" />
+                          <h4 className="font-semibold text-sm">Recommended Next Steps</h4>
+                          <Badge variant="outline" className="text-xs">{blueSheet.data.actionPlans.length}</Badge>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="max-w-xs">
+                              <p className="text-xs">Prioritized actions to move your deal forward. Focus on high-priority items first, especially those addressing risk flags.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
                         <div className="space-y-2">
-                          {blueSheet.data.actionPlans.slice(0, 5).map((action: any, idx: number) => (
-                            <div key={idx} className="p-3 rounded-lg border bg-card flex items-start gap-3" data-testid={`card-action-${idx}`}>
-                              <div className="w-6 h-6 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <span className="text-xs font-medium text-blue-600">{idx + 1}</span>
+                          {blueSheet.data.actionPlans.slice(0, 6).map((action: any, idx: number) => (
+                            <div 
+                              key={idx} 
+                              className="p-3 rounded-lg border bg-card hover-elevate flex items-start gap-3" 
+                              data-testid={`card-action-${idx}`}
+                            >
+                              <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                action.priority === "high" ? "bg-red-500/10 text-red-600" :
+                                action.priority === "medium" ? "bg-amber-500/10 text-amber-600" :
+                                "bg-blue-500/10 text-blue-600"
+                              }`}>
+                                <span className="text-xs font-bold">{idx + 1}</span>
                               </div>
-                              <div className="flex-1">
+                              <div className="flex-1 min-w-0">
                                 <p className="text-sm" data-testid={`text-action-${idx}`}>{action.action}</p>
-                                {action.owner && (
-                                  <p className="text-xs text-muted-foreground mt-1">Owner: {action.owner}</p>
-                                )}
+                                <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                                  {action.owner && (
+                                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                      <User className="w-3 h-3" />
+                                      {action.owner}
+                                    </span>
+                                  )}
+                                  {action.target && (
+                                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                      <Target className="w-3 h-3" />
+                                      {action.target}
+                                    </span>
+                                  )}
+                                  {action.category && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {action.category}
+                                    </Badge>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           ))}
-                          {blueSheet.data.actionPlans.length > 5 && (
-                            <p className="text-xs text-muted-foreground text-center pt-2" data-testid="text-more-actions">
-                              +{blueSheet.data.actionPlans.length - 5} more actions
-                            </p>
+                          {blueSheet.data.actionPlans.length > 6 && (
+                            <Collapsible>
+                              <CollapsibleTrigger asChild>
+                                <Button variant="ghost" size="sm" className="w-full text-muted-foreground text-xs">
+                                  <ChevronDown className="w-3 h-3 mr-1" />
+                                  Show {blueSheet.data.actionPlans.length - 6} more actions
+                                </Button>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent className="space-y-2 mt-2">
+                                {blueSheet.data.actionPlans.slice(6).map((action: any, idx: number) => (
+                                  <div 
+                                    key={idx + 6} 
+                                    className="p-3 rounded-lg border bg-card flex items-start gap-3" 
+                                    data-testid={`card-action-${idx + 6}`}
+                                  >
+                                    <div className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
+                                      <span className="text-xs font-bold text-muted-foreground">{idx + 7}</span>
+                                    </div>
+                                    <div className="flex-1">
+                                      <p className="text-sm">{action.action}</p>
+                                      {action.owner && (
+                                        <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                                          <User className="w-3 h-3" />
+                                          {action.owner}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </CollapsibleContent>
+                            </Collapsible>
                           )}
                         </div>
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <FileText className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                    <h3 className="text-lg font-medium mb-2">No Blue Sheet Yet</h3>
-                    <p className="text-sm max-w-md mx-auto mb-4">
-                      Generate an AI-powered Blue Sheet to analyze your discovery data and create a comprehensive strategic selling plan with buying influences, competition analysis, and prioritized action items.
+                  <div className="text-center py-16 text-muted-foreground">
+                    <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-500/10 to-indigo-500/10 flex items-center justify-center">
+                      <Target className="w-10 h-10 text-blue-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-3">Ready to Build Your Deal Strategy</h3>
+                    <p className="text-sm max-w-lg mx-auto mb-6 leading-relaxed">
+                      AI will analyze your discovery data to identify key decision makers, surface potential risks, and create a prioritized action plan to win this deal.
                     </p>
+                    <div className="flex flex-wrap justify-center gap-3 text-xs text-muted-foreground mb-6">
+                      <span className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-purple-500/10">
+                        <Users className="w-3 h-3 text-purple-500" />
+                        Map Decision Makers
+                      </span>
+                      <span className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-amber-500/10">
+                        <AlertTriangle className="w-3 h-3 text-amber-500" />
+                        Identify Risks
+                      </span>
+                      <span className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-emerald-500/10">
+                        <Zap className="w-3 h-3 text-emerald-500" />
+                        Plan Next Steps
+                      </span>
+                    </div>
                     <Button 
+                      size="lg"
                       onClick={() => generateBlueSheetMutation.mutate()}
                       disabled={generateBlueSheetMutation.isPending}
                       data-testid="button-generate-bluesheet-empty"
@@ -8780,12 +9212,12 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                       {generateBlueSheetMutation.isPending ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Generating...
+                          Analyzing Discovery Data...
                         </>
                       ) : (
                         <>
                           <Sparkles className="w-4 h-4 mr-2" />
-                          Generate Blue Sheet
+                          Generate Deal Strategy
                         </>
                       )}
                     </Button>

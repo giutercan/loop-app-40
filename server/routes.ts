@@ -13777,13 +13777,31 @@ ${context.intelligenceData ? JSON.stringify(context.intelligenceData, null, 2).s
       }
 
       // Calculate section completion
+      const ssoScore = blueSheetData.singleSalesObjective && blueSheetData.singleSalesObjective !== "Unknown" ? 100 : 0;
+      const buyingInfluencesScore = blueSheetData.buyingInfluences?.length > 0 ? 100 : 0;
+      const competitionScore = blueSheetData.competitions?.length > 0 ? 100 : 0;
+      const winResultsScore = blueSheetData.buyingInfluences?.some((bi: any) => bi.personalWins) ? 100 : 0;
+      const strengthsRedFlagsScore = blueSheetData.summaryOfPositions?.length > 0 ? 100 : 0;
+      const actionPlanScore = blueSheetData.actionPlans?.length >= 10 ? 100 : (blueSheetData.actionPlans?.length > 0 ? 50 : 0);
+      
+      // Calculate overall as weighted average
+      const overallScore = Math.round(
+        (ssoScore * 0.2) + 
+        (buyingInfluencesScore * 0.25) + 
+        (competitionScore * 0.1) + 
+        (winResultsScore * 0.1) + 
+        (strengthsRedFlagsScore * 0.15) + 
+        (actionPlanScore * 0.2)
+      );
+      
       const sectionCompletion = {
-        sso: blueSheetData.singleSalesObjective && blueSheetData.singleSalesObjective !== "Unknown" ? 100 : 0,
-        buyingInfluences: blueSheetData.buyingInfluences?.length > 0 ? 100 : 0,
-        competition: blueSheetData.competitions?.length > 0 ? 100 : 0,
-        winResults: blueSheetData.buyingInfluences?.some((bi: any) => bi.personalWins) ? 100 : 0,
-        strengthsRedFlags: blueSheetData.summaryOfPositions?.length > 0 ? 100 : 0,
-        actionPlan: blueSheetData.actionPlans?.length >= 10 ? 100 : (blueSheetData.actionPlans?.length > 0 ? 50 : 0),
+        sso: ssoScore,
+        buyingInfluences: buyingInfluencesScore,
+        competition: competitionScore,
+        winResults: winResultsScore,
+        strengthsRedFlags: strengthsRedFlagsScore,
+        actionPlan: actionPlanScore,
+        overall: overallScore,
       };
 
       // Check if existing and update, otherwise create
