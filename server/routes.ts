@@ -13688,6 +13688,10 @@ ${context.intelligenceData ? JSON.stringify(context.intelligenceData, null, 2).s
 
       const blueSheetData = JSON.parse(completion.choices[0].message.content || "{}");
 
+      // Month names for date validation
+      const monthNames = ["january", "february", "march", "april", "may", "june", 
+                         "july", "august", "september", "october", "november", "december"];
+
       // Post-process to validate and fix SSO dates (ensure present/future dates)
       if (blueSheetData.singleSalesObjective) {
         let sso = blueSheetData.singleSalesObjective;
@@ -13718,8 +13722,6 @@ ${context.intelligenceData ? JSON.stringify(context.intelligenceData, null, 2).s
         }
         
         // Handle month references without year (e.g., "by March", "in June")
-        const monthNames = ["january", "february", "march", "april", "may", "june", 
-                           "july", "august", "september", "october", "november", "december"];
         const monthMatch = sso.toLowerCase().match(new RegExp(`\\b(${monthNames.join("|")})\\b(?!\\s*\\d{4})`));
         if (monthMatch) {
           const monthIndex = monthNames.indexOf(monthMatch[1].toLowerCase()) + 1;
