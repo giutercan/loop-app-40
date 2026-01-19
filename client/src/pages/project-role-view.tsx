@@ -916,6 +916,137 @@ type MeetingInsightsData = {
   };
 };
 
+// Story Strength Summary Widget - mirrors StoryCoach calculation
+function StoryStrengthSummaryWidget({ 
+  storyBuilderData,
+  storyRefineResult
+}: { 
+  storyBuilderData: {
+    before: { singleMessage: string; startingHook: string; heroCharacter: string };
+    during: { openingLine: string; turningPoint: string };
+    after: { momentOfMeaning: string; callToAction: string };
+    storyTest: { strangerCareScore: number | null; simplicityScore: number | null; leadershipValuesScore: number | null };
+  };
+  storyRefineResult: { overallScore: number; overallFeedback: string; improvements: Array<{ element: string; suggestion: string }> } | null;
+}) {
+  const checkStrength = (value: string, minLength = 10): "empty" | "draft" | "strong" => {
+    if (!value) return "empty";
+    if (value.trim().length < minLength) return "draft";
+    return "strong";
+  };
+  
+  const storyElements = [
+    { id: "singleMessage", label: "Key Message", value: storyBuilderData.before.singleMessage, phase: "before" },
+    { id: "startingHook", label: "Opening Hook", value: storyBuilderData.before.startingHook, phase: "before" },
+    { id: "heroCharacter", label: "Hero Character", value: storyBuilderData.before.heroCharacter, phase: "before" },
+    { id: "openingLine", label: "Opening Line", value: storyBuilderData.during.openingLine, phase: "during" },
+    { id: "turningPoint", label: "Turning Point", value: storyBuilderData.during.turningPoint, phase: "during" },
+    { id: "momentOfMeaning", label: "Moment of Meaning", value: storyBuilderData.after.momentOfMeaning, phase: "after" },
+    { id: "callToAction", label: "Call to Action", value: storyBuilderData.after.callToAction, phase: "after" }
+  ];
+  
+  const strongElements = storyElements.filter(e => checkStrength(e.value) === "strong").length;
+  const testScores = [
+    storyBuilderData.storyTest.strangerCareScore,
+    storyBuilderData.storyTest.simplicityScore,
+    storyBuilderData.storyTest.leadershipValuesScore
+  ].filter(s => s !== null && s >= 3).length;
+  
+  const totalPossible = storyElements.length + 3;
+  const totalAchieved = strongElements + testScores;
+  const storyStrengthPercent = Math.round((totalAchieved / totalPossible) * 100);
+  
+  const coachingFeedback: string[] = [];
+  if (!storyBuilderData.before.singleMessage) coachingFeedback.push("Define your single key message");
+  if (!storyBuilderData.before.startingHook) coachingFeedback.push("Create a compelling opening hook");
+  if (!storyBuilderData.during.turningPoint) coachingFeedback.push("Identify the pivotal turning point");
+  if (!storyBuilderData.after.callToAction) coachingFeedback.push("End with a clear call to action");
+  if (testScores < 3) coachingFeedback.push(`Complete ${3 - testScores} more story tests`);
+  
+  return (
+    <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-purple-500/5 mt-4" data-testid="card-story-strength-summary">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Trophy className="w-5 h-5 text-primary" />
+            <CardTitle className="text-base">Story Strength</CardTitle>
+          </div>
+          <Badge className={`${storyStrengthPercent >= 70 ? "bg-emerald-500" : storyStrengthPercent >= 40 ? "bg-amber-500" : "bg-muted"}`}>
+            {storyStrengthPercent}%
+          </Badge>
+        </div>
+        <p className="text-xs text-muted-foreground">Your narrative preparation for client conversations</p>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <Progress value={storyStrengthPercent} className="h-2 mb-3" />
+        <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
+          <span>{strongElements}/{storyElements.length} elements strong</span>
+          <span>{testScores}/3 tests passed</span>
+        </div>
+        
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          <div className={`p-2 rounded text-center ${storyElements.filter(e => e.phase === "before" && checkStrength(e.value) === "strong").length >= 2 ? "bg-emerald-500/10 border border-emerald-500/20" : "bg-muted/50"}`}>
+            <p className="text-[10px] font-medium">BEFORE</p>
+            <p className="text-[10px] text-muted-foreground">{storyElements.filter(e => e.phase === "before" && checkStrength(e.value) === "strong").length}/3</p>
+          </div>
+          <div className={`p-2 rounded text-center ${storyElements.filter(e => e.phase === "during" && checkStrength(e.value) === "strong").length >= 1 ? "bg-emerald-500/10 border border-emerald-500/20" : "bg-muted/50"}`}>
+            <p className="text-[10px] font-medium">DURING</p>
+            <p className="text-[10px] text-muted-foreground">{storyElements.filter(e => e.phase === "during" && checkStrength(e.value) === "strong").length}/2</p>
+          </div>
+          <div className={`p-2 rounded text-center ${storyElements.filter(e => e.phase === "after" && checkStrength(e.value) === "strong").length >= 1 ? "bg-emerald-500/10 border border-emerald-500/20" : "bg-muted/50"}`}>
+            <p className="text-[10px] font-medium">AFTER</p>
+            <p className="text-[10px] text-muted-foreground">{storyElements.filter(e => e.phase === "after" && checkStrength(e.value) === "strong").length}/2</p>
+          </div>
+        </div>
+        
+        {storyRefineResult && (
+          <div className="p-3 rounded-lg bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/20 mb-3">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <span className="text-xs font-semibold text-primary">AI Coach Feedback</span>
+              <Badge className={storyRefineResult.overallScore >= 7 ? "bg-emerald-500" : storyRefineResult.overallScore >= 5 ? "bg-amber-500" : "bg-red-500"}>
+                {storyRefineResult.overallScore}/10
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">{storyRefineResult.overallFeedback}</p>
+            {storyRefineResult.improvements.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {storyRefineResult.improvements.slice(0, 2).map((imp, i) => (
+                  <p key={i} className="text-[10px] text-amber-700 dark:text-amber-400">
+                    • <span className="font-medium">{imp.element}:</span> {imp.suggestion}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        
+        {!storyRefineResult && coachingFeedback.length > 0 && (
+          <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+            <div className="flex items-center gap-2 mb-2">
+              <Lightbulb className="w-4 h-4 text-amber-600" />
+              <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">Next Steps</span>
+            </div>
+            <ul className="text-xs text-amber-700 dark:text-amber-400 space-y-1">
+              {coachingFeedback.slice(0, 3).map((tip, i) => (
+                <li key={i}>• {tip}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        
+        {storyStrengthPercent >= 70 && (
+          <div className="p-2 rounded bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 text-center">
+            <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+              Your story is ready for client conversations
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function DiscoverySummaryStep({ 
   projectId, 
   project, 
@@ -8280,6 +8411,14 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
             }
           }}
         />}
+
+        {/* Story Strength Widget - Uses same calculation as StoryCoach for consistency */}
+        {discoveryStep === "insights" && (
+          <StoryStrengthSummaryWidget 
+            storyBuilderData={storyBuilderData}
+            storyRefineResult={storyRefineResult}
+          />
+        )}
       </TabsContent>
 
           {/* STAGE 2: OUTCOMES & ALIGNMENT - Unified Design + Client Collaboration */}

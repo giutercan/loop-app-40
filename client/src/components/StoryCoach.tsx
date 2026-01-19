@@ -238,6 +238,135 @@ const structureOptions = [
   { value: "hero-journey", label: "Hero's Journey" }
 ];
 
+// Story templates for common consulting scenarios
+const storyTemplates = [
+  {
+    id: "transformation",
+    name: "Leadership Transformation",
+    description: "How a leader or organization transformed through Korn Ferry",
+    data: {
+      before: {
+        singleMessage: "Transformational leadership unlocks organizational potential",
+        emotionalReaction: "Hope",
+        storyStructure: "before-after-bridge",
+        startingHook: "The CEO stood at the window, knowing something had to change...",
+        heroCharacter: "The leadership team",
+        evidenceToReference: "",
+        tensionQuestions: []
+      },
+      during: {
+        openingLine: "Three months ago, this team couldn't agree on anything",
+        turningPoint: "Then they discovered their leadership blind spots",
+        keyDataPoints: "80% improvement in team effectiveness scores"
+      },
+      after: {
+        momentOfMeaning: "They realized leadership wasn't about having all the answers",
+        callToAction: "What would transformation look like for your organization?"
+      }
+    }
+  },
+  {
+    id: "talent-gap",
+    name: "Closing the Talent Gap",
+    description: "How we helped an organization build a winning talent strategy",
+    data: {
+      before: {
+        singleMessage: "The right talent strategy turns uncertainty into competitive advantage",
+        emotionalReaction: "Urgency",
+        storyStructure: "problem-agitate-solve",
+        startingHook: "They had the positions open. What they didn't have was a plan.",
+        heroCharacter: "The HR leadership team",
+        evidenceToReference: "",
+        tensionQuestions: []
+      },
+      during: {
+        openingLine: "The vacancy rate had hit 30%. Something had to give.",
+        turningPoint: "The data revealed they were looking for the wrong people entirely",
+        keyDataPoints: "40% reduction in time-to-hire, 25% improvement in new hire retention"
+      },
+      after: {
+        momentOfMeaning: "Great talent acquisition starts with understanding what great really means",
+        callToAction: "How confident are you in your talent strategy?"
+      }
+    }
+  },
+  {
+    id: "culture-shift",
+    name: "Culture Shift",
+    description: "How culture change drove business results",
+    data: {
+      before: {
+        singleMessage: "Culture is the invisible force that shapes everything",
+        emotionalReaction: "Resolve",
+        storyStructure: "situation-struggle-insight-outcome",
+        startingHook: "Everyone could feel something was wrong. Nobody wanted to name it.",
+        heroCharacter: "The organization",
+        evidenceToReference: "",
+        tensionQuestions: []
+      },
+      during: {
+        openingLine: "The engagement survey told a story leadership didn't want to hear",
+        turningPoint: "When they stopped defending the old culture and started designing the new one",
+        keyDataPoints: "15-point increase in engagement, 20% reduction in turnover"
+      },
+      after: {
+        momentOfMeaning: "Culture change isn't about grand gestures—it's about consistent choices",
+        callToAction: "What culture choices is your organization making every day?"
+      }
+    }
+  },
+  {
+    id: "executive-success",
+    name: "Executive Success Profile",
+    description: "How defining success enabled better hiring decisions",
+    data: {
+      before: {
+        singleMessage: "You can't find what you haven't defined",
+        emotionalReaction: "Curiosity",
+        storyStructure: "context-action-result",
+        startingHook: "Five senior hires in two years. None of them worked out.",
+        heroCharacter: "The CEO and CHRO",
+        evidenceToReference: "",
+        tensionQuestions: []
+      },
+      during: {
+        openingLine: "We asked a simple question: what does success look like here?",
+        turningPoint: "The success profile revealed that experience wasn't the differentiator",
+        keyDataPoints: "100% retention of executives hired using the new profile"
+      },
+      after: {
+        momentOfMeaning: "Knowing what success looks like changes everything about how you search",
+        callToAction: "Do you have a clear picture of what executive success looks like?"
+      }
+    }
+  },
+  {
+    id: "sales-effectiveness",
+    name: "Sales Force Effectiveness",
+    description: "How aligning sales strategy drove revenue growth",
+    data: {
+      before: {
+        singleMessage: "The best salespeople aren't born—they're developed",
+        emotionalReaction: "Momentum",
+        storyStructure: "hero-journey",
+        startingHook: "The sales team was working harder than ever. Results weren't following.",
+        heroCharacter: "The sales organization",
+        evidenceToReference: "",
+        tensionQuestions: []
+      },
+      during: {
+        openingLine: "Quota attainment had dropped for three straight quarters",
+        turningPoint: "The competency assessment revealed the gap between activity and effectiveness",
+        keyDataPoints: "35% improvement in quota attainment, 50% reduction in new rep ramp time"
+      },
+      after: {
+        momentOfMeaning: "Sales excellence is a system, not a personality trait",
+        callToAction: "What's the real capability gap in your sales organization?"
+      }
+    }
+  }
+];
+
 export function StoryCoach({
   storyBuilderData,
   setStoryBuilderData,
@@ -264,6 +393,20 @@ export function StoryCoach({
   const [showPreview, setShowPreview] = useState(false);
   const [activePhase, setActivePhase] = useState<"before" | "during" | "after">("before");
   const [showCoachingPanel, setShowCoachingPanel] = useState(true);
+  const [showTemplates, setShowTemplates] = useState(false);
+  
+  const applyTemplate = (templateId: string) => {
+    const template = storyTemplates.find(t => t.id === templateId);
+    if (template) {
+      setStoryBuilderData(prev => ({
+        ...prev,
+        before: { ...prev.before, ...template.data.before },
+        during: { ...prev.during, ...template.data.during },
+        after: { ...prev.after, ...template.data.after }
+      }));
+      setShowTemplates(false);
+    }
+  };
 
   const toggleElement = (id: string) => {
     setExpandedElements(prev => {
@@ -389,6 +532,15 @@ export function StoryCoach({
             <Button
               variant="outline"
               size="sm"
+              onClick={() => setShowTemplates(!showTemplates)}
+              data-testid="button-toggle-templates"
+            >
+              <Zap className="w-4 h-4 mr-1" />
+              Templates
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setShowPreview(!showPreview)}
               data-testid="button-toggle-preview"
             >
@@ -442,6 +594,32 @@ export function StoryCoach({
             <span>{storyStrength.testScores}/3 tests passed</span>
           </div>
         </div>
+
+        {/* Story Templates Panel */}
+        {showTemplates && (
+          <div className="mt-4 p-4 rounded-lg border bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-purple-600" />
+                <span className="font-semibold text-sm">Quick Start Templates</span>
+              </div>
+              <Badge variant="outline" className="text-[10px]">Click to apply</Badge>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {storyTemplates.map(template => (
+                <button
+                  key={template.id}
+                  onClick={() => applyTemplate(template.id)}
+                  className="p-3 rounded-lg border bg-card text-left hover:bg-purple-50 dark:hover:bg-purple-950/30 transition-colors"
+                  data-testid={`button-template-${template.id}`}
+                >
+                  <p className="text-sm font-medium">{template.name}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{template.description}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </CardHeader>
 
       <CardContent className="pt-0">
