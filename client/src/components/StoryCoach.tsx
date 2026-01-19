@@ -702,6 +702,7 @@ export function StoryCoach({
                                   variant="ghost"
                                   className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
                                   onClick={() => onRemoveTensionQuestion(q.id || `tq-${idx}`)}
+                                  data-testid={`button-remove-question-${idx}`}
                                 >
                                   ×
                                 </Button>
@@ -761,6 +762,7 @@ export function StoryCoach({
                             key={idx} 
                             className="p-3 rounded-lg border bg-card cursor-pointer hover:bg-amber-50/50 dark:hover:bg-amber-950/20 transition-colors"
                             onClick={() => onSelectStory?.(story)}
+                            data-testid={`card-success-story-${idx}`}
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div>
