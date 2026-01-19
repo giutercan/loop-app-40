@@ -8922,6 +8922,93 @@ Respond in JSON format:
     }
   });
 
+  // POST /api/projects/:projectId/ai/refine-story - AI reviews and critiques user's story with improvement suggestions
+  app.post("/api/projects/:projectId/ai/refine-story", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const project = await storage.getProject(projectId);
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const { storyData, meetingContext } = req.body;
+      
+      if (!storyData) {
+        return res.status(400).json({ error: "storyData is required" });
+      }
+      
+      const prompt = `You are an expert storytelling coach at Korn Ferry, helping consultants craft compelling stories for executive audiences.
+
+=== COMPANY CONTEXT ===
+Company: ${project.companyName}
+Industry: ${project.sector || 'Not specified'}
+
+=== MEETING CONTEXT ===
+${meetingContext?.contactName ? `Meeting with: ${meetingContext.contactName}, ${meetingContext.contactTitle || ''}` : 'No specific contact'}
+${meetingContext?.objective ? `Objective: ${meetingContext.objective}` : ''}
+
+=== CURRENT STORY DRAFT ===
+BEFORE (Crafting):
+- Core Message: ${storyData.before?.singleMessage || '[Empty]'}
+- Emotional Goal: ${storyData.before?.emotionalReaction || '[Empty]'}
+- Opening Hook: ${storyData.before?.startingHook || '[Empty]'}
+- Story Structure: ${storyData.before?.storyStructure || '[Empty]'}
+- Hero/Characters: ${storyData.before?.heroCharacter || '[Empty]'}
+- Evidence: ${storyData.before?.evidenceToReference || '[Empty]'}
+
+DURING (Telling):
+- Opening Line: ${storyData.during?.openingLine || '[Empty]'}
+- Turning Point: ${storyData.during?.turningPoint || '[Empty]'}
+- Key Data Points: ${storyData.during?.keyDataPoints || '[Empty]'}
+- Pacing Notes: ${storyData.during?.pacingNotes || '[Empty]'}
+
+AFTER (Landing):
+- Moment of Meaning: ${storyData.after?.momentOfMeaning || '[Empty]'}
+- Explicit Takeaway: ${storyData.after?.explicitTakeaway || '[Empty]'}
+- Call to Action: ${storyData.after?.callToAction || '[Empty]'}
+
+=== YOUR TASK ===
+Review this story draft and provide specific, actionable coaching feedback. Evaluate each filled element and suggest improvements. Be encouraging but honest.
+
+Provide your response in this JSON format:
+{
+  "overallScore": <number 1-10>,
+  "overallFeedback": "<2-3 sentence overall assessment>",
+  "strengths": ["<strength 1>", "<strength 2>"],
+  "improvements": [
+    {
+      "element": "<element name like 'Core Message'>",
+      "currentIssue": "<what's wrong or could be better>",
+      "suggestion": "<specific improvement suggestion>",
+      "improvedVersion": "<optional: rewritten version>"
+    }
+  ],
+  "missingElements": ["<critical missing element 1>"],
+  "nextSteps": ["<next action 1>", "<next action 2>"]
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.7,
+        max_tokens: 1500,
+        response_format: { type: "json_object" }
+      });
+      
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error("No response from AI");
+      }
+      
+      const result = JSON.parse(content);
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Refine Story API] Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // POST /api/projects/:projectId/ai/generate-methodology-questions - Generate methodology-tagged discovery questions
   app.post("/api/projects/:projectId/ai/generate-methodology-questions", async (req, res) => {
     try {
