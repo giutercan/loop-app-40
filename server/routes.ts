@@ -1505,13 +1505,54 @@ Be concise but comprehensive. Focus on strategic implications and actionable rec
       const intelligence = await storage.getProjectIntelligence(projectId, discoveryTheme);
       const intelligenceContext = intelligence?.intelligenceData ? JSON.stringify(intelligence.intelligenceData) : "";
       
-      // Determine if single or multiple attendees
+      // Get Green Sheet context
+      const greenSheet = await storage.getGreenSheet(projectId);
+      const greenSheetContext = greenSheet ? `
+Meeting Objective: ${greenSheet.callPlanner?.objective || "Not specified"}
+Desired Outcome: ${greenSheet.callPlanner?.desiredOutcome || "Not specified"}
+Opening Statement: ${greenSheet.callPlanner?.openingStatement || "Not specified"}
+Best Action Commitment: ${greenSheet.callPlanner?.bestActionCommitment || "Not specified"}` : "";
+      
+      // Build detailed attendee list with all context
       const mode = profile?.attendanceMode || "single";
-      const attendees = mode === "multiple" && profile?.participants 
-        ? profile.participants.map(p => `${p.name} (${p.title}, ${p.role}, ${p.influence} influence)`).join(", ")
-        : profile?.singleContact 
-          ? `${profile.singleContact.name} (${profile.singleContact.title}, ${profile.singleContact.role || "unknown role"})`
-          : "Unknown attendee";
+      let attendeeList: Array<{id: string; name: string; title: string; role: string; influence: string; concerns: string; outcomes: string; rapport: string; criteria: string}> = [];
+      
+      if (mode === "multiple" && profile?.participants && profile.participants.length > 0) {
+        attendeeList = profile.participants.map((p: any, idx: number) => ({
+          id: p.id || `attendee-${idx}`,
+          name: p.name || `Attendee ${idx + 1}`,
+          title: p.title || "Unknown title",
+          role: p.role || "unknown",
+          influence: p.influence || "unknown",
+          concerns: p.knownConcerns || "not specified",
+          outcomes: p.preferredOutcomes || "not specified",
+          rapport: p.personalRapport || "not specified",
+          criteria: p.decisionCriteria || "not specified"
+        }));
+      } else if (profile?.singleContact) {
+        const c = profile.singleContact as any;
+        attendeeList = [{
+          id: c.id || "single-attendee",
+          name: c.name || "Primary Contact",
+          title: c.title || "Unknown title",
+          role: c.role || "unknown",
+          influence: c.influence || "unknown",
+          concerns: c.knownConcerns || "not specified",
+          outcomes: c.preferredOutcomes || "not specified",
+          rapport: c.personalRapport || "not specified",
+          criteria: c.decisionCriteria || "not specified"
+        }];
+      }
+      
+      const attendeeSummary = attendeeList.length > 0 
+        ? attendeeList.map(a => `- ${a.name} (${a.title})
+    Role: ${a.role}, Influence: ${a.influence}
+    Known Concerns: ${a.concerns}
+    Preferred Outcomes: ${a.outcomes}
+    Decision Criteria: ${a.criteria}`).join("\n\n")
+        : "No attendees specified";
+      
+      const attendeeNames = attendeeList.map(a => a.name);
       
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -1519,46 +1560,70 @@ Be concise but comprehensive. Focus on strategic implications and actionable rec
           {
             role: "system",
             content: `You are a Korn Ferry strategic sales consultant expert in Miller Heiman, SPIN Selling, and PSS methodologies.
-            
+
 Generate discovery questions for a ${discoveryTheme} engagement with ${project.companyName}.
-Meeting attendees: ${attendees}
 
-${intelligenceContext ? `Company Intelligence:\n${intelligenceContext}` : ""}
+## Meeting Attendees (${attendeeList.length} people):
+${attendeeSummary}
 
-Generate 8-12 questions tagged by methodology (SPIN, Miller Heiman, PSS) that:
-1. Are appropriate for the attendee roles and influence levels
-2. Uncover pain points, implications, and needs
-3. Align with the ${discoveryTheme} discovery theme
-4. Include follow-up hints for deeper exploration
+## Green Sheet Context:
+${greenSheetContext || "No Green Sheet data available"}
 
-Return as JSON array with format:
-[
-  {
-    "id": "q1",
-    "question": "...",
-    "methodology": "SPIN" | "Miller Heiman" | "PSS",
-    "stage": "Situation" | "Problem" | "Implication" | "Need-Payoff" | "Concept" | "Impact" | "Proof" | "Opening" | "Probing" | "Supporting" | "Closing",
-    "targetRole": "economic_buyer" | "user_buyer" | "technical_buyer" | "coach" | "champion" | null,
-    "followUpHint": "...",
-    "isAsked": false
+${intelligenceContext ? `## Company Intelligence:\n${intelligenceContext}` : ""}
+
+## Your Task:
+Generate 10-15 questions tagged by methodology (SPIN, Miller Heiman, PSS) that:
+1. Include BOTH questions for ALL attendees AND questions targeted to SPECIFIC individuals
+2. For questions targeting ALL attendees, set targetAudience to "all"
+3. For questions targeting specific people, set targetAudience to "specific" and list their names in targetAttendeeNames
+4. IMPORTANT: Every attendee should have at least 1-2 questions specifically for them based on their role, concerns, and outcomes
+5. Uncover pain points, implications, and needs relevant to each person's perspective
+6. Align with the ${discoveryTheme} discovery theme
+7. Consider the Green Sheet objectives when framing questions
+
+Return as JSON object with "questions" array:
+{
+  "questions": [
+    {
+      "id": "q1",
+      "question": "...",
+      "methodology": "SPIN" | "Miller Heiman" | "PSS",
+      "stage": "Situation" | "Problem" | "Implication" | "Need-Payoff" | "Concept" | "Impact" | "Proof" | "Opening" | "Probing" | "Supporting" | "Closing",
+      "targetAudience": "all" | "specific",
+      "targetAttendeeNames": ["Name1", "Name2"] or [],
+      "targetRole": "economic_buyer" | "user_buyer" | "technical_buyer" | "coach" | "champion" | null,
+      "rationale": "Why this question is important for this audience",
+      "followUpHint": "...",
+      "isAsked": false
+    }
+  ],
+  "attendeeCoverage": {
+    "attendeeName1": ["q1", "q5"],
+    "attendeeName2": ["q2", "q7"]
   }
-]`
+}`
           },
           {
             role: "user",
-            content: `Generate methodology-based discovery questions for this ${mode === "multiple" ? "multi-stakeholder" : "single-stakeholder"} meeting.`
+            content: `Generate methodology-based discovery questions for this ${mode === "multiple" ? "multi-stakeholder" : "single-stakeholder"} meeting.
+
+Attendee names to ensure coverage for: ${attendeeNames.join(", ") || "Unknown attendees"}
+
+Make sure EVERY attendee has at least 1-2 questions specifically targeting them based on their unique concerns, role, and decision criteria.`
           }
         ],
-        max_tokens: 2000,
+        max_tokens: 3500,
         temperature: 0.7,
         response_format: { type: "json_object" }
       });
       
       const content = response.choices[0].message.content || "{}";
       let questions = [];
+      let attendeeCoverage = {};
       try {
         const parsed = JSON.parse(content);
         questions = Array.isArray(parsed) ? parsed : (parsed.questions || []);
+        attendeeCoverage = parsed.attendeeCoverage || {};
       } catch (e) {
         console.error("[Generate Questions] Parse error:", e);
         questions = [];
@@ -1569,7 +1634,12 @@ Return as JSON array with format:
         await storage.updateMeetingProfile(profile.id, { generatedQuestions: questions });
       }
       
-      res.json({ questions });
+      res.json({ 
+        questions, 
+        attendeeCoverage,
+        attendeeCount: attendeeList.length,
+        attendeeNames 
+      });
     } catch (error: any) {
       console.error("[Generate Meeting Questions] Error:", error);
       res.status(500).json({ error: "Failed to generate questions" });
@@ -9291,7 +9361,9 @@ Return JSON:
         meetingObjective,
         desiredOutcome,
         methodology, 
-        includeIntelligence 
+        includeIntelligence,
+        meetingAttendees,
+        meetingMode
       } = req.body;
       
       // Fetch intelligence data if requested
@@ -9334,12 +9406,44 @@ Use a variety of approaches to uncover needs, understand the buying process, and
       
       const methodologyContext = methodologyGuide[methodology as keyof typeof methodologyGuide] || methodologyGuide.all;
       
+      // Build attendee list from meetingAttendees array (multi-stakeholder) or single contact
+      let attendeeList: Array<{name: string; title: string; role: string; influence: string; concerns: string; outcomes: string}> = [];
+      
+      if (meetingMode === "multiple" && meetingAttendees && Array.isArray(meetingAttendees) && meetingAttendees.length > 0) {
+        attendeeList = meetingAttendees.map((a: any) => ({
+          name: a.name || "Unknown",
+          title: a.title || "Unknown",
+          role: a.role || "unknown",
+          influence: a.influence || "unknown",
+          concerns: a.knownConcerns || a.concerns || "not specified",
+          outcomes: a.preferredOutcomes || a.outcomes || "not specified"
+        }));
+      } else if (contactName) {
+        attendeeList = [{
+          name: contactName,
+          title: contactTitle || "Unknown",
+          role: contactRole || "unknown",
+          influence: contactInfluence || "unknown",
+          concerns: knownConcerns || "not specified",
+          outcomes: desiredOutcome || "not specified"
+        }];
+      }
+      
+      const attendeeNames = attendeeList.map(a => a.name);
+      const hasMultipleAttendees = attendeeList.length > 1;
+      
+      // Build attendee context for prompt
+      const attendeeContext = attendeeList.length > 0 
+        ? attendeeList.map(a => `- ${a.name} (${a.title})
+    Role: ${a.role}, Influence: ${a.influence}
+    Concerns: ${a.concerns}
+    Preferred Outcomes: ${a.outcomes}`).join("\n\n")
+        : `- ${contactName || "Unknown Contact"} (${contactTitle || "Unknown Title"})
+    Role: ${contactRole || "unknown"}, Influence: ${contactInfluence || "unknown"}
+    Concerns: ${knownConcerns || "not specified"}`;
+      
       // Build Green Sheet context
       const greenSheetContext = [
-        contactName && contactTitle ? `Meeting Contact: ${contactName}, ${contactTitle}` : "",
-        contactRole ? `Buying Role: ${contactRole.replace('_', ' ')}` : "",
-        contactInfluence ? `Influence Level: ${contactInfluence}` : "",
-        knownConcerns ? `Known Concerns: ${knownConcerns}` : "",
         meetingObjective ? `Meeting Objective: ${meetingObjective}` : "",
         desiredOutcome ? `Desired Outcome: ${desiredOutcome}` : ""
       ].filter(Boolean).join("\n");
@@ -9349,6 +9453,9 @@ Use a variety of approaches to uncover needs, understand the buying process, and
 === COMPANY CONTEXT ===
 Company: ${companyName || project.companyName}
 Discovery Theme: ${theme || 'Leadership Development'}
+
+=== MEETING ATTENDEES (${attendeeList.length} people) ===
+${attendeeContext}
 
 === GREEN SHEET (Meeting Preparation) ===
 ${greenSheetContext || "No specific meeting context provided"}
@@ -9360,9 +9467,11 @@ ${intelligenceContext || "No intelligence data available - use general industry 
 ${methodologyContext}
 
 === YOUR TASK ===
-Generate exactly 6 powerful, outcome-focused discovery questions that:
+Generate ${hasMultipleAttendees ? "10-12" : "6"} powerful, outcome-focused discovery questions that:
 1. Directly reference the company's specific situation, challenges, or strategic priorities from the intelligence above
-2. Are tailored to the contact's role (${contactRole || 'decision maker'}) and concerns
+2. ${hasMultipleAttendees 
+  ? `Include BOTH questions for ALL attendees AND questions specifically targeted to individual attendees based on their roles, concerns, and outcomes. EVERY attendee (${attendeeNames.join(", ")}) should have at least 1-2 questions specifically for them.`
+  : `Are tailored to the contact's role (${contactRole || 'decision maker'}) and concerns`}
 3. Align with the meeting objective: "${meetingObjective || 'Discovery and qualification'}"
 4. Help uncover measurable business outcomes and build urgency for change
 5. Use the specific language and context provided - don't be generic
@@ -9373,6 +9482,9 @@ For each question, provide:
 - question: A specific, provocative question that references ${companyName || project.companyName}'s situation
 - methodology: Either "SPIN", "Miller Heiman", or "PSS"
 - stage: The specific stage within that methodology
+- targetAudience: "all" (for questions relevant to everyone) OR "specific" (for questions targeted at specific people)
+- targetAttendeeNames: ${hasMultipleAttendees ? `Array of names from [${attendeeNames.map(n => `"${n}"`).join(", ")}] when targetAudience is "specific", empty array [] when "all"` : "Empty array []"}
+- rationale: Why this question is important for this audience
 - outcome: What business outcome/KPI this question helps uncover
 - followUp: A follow-up question hint
 
@@ -9385,17 +9497,23 @@ Respond in JSON format:
       "question": "...",
       "methodology": "SPIN" | "Miller Heiman" | "PSS",
       "stage": "...",
+      "targetAudience": "all" | "specific",
+      "targetAttendeeNames": ["Name1"] | [],
+      "rationale": "...",
       "outcome": "...",
       "followUp": "..."
     }
-  ]
+  ],
+  "attendeeCoverage": {
+    ${attendeeNames.map(n => `"${n}": ["list of question indices targeted at this person"]`).join(",\n    ")}
+  }
 }`;
 
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.8,
-        max_tokens: 1200,
+        max_tokens: 2500,
         response_format: { type: "json_object" }
       });
       
@@ -9405,7 +9523,11 @@ Respond in JSON format:
       }
       
       const result = JSON.parse(content);
-      res.json(result);
+      res.json({
+        ...result,
+        attendeeCount: attendeeList.length,
+        attendeeNames
+      });
     } catch (error: any) {
       console.error("[Generate Methodology Questions API] Error:", error);
       res.status(500).json({ error: error.message });

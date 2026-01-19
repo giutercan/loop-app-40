@@ -3290,6 +3290,9 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
     outcome: string;
     followUp: string;
     selected: boolean;
+    targetAudience?: "all" | "specific";
+    targetAttendeeNames?: string[];
+    rationale?: string;
   }>>([]);
   const [customQuestionText, setCustomQuestionText] = useState("");
   
@@ -3307,11 +3310,26 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
         meetingObjective: greenSheetEdits.objective || "",
         desiredOutcome: greenSheetEdits.desiredOutcome || "",
         methodology: "all",
-        includeIntelligence: true
+        includeIntelligence: true,
+        meetingMode: meetingMode,
+        meetingAttendees: meetingMode === "multiple" ? meetingAttendees : undefined
       });
       return response.json();
     },
-    onSuccess: (data: { questions: Array<{ question: string; methodology: string; stage: string; outcome: string; followUp: string }> }) => {
+    onSuccess: (data: { 
+      questions: Array<{ 
+        question: string; 
+        methodology: string; 
+        stage: string; 
+        outcome: string; 
+        followUp: string;
+        targetAudience?: "all" | "specific";
+        targetAttendeeNames?: string[];
+        rationale?: string;
+      }>;
+      attendeeCount?: number;
+      attendeeNames?: string[];
+    }) => {
       setSuggestedTensionQuestions(data.questions.map((q, i) => ({
         id: `ai-${Date.now()}-${i}`,
         question: q.question,
@@ -3319,9 +3337,20 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
         stage: q.stage,
         outcome: q.outcome,
         followUp: q.followUp,
-        selected: false
+        selected: false,
+        targetAudience: q.targetAudience || "all",
+        targetAttendeeNames: q.targetAttendeeNames || [],
+        rationale: q.rationale
       })));
       setTensionQuestionsLoading(false);
+      
+      // Show toast with attendee coverage info
+      if (data.attendeeCount && data.attendeeCount > 1) {
+        toast({
+          title: `Generated ${data.questions.length} questions`,
+          description: `Covering ${data.attendeeCount} attendees: ${data.attendeeNames?.join(", ")}`
+        });
+      }
     },
     onError: (error: any) => {
       toast({
@@ -11655,7 +11684,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                       {question.selected && <Check className="w-3 h-3" />}
                     </div>
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <Badge 
                           variant="outline" 
                           className={`text-[10px] ${
@@ -11667,8 +11696,29 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                           {question.methodology === "MILLER_HEIMAN" ? "Miller Heiman" : question.methodology}
                         </Badge>
                         <span className="text-[10px] text-muted-foreground">{question.stage}</span>
+                        {question.targetAudience === "all" ? (
+                          <Badge variant="outline" className="text-[10px] bg-slate-500/10 text-slate-600 border-slate-500/30" data-testid={`badge-audience-all-${question.id}`}>
+                            All Attendees
+                          </Badge>
+                        ) : question.targetAttendeeNames && question.targetAttendeeNames.length > 0 ? (
+                          question.targetAttendeeNames.map((name, idx) => (
+                            <Badge 
+                              key={idx}
+                              variant="outline" 
+                              className="text-[10px] bg-indigo-500/10 text-indigo-700 border-indigo-500/30"
+                              data-testid={`badge-attendee-${question.id}-${idx}`}
+                            >
+                              {name}
+                            </Badge>
+                          ))
+                        ) : null}
                       </div>
                       <p className="text-sm font-medium">{question.question}</p>
+                      {question.rationale && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          <span className="text-violet-600">Why:</span> {question.rationale}
+                        </p>
+                      )}
                       {question.outcome && (
                         <p className="text-xs text-muted-foreground mt-1">
                           <span className="text-emerald-600">Uncovers:</span> {question.outcome}
