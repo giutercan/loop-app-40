@@ -1773,21 +1773,21 @@ Return as JSON:
         return res.status(404).json({ error: "No attendees found. Please add attendees to research." });
       }
       
-      // Get participants to research (only client-side attendees, not internal team)
-      let participantsToResearch = profile.participants.filter((p: any) => 
-        (p.affiliation || "client") === "client"
-      );
+      // Get all participants to research (both client and internal team)
+      let participantsToResearch = [...profile.participants];
       
-      // If specific IDs provided, filter further
+      // If specific IDs provided, filter to those only
       if (participantIds && Array.isArray(participantIds) && participantIds.length > 0) {
         participantsToResearch = participantsToResearch.filter((p: any) => participantIds.includes(p.id));
       }
       
       if (participantsToResearch.length === 0) {
-        return res.status(400).json({ error: "No client-side attendees to research. Internal team members don't need external research." });
+        return res.status(400).json({ error: "No attendees to research." });
       }
       
-      console.log(`[Attendee Research] Found ${participantsToResearch.length} client attendees to research (skipping internal team)`);
+      const clientCount = participantsToResearch.filter((p: any) => (p.affiliation || "client") === "client").length;
+      const internalCount = participantsToResearch.length - clientCount;
+      console.log(`[Attendee Research] Found ${participantsToResearch.length} attendees to research (${clientCount} client, ${internalCount} internal)`);
       
       // Build context about the company and industry
       const companyContext = `
@@ -1802,14 +1802,28 @@ Discovery Theme: ${project.discoveryTheme || "general business transformation"}
       const updatedParticipants = [...profile.participants];
       
       for (const participant of participantsToResearch) {
-        console.log(`[Attendee Research] Researching: ${participant.name} at ${project.companyName}`);
+        const isInternal = (participant.affiliation || "client") === "internal";
+        console.log(`[Attendee Research] Researching: ${participant.name} (${isInternal ? 'internal' : 'client'}) at ${project.companyName}`);
         
-        const response = await openai.chat.completions.create({
-          model: "gpt-4o",
-          messages: [
-            {
-              role: "system",
-              content: `You are a Korn Ferry executive researcher helping sales consultants prepare for high-stakes client meetings.
+        // Different prompts for internal vs client attendees
+        const systemPrompt = isInternal
+          ? `You are a Korn Ferry sales enablement expert helping consultants prepare for high-stakes client meetings.
+
+Your task is to enrich an internal team member's profile to understand their role in the deal:
+1. What their Korn Ferry role typically contributes to client engagements
+2. How they can best support this specific opportunity
+3. Their likely expertise and what they bring to the meeting
+4. How to leverage their strengths in the client conversation
+5. Coordination tips for working effectively with this team member
+
+Use your knowledge of:
+- Management consulting sales cycles and team dynamics
+- Korn Ferry solution areas (talent, leadership, organization)
+- Miller Heiman Blue/Gold sheet methodology roles
+- Effective client engagement team structures
+
+Be specific about their meeting role and contribution.`
+          : `You are a Korn Ferry executive researcher helping sales consultants prepare for high-stakes client meetings.
 
 Your task is to enrich an attendee profile with deeper context about:
 1. What their role typically cares about (based on their title/role)
@@ -1825,11 +1839,39 @@ Use your knowledge of:
 - Sales methodology best practices (Miller Heiman, SPIN, Strategic Selling)
 - Leadership and organizational dynamics
 
-Be specific and actionable. Focus on insights that help build a compelling story for this person.`
-            },
-            {
-              role: "user",
-              content: `Research and enrich this attendee profile:
+Be specific and actionable. Focus on insights that help build a compelling story for this person.`;
+
+        const userPrompt = isInternal
+          ? `Research and enrich this internal team member's profile:
+
+${companyContext}
+
+INTERNAL TEAM MEMBER:
+- Name: ${participant.name}
+- Title/Role: ${participant.title || "Unknown"}
+- Meeting Role: ${participant.role || "Unknown"} (${
+  participant.role === 'champion' ? 'Internal advocate for the deal' :
+  participant.role === 'coach' ? 'Guides the sales strategy' :
+  participant.role === 'technical_buyer' ? 'Solution/delivery expert' :
+  participant.role === 'user_buyer' ? 'Subject matter expert' :
+  participant.role === 'economic_buyer' ? 'Deal sponsor' : 'Team member'
+})
+
+Provide enriched profile as JSON:
+{
+  "suggestedFullName": "${participant.name}",
+  "suggestedTitle": "Likely Korn Ferry title based on their role",
+  "roleContext": "What this team member brings to client engagements",
+  "keyPriorities": ["Top 3-5 things they care about in the deal cycle"],
+  "likelyChallenges": ["Challenges they might face in this engagement"],
+  "messagingThatResonates": ["How to best utilize their expertise in the meeting"],
+  "rapportBuildingTips": ["How to coordinate effectively with this team member"],
+  "questionsToAsk": ["Questions they might help answer for the client"],
+  "industryContext": "Their expertise relevant to this client's industry",
+  "storyAngle": "How they contribute to the overall client narrative",
+  "redFlags": ["Things to coordinate on before the meeting"]
+}`
+          : `Research and enrich this attendee profile:
 
 ${companyContext}
 
@@ -1860,8 +1902,13 @@ Provide enriched profile as JSON:
   "industryContext": "How ${project.sector || "their industry"} trends affect their priorities",
   "storyAngle": "Recommended narrative angle when presenting to this person",
   "redFlags": ["Things to avoid or be careful about with this role"]
-}`
-            }
+}`;
+
+        const response = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
           ],
           max_tokens: 1500,
           temperature: 0.7,

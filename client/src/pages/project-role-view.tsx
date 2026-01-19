@@ -7236,7 +7236,7 @@ export default function ProjectRoleView() {
                               ) : (
                                 <Sparkles className="w-3.5 h-3.5" />
                               )}
-                              {researchAttendeesMutation.isPending ? "Researching..." : "Research Client Attendees"}
+                              {researchAttendeesMutation.isPending ? "Researching..." : "Research Attendees"}
                             </Button>
                           )}
                           <Button
@@ -7255,7 +7255,7 @@ export default function ProjectRoleView() {
                         </div>
                       </div>
 
-                      {/* Attendee List */}
+                      {/* Attendee List - sorted with clients first */}
                       {meetingAttendees.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground" data-testid="empty-attendees-state">
                           <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
@@ -7264,7 +7264,14 @@ export default function ProjectRoleView() {
                         </div>
                       ) : (
                         <div className="space-y-3" data-testid="attendees-list">
-                          {meetingAttendees.map((attendee, index) => {
+                          {[...meetingAttendees].sort((a, b) => {
+                            // Sort: clients first, then internal
+                            const aIsClient = (a.affiliation || "client") === "client";
+                            const bIsClient = (b.affiliation || "client") === "client";
+                            if (aIsClient && !bIsClient) return -1;
+                            if (!aIsClient && bIsClient) return 1;
+                            return 0;
+                          }).map((attendee, index) => {
                             const attendeeId = attendee.id || `idx-${index}`;
                             const isExpanded = expandedAttendeeIds.has(attendeeId);
                             const hasResearch = attendee.aiResearch && attendee.aiResearch.researchedAt;
