@@ -881,13 +881,47 @@ interface DiscoverySynthesis {
   generatedAt?: string;
 }
 
+// Meeting Insights types for the Summary section
+type MeetingInsightsData = {
+  attendees: Array<{
+    name: string;
+    title: string;
+    affiliation: "client" | "internal";
+    role: string;
+    influence?: string;
+    aiResearch?: {
+      roleContext?: string;
+      keyPriorities?: string[];
+      rapportBuildingTips?: string[];
+      storyAngle?: string;
+      researchedAt?: string;
+    };
+  }>;
+  transcriptAnalysis?: {
+    summary: string;
+    keyInsights: string[];
+    actionItems: Array<{ item: string; owner: string; dueDate?: string }>;
+    stakeholderSentiment: Record<string, { sentiment: string; signals: string[] }>;
+    coachingNotes: Array<{ area: string; observation: string; suggestion: string }>;
+    followUpQuestions: string[];
+    analyzedAt: string;
+  } | null;
+  greenSheetContext?: {
+    objective: string;
+    desiredOutcome: string;
+    openingStatement: string;
+    bestActionCommitment: string;
+  };
+};
+
 function DiscoverySummaryStep({ 
   projectId, 
   project, 
   themeName,
   onBackToQuestions,
   onStartNewDiscovery,
-  onContinueToBuildValue
+  onContinueToBuildValue,
+  meetingInsights
 }: { 
   projectId: number; 
   project: Project;
@@ -895,6 +929,7 @@ function DiscoverySummaryStep({
   onBackToQuestions: () => void;
   onStartNewDiscovery: () => void;
   onContinueToBuildValue: () => void;
+  meetingInsights?: MeetingInsightsData;
 }) {
   const { toast } = useToast();
   
@@ -1341,6 +1376,225 @@ function DiscoverySummaryStep({
           )}
         </CardContent>
       </Card>
+
+      {/* Meeting Insights - Visual Summary from Green Sheet */}
+      {meetingInsights && (meetingInsights.attendees.length > 0 || meetingInsights.transcriptAnalysis) && (
+        <Card className="border-indigo-500/20 bg-gradient-to-r from-indigo-500/5 to-purple-500/5" data-testid="card-meeting-insights">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-indigo-600" />
+              Meeting Insights
+              <Badge variant="outline" className="text-[10px] bg-indigo-500/10 text-indigo-600 border-indigo-500/20">
+                From Green Sheet
+              </Badge>
+            </CardTitle>
+            <CardDescription>
+              Stakeholder engagement, action items, and coaching observations from your discovery meetings
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Green Sheet Context Summary */}
+            {meetingInsights.greenSheetContext && (meetingInsights.greenSheetContext.objective || meetingInsights.greenSheetContext.desiredOutcome) && (
+              <div className="p-4 rounded-lg border bg-indigo-50/50 border-indigo-200">
+                <h4 className="text-xs font-semibold text-indigo-700 mb-3 flex items-center gap-1">
+                  <Target className="w-3.5 h-3.5" />
+                  Meeting Objectives
+                </h4>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {meetingInsights.greenSheetContext.objective && (
+                    <div>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Call Objective</p>
+                      <p className="text-xs">{meetingInsights.greenSheetContext.objective}</p>
+                    </div>
+                  )}
+                  {meetingInsights.greenSheetContext.desiredOutcome && (
+                    <div>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Desired Outcome</p>
+                      <p className="text-xs">{meetingInsights.greenSheetContext.desiredOutcome}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Stakeholder Engagement Grid */}
+            {meetingInsights.attendees.filter(a => a.affiliation === "client").length > 0 && (
+              <div>
+                <h4 className="text-xs font-semibold text-indigo-700 mb-3 flex items-center gap-2">
+                  <UserCheck className="w-3.5 h-3.5" />
+                  Stakeholder Engagement
+                  <Badge variant="outline" className="text-[10px]">
+                    {meetingInsights.attendees.filter(a => a.affiliation === "client").length} Client Contacts
+                  </Badge>
+                </h4>
+                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {meetingInsights.attendees.filter(a => a.affiliation === "client").map((attendee, idx) => {
+                    const sentiment = meetingInsights.transcriptAnalysis?.stakeholderSentiment?.[attendee.name];
+                    const sentimentColor = sentiment?.sentiment === "positive" ? "text-emerald-600 bg-emerald-100" : 
+                                           sentiment?.sentiment === "negative" ? "text-red-600 bg-red-100" : 
+                                           "text-amber-600 bg-amber-100";
+                    return (
+                      <div key={idx} className="p-3 rounded-lg border bg-white" data-testid={`insight-attendee-${idx}`}>
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div>
+                            <p className="text-sm font-medium">{attendee.name}</p>
+                            <p className="text-[10px] text-muted-foreground">{attendee.title}</p>
+                          </div>
+                          {sentiment && (
+                            <Badge className={`text-[10px] ${sentimentColor}`}>
+                              {sentiment.sentiment}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 flex-wrap mb-2">
+                          <Badge variant="secondary" className="text-[10px]">
+                            {attendee.role?.replace("_", " ")}
+                          </Badge>
+                          {attendee.influence && (
+                            <Badge variant="outline" className="text-[10px]">
+                              {attendee.influence} influence
+                            </Badge>
+                          )}
+                        </div>
+                        {attendee.aiResearch?.storyAngle && (
+                          <div className="p-2 rounded bg-purple-50 border border-purple-100 mt-2">
+                            <p className="text-[10px] text-purple-700 flex items-center gap-1 mb-1">
+                              <Lightbulb className="w-2.5 h-2.5" />
+                              Story Angle
+                            </p>
+                            <p className="text-[10px] text-purple-800 leading-relaxed">{attendee.aiResearch.storyAngle}</p>
+                          </div>
+                        )}
+                        {sentiment?.signals && sentiment.signals.length > 0 && (
+                          <div className="mt-2 space-y-0.5">
+                            {sentiment.signals.slice(0, 2).map((signal, si) => (
+                              <p key={si} className="text-[10px] text-muted-foreground flex items-start gap-1">
+                                <span className="text-indigo-500">•</span>
+                                {signal}
+                              </p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Transcript Analysis Summary */}
+            {meetingInsights.transcriptAnalysis && (
+              <>
+                {/* Key Insights */}
+                {meetingInsights.transcriptAnalysis.keyInsights.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-indigo-700 mb-3 flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Key Insights from Meeting
+                    </h4>
+                    <div className="grid gap-2 md:grid-cols-2">
+                      {meetingInsights.transcriptAnalysis.keyInsights.map((insight, idx) => (
+                        <div key={idx} className="p-3 rounded-lg border bg-gradient-to-r from-blue-50 to-indigo-50 flex items-start gap-2" data-testid={`key-insight-${idx}`}>
+                          <div className="w-5 h-5 rounded-full bg-indigo-500/20 flex items-center justify-center text-[10px] font-bold text-indigo-700 flex-shrink-0">{idx + 1}</div>
+                          <p className="text-xs">{insight}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Items with Visual Timeline */}
+                {meetingInsights.transcriptAnalysis.actionItems.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-indigo-700 mb-3 flex items-center gap-2">
+                      <ClipboardCheck className="w-3.5 h-3.5" />
+                      Action Items
+                      <Badge className="bg-amber-100 text-amber-700 text-[10px]">
+                        {meetingInsights.transcriptAnalysis.actionItems.length} items
+                      </Badge>
+                    </h4>
+                    <div className="space-y-2">
+                      {meetingInsights.transcriptAnalysis.actionItems.map((action, idx) => (
+                        <div key={idx} className="p-3 rounded-lg border bg-white flex items-start gap-3" data-testid={`action-item-${idx}`}>
+                          <div className="w-6 h-6 rounded-full border-2 border-amber-400 flex items-center justify-center flex-shrink-0">
+                            <div className="w-2 h-2 rounded-full bg-amber-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium">{action.item}</p>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">
+                                <User className="w-2.5 h-2.5 mr-0.5" />
+                                {action.owner}
+                              </Badge>
+                              {action.dueDate && (
+                                <Badge variant="outline" className="text-[10px] bg-purple-50 text-purple-700 border-purple-200">
+                                  <Calendar className="w-2.5 h-2.5 mr-0.5" />
+                                  {action.dueDate}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Coaching Notes as Callout Cards */}
+                {meetingInsights.transcriptAnalysis.coachingNotes.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-purple-700 mb-3 flex items-center gap-1">
+                      <GraduationCap className="w-3.5 h-3.5" />
+                      Coaching Observations
+                    </h4>
+                    <div className="space-y-3">
+                      {meetingInsights.transcriptAnalysis.coachingNotes.map((note, idx) => (
+                        <div key={idx} className="p-4 rounded-lg border-l-4 border-l-purple-500 bg-gradient-to-r from-purple-50 to-white" data-testid={`coaching-note-${idx}`}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge className="bg-purple-100 text-purple-700 text-[10px]">{note.area}</Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mb-2">
+                            <span className="font-medium text-foreground">Observation:</span> {note.observation}
+                          </p>
+                          <div className="p-2 rounded bg-emerald-50 border border-emerald-100">
+                            <p className="text-xs text-emerald-800 flex items-start gap-1">
+                              <Lightbulb className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                              <span><span className="font-medium">Suggestion:</span> {note.suggestion}</span>
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Follow-up Questions */}
+                {meetingInsights.transcriptAnalysis.followUpQuestions.length > 0 && (
+                  <div className="p-4 rounded-lg border bg-amber-50/50 border-amber-200">
+                    <h4 className="text-xs font-semibold text-amber-700 mb-3 flex items-center gap-1">
+                      <HelpCircle className="w-3.5 h-3.5" />
+                      Follow-up Questions for Next Meeting
+                    </h4>
+                    <div className="space-y-1">
+                      {meetingInsights.transcriptAnalysis.followUpQuestions.map((q, idx) => (
+                        <div key={idx} className="flex items-start gap-2 text-xs" data-testid={`followup-question-${idx}`}>
+                          <span className="text-amber-600 font-bold">?</span>
+                          <span>{q}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Analysis Timestamp */}
+                <div className="text-[10px] text-muted-foreground text-right pt-2 border-t">
+                  Meeting analyzed: {new Date(meetingInsights.transcriptAnalysis.analyzedAt).toLocaleString()}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Readiness to Design Outcomes */}
       <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-emerald-500/5" data-testid="card-readiness">
@@ -8723,6 +8977,23 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
             setMyCallFlow([]);
           }}
           onContinueToBuildValue={() => setActiveTab("align")}
+          meetingInsights={{
+            attendees: meetingAttendees.map(a => ({
+              name: a.name,
+              title: a.title,
+              affiliation: a.affiliation || "client",
+              role: a.role || "",
+              influence: a.influence,
+              aiResearch: a.aiResearch
+            })),
+            transcriptAnalysis: transcriptAnalysis,
+            greenSheetContext: {
+              objective: greenSheetEdits.objective || "",
+              desiredOutcome: greenSheetEdits.desiredOutcome || "",
+              openingStatement: greenSheetEdits.openingStatement || "",
+              bestActionCommitment: greenSheetEdits.bestActionCommitment || ""
+            }
+          }}
         />}
       </TabsContent>
 
