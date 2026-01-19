@@ -2946,7 +2946,29 @@ export default function ProjectRoleView() {
       simplicityScore: null as number | null,
       leadershipValuesScore: null as number | null,
       testNotes: ""
-    }
+    },
+    refineResult: null as {
+      overallScore: number;
+      overallFeedback: string;
+      strengths: string[];
+      improvements: Array<{ element: string; currentIssue: string; suggestion: string; improvedVersion?: string }>;
+      missingElements: string[];
+      nextSteps: string[];
+    } | null,
+    selectedTemplates: [] as string[],
+    templateRecommendations: null as {
+      recommendations: Array<{
+        templateId: string;
+        score: number;
+        rationale: string;
+        fitReasons: string[];
+        bestFor?: string;
+      }>;
+      suggestedCombination?: {
+        templateIds: string[];
+        reason: string;
+      };
+    } | null
   });
   
   // Legacy storyDraft for backwards compatibility with existing mutation
@@ -3225,6 +3247,12 @@ export default function ProjectRoleView() {
       setStoryRefineResult(data);
       setAiSuggestionLoading(null);
       toast({ title: "Story Review Complete", description: `Score: ${data.overallScore}/10 - ${data.overallFeedback.slice(0, 50)}...` });
+      
+      // Also store refine result in storyBuilderData for persistence (auto-save will pick it up)
+      setStoryBuilderData(prev => ({
+        ...prev,
+        refineResult: data
+      }));
     },
     onError: (error: any) => {
       toast({
@@ -3805,10 +3833,21 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
             testNotes: savedData.storyTest?.testNotes || ""
           }
         };
-        lastSavedStoryBuilderDataRef.current = JSON.stringify(initialData);
-        setStoryBuilderData(initialData);
+        // Include refineResult, selectedTemplates, templateRecommendations in initial data
+        const fullInitialData = {
+          ...initialData,
+          refineResult: savedData.refineResult || null,
+          selectedTemplates: savedData.selectedTemplates || [],
+          templateRecommendations: savedData.templateRecommendations || null
+        };
+        lastSavedStoryBuilderDataRef.current = JSON.stringify(fullInitialData);
+        setStoryBuilderData(fullInitialData);
         if (savedData.lastUpdated) {
           setStoryBuilderLastSaved(`Last saved ${new Date(savedData.lastUpdated).toLocaleTimeString()}`);
+        }
+        // Restore saved refine result to the separate state for display
+        if (savedData.refineResult) {
+          setStoryRefineResult(savedData.refineResult);
         }
       }
       setStoryBuilderInitialized(true);

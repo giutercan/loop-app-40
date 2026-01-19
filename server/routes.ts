@@ -8756,17 +8756,18 @@ ${postMeetingContent.substring(0, 12000) || "None"}`
   app.patch("/api/projects/:id/story-builder", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const { before, during, after, storyTest } = req.body;
+      const { before, during, after, storyTest, refineResult, selectedTemplates, templateRecommendations } = req.body;
       
       const storyBuilderData = {
-        before: before || {
-          singleMessage: "",
-          emotionalReaction: "",
-          storyStructure: "",
-          startingHook: "",
-          heroCharacter: "",
-          evidenceToReference: "",
-          tensionQuestion: ""
+        before: {
+          singleMessage: before?.singleMessage || "",
+          emotionalReaction: before?.emotionalReaction || "",
+          storyStructure: before?.storyStructure || "",
+          startingHook: before?.startingHook || "",
+          heroCharacter: before?.heroCharacter || "",
+          evidenceToReference: before?.evidenceToReference || "",
+          tensionQuestion: before?.tensionQuestion || "",
+          tensionQuestions: before?.tensionQuestions || []
         },
         during: during || {
           openingLine: "",
@@ -8786,6 +8787,9 @@ ${postMeetingContent.substring(0, 12000) || "None"}`
           leadershipValuesScore: null,
           testNotes: ""
         },
+        refineResult: refineResult || null,
+        selectedTemplates: selectedTemplates || [],
+        templateRecommendations: templateRecommendations || null,
         lastUpdated: new Date().toISOString(),
       };
       
@@ -10264,10 +10268,49 @@ Respond in JSON format:
         }
       }
       
+      // Extract Story Coach context from project for handoff
+      const storyBuilderData = (project as any).storyBuilderData;
+      let storyCoachContext = null;
+      if (storyBuilderData) {
+        storyCoachContext = {
+          coreNarrative: {
+            keyMessage: storyBuilderData.before?.singleMessage || "",
+            emotionalGoal: storyBuilderData.before?.emotionalReaction || "",
+            openingHook: storyBuilderData.before?.startingHook || "",
+            callToAction: storyBuilderData.after?.callToAction || "",
+            turningPoint: storyBuilderData.during?.turningPoint || "",
+            momentOfMeaning: storyBuilderData.after?.momentOfMeaning || "",
+          },
+          tensionQuestions: (storyBuilderData.before?.tensionQuestions || []).map((q: any) => ({
+            id: q.id,
+            prompt: q.prompt,
+            response: q.response || "",
+            methodology: q.methodology,
+            rationale: q.rationale,
+            source: q.source,
+            order: q.order,
+            targetAudience: q.targetAudience,
+            targetAttendeeNames: q.targetAttendeeNames,
+          })),
+          storyTestResults: storyBuilderData.refineResult ? {
+            overallScore: storyBuilderData.refineResult.overallScore,
+            overallFeedback: storyBuilderData.refineResult.overallFeedback,
+            strengths: storyBuilderData.refineResult.strengths,
+            improvements: storyBuilderData.refineResult.improvements,
+            missingElements: storyBuilderData.refineResult.missingElements,
+            nextSteps: storyBuilderData.refineResult.nextSteps,
+          } : undefined,
+          selectedTemplates: storyBuilderData.selectedTemplates || [],
+          templateRecommendations: storyBuilderData.templateRecommendations?.recommendations || [],
+          lastUpdated: storyBuilderData.lastUpdated,
+        };
+      }
+      
       const validated = insertHandoffPacketSchema.parse({
         ...req.body,
         projectId,
         totalCommittedValue: totalValue,
+        storyCoachContext,
       });
       
       const packet = await storage.createHandoffPacket(validated);

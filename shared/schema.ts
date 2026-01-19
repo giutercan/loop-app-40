@@ -266,6 +266,17 @@ export const projects = pgTable("projects", {
       heroCharacter: string;
       evidenceToReference: string;
       tensionQuestion: string;
+      tensionQuestions?: Array<{
+        id: string;
+        prompt: string;
+        response: string;
+        methodology?: string;
+        rationale?: string;
+        source?: "ai" | "manual";
+        order: number;
+        targetAudience?: "all" | "specific";
+        targetAttendeeNames?: string[];
+      }>;
     };
     during: {
       openingLine: string;
@@ -284,6 +295,28 @@ export const projects = pgTable("projects", {
       simplicityScore: number | null;
       leadershipValuesScore: number | null;
       testNotes: string;
+    };
+    refineResult?: {
+      overallScore: number;
+      overallFeedback: string;
+      strengths: string[];
+      improvements: Array<{ element: string; currentIssue: string; suggestion: string; improvedVersion?: string }>;
+      missingElements: string[];
+      nextSteps: string[];
+    };
+    selectedTemplates?: string[];
+    templateRecommendations?: {
+      recommendations: Array<{
+        templateId: string;
+        score: number;
+        rationale: string;
+        fitReasons: string[];
+        bestFor?: string;
+      }>;
+      suggestedCombination?: {
+        templateIds: string[];
+        reason: string;
+      };
     };
     lastUpdated?: string;
   }>(),
@@ -1858,6 +1891,45 @@ export const handoffPackets = pgTable("handoff_packets", {
   // Handoff Meeting
   handoffMeetingDate: timestamp("handoff_meeting_date"),
   handoffMeetingNotes: text("handoff_meeting_notes"),
+  
+  // Story Coach Context (from Sales preparation)
+  storyCoachContext: jsonb("story_coach_context").$type<{
+    coreNarrative: {
+      keyMessage: string;
+      emotionalGoal: string;
+      openingHook: string;
+      callToAction: string;
+      turningPoint?: string;
+      momentOfMeaning?: string;
+    };
+    tensionQuestions: Array<{
+      id?: string;
+      prompt: string;
+      response?: string;
+      methodology?: string;
+      rationale?: string;
+      source?: "ai" | "manual";
+      order?: number;
+      targetAudience?: "all" | "specific";
+      targetAttendeeNames?: string[];
+    }>;
+    storyTestResults?: {
+      overallScore?: number;
+      overallFeedback?: string;
+      strengths?: string[];
+      improvements?: Array<{ element: string; currentIssue: string; suggestion: string; improvedVersion?: string }>;
+      missingElements?: string[];
+      nextSteps?: string[];
+    };
+    selectedTemplates?: string[];
+    templateRecommendations?: Array<{
+      templateId: string;
+      score: number;
+      rationale: string;
+      fitReasons: string[];
+    }>;
+    lastUpdated?: string;
+  }>(),
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
