@@ -1757,6 +1757,156 @@ Return as JSON:
     }
   });
 
+  // POST research and enrich attendees with AI
+  app.post("/api/projects/:projectId/meeting-profile/research-attendees", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const { participantIds } = req.body; // Optional: specific participants to research
+      
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const profile = await storage.getMeetingProfile(projectId);
+      if (!profile || !profile.participants || profile.participants.length === 0) {
+        return res.status(404).json({ error: "No attendees found. Please add attendees to research." });
+      }
+      
+      // Get participants to research (all or specific ones)
+      let participantsToResearch = profile.participants;
+      if (participantIds && Array.isArray(participantIds) && participantIds.length > 0) {
+        participantsToResearch = profile.participants.filter(p => participantIds.includes(p.id));
+      }
+      
+      if (participantsToResearch.length === 0) {
+        return res.status(400).json({ error: "No valid participants selected for research" });
+      }
+      
+      // Build context about the company and industry
+      const companyContext = `
+Company: ${project.companyName || "Unknown"}
+Industry: ${project.sector || project.industry || "Unknown"}
+Initiative: ${project.name}
+Discovery Theme: ${project.discoveryTheme || "general business transformation"}
+      `.trim();
+      
+      // Research each attendee with AI
+      const researchResults = [];
+      const updatedParticipants = [...profile.participants];
+      
+      for (const participant of participantsToResearch) {
+        console.log(`[Attendee Research] Researching: ${participant.name} at ${project.companyName}`);
+        
+        const response = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            {
+              role: "system",
+              content: `You are a Korn Ferry executive researcher helping sales consultants prepare for high-stakes client meetings.
+
+Your task is to enrich an attendee profile with deeper context about:
+1. What their role typically cares about (based on their title/role)
+2. Key priorities and challenges for someone in this position
+3. How to build rapport and credibility with them
+4. What messaging would resonate with their role
+5. Industry-specific context that would matter to them
+6. Suggestions for their likely full title if only a first name is known
+
+Use your knowledge of:
+- Executive roles and responsibilities
+- Industry trends and challenges for ${project.sector || "their industry"}
+- Sales methodology best practices (Miller Heiman, SPIN, Strategic Selling)
+- Leadership and organizational dynamics
+
+Be specific and actionable. Focus on insights that help build a compelling story for this person.`
+            },
+            {
+              role: "user",
+              content: `Research and enrich this attendee profile:
+
+${companyContext}
+
+ATTENDEE TO RESEARCH:
+- Name: ${participant.name}
+- Current Title: ${participant.title || "Unknown"}
+- Role Type: ${participant.role} (${
+  participant.role === 'economic_buyer' ? 'Budget holder/decision maker' :
+  participant.role === 'user_buyer' ? 'End user of the solution' :
+  participant.role === 'technical_buyer' ? 'Evaluates technical fit' :
+  participant.role === 'coach' ? 'Internal guide/advisor' :
+  participant.role === 'champion' ? 'Internal advocate' : 'Stakeholder'
+})
+- Influence Level: ${participant.influence}
+- Known Concerns: ${participant.knownConcerns || "None captured yet"}
+- Preferred Outcomes: ${participant.preferredOutcomes || "None captured yet"}
+
+Provide enriched profile as JSON:
+{
+  "suggestedFullName": "Best guess at full name if only first name given, or the name as-is",
+  "suggestedTitle": "Likely title based on context (or confirmed title if known)",
+  "roleContext": "What this role typically cares about at a company like ${project.companyName}",
+  "keyPriorities": ["Top 3-5 priorities someone in this role would have"],
+  "likelyChallenges": ["Challenges they probably face"],
+  "messagingThatResonates": ["Types of messages/stories that would resonate with this role"],
+  "rapportBuildingTips": ["How to build credibility and rapport with this person"],
+  "questionsToAsk": ["Discovery questions tailored to this role"],
+  "industryContext": "How ${project.sector || "their industry"} trends affect their priorities",
+  "storyAngle": "Recommended narrative angle when presenting to this person",
+  "redFlags": ["Things to avoid or be careful about with this role"]
+}`
+            }
+          ],
+          max_tokens: 1500,
+          temperature: 0.7,
+          response_format: { type: "json_object" }
+        });
+        
+        const content = response.choices[0].message.content || "{}";
+        let research = null;
+        try {
+          research = JSON.parse(content);
+          research.researchedAt = new Date().toISOString();
+        } catch (e) {
+          console.error(`[Attendee Research] Parse error for ${participant.name}:`, e);
+          continue;
+        }
+        
+        // Update participant with research data
+        const participantIndex = updatedParticipants.findIndex(p => p.id === participant.id);
+        if (participantIndex >= 0) {
+          updatedParticipants[participantIndex] = {
+            ...updatedParticipants[participantIndex],
+            // Update title if we have a better suggestion and current is empty
+            title: updatedParticipants[participantIndex].title || research.suggestedTitle || "",
+            // Store research as extended data
+            aiResearch: research
+          } as any;
+        }
+        
+        researchResults.push({
+          participantId: participant.id,
+          name: participant.name,
+          research
+        });
+      }
+      
+      // Save updated participants with research
+      await storage.updateMeetingProfile(profile.id, {
+        participants: updatedParticipants
+      });
+      
+      res.json({
+        success: true,
+        participantsResearched: researchResults.length,
+        research: researchResults
+      });
+    } catch (error: any) {
+      console.error("[Attendee Research] Error:", error);
+      res.status(500).json({ error: "Failed to research attendees: " + error.message });
+    }
+  });
+  
   // AI Notes Enrichment
   app.post("/api/projects/:projectId/enrich-from-notes", async (req, res) => {
     try {
