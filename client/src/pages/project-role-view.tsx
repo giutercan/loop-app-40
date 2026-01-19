@@ -1863,6 +1863,22 @@ export default function ProjectRoleView() {
   const [greenSheetInitialized, setGreenSheetInitialized] = useState(false);
   const [lastSavedGreenSheet, setLastSavedGreenSheet] = useState<string | null>(null);
   
+  // AI Research data structure
+  type AttendeeResearch = {
+    suggestedFullName?: string;
+    suggestedTitle?: string;
+    roleContext?: string;
+    keyPriorities?: string[];
+    likelyChallenges?: string[];
+    messagingThatResonates?: string[];
+    rapportBuildingTips?: string[];
+    questionsToAsk?: string[];
+    industryContext?: string;
+    storyAngle?: string;
+    redFlags?: string[];
+    researchedAt?: string;
+  };
+
   // Adaptive Meeting Profile state (single vs multiple attendees)
   type MeetingAttendee = {
     id: string;
@@ -1875,6 +1891,7 @@ export default function ProjectRoleView() {
     preferredOutcomes: string;
     personalRapport: string;
     decisionCriteria: string;
+    aiResearch?: AttendeeResearch;
   };
   
   type CombinedMeetingStory = {
@@ -1922,6 +1939,7 @@ export default function ProjectRoleView() {
   const [isAnalyzingTranscript, setIsAnalyzingTranscript] = useState(false);
   const [showAddAttendeeDialog, setShowAddAttendeeDialog] = useState(false);
   const [editingAttendee, setEditingAttendee] = useState<MeetingAttendee | null>(null);
+  const [expandedAttendeeIds, setExpandedAttendeeIds] = useState<Set<string>>(new Set());
   
   const [isVoiceCommandOpen, setIsVoiceCommandOpen] = useState(false);
   const [voiceTargetField, setVoiceTargetField] = useState<string | undefined>();
@@ -6991,71 +7009,233 @@ export default function ProjectRoleView() {
                           <p className="text-xs mt-1">Add stakeholders to generate a combined meeting story</p>
                         </div>
                       ) : (
-                        <div className="grid gap-3 md:grid-cols-2" data-testid="attendees-list">
-                          {meetingAttendees.map((attendee, index) => (
+                        <div className="space-y-3" data-testid="attendees-list">
+                          {meetingAttendees.map((attendee, index) => {
+                            const attendeeId = attendee.id || `idx-${index}`;
+                            const isExpanded = expandedAttendeeIds.has(attendeeId);
+                            const hasResearch = attendee.aiResearch && attendee.aiResearch.researchedAt;
+                            
+                            return (
                             <div
                               key={`attendee-${index}`}
-                              className={`p-3 rounded-lg border flex items-start justify-between gap-3 ${
+                              className={`rounded-lg border overflow-hidden ${
                                 (attendee.affiliation || "client") === "internal" 
                                   ? "bg-blue-50 border-blue-200" 
                                   : "bg-white"
                               }`}
                               data-testid={`card-attendee-${index}`}
                             >
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <div className="font-medium text-sm truncate" data-testid={`text-attendee-name-${index}`}>{attendee.name}</div>
-                                  <Badge 
-                                    variant="outline" 
-                                    className={`text-[10px] ${
-                                      (attendee.affiliation || "client") === "internal"
-                                        ? "bg-blue-100 text-blue-700 border-blue-300"
-                                        : "bg-emerald-100 text-emerald-700 border-emerald-300"
-                                    }`}
-                                    data-testid={`badge-attendee-affiliation-${index}`}
-                                  >
-                                    {(attendee.affiliation || "client") === "internal" ? "Internal" : "Client"}
-                                  </Badge>
-                                </div>
-                                <div className="text-xs text-muted-foreground truncate" data-testid={`text-attendee-title-${index}`}>{attendee.title}</div>
-                                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                                  <Badge variant="secondary" className="text-xs" data-testid={`badge-attendee-role-${index}`}>
-                                    {attendee.role?.replace("_", " ") || "Unknown Role"}
-                                  </Badge>
-                                  {(attendee.affiliation || "client") === "client" && attendee.influence && (
-                                    <Badge variant="outline" className="text-xs" data-testid={`badge-attendee-influence-${index}`}>
-                                      {attendee.influence} Influence
+                              {/* Attendee Header */}
+                              <div className="p-3 flex items-start justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <div className="font-medium text-sm" data-testid={`text-attendee-name-${index}`}>{attendee.name}</div>
+                                    <Badge 
+                                      variant="outline" 
+                                      className={`text-[10px] ${
+                                        (attendee.affiliation || "client") === "internal"
+                                          ? "bg-blue-100 text-blue-700 border-blue-300"
+                                          : "bg-emerald-100 text-emerald-700 border-emerald-300"
+                                      }`}
+                                      data-testid={`badge-attendee-affiliation-${index}`}
+                                    >
+                                      {(attendee.affiliation || "client") === "internal" ? "Internal" : "Client"}
                                     </Badge>
+                                    {hasResearch && (
+                                      <Badge variant="outline" className="text-[10px] bg-purple-100 text-purple-700 border-purple-300" data-testid={`badge-attendee-researched-${index}`}>
+                                        <Sparkles className="w-2.5 h-2.5 mr-0.5" />
+                                        Researched
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground" data-testid={`text-attendee-title-${index}`}>{attendee.title}</div>
+                                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                    <Badge variant="secondary" className="text-xs" data-testid={`badge-attendee-role-${index}`}>
+                                      {attendee.role?.replace("_", " ") || "Unknown Role"}
+                                    </Badge>
+                                    {(attendee.affiliation || "client") === "client" && attendee.influence && (
+                                      <Badge variant="outline" className="text-xs" data-testid={`badge-attendee-influence-${index}`}>
+                                        {attendee.influence} Influence
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  {hasResearch && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      onClick={() => {
+                                        setExpandedAttendeeIds(prev => {
+                                          const next = new Set(prev);
+                                          if (next.has(attendeeId)) {
+                                            next.delete(attendeeId);
+                                          } else {
+                                            next.add(attendeeId);
+                                          }
+                                          return next;
+                                        });
+                                      }}
+                                      data-testid={`button-toggle-research-${index}`}
+                                    >
+                                      {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                    </Button>
                                   )}
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={() => {
+                                      setEditingAttendee({ ...attendee, id: attendeeId });
+                                      setShowAddAttendeeDialog(true);
+                                    }}
+                                    data-testid={`button-edit-attendee-${index}`}
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-red-500"
+                                    onClick={() => {
+                                      setMeetingAttendees(prev => prev.filter((_, i) => i !== index));
+                                    }}
+                                    data-testid={`button-remove-attendee-${index}`}
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </Button>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7"
-                                  onClick={() => {
-                                    setEditingAttendee({ ...attendee, id: `idx-${index}` });
-                                    setShowAddAttendeeDialog(true);
-                                  }}
-                                  data-testid={`button-edit-attendee-${index}`}
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 text-red-500 hover:text-red-600"
-                                  onClick={() => {
-                                    setMeetingAttendees(prev => prev.filter((_, i) => i !== index));
-                                  }}
-                                  data-testid={`button-remove-attendee-${index}`}
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                </Button>
-                              </div>
+                              
+                              {/* Expanded Research Panel */}
+                              {isExpanded && attendee.aiResearch && (
+                                <div className="px-3 pb-3 border-t border-purple-200 bg-gradient-to-b from-purple-50/50 to-white" data-testid={`panel-research-${index}`}>
+                                  <div className="pt-3 space-y-3">
+                                    {/* Role Context */}
+                                    {attendee.aiResearch.roleContext && (
+                                      <div>
+                                        <Label className="text-xs font-semibold text-purple-700 flex items-center gap-1">
+                                          <Briefcase className="w-3 h-3" />
+                                          Role Context
+                                        </Label>
+                                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{attendee.aiResearch.roleContext}</p>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Key Priorities */}
+                                    {attendee.aiResearch.keyPriorities && attendee.aiResearch.keyPriorities.length > 0 && (
+                                      <div>
+                                        <Label className="text-xs font-semibold text-purple-700 flex items-center gap-1">
+                                          <Target className="w-3 h-3" />
+                                          Key Priorities
+                                        </Label>
+                                        <ul className="mt-1 space-y-0.5">
+                                          {attendee.aiResearch.keyPriorities.map((priority, i) => (
+                                            <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                              <span className="text-purple-500 mt-0.5">•</span>
+                                              {priority}
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Rapport Building Tips */}
+                                    {attendee.aiResearch.rapportBuildingTips && attendee.aiResearch.rapportBuildingTips.length > 0 && (
+                                      <div>
+                                        <Label className="text-xs font-semibold text-purple-700 flex items-center gap-1">
+                                          <Heart className="w-3 h-3" />
+                                          Rapport Building Tips
+                                        </Label>
+                                        <ul className="mt-1 space-y-0.5">
+                                          {attendee.aiResearch.rapportBuildingTips.map((tip, i) => (
+                                            <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                              <span className="text-emerald-500 mt-0.5">•</span>
+                                              {tip}
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Messaging That Resonates */}
+                                    {attendee.aiResearch.messagingThatResonates && attendee.aiResearch.messagingThatResonates.length > 0 && (
+                                      <div>
+                                        <Label className="text-xs font-semibold text-purple-700 flex items-center gap-1">
+                                          <MessageCircle className="w-3 h-3" />
+                                          Messaging That Resonates
+                                        </Label>
+                                        <ul className="mt-1 space-y-0.5">
+                                          {attendee.aiResearch.messagingThatResonates.map((msg, i) => (
+                                            <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                              <span className="text-blue-500 mt-0.5">•</span>
+                                              {msg}
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Questions to Ask */}
+                                    {attendee.aiResearch.questionsToAsk && attendee.aiResearch.questionsToAsk.length > 0 && (
+                                      <div>
+                                        <Label className="text-xs font-semibold text-purple-700 flex items-center gap-1">
+                                          <HelpCircle className="w-3 h-3" />
+                                          Discovery Questions
+                                        </Label>
+                                        <ul className="mt-1 space-y-0.5">
+                                          {attendee.aiResearch.questionsToAsk.map((q, i) => (
+                                            <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                              <span className="text-amber-500 mt-0.5">?</span>
+                                              {q}
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Red Flags */}
+                                    {attendee.aiResearch.redFlags && attendee.aiResearch.redFlags.length > 0 && (
+                                      <div>
+                                        <Label className="text-xs font-semibold text-red-600 flex items-center gap-1">
+                                          <AlertTriangle className="w-3 h-3" />
+                                          Things to Avoid
+                                        </Label>
+                                        <ul className="mt-1 space-y-0.5">
+                                          {attendee.aiResearch.redFlags.map((flag, i) => (
+                                            <li key={i} className="text-xs text-red-600/80 flex items-start gap-1.5">
+                                              <span className="mt-0.5">!</span>
+                                              {flag}
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Story Angle */}
+                                    {attendee.aiResearch.storyAngle && (
+                                      <div className="p-2 rounded bg-purple-100/50 border border-purple-200">
+                                        <Label className="text-xs font-semibold text-purple-700 flex items-center gap-1">
+                                          <Lightbulb className="w-3 h-3" />
+                                          Recommended Story Angle
+                                        </Label>
+                                        <p className="text-xs text-purple-800 mt-1 leading-relaxed">{attendee.aiResearch.storyAngle}</p>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Researched timestamp */}
+                                    {attendee.aiResearch.researchedAt && (
+                                      <div className="text-[10px] text-muted-foreground pt-1 border-t">
+                                        Researched {new Date(attendee.aiResearch.researchedAt).toLocaleDateString()} at {new Date(attendee.aiResearch.researchedAt).toLocaleTimeString()}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                          ))}
+                          );
+                          })}
                         </div>
                       )}
 
