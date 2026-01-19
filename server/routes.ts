@@ -13581,23 +13581,37 @@ Generate 10+ specific, actionable items to:
 5. Generate minimum 10 action items
 6. Output ONLY valid JSON - no markdown, no commentary`;
 
-      // Build discovery synthesis section for prompt
+      // Build discovery synthesis section for prompt with safe array handling
+      const formatSynthesisArray = (arr: any, formatter: (item: any) => string): string => {
+        if (!arr) return "None captured";
+        if (typeof arr === 'string') return arr;
+        if (!Array.isArray(arr)) return "None captured";
+        if (arr.length === 0) return "None captured";
+        return arr.map(formatter).join("\n");
+      };
+      
       const synthesisSummary = context.discoverySynthesis ? `
 ## DISCOVERY SYNTHESIS (Executive Summary)
 ### What We Learned
-${context.discoverySynthesis.whatWeLearned?.map((w: any) => `- ${w.insight}${w.evidence?.length ? ` (Evidence: ${w.evidence.join(", ")})` : ""}`).join("\n") || "None captured"}
+${formatSynthesisArray(context.discoverySynthesis.whatWeLearned, (w: any) => 
+  `- ${w.insight || w}${w.evidence?.length ? ` (Evidence: ${w.evidence.join(", ")})` : ""}`
+)}
 
 ### Business Implications
-${context.discoverySynthesis.businessImplications?.map((b: any) => `- [${b.urgency?.toUpperCase() || 'MEDIUM'}] ${b.implication}${b.kornFerryAlignment ? ` → KF: ${b.kornFerryAlignment}` : ""}`).join("\n") || "None captured"}
+${formatSynthesisArray(context.discoverySynthesis.businessImplications, (b: any) => 
+  `- [${(b.urgency || 'MEDIUM').toUpperCase()}] ${b.implication || b}${b.kornFerryAlignment ? ` → KF: ${b.kornFerryAlignment}` : ""}`
+)}
 
 ### Stakeholder Signals (Customer-side only)
-${context.discoverySynthesis.stakeholderSignals?.map((s: any) => `- ${s.signal} (${s.stakeholderType || "Unknown"}, Sentiment: ${s.sentiment || "neutral"})`).join("\n") || "None captured"}
+${formatSynthesisArray(context.discoverySynthesis.stakeholderSignals, (s: any) => 
+  `- ${s.signal || s} (${s.stakeholderType || "Unknown"}, Sentiment: ${s.sentiment || "neutral"})`
+)}
 
 ### Readiness to Build Value
 ${context.discoverySynthesis.readinessToBuildValue ? `Score: ${context.discoverySynthesis.readinessToBuildValue.score}/100
 Rationale: ${context.discoverySynthesis.readinessToBuildValue.rationale}
-Gaps: ${context.discoverySynthesis.readinessToBuildValue.gaps?.join("; ") || "None"}
-Next Steps: ${context.discoverySynthesis.readinessToBuildValue.nextSteps?.join("; ") || "None"}` : "Not assessed"}
+Gaps: ${Array.isArray(context.discoverySynthesis.readinessToBuildValue.gaps) ? context.discoverySynthesis.readinessToBuildValue.gaps.join("; ") : context.discoverySynthesis.readinessToBuildValue.gaps || "None"}
+Next Steps: ${Array.isArray(context.discoverySynthesis.readinessToBuildValue.nextSteps) ? context.discoverySynthesis.readinessToBuildValue.nextSteps.join("; ") : context.discoverySynthesis.readinessToBuildValue.nextSteps || "None"}` : "Not assessed"}
 ` : "";
 
       const userPrompt = `Generate a comprehensive Miller Heiman Blue Sheet for this opportunity:
