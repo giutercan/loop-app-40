@@ -13292,18 +13292,19 @@ Provide a JSON response with:
       }
 
       // Gather discovery context
-      const insights = await storage.getInsights(projectId);
       const discoveryNotes = await storage.getDiscoveryNotes(projectId);
-      const intelligence = await storage.getProjectIntelligence(projectId);
+      const theme = validatedBody.theme || project.discoveryTheme || "General";
+      const intelligence = await storage.getProjectIntelligence(projectId, theme);
+      const jobThemes = await storage.getJobThemes(projectId);
       
       // Build context for AI
       const context = {
         companyName: project.companyName,
         industry: project.industry,
-        insights: insights.map(i => i.content),
         discoveryNotes: discoveryNotes?.notes || "",
         intelligenceData: intelligence?.data,
-        theme: validatedBody.theme || project.discoveryTheme,
+        theme: theme,
+        jobThemes: jobThemes.map(jt => ({ theme: jt.theme, summary: jt.summary })),
       };
 
       // Generate Blue Sheet using OpenAI
@@ -13337,16 +13338,16 @@ Generate a Blue Sheet with these sections:
 
 Company: ${context.companyName}
 Industry: ${context.industry || "Unknown"}
-Theme: ${context.theme || "General"}
+Theme: ${context.theme}
 
-Discovery Insights:
-${context.insights.join("\n")}
+Job Themes:
+${context.jobThemes.map(jt => `- ${jt.theme}: ${jt.summary || "No summary"}`).join("\n") || "None captured"}
 
 Discovery Notes:
-${context.discoveryNotes}
+${context.discoveryNotes || "None captured"}
 
 Intelligence Data:
-${JSON.stringify(context.intelligenceData, null, 2)}
+${JSON.stringify(context.intelligenceData, null, 2) || "None captured"}
 
 Generate a comprehensive Blue Sheet JSON.`;
 
