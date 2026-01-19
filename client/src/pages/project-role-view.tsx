@@ -3675,6 +3675,100 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
     }
   });
 
+  // Blue Sheet update mutation for manual edits
+  const updateBlueSheetMutation = useMutation({
+    mutationFn: async (updates: { data: any }) => {
+      const response = await apiRequest("PATCH", `/api/projects/${projectId}/bluesheet`, updates);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "bluesheet"] });
+      toast({
+        title: "Strategy Updated",
+        description: "Your changes have been saved."
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Update Failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  // State for manual buying influence management
+  const [showAddInfluenceDialog, setShowAddInfluenceDialog] = useState(false);
+  const [editingInfluenceIndex, setEditingInfluenceIndex] = useState<number | null>(null);
+  const [expandedResearch, setExpandedResearch] = useState<Set<number>>(new Set());
+  const [newInfluence, setNewInfluence] = useState({
+    name: "",
+    title: "",
+    company: project?.companyName || "",
+    role: "User" as "Economic" | "User" | "Technical" | "Coach",
+    mode: "growth" as "Growth" | "Trouble" | "EvenKeel" | "Overconfident",
+    degreeOfInfluence: "Medium" as "High" | "Medium" | "Low",
+    personalWins: "",
+    resultsWanted: "",
+    notes: "",
+    isManuallyAdded: true
+  });
+
+  // Add buying influence
+  const handleAddInfluence = () => {
+    if (!blueSheet?.data || !newInfluence.name.trim()) return;
+    const updatedInfluences = [...(blueSheet.data.buyingInfluences || []), newInfluence];
+    updateBlueSheetMutation.mutate({
+      data: { ...blueSheet.data, buyingInfluences: updatedInfluences }
+    });
+    setNewInfluence({
+      name: "",
+      title: "",
+      company: project?.companyName || "",
+      role: "User",
+      mode: "growth",
+      degreeOfInfluence: "Medium",
+      personalWins: "",
+      resultsWanted: "",
+      notes: "",
+      isManuallyAdded: true
+    });
+    setShowAddInfluenceDialog(false);
+  };
+
+  // Update buying influence
+  const handleUpdateInfluence = (index: number, updates: any) => {
+    if (!blueSheet?.data) return;
+    const updatedInfluences = [...blueSheet.data.buyingInfluences];
+    updatedInfluences[index] = { ...updatedInfluences[index], ...updates };
+    updateBlueSheetMutation.mutate({
+      data: { ...blueSheet.data, buyingInfluences: updatedInfluences }
+    });
+    setEditingInfluenceIndex(null);
+  };
+
+  // Delete buying influence
+  const handleDeleteInfluence = (index: number) => {
+    if (!blueSheet?.data) return;
+    const updatedInfluences = blueSheet.data.buyingInfluences.filter((_: any, i: number) => i !== index);
+    updateBlueSheetMutation.mutate({
+      data: { ...blueSheet.data, buyingInfluences: updatedInfluences }
+    });
+  };
+
+  // Toggle research expansion
+  const toggleResearchExpand = (index: number) => {
+    setExpandedResearch(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  };
+
   // AI-suggested KPIs from discovery insights with enhanced benchmarks
   type DiscoveryKpiSuggestion = {
     kpiName: string;
@@ -8755,45 +8849,103 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                     </div>
 
                     {/* DEAL GOAL & TIMELINE (was SSO) */}
-                    {blueSheet.data.singleSalesObjective && (
-                      <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/20" data-testid="section-sso">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Target className="w-4 h-4 text-blue-600" />
-                          <span className="font-semibold text-sm">Deal Goal & Timeline</span>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
-                            </TooltipTrigger>
-                            <TooltipContent side="right" className="max-w-xs">
-                              <p className="text-xs">Your single, clear sales objective - what you're selling, to whom, when, and for how much. This keeps everyone aligned on the goal.</p>
-                            </TooltipContent>
-                          </Tooltip>
-                          {blueSheet.data.singleSalesObjectiveMarker && (
-                            <Badge 
-                              className={`text-xs ml-auto ${
-                                blueSheet.data.singleSalesObjectiveMarker === "Strength" 
-                                  ? "bg-emerald-500/10 text-emerald-600"
-                                  : blueSheet.data.singleSalesObjectiveMarker === "RedFlag"
-                                  ? "bg-red-500/10 text-red-600"
-                                  : "bg-amber-500/10 text-amber-600"
-                              }`}
-                              data-testid="badge-sso-marker"
-                            >
-                              {blueSheet.data.singleSalesObjectiveMarker === "RedFlag" ? "Needs Attention" : blueSheet.data.singleSalesObjectiveMarker}
-                            </Badge>
-                          )}
+                    {blueSheet.data.singleSalesObjective && (() => {
+                      // Date validation: check for future dates (2026+)
+                      const sso = blueSheet.data.singleSalesObjective || "";
+                      const currentYear = new Date().getFullYear();
+                      const datePatterns = [
+                        /Q[1-4]\s*(\d{4})/gi,
+                        /(?:by|in|before|during)\s+(\d{4})/gi,
+                        /(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})/gi,
+                        /\b(20\d{2})\b/g
+                      ];
+                      let foundYear: number | null = null;
+                      for (const pattern of datePatterns) {
+                        const matches = [...sso.matchAll(pattern)];
+                        for (const match of matches) {
+                          const year = parseInt(match[1]);
+                          if (year >= 2020 && year <= 2030) {
+                            foundYear = year;
+                            break;
+                          }
+                        }
+                        if (foundYear) break;
+                      }
+                      const hasValidDate = foundYear !== null && foundYear >= currentYear;
+                      const hasHistoricalDate = foundYear !== null && foundYear < currentYear;
+                      
+                      return (
+                        <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/20" data-testid="section-sso">
+                          <div className="flex items-center gap-2 mb-3 flex-wrap">
+                            <Target className="w-4 h-4 text-blue-600" />
+                            <span className="font-semibold text-sm">Deal Goal & Timeline</span>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="max-w-xs">
+                                <p className="text-xs">Your single, clear sales objective - what you're selling, to whom, when, and for how much. This keeps everyone aligned on the goal.</p>
+                              </TooltipContent>
+                            </Tooltip>
+                            {hasValidDate && (
+                              <Badge className="text-xs bg-emerald-500/10 text-emerald-600 gap-1" data-testid="badge-date-valid">
+                                <Calendar className="w-3 h-3" />
+                                {foundYear}
+                              </Badge>
+                            )}
+                            {hasHistoricalDate && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge className="text-xs bg-red-500/10 text-red-600 gap-1 cursor-help" data-testid="badge-date-invalid">
+                                    <AlertTriangle className="w-3 h-3" />
+                                    Historical Date
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom" className="max-w-xs">
+                                  <p className="text-xs">This timeline references {foundYear} which is in the past. Consider regenerating or updating with a current target date.</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            {!foundYear && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge className="text-xs bg-amber-500/10 text-amber-600 gap-1 cursor-help" data-testid="badge-date-missing">
+                                    <Calendar className="w-3 h-3" />
+                                    No Date
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom" className="max-w-xs">
+                                  <p className="text-xs">No target date detected. Add a specific timeline (e.g., Q2 2026) to keep the team aligned.</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            {blueSheet.data.singleSalesObjectiveMarker && (
+                              <Badge 
+                                className={`text-xs ml-auto ${
+                                  blueSheet.data.singleSalesObjectiveMarker === "Strength" 
+                                    ? "bg-emerald-500/10 text-emerald-600"
+                                    : blueSheet.data.singleSalesObjectiveMarker === "RedFlag"
+                                    ? "bg-red-500/10 text-red-600"
+                                    : "bg-amber-500/10 text-amber-600"
+                                }`}
+                                data-testid="badge-sso-marker"
+                              >
+                                {blueSheet.data.singleSalesObjectiveMarker === "RedFlag" ? "Needs Attention" : blueSheet.data.singleSalesObjectiveMarker}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm leading-relaxed" data-testid="text-sso">{blueSheet.data.singleSalesObjective}</p>
                         </div>
-                        <p className="text-sm leading-relaxed" data-testid="text-sso">{blueSheet.data.singleSalesObjective}</p>
-                      </div>
-                    )}
+                      );
+                    })()}
 
                     {/* KEY DECISION MAKERS (was Buying Influences) */}
-                    {blueSheet.data.buyingInfluences?.length > 0 && (
+                    {(blueSheet.data.buyingInfluences?.length > 0 || blueSheet.data) && (
                       <div data-testid="section-buying-influences">
-                        <div className="flex items-center gap-2 mb-4">
+                        <div className="flex items-center gap-2 mb-4 flex-wrap">
                           <Users className="w-4 h-4 text-purple-600" />
                           <h4 className="font-semibold text-sm">Key Decision Makers</h4>
-                          <Badge variant="outline" className="text-xs">{blueSheet.data.buyingInfluences.length}</Badge>
+                          <Badge variant="outline" className="text-xs">{blueSheet.data.buyingInfluences?.length || 0}</Badge>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
@@ -8808,6 +8960,164 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                               </ul>
                             </TooltipContent>
                           </Tooltip>
+                          <Dialog open={showAddInfluenceDialog} onOpenChange={setShowAddInfluenceDialog}>
+                            <DialogTrigger asChild>
+                              <Button size="sm" variant="outline" className="ml-auto gap-1" data-testid="button-add-influence">
+                                <Plus className="w-3 h-3" />
+                                Add
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-md">
+                              <DialogHeader>
+                                <DialogTitle>{editingInfluenceIndex !== null ? "Edit Decision Maker" : "Add Decision Maker"}</DialogTitle>
+                                <DialogDescription>
+                                  {editingInfluenceIndex !== null 
+                                    ? "Update the details of this stakeholder" 
+                                    : "Add a new stakeholder to track in this deal"}
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4 py-4">
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="influence-name">Name *</Label>
+                                    <Input
+                                      id="influence-name"
+                                      placeholder="Jane Smith"
+                                      value={newInfluence.name}
+                                      onChange={(e) => setNewInfluence({ ...newInfluence, name: e.target.value })}
+                                      data-testid="input-influence-name"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="influence-title">Title</Label>
+                                    <Input
+                                      id="influence-title"
+                                      placeholder="VP of Operations"
+                                      value={newInfluence.title}
+                                      onChange={(e) => setNewInfluence({ ...newInfluence, title: e.target.value })}
+                                      data-testid="input-influence-title"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="influence-company">Company</Label>
+                                  <Input
+                                    id="influence-company"
+                                    placeholder={project?.companyName || "Company name"}
+                                    value={newInfluence.company}
+                                    onChange={(e) => setNewInfluence({ ...newInfluence, company: e.target.value })}
+                                    data-testid="input-influence-company"
+                                  />
+                                </div>
+                                <div className="grid grid-cols-3 gap-3">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="influence-role">Role Type</Label>
+                                    <Select
+                                      value={newInfluence.role}
+                                      onValueChange={(v) => setNewInfluence({ ...newInfluence, role: v as any })}
+                                    >
+                                      <SelectTrigger data-testid="select-influence-role">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="Economic">Economic</SelectItem>
+                                        <SelectItem value="User">User</SelectItem>
+                                        <SelectItem value="Technical">Technical</SelectItem>
+                                        <SelectItem value="Coach">Coach</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="influence-level">Influence</Label>
+                                    <Select
+                                      value={newInfluence.degreeOfInfluence}
+                                      onValueChange={(v) => setNewInfluence({ ...newInfluence, degreeOfInfluence: v as any })}
+                                    >
+                                      <SelectTrigger data-testid="select-influence-level">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="High">High</SelectItem>
+                                        <SelectItem value="Medium">Medium</SelectItem>
+                                        <SelectItem value="Low">Low</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="influence-mode">Mindset</Label>
+                                    <Select
+                                      value={newInfluence.mode}
+                                      onValueChange={(v) => setNewInfluence({ ...newInfluence, mode: v as any })}
+                                    >
+                                      <SelectTrigger data-testid="select-influence-mode">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="Growth">Growth</SelectItem>
+                                        <SelectItem value="Trouble">Trouble</SelectItem>
+                                        <SelectItem value="EvenKeel">Even Keel</SelectItem>
+                                        <SelectItem value="Overconfident">Overconfident</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="influence-wins">What they want to achieve</Label>
+                                  <Textarea
+                                    id="influence-wins"
+                                    placeholder="Recognition, career advancement, reduced workload..."
+                                    value={newInfluence.personalWins}
+                                    onChange={(e) => setNewInfluence({ ...newInfluence, personalWins: e.target.value })}
+                                    className="min-h-[60px]"
+                                    data-testid="input-influence-wins"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="influence-notes">Notes & Concerns</Label>
+                                  <Textarea
+                                    id="influence-notes"
+                                    placeholder="Known concerns, objections, or additional context..."
+                                    value={newInfluence.notes}
+                                    onChange={(e) => setNewInfluence({ ...newInfluence, notes: e.target.value })}
+                                    className="min-h-[60px]"
+                                    data-testid="input-influence-notes"
+                                  />
+                                </div>
+                              </div>
+                              <DialogFooter>
+                                <Button variant="outline" onClick={() => {
+                                  setShowAddInfluenceDialog(false);
+                                  setEditingInfluenceIndex(null);
+                                  setNewInfluence({
+                                    name: "",
+                                    title: "",
+                                    company: project?.companyName || "",
+                                    role: "User",
+                                    mode: "Growth",
+                                    degreeOfInfluence: "Medium",
+                                    personalWins: "",
+                                    resultsWanted: "",
+                                    notes: "",
+                                    isManuallyAdded: true
+                                  });
+                                }}>Cancel</Button>
+                                <Button 
+                                  onClick={() => {
+                                    if (editingInfluenceIndex !== null) {
+                                      handleUpdateInfluence(editingInfluenceIndex, newInfluence);
+                                      setEditingInfluenceIndex(null);
+                                    } else {
+                                      handleAddInfluence();
+                                    }
+                                  }} 
+                                  disabled={!newInfluence.name.trim()} 
+                                  data-testid="button-save-influence"
+                                >
+                                  {editingInfluenceIndex !== null ? "Save Changes" : "Add Decision Maker"}
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           {blueSheet.data.buyingInfluences.map((influence: any, idx: number) => {
@@ -8840,6 +9150,10 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                             const roleKey = influence.role || "";
                             const roleLabel = roleKey.replace(/Buyer$/i, '');
                             
+                            const hasResearch = influence.stakeholderResearch && 
+                              Object.values(influence.stakeholderResearch).some((v: any) => v && v.trim());
+                            const isExpanded = expandedResearch.has(idx);
+                            
                             return (
                               <div 
                                 key={idx} 
@@ -8848,31 +9162,71 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                               >
                                 <div className="flex items-start justify-between gap-2 mb-2">
                                   <div className="flex-1 min-w-0">
-                                    <span className="font-semibold text-sm block truncate" data-testid={`text-influence-name-${idx}`}>
-                                      {influence.name}
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-semibold text-sm block truncate" data-testid={`text-influence-name-${idx}`}>
+                                        {influence.name}
+                                      </span>
+                                      {influence.isManuallyAdded && (
+                                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">Manual</Badge>
+                                      )}
+                                    </div>
                                     {influence.title && (
                                       <p className="text-xs text-muted-foreground truncate">{influence.title}</p>
                                     )}
                                   </div>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Badge 
-                                        className={`text-xs cursor-help whitespace-nowrap ${roleBadgeColors[roleKey] || "bg-slate-200 text-slate-600"}`}
-                                        data-testid={`badge-influence-role-${idx}`}
-                                      >
-                                        {roleLabel}
-                                      </Badge>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="left" className="max-w-xs">
-                                      <p className="text-xs">
-                                        {roleKey.includes("Economic") && "Controls budget and gives final approval. Your deal doesn't close without them."}
-                                        {roleKey.includes("User") && "Will use your solution daily. Cares about usability and workflow impact."}
-                                        {roleKey.includes("Technical") && "Evaluates feasibility - IT, security, legal. Can block deals with objections."}
-                                        {roleKey === "Coach" && "Your internal champion. Provides intel and builds momentum for you."}
-                                      </p>
-                                    </TooltipContent>
-                                  </Tooltip>
+                                  <div className="flex items-center gap-1">
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Badge 
+                                          className={`text-xs cursor-help whitespace-nowrap ${roleBadgeColors[roleKey] || "bg-slate-200 text-slate-600"}`}
+                                          data-testid={`badge-influence-role-${idx}`}
+                                        >
+                                          {roleLabel}
+                                        </Badge>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="left" className="max-w-xs">
+                                        <p className="text-xs">
+                                          {roleKey.includes("Economic") && "Controls budget and gives final approval. Your deal doesn't close without them."}
+                                          {roleKey.includes("User") && "Will use your solution daily. Cares about usability and workflow impact."}
+                                          {roleKey.includes("Technical") && "Evaluates feasibility - IT, security, legal. Can block deals with objections."}
+                                          {roleKey === "Coach" && "Your internal champion. Provides intel and builds momentum for you."}
+                                        </p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost" 
+                                      className="h-6 w-6 opacity-60 hover:opacity-100"
+                                      onClick={() => {
+                                        setNewInfluence({
+                                          name: influence.name || "",
+                                          title: influence.title || "",
+                                          company: influence.company || project?.companyName || "",
+                                          role: influence.role?.replace(/Buyer$/i, '') as any || "User",
+                                          mode: influence.mode || "Growth",
+                                          degreeOfInfluence: influence.degreeOfInfluence || "Medium",
+                                          personalWins: influence.personalWins || "",
+                                          resultsWanted: influence.resultsWanted || "",
+                                          notes: influence.notes || "",
+                                          isManuallyAdded: influence.isManuallyAdded || false
+                                        });
+                                        setEditingInfluenceIndex(idx);
+                                        setShowAddInfluenceDialog(true);
+                                      }}
+                                      data-testid={`button-edit-influence-${idx}`}
+                                    >
+                                      <Pencil className="w-3 h-3" />
+                                    </Button>
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost" 
+                                      className="h-6 w-6 opacity-60 hover:opacity-100"
+                                      onClick={() => handleDeleteInfluence(idx)}
+                                      data-testid={`button-delete-influence-${idx}`}
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </div>
                                 </div>
                                 
                                 {modeInfo && (
@@ -8899,6 +9253,61 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                                       <span className="text-xs font-medium text-amber-700 dark:text-amber-400">What they want to achieve:</span>
                                     </div>
                                     <p className="text-xs text-muted-foreground">{influence.personalWins}</p>
+                                  </div>
+                                )}
+
+                                {/* Stakeholder Research Section */}
+                                {hasResearch && (
+                                  <div className="mt-3">
+                                    <button
+                                      onClick={() => toggleResearchExpand(idx)}
+                                      className="flex items-center gap-1 text-xs text-primary hover:underline"
+                                      data-testid={`button-expand-research-${idx}`}
+                                    >
+                                      {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                                      <Search className="w-3 h-3" />
+                                      Stakeholder Research
+                                    </button>
+                                    {isExpanded && (
+                                      <div className="mt-2 p-2 rounded bg-blue-50/50 dark:bg-blue-900/10 border text-xs space-y-2">
+                                        {influence.stakeholderResearch.background && (
+                                          <div>
+                                            <span className="font-medium text-blue-700 dark:text-blue-400">Background:</span>
+                                            <p className="text-muted-foreground">{influence.stakeholderResearch.background}</p>
+                                          </div>
+                                        )}
+                                        {influence.stakeholderResearch.careerHistory && (
+                                          <div>
+                                            <span className="font-medium text-blue-700 dark:text-blue-400">Career History:</span>
+                                            <p className="text-muted-foreground">{influence.stakeholderResearch.careerHistory}</p>
+                                          </div>
+                                        )}
+                                        {influence.stakeholderResearch.priorities && (
+                                          <div>
+                                            <span className="font-medium text-blue-700 dark:text-blue-400">Priorities:</span>
+                                            <p className="text-muted-foreground">{influence.stakeholderResearch.priorities}</p>
+                                          </div>
+                                        )}
+                                        {influence.stakeholderResearch.communicationStyle && (
+                                          <div>
+                                            <span className="font-medium text-blue-700 dark:text-blue-400">Communication Style:</span>
+                                            <p className="text-muted-foreground">{influence.stakeholderResearch.communicationStyle}</p>
+                                          </div>
+                                        )}
+                                        {influence.stakeholderResearch.potentialMotivations && (
+                                          <div>
+                                            <span className="font-medium text-blue-700 dark:text-blue-400">Potential Motivations:</span>
+                                            <p className="text-muted-foreground">{influence.stakeholderResearch.potentialMotivations}</p>
+                                          </div>
+                                        )}
+                                        {influence.stakeholderResearch.riskFactors && (
+                                          <div>
+                                            <span className="font-medium text-blue-700 dark:text-blue-400">Risk Factors:</span>
+                                            <p className="text-muted-foreground">{influence.stakeholderResearch.riskFactors}</p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
                                 )}
                               </div>

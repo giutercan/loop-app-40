@@ -13131,6 +13131,15 @@ Provide a JSON response with:
     personalWins: z.string().optional(),
     positionMarker: z.enum(["RedFlag", "Strength", "Unknown"]).optional(),
     notes: z.string().optional(),
+    stakeholderResearch: z.object({
+      background: z.string().optional(),
+      careerHistory: z.string().optional(),
+      priorities: z.string().optional(),
+      communicationStyle: z.string().optional(),
+      potentialMotivations: z.string().optional(),
+      riskFactors: z.string().optional(),
+    }).optional(),
+    isManuallyAdded: z.boolean().optional(),
   });
 
   const blueSheetCompetitionSchema = z.object({
@@ -13504,6 +13513,13 @@ For each Buying Influence, identify:
 - degreeOfSupport: -5 to +5 (-5=blocking, 0=neutral, +5=champion)
 - personalWins: What this person gains personally (recognition, career, ease, security)
 - businessResults: What organizational outcomes they seek
+- stakeholderResearch: Research profile for each stakeholder including:
+  - background: Role context, tenure, and professional background
+  - careerHistory: Career trajectory and previous roles that inform their perspective
+  - priorities: What they likely prioritize based on their role and statements
+  - communicationStyle: How they prefer to communicate and make decisions
+  - potentialMotivations: Hidden motivations, career aspirations, or political factors
+  - riskFactors: Potential concerns or barriers to gaining their support
 
 ### COMPETITION ANALYSIS
 Use ONLY competitors identified in the discovery research data provided below.
@@ -13553,7 +13569,15 @@ Generate 10+ specific, actionable items to:
     "personalWins": "Personal motivations",
     "businessResults": "Business outcomes they seek",
     "concerns": "Known concerns or objections",
-    "accessStrategy": "How to reach/influence this person"
+    "accessStrategy": "How to reach/influence this person",
+    "stakeholderResearch": {
+      "background": "Role context and professional background",
+      "careerHistory": "Career trajectory and previous roles",
+      "priorities": "What they prioritize based on role and statements",
+      "communicationStyle": "How they prefer to communicate and decide",
+      "potentialMotivations": "Hidden motivations, aspirations, political factors",
+      "riskFactors": "Potential concerns or barriers to support"
+    }
   }],
   "summaryOfPositions": [{
     "type": "RedFlag" | "Strength",
