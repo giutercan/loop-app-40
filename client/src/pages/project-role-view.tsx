@@ -2536,7 +2536,29 @@ export default function ProjectRoleView() {
       if (response.ok) {
         const profile = await response.json();
         setMeetingMode(profile.attendanceMode || "single");
-        setMeetingAttendees(profile.participants || []);
+        // Ensure all attendees have stable IDs and valid roles for their affiliation
+        const clientRoles = ['economic_buyer', 'user_buyer', 'technical_buyer', 'coach', 'champion'];
+        const internalRoles = ['account_lead', 'delivery_lead', 'consultant', 'subject_expert', 'executive_sponsor'];
+        
+        const attendeesWithIds = (profile.participants || []).map((p: any, idx: number) => {
+          const isInternal = (p.affiliation || "client") === "internal";
+          let role = p.role;
+          
+          // Reset role if it's not valid for the attendee's affiliation
+          if (role) {
+            const validRoles = isInternal ? internalRoles : clientRoles;
+            if (!validRoles.includes(role)) {
+              role = undefined; // Reset invalid role
+            }
+          }
+          
+          return {
+            ...p,
+            role,
+            id: p.id || `attendee-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 5)}`
+          };
+        });
+        setMeetingAttendees(attendeesWithIds);
         setMeetingObjective(profile.meetingObjective || "");
         setMeetingDesiredOutcome(profile.desiredOutcome || "");
         setCombinedMeetingStory(profile.combinedMeetingStory || null);
@@ -7264,33 +7286,35 @@ export default function ProjectRoleView() {
                         </div>
                       ) : (
                         <div className="space-y-3" data-testid="attendees-list">
-                          {[...meetingAttendees].sort((a, b) => {
-                            // Sort: clients first, then internal
-                            const aIsClient = (a.affiliation || "client") === "client";
-                            const bIsClient = (b.affiliation || "client") === "client";
-                            if (aIsClient && !bIsClient) return -1;
-                            if (!aIsClient && bIsClient) return 1;
-                            return 0;
-                          }).map((attendee, index) => {
-                            const attendeeId = attendee.id || `idx-${index}`;
+                          {[...meetingAttendees]
+                            .sort((a, b) => {
+                              // Sort: clients first, then internal
+                              const aIsClient = (a.affiliation || "client") === "client";
+                              const bIsClient = (b.affiliation || "client") === "client";
+                              if (aIsClient && !bIsClient) return -1;
+                              if (!aIsClient && bIsClient) return 1;
+                              return 0;
+                            }).map((attendee, displayIndex) => {
+                            // Use the stable ID for all operations
+                            const attendeeId = attendee.id!;
                             const isExpanded = expandedAttendeeIds.has(attendeeId);
                             const hasResearch = attendee.aiResearch && attendee.aiResearch.researchedAt;
                             
                             return (
                             <div
-                              key={`attendee-${index}`}
+                              key={attendeeId}
                               className={`rounded-lg border overflow-hidden ${
                                 (attendee.affiliation || "client") === "internal" 
                                   ? "bg-blue-50 border-blue-200" 
                                   : "bg-white"
                               }`}
-                              data-testid={`card-attendee-${index}`}
+                              data-testid={`card-attendee-${displayIndex}`}
                             >
                               {/* Attendee Header */}
                               <div className="p-3 flex items-start justify-between gap-3">
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <div className="font-medium text-sm" data-testid={`text-attendee-name-${index}`}>{attendee.name}</div>
+                                    <div className="font-medium text-sm" data-testid={`text-attendee-name-${displayIndex}`}>{attendee.name}</div>
                                     <Badge 
                                       variant="outline" 
                                       className={`text-[10px] ${
@@ -7298,24 +7322,24 @@ export default function ProjectRoleView() {
                                           ? "bg-blue-100 text-blue-700 border-blue-300"
                                           : "bg-emerald-100 text-emerald-700 border-emerald-300"
                                       }`}
-                                      data-testid={`badge-attendee-affiliation-${index}`}
+                                      data-testid={`badge-attendee-affiliation-${displayIndex}`}
                                     >
                                       {(attendee.affiliation || "client") === "internal" ? "Internal" : "Client"}
                                     </Badge>
                                     {hasResearch && (
-                                      <Badge variant="outline" className="text-[10px] bg-purple-100 text-purple-700 border-purple-300" data-testid={`badge-attendee-researched-${index}`}>
+                                      <Badge variant="outline" className="text-[10px] bg-purple-100 text-purple-700 border-purple-300" data-testid={`badge-attendee-researched-${displayIndex}`}>
                                         <Sparkles className="w-2.5 h-2.5 mr-0.5" />
                                         Researched
                                       </Badge>
                                     )}
                                   </div>
-                                  <div className="text-xs text-muted-foreground" data-testid={`text-attendee-title-${index}`}>{attendee.title}</div>
+                                  <div className="text-xs text-muted-foreground" data-testid={`text-attendee-title-${displayIndex}`}>{attendee.title}</div>
                                   <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                                    <Badge variant="secondary" className="text-xs" data-testid={`badge-attendee-role-${index}`}>
+                                    <Badge variant="secondary" className="text-xs" data-testid={`badge-attendee-role-${displayIndex}`}>
                                       {attendee.role?.replace("_", " ") || "Unknown Role"}
                                     </Badge>
                                     {(attendee.affiliation || "client") === "client" && attendee.influence && (
-                                      <Badge variant="outline" className="text-xs" data-testid={`badge-attendee-influence-${index}`}>
+                                      <Badge variant="outline" className="text-xs" data-testid={`badge-attendee-influence-${displayIndex}`}>
                                         {attendee.influence} Influence
                                       </Badge>
                                     )}
@@ -7338,7 +7362,7 @@ export default function ProjectRoleView() {
                                           return next;
                                         });
                                       }}
-                                      data-testid={`button-toggle-research-${index}`}
+                                      data-testid={`button-toggle-research-${displayIndex}`}
                                     >
                                       {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                                     </Button>
@@ -7348,10 +7372,11 @@ export default function ProjectRoleView() {
                                     size="icon"
                                     className="h-7 w-7"
                                     onClick={() => {
-                                      setEditingAttendee({ ...attendee, id: attendeeId });
+                                      // Pass the full attendee with its stable ID for editing
+                                      setEditingAttendee({ ...attendee });
                                       setShowAddAttendeeDialog(true);
                                     }}
-                                    data-testid={`button-edit-attendee-${index}`}
+                                    data-testid={`button-edit-attendee-${displayIndex}`}
                                   >
                                     <Edit2 className="w-3.5 h-3.5" />
                                   </Button>
@@ -7360,9 +7385,10 @@ export default function ProjectRoleView() {
                                     size="icon"
                                     className="h-7 w-7 text-red-500"
                                     onClick={() => {
-                                      setMeetingAttendees(prev => prev.filter((_, i) => i !== index));
+                                      // Delete by stable ID
+                                      setMeetingAttendees(prev => prev.filter(a => a.id !== attendeeId));
                                     }}
-                                    data-testid={`button-remove-attendee-${index}`}
+                                    data-testid={`button-remove-attendee-${displayIndex}`}
                                   >
                                     <X className="w-3.5 h-3.5" />
                                   </Button>
@@ -7371,7 +7397,7 @@ export default function ProjectRoleView() {
                               
                               {/* Expanded Research Panel */}
                               {isExpanded && attendee.aiResearch && (
-                                <div className="px-3 pb-3 border-t border-purple-200 bg-gradient-to-b from-purple-50/50 to-white" data-testid={`panel-research-${index}`}>
+                                <div className="px-3 pb-3 border-t border-purple-200 bg-gradient-to-b from-purple-50/50 to-white" data-testid={`panel-research-${displayIndex}`}>
                                   <div className="pt-3 space-y-3">
                                     {/* Role Context */}
                                     {attendee.aiResearch.roleContext && (
@@ -11976,7 +12002,12 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 <Label className="text-xs text-muted-foreground">Affiliation *</Label>
                 <Select
                   value={editingAttendee?.affiliation || "client"}
-                  onValueChange={(v) => setEditingAttendee(prev => prev ? { ...prev, affiliation: v as Affiliation } : null)}
+                  onValueChange={(v) => setEditingAttendee(prev => prev ? { 
+                    ...prev, 
+                    affiliation: v as Affiliation,
+                    // Reset role when affiliation changes since client/internal have different role options
+                    role: undefined 
+                  } : null)}
                 >
                   <SelectTrigger className="h-9" data-testid="select-attendee-affiliation">
                     <SelectValue placeholder="Select side..." />
@@ -12084,12 +12115,20 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
             <Button
               onClick={() => {
                 if (editingAttendee?.name) {
-                  const indexMatch = editingAttendee.id?.match(/^idx-(\d+)$/);
-                  if (indexMatch) {
-                    const existingIndex = parseInt(indexMatch[1], 10);
-                    setMeetingAttendees(prev => prev.map((a, i) => i === existingIndex ? { ...editingAttendee, id: undefined } : a));
+                  // Check if editing existing attendee (has a stable ID that exists in the list)
+                  const existingAttendee = editingAttendee.id && meetingAttendees.find(a => a.id === editingAttendee.id);
+                  if (existingAttendee) {
+                    // Update existing attendee by ID, preserving all existing data
+                    setMeetingAttendees(prev => prev.map(a => {
+                      if (a.id === editingAttendee.id) {
+                        return { ...a, ...editingAttendee };
+                      }
+                      return a;
+                    }));
                   } else {
-                    setMeetingAttendees(prev => [...prev, { ...editingAttendee, id: undefined }]);
+                    // Adding new attendee - generate a stable ID
+                    const stableId = `attendee-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                    setMeetingAttendees(prev => [...prev, { ...editingAttendee, id: stableId }]);
                   }
                   setEditingAttendee(null);
                   setShowAddAttendeeDialog(false);
@@ -12100,7 +12139,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
               data-testid="button-save-attendee"
             >
               <CheckCircle className="w-4 h-4" />
-              {editingAttendee?.id?.startsWith("idx-") ? "Update Attendee" : "Add Attendee"}
+              {editingAttendee?.id && meetingAttendees.find(a => a.id === editingAttendee.id) ? "Update Attendee" : "Add Attendee"}
             </Button>
           </DialogFooter>
         </DialogContent>
