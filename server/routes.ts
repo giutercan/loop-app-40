@@ -1773,8 +1773,14 @@ Return as JSON:
         return res.status(404).json({ error: "No attendees found. Please add attendees to research." });
       }
       
+      // Ensure all participants have stable IDs before processing
+      const participantsWithIds = profile.participants.map((p: any, idx: number) => ({
+        ...p,
+        id: p.id || `attendee-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 9)}`
+      }));
+      
       // Get all participants to research (both client and internal team)
-      let participantsToResearch = [...profile.participants];
+      let participantsToResearch = [...participantsWithIds];
       
       // If specific IDs provided, filter to those only
       if (participantIds && Array.isArray(participantIds) && participantIds.length > 0) {
@@ -1799,7 +1805,7 @@ Discovery Theme: ${project.discoveryTheme || "general business transformation"}
       
       // Research each attendee with AI
       const researchResults = [];
-      const updatedParticipants = [...profile.participants];
+      const updatedParticipants = [...participantsWithIds];
       
       for (const participant of participantsToResearch) {
         const isInternal = (participant.affiliation || "client") === "internal";
