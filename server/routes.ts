@@ -13112,4 +13112,331 @@ Provide a JSON response with:
       res.status(400).json({ error: error.message });
     }
   });
+
+  // ----------------------
+  // BLUE SHEET ROUTES (Miller Heiman Strategic Selling)
+  // ----------------------
+
+  // Blue Sheet Zod validation schemas
+  const blueSheetBuyingInfluenceSchema = z.object({
+    name: z.string(),
+    title: z.string().optional(),
+    company: z.string().optional(),
+    role: z.enum(["Economic", "User", "Technical", "Coach"]),
+    mode: z.enum(["Growth", "Trouble", "EvenKeel", "Overconfident"]).optional(),
+    rating: z.enum(["+5", "+4", "+3", "+2", "+1", "0", "-1", "-2", "-3", "-4", "-5"]).optional(),
+    degreeOfInfluence: z.enum(["High", "Medium", "Low"]).optional(),
+    coveredBy: z.string().optional(),
+    resultsWanted: z.string().optional(),
+    personalWins: z.string().optional(),
+    positionMarker: z.enum(["RedFlag", "Strength", "Unknown"]).optional(),
+    notes: z.string().optional(),
+  });
+
+  const blueSheetCompetitionSchema = z.object({
+    competitor: z.string(),
+    strengths: z.string().optional(),
+    weaknesses: z.string().optional(),
+    strategy: z.string().optional(),
+    uniqueBusinessStrength: z.string().optional(),
+    rating: z.enum(["Strong", "Moderate", "Weak"]).optional(),
+  });
+
+  const blueSheetSummaryPositionSchema = z.object({
+    type: z.enum(["RedFlag", "Strength"]),
+    description: z.string(),
+    priority: z.enum(["High", "Medium", "Low"]).optional(),
+    buyingInfluenceName: z.string().optional(),
+  });
+
+  const blueSheetActionPlanSchema = z.object({
+    action: z.string(),
+    targetDate: z.string().optional(),
+    owner: z.string().optional(),
+    status: z.enum(["pending", "in_progress", "completed"]).optional(),
+    addressesRedFlag: z.string().optional(),
+    leveragesStrength: z.string().optional(),
+    priority: z.number().optional(),
+  });
+
+  const blueSheetConflictSchema = z.object({
+    description: z.string(),
+    buyingInfluencesInvolved: z.array(z.string()).optional(),
+    resolution: z.string().optional(),
+  });
+
+  const blueSheetDataSchema = z.object({
+    singleSalesObjective: z.string().optional(),
+    singleSalesObjectiveMarker: z.enum(["RedFlag", "Strength", "Unknown"]).optional(),
+    customerTimingForPriorities: z.enum(["Urgent", "Later", "Unknown"]).optional(),
+    customersStatedObjectives: z.string().optional(),
+    evaluationOfObjective: z.string().optional(),
+    currentPosition: z.enum(["Best", "SharedBest", "Shared", "Trailing", "Panic", "Unknown"]).optional(),
+    competitions: z.array(blueSheetCompetitionSchema).optional(),
+    buyingInfluences: z.array(blueSheetBuyingInfluenceSchema).optional(),
+    summaryOfPositions: z.array(blueSheetSummaryPositionSchema).optional(),
+    actionPlans: z.array(blueSheetActionPlanSchema).optional(),
+    conflicts: z.array(blueSheetConflictSchema).optional(),
+  });
+
+  const createBlueSheetRequestSchema = z.object({
+    data: blueSheetDataSchema,
+    status: z.enum(["draft", "in_progress", "completed"]).optional().default("draft"),
+    aiGenerated: z.boolean().optional().default(false),
+    aiModel: z.string().optional(),
+    sourceContext: z.record(z.any()).optional(),
+  });
+
+  const updateBlueSheetRequestSchema = z.object({
+    data: blueSheetDataSchema.optional(),
+    status: z.enum(["draft", "in_progress", "completed"]).optional(),
+    lastEditedBy: z.string().optional(),
+    sectionCompletion: z.record(z.number()).optional(),
+  });
+
+  const generateBlueSheetRequestSchema = z.object({
+    theme: z.string().optional(),
+  });
+
+  // GET /api/projects/:id/bluesheet - Get Blue Sheet for project
+  app.get("/api/projects/:id/bluesheet", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const blueSheet = await storage.getBlueSheet(projectId);
+      res.json(blueSheet || null);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/projects/:id/bluesheet - Create new Blue Sheet
+  app.post("/api/projects/:id/bluesheet", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      
+      // Validate request body
+      const validatedBody = createBlueSheetRequestSchema.parse(req.body);
+      
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Check if blue sheet already exists
+      const existing = await storage.getBlueSheet(projectId);
+      if (existing) {
+        return res.status(400).json({ error: "Blue sheet already exists for this project. Use PATCH to update." });
+      }
+
+      const blueSheet = await storage.createBlueSheet({
+        projectId,
+        data: validatedBody.data,
+        status: validatedBody.status,
+        aiGenerated: validatedBody.aiGenerated,
+        aiModel: validatedBody.aiModel,
+        aiGeneratedAt: validatedBody.aiGenerated ? new Date() : undefined,
+        sourceContext: validatedBody.sourceContext,
+      });
+
+      res.status(201).json(blueSheet);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Invalid request body", details: error.errors });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PATCH /api/projects/:id/bluesheet - Update Blue Sheet
+  app.patch("/api/projects/:id/bluesheet", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      
+      // Validate request body
+      const validatedBody = updateBlueSheetRequestSchema.parse(req.body);
+      
+      const existing = await storage.getBlueSheet(projectId);
+      
+      if (!existing) {
+        return res.status(404).json({ error: "Blue sheet not found" });
+      }
+
+      const updated = await storage.updateBlueSheet(existing.id, {
+        data: validatedBody.data ?? existing.data,
+        status: validatedBody.status ?? existing.status,
+        lastEditedBy: validatedBody.lastEditedBy,
+        lastEditedAt: new Date(),
+        sectionCompletion: validatedBody.sectionCompletion,
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Invalid request body", details: error.errors });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/projects/:id/bluesheet/generate - AI-generate Blue Sheet from discovery context
+  app.post("/api/projects/:id/bluesheet/generate", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      
+      // Validate request body
+      const validatedBody = generateBlueSheetRequestSchema.parse(req.body);
+      
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Gather discovery context
+      const insights = await storage.getInsights(projectId);
+      const discoveryNotes = await storage.getDiscoveryNotes(projectId);
+      const intelligence = await storage.getProjectIntelligence(projectId);
+      
+      // Build context for AI
+      const context = {
+        companyName: project.companyName,
+        industry: project.industry,
+        insights: insights.map(i => i.content),
+        discoveryNotes: discoveryNotes?.notes || "",
+        intelligenceData: intelligence?.data,
+        theme: validatedBody.theme || project.discoveryTheme,
+      };
+
+      // Generate Blue Sheet using OpenAI
+      const systemPrompt = `You are a Strategic Selling® / Miller Heiman Blue Sheet analyst.
+Your job is to convert discovery artifacts into a Blue Sheet JSON.
+
+OUTPUT FORMAT (strict):
+- Output ONLY a JSON object matching the schema. No markdown, no commentary.
+- Use "Unknown" exactly where required/appropriate.
+- Use empty arrays when no items exist.
+
+GLOBAL RULES:
+1) Everything ties back to the Single Sales Objective (SSO).
+2) If you do not know something, treat it as a RedFlag and create actions to resolve.
+3) Ensure summaryOfPositions includes at least one RedFlag.
+4) Customer point of view is the anchor.
+
+Generate a Blue Sheet with these sections:
+- singleSalesObjective: "To sell [solution] to [customer] by [date]"
+- singleSalesObjectiveMarker: RedFlag/Strength/Unknown
+- customerTimingForPriorities: Urgent/Later/Unknown
+- customersStatedObjectives: Customer's business objective in their words
+- evaluationOfObjective: Effects/Implications/Benefits
+- currentPosition: Best/SharedBest/Shared/Trailing/Panic/Unknown
+- competitions: Array of competitor analysis
+- buyingInfluences: Array of stakeholders with roles, modes, ratings
+- summaryOfPositions: Array of Strengths and RedFlags
+- actionPlans: Array of 10+ concrete actions`;
+
+      const userPrompt = `Analyze this discovery data and generate a Blue Sheet:
+
+Company: ${context.companyName}
+Industry: ${context.industry || "Unknown"}
+Theme: ${context.theme || "General"}
+
+Discovery Insights:
+${context.insights.join("\n")}
+
+Discovery Notes:
+${context.discoveryNotes}
+
+Intelligence Data:
+${JSON.stringify(context.intelligenceData, null, 2)}
+
+Generate a comprehensive Blue Sheet JSON.`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+      });
+
+      const blueSheetData = JSON.parse(completion.choices[0].message.content || "{}");
+
+      // Calculate section completion
+      const sectionCompletion = {
+        sso: blueSheetData.singleSalesObjective && blueSheetData.singleSalesObjective !== "Unknown" ? 100 : 0,
+        buyingInfluences: blueSheetData.buyingInfluences?.length > 0 ? 100 : 0,
+        competition: blueSheetData.competitions?.length > 0 ? 100 : 0,
+        winResults: blueSheetData.buyingInfluences?.some((bi: any) => bi.personalWins) ? 100 : 0,
+        strengthsRedFlags: blueSheetData.summaryOfPositions?.length > 0 ? 100 : 0,
+        actionPlan: blueSheetData.actionPlans?.length >= 10 ? 100 : (blueSheetData.actionPlans?.length > 0 ? 50 : 0),
+      };
+
+      // Check if existing and update, otherwise create
+      const existing = await storage.getBlueSheet(projectId);
+      let blueSheet;
+      
+      if (existing) {
+        blueSheet = await storage.updateBlueSheet(existing.id, {
+          data: blueSheetData,
+          aiGenerated: true,
+          aiModel: "gpt-4o",
+          aiGeneratedAt: new Date(),
+          sourceContext: {
+            discoveryTheme: context.theme,
+            intelligenceData: !!context.intelligenceData,
+            greenSheetData: false,
+            discoveryQuestions: false,
+            meetingAttendees: false,
+            storyBuilderData: false,
+          },
+          sectionCompletion,
+          version: existing.version + 1,
+        });
+      } else {
+        blueSheet = await storage.createBlueSheet({
+          projectId,
+          data: blueSheetData,
+          status: "draft",
+          aiGenerated: true,
+          aiModel: "gpt-4o",
+          aiGeneratedAt: new Date(),
+          sourceContext: {
+            discoveryTheme: context.theme,
+            intelligenceData: !!context.intelligenceData,
+            greenSheetData: false,
+            discoveryQuestions: false,
+            meetingAttendees: false,
+            storyBuilderData: false,
+          },
+          sectionCompletion,
+        });
+      }
+
+      res.json(blueSheet);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Invalid request body", details: error.errors });
+      }
+      console.error("[Blue Sheet] Generation error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/projects/:id/bluesheet - Delete Blue Sheet
+  app.delete("/api/projects/:id/bluesheet", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const existing = await storage.getBlueSheet(projectId);
+      
+      if (!existing) {
+        return res.status(404).json({ error: "Blue sheet not found" });
+      }
+
+      await storage.deleteBlueSheet(existing.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 }

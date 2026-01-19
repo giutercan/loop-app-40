@@ -70,7 +70,8 @@ import type {
   KPIMovementView, InsertKPIMovementView,
   SponsorNarrativeSpine, InsertSponsorNarrativeSpine,
   AIGuidanceEvent, InsertAIGuidanceEvent,
-  EvidencePackLifecycleEvent, InsertEvidencePackLifecycleEvent
+  EvidencePackLifecycleEvent, InsertEvidencePackLifecycleEvent,
+  BlueSheet, InsertBlueSheet
 } from "@shared/schema";
 
 export interface IStorage {
@@ -502,6 +503,13 @@ export interface IStorage {
   getUnprocessedLifecycleEvents(packId: number): Promise<EvidencePackLifecycleEvent[]>;
   createEvidencePackLifecycleEvent(event: InsertEvidencePackLifecycleEvent): Promise<EvidencePackLifecycleEvent>;
   markLifecycleEventProcessed(id: number, resultingUpdates: any): Promise<EvidencePackLifecycleEvent | undefined>;
+  
+  // Blue Sheets (Miller Heiman Strategic Selling)
+  getBlueSheet(projectId: number): Promise<BlueSheet | undefined>;
+  getBlueSheetById(id: number): Promise<BlueSheet | undefined>;
+  createBlueSheet(blueSheet: InsertBlueSheet): Promise<BlueSheet>;
+  updateBlueSheet(id: number, blueSheet: Partial<InsertBlueSheet>): Promise<BlueSheet | undefined>;
+  deleteBlueSheet(id: number): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -2740,6 +2748,38 @@ export class DbStorage implements IStorage {
       .where(eq(schema.evidencePackLifecycleEvents.id, id))
       .returning();
     return results[0];
+  }
+  
+  // Blue Sheets (Miller Heiman Strategic Selling)
+  async getBlueSheet(projectId: number): Promise<BlueSheet | undefined> {
+    const results = await db.select().from(schema.blueSheets)
+      .where(eq(schema.blueSheets.projectId, projectId))
+      .orderBy(desc(schema.blueSheets.version))
+      .limit(1);
+    return results[0];
+  }
+  
+  async getBlueSheetById(id: number): Promise<BlueSheet | undefined> {
+    const results = await db.select().from(schema.blueSheets)
+      .where(eq(schema.blueSheets.id, id));
+    return results[0];
+  }
+  
+  async createBlueSheet(blueSheet: InsertBlueSheet): Promise<BlueSheet> {
+    const results = await db.insert(schema.blueSheets).values(blueSheet as any).returning();
+    return results[0];
+  }
+  
+  async updateBlueSheet(id: number, blueSheet: Partial<InsertBlueSheet>): Promise<BlueSheet | undefined> {
+    const results = await db.update(schema.blueSheets)
+      .set({ ...blueSheet as any, updatedAt: new Date() })
+      .where(eq(schema.blueSheets.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deleteBlueSheet(id: number): Promise<void> {
+    await db.delete(schema.blueSheets).where(eq(schema.blueSheets.id, id));
   }
 }
 

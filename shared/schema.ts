@@ -3122,3 +3122,167 @@ export const insertEvidencePackLifecycleEventSchema = createInsertSchema(evidenc
 });
 export type InsertEvidencePackLifecycleEvent = z.infer<typeof insertEvidencePackLifecycleEventSchema>;
 export type EvidencePackLifecycleEvent = typeof evidencePackLifecycleEvents.$inferSelect;
+
+// ============================================================================
+// MILLER HEIMAN BLUE SHEET - Strategic Selling Planning Tool
+// ============================================================================
+
+// TypeScript interfaces for Blue Sheet JSON structure
+export interface BlueSheetBuyingInfluence {
+  contactName: string;
+  title?: string;
+  company?: string;
+  buyingInfluenceRoles: ("Economic" | "User" | "Technical" | "Coach")[];
+  degreeOfInfluence: "High" | "Medium" | "Low" | "Unknown";
+  degreeOfInfluenceMarker: "RedFlag" | "Strength" | "Unknown";
+  buyingMode: "Growth" | "Trouble" | "EvenKeel" | "OverConfident" | "Unknown";
+  buyingModeMarker: "RedFlag" | "Strength" | "Unknown";
+  competitivePreference: "Us" | "Them" | "UsingBudgetForSomethingElse" | "DoNothing" | "UsingInternalResources" | "Unknown";
+  competitivePreferenceMarker: "RedFlag" | "Strength" | "Unknown";
+  personalWins?: string;
+  personalWinsMarker: "RedFlag" | "Strength" | "Unknown";
+  businessResults?: string;
+  businessResultsMarker: "RedFlag" | "Strength" | "Unknown";
+  rating: number; // -5 to +5
+  ratingText?: string;
+  ratingMarker: "RedFlag" | "Strength" | "Unknown";
+  ratingEvidence?: string;
+  notes?: string;
+}
+
+export interface BlueSheetCompetition {
+  competitorType: "BuyingFromSomeoneElse" | "DoNothing" | "UsingBudgetForSomethingElse" | "UsingInternalResources";
+  competitorTypeMarker: "RedFlag" | "Strength" | "Unknown";
+  competitorName?: string;
+  competitorNameMarker: "RedFlag" | "Strength" | "Unknown";
+  positionVsCompetitor: "Plus" | "Zero" | "Minus" | "Unknown";
+  positionVsCompetitorMarker: "RedFlag" | "Strength" | "Unknown";
+  competitiveDetail?: string;
+  competitiveDetailMarker: "RedFlag" | "Strength" | "Unknown";
+}
+
+export interface BlueSheetSummaryPosition {
+  positionType: "RedFlag" | "Strength";
+  description: string;
+  relatedBuyingInfluence?: string;
+  priority: "High" | "Medium" | "Low";
+  createdAt?: string;
+}
+
+export interface BlueSheetActionPlan {
+  id: string;
+  subject: string;
+  description: string;
+  customActionType: "Validate" | "Develop" | "Leverage" | "Remove" | "ProvidePerspective" | "Unknown";
+  perspectiveType?: "UnrecognizedProblem" | "UnseenOpportunity" | "UnanticipatedSolution" | "BrokerOfCapabilities";
+  assignedTo?: string;
+  contactName?: string;
+  customPlanPriority: "High" | "Medium" | "Low";
+  scheduledStart?: string;
+  scheduledEnd?: string;
+  status: "pending" | "in_progress" | "completed" | "cancelled";
+  completedAt?: string;
+  notes?: string;
+}
+
+export interface BlueSheetConflict {
+  field: string;
+  sourceValues: Record<string, string>;
+  conflictDescription: string;
+  severity: "High" | "Medium" | "Low";
+  resolvedAt?: string;
+  resolution?: string;
+}
+
+export interface BlueSheetData {
+  // Core Objective
+  singleSalesObjective: string;
+  singleSalesObjectiveMarker: "RedFlag" | "Strength" | "Unknown";
+  
+  // Customer Timing
+  customerTimingForPriorities: "Urgent" | "Later" | "Unknown";
+  customerTimingForPrioritiesMarker: "RedFlag" | "Strength" | "Unknown";
+  
+  // Customer's Stated Objectives
+  customersStatedObjectives?: string;
+  
+  // Evaluation of Objective
+  evaluationOfObjective?: string;
+  evaluationOfObjectiveMarker: "RedFlag" | "Strength" | "Unknown";
+  
+  // Current Position
+  currentPosition: "Best" | "SharedBest" | "Shared" | "Trailing" | "Panic" | "Unknown";
+  currentPositionMarker: "RedFlag" | "Strength" | "Unknown";
+  
+  // Arrays
+  competitions: BlueSheetCompetition[];
+  buyingInfluences: BlueSheetBuyingInfluence[];
+  summaryOfPositions: BlueSheetSummaryPosition[];
+  actionPlans: BlueSheetActionPlan[];
+  conflicts: BlueSheetConflict[];
+}
+
+// Blue Sheets table - linked to projects
+export const blueSheets = pgTable("blue_sheets", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  
+  // Version tracking for living document
+  version: integer("version").notNull().default(1),
+  status: text("status", { 
+    enum: ["draft", "in_progress", "reviewed", "finalized"] 
+  }).notNull().default("draft"),
+  
+  // The full Blue Sheet data as JSONB
+  data: jsonb("data").$type<BlueSheetData>().notNull(),
+  
+  // AI generation metadata
+  aiGenerated: boolean("ai_generated").notNull().default(false),
+  aiModel: text("ai_model"),
+  aiGeneratedAt: timestamp("ai_generated_at"),
+  sourceContext: jsonb("source_context").$type<{
+    discoveryTheme?: string;
+    intelligenceData?: boolean;
+    greenSheetData?: boolean;
+    discoveryQuestions?: boolean;
+    meetingAttendees?: boolean;
+    storyBuilderData?: boolean;
+  }>(),
+  
+  // Human edits tracking
+  lastEditedBy: text("last_edited_by"),
+  lastEditedAt: timestamp("last_edited_at"),
+  editHistory: jsonb("edit_history").$type<Array<{
+    section: string;
+    field?: string;
+    previousValue: unknown;
+    newValue: unknown;
+    editedBy: string;
+    editedAt: string;
+  }>>(),
+  
+  // Section completion tracking
+  sectionCompletion: jsonb("section_completion").$type<{
+    sso: number; // 0-100
+    buyingInfluences: number;
+    competition: number;
+    winResults: number;
+    strengthsRedFlags: number;
+    actionPlan: number;
+  }>(),
+  
+  // Export tracking
+  lastExportedAt: timestamp("last_exported_at"),
+  exportFormat: text("export_format"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertBlueSheetSchema = createInsertSchema(blueSheets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertBlueSheet = z.infer<typeof insertBlueSheetSchema>;
+export type BlueSheet = typeof blueSheets.$inferSelect;

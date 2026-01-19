@@ -3640,6 +3640,39 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
     enabled: projectId > 0
   });
 
+  // Blue Sheet for Strategy stage
+  const { data: blueSheet, isLoading: blueSheetLoading } = useQuery<any>({
+    queryKey: ["/api/projects", projectId, "bluesheet"],
+    queryFn: async () => {
+      const response = await fetch(`/api/projects/${projectId}/bluesheet`);
+      if (!response.ok) return null;
+      return response.json();
+    },
+    enabled: projectId > 0
+  });
+
+  // Blue Sheet generation mutation
+  const generateBlueSheetMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", `/api/projects/${projectId}/bluesheet/generate`, {});
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "bluesheet"] });
+      toast({
+        title: "Blue Sheet Generated",
+        description: "AI has created a strategic analysis based on your discovery data."
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Generation Failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
   // AI-suggested KPIs from discovery insights with enhanced benchmarks
   type DiscoveryKpiSuggestion = {
     kpiName: string;
@@ -5727,6 +5760,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
     
     return {
       discover: hasDiscoveryInsights || hasAskedQuestions ? 100 : (selectedDiscoveryTheme ? 50 : 0),
+      strategy: 0, // Blue Sheet completion - will be calculated from blueSheet data
       align: hasConfirmedCommitments ? 100 : (hasCommitments ? 50 : 0),
       handoff: hasHandoffs ? 100 : (hasConfirmedCommitments ? 50 : 0),
     };
@@ -5742,6 +5776,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Sales Journey</p>
           {[
             { id: "discover", label: "Discover", icon: Sparkles, progress: workflowProgress.discover, description: "Research & Interaction" },
+            { id: "strategy", label: "Strategy", icon: FileText, progress: workflowProgress.strategy, description: "Blue Sheet Planning" },
             { id: "align", label: "Outcomes & Alignment", icon: Target, progress: workflowProgress.align, description: "Design & Confirm Value" },
             { id: "handoff", label: "Handoff", icon: ArrowUpRight, progress: workflowProgress.handoff, description: "Transition to Delivery" },
           ].map((stage, idx) => {
@@ -5809,10 +5844,14 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
       <div className="flex-1 min-w-0">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           {/* Mobile Tab Navigation */}
-          <TabsList className="grid grid-cols-3 w-full lg:hidden">
+          <TabsList className="grid grid-cols-4 w-full lg:hidden">
             <TabsTrigger value="discover" data-testid="tab-discover">
               <Sparkles className="w-4 h-4 mr-1" />
               <span className="hidden sm:inline">Discover</span>
+            </TabsTrigger>
+            <TabsTrigger value="strategy" data-testid="tab-strategy">
+              <FileText className="w-4 h-4 mr-1" />
+              <span className="hidden sm:inline">Strategy</span>
             </TabsTrigger>
             <TabsTrigger value="align" data-testid="tab-align">
               <Target className="w-4 h-4 mr-1" />
@@ -8539,6 +8578,217 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
           />
         )}
       </TabsContent>
+
+          {/* STAGE 1.5: STRATEGY - Miller Heiman Blue Sheet */}
+          <TabsContent value="strategy" className="space-y-6">
+            <Card className="bg-gradient-to-r from-blue-500/5 via-indigo-500/5 to-purple-500/5 border-blue-500/20">
+              <CardHeader>
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500/20 to-indigo-500/20 flex items-center justify-center">
+                      <FileText className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        Strategic Blue Sheet
+                        <Badge className="bg-blue-500/10 text-blue-600 text-xs">Miller Heiman</Badge>
+                      </CardTitle>
+                      <CardDescription>
+                        AI-powered strategic selling analysis to map buying influences, competition, and action plans
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {blueSheet?.aiGenerated && (
+                      <Badge variant="outline" className="text-emerald-600 border-emerald-300 text-xs">
+                        AI Generated
+                      </Badge>
+                    )}
+                    <Button 
+                      size="sm"
+                      className="gap-1"
+                      onClick={() => generateBlueSheetMutation.mutate()}
+                      disabled={generateBlueSheetMutation.isPending}
+                      data-testid="button-generate-bluesheet"
+                    >
+                      {generateBlueSheetMutation.isPending ? (
+                        <>
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3 h-3" />
+                          {blueSheet ? "Regenerate" : "Generate Blue Sheet"}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {blueSheetLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : blueSheet?.data ? (
+                  <div className="space-y-6">
+                    {/* Single Sales Objective */}
+                    {blueSheet.data.singleSalesObjective && (
+                      <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/20">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Target className="w-4 h-4 text-blue-600" />
+                          <span className="font-medium text-sm">Single Sales Objective</span>
+                          {blueSheet.data.singleSalesObjectiveMarker && (
+                            <Badge 
+                              className={`text-xs ${
+                                blueSheet.data.singleSalesObjectiveMarker === "Strength" 
+                                  ? "bg-emerald-500/10 text-emerald-600"
+                                  : blueSheet.data.singleSalesObjectiveMarker === "RedFlag"
+                                  ? "bg-red-500/10 text-red-600"
+                                  : "bg-amber-500/10 text-amber-600"
+                              }`}
+                            >
+                              {blueSheet.data.singleSalesObjectiveMarker}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm">{blueSheet.data.singleSalesObjective}</p>
+                      </div>
+                    )}
+
+                    {/* Buying Influences */}
+                    {blueSheet.data.buyingInfluences?.length > 0 && (
+                      <div>
+                        <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
+                          <Users className="w-4 h-4" />
+                          Buying Influences ({blueSheet.data.buyingInfluences.length})
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {blueSheet.data.buyingInfluences.map((influence: any, idx: number) => (
+                            <div key={idx} className="p-3 rounded-lg border bg-card">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-medium text-sm">{influence.name}</span>
+                                <Badge 
+                                  className={`text-xs ${
+                                    influence.role === "Economic" ? "bg-purple-500/10 text-purple-600" :
+                                    influence.role === "User" ? "bg-blue-500/10 text-blue-600" :
+                                    influence.role === "Technical" ? "bg-amber-500/10 text-amber-600" :
+                                    "bg-emerald-500/10 text-emerald-600"
+                                  }`}
+                                >
+                                  {influence.role}
+                                </Badge>
+                              </div>
+                              {influence.title && <p className="text-xs text-muted-foreground">{influence.title}</p>}
+                              {influence.mode && (
+                                <p className="text-xs mt-1">Mode: <span className="font-medium">{influence.mode}</span></p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Summary of Positions (Red Flags & Strengths) */}
+                    {blueSheet.data.summaryOfPositions?.length > 0 && (
+                      <div>
+                        <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4" />
+                          Strengths & Red Flags
+                        </h4>
+                        <div className="space-y-2">
+                          {blueSheet.data.summaryOfPositions.map((position: any, idx: number) => (
+                            <div 
+                              key={idx} 
+                              className={`p-3 rounded-lg border ${
+                                position.type === "RedFlag" 
+                                  ? "bg-red-500/5 border-red-500/20" 
+                                  : "bg-emerald-500/5 border-emerald-500/20"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 mb-1">
+                                <Badge 
+                                  className={`text-xs ${
+                                    position.type === "RedFlag" 
+                                      ? "bg-red-500/10 text-red-600" 
+                                      : "bg-emerald-500/10 text-emerald-600"
+                                  }`}
+                                >
+                                  {position.type}
+                                </Badge>
+                                {position.priority && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {position.priority}
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm">{position.description}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Action Plans */}
+                    {blueSheet.data.actionPlans?.length > 0 && (
+                      <div>
+                        <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4" />
+                          Action Plans ({blueSheet.data.actionPlans.length})
+                        </h4>
+                        <div className="space-y-2">
+                          {blueSheet.data.actionPlans.slice(0, 5).map((action: any, idx: number) => (
+                            <div key={idx} className="p-3 rounded-lg border bg-card flex items-start gap-3">
+                              <div className="w-6 h-6 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-xs font-medium text-blue-600">{idx + 1}</span>
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm">{action.action}</p>
+                                {action.owner && (
+                                  <p className="text-xs text-muted-foreground mt-1">Owner: {action.owner}</p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                          {blueSheet.data.actionPlans.length > 5 && (
+                            <p className="text-xs text-muted-foreground text-center pt-2">
+                              +{blueSheet.data.actionPlans.length - 5} more actions
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <FileText className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                    <h3 className="text-lg font-medium mb-2">No Blue Sheet Yet</h3>
+                    <p className="text-sm max-w-md mx-auto mb-4">
+                      Generate an AI-powered Blue Sheet to analyze your discovery data and create a comprehensive strategic selling plan with buying influences, competition analysis, and prioritized action items.
+                    </p>
+                    <Button 
+                      onClick={() => generateBlueSheetMutation.mutate()}
+                      disabled={generateBlueSheetMutation.isPending}
+                      data-testid="button-generate-bluesheet-empty"
+                    >
+                      {generateBlueSheetMutation.isPending ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          Generate Blue Sheet
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* STAGE 2: OUTCOMES & ALIGNMENT - Unified Design + Client Collaboration */}
           <TabsContent value="align" className="space-y-6">
