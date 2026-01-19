@@ -13138,6 +13138,13 @@ Provide a JSON response with:
       communicationStyle: z.string().optional(),
       potentialMotivations: z.string().optional(),
       riskFactors: z.string().optional(),
+      sources: z.array(z.object({
+        type: z.string(),
+        detail: z.string(),
+        date: z.string().optional()
+      })).optional(),
+      discoveredInsights: z.array(z.string()).optional(),
+      sentiment: z.string().optional(),
     }).optional(),
     isManuallyAdded: z.boolean().optional(),
   });
@@ -13311,7 +13318,9 @@ Provide a JSON response with:
         competitiveIntel,
         competitiveSummary,
         discoveryQuestions,
-        questionResponses
+        questionResponses,
+        meetingProfile,
+        interactionArtifacts
       ] = await Promise.all([
         storage.getDiscoveryNotes(projectId),
         storage.getProjectIntelligence(projectId, theme),
@@ -13321,7 +13330,9 @@ Provide a JSON response with:
         storage.getCompetitiveIntelligence(projectId),
         storage.getCompetitiveSummary(projectId),
         storage.getDiscoveryQuestions(projectId),
-        storage.getQuestionResponsesByProject(projectId)
+        storage.getQuestionResponsesByProject(projectId),
+        storage.getMeetingProfile(projectId),
+        storage.getInteractionArtifacts(projectId)
       ]);
 
       // Extract Green Sheet buying influence data and map role to Miller Heiman format
@@ -13397,19 +13408,186 @@ Provide a JSON response with:
         return internalPatterns.some(pattern => lower.includes(pattern));
       };
       
-      const knownBuyingInfluences: Array<{name: string; title: string; role: string; influence: string; concerns: string}> = [];
-      if (meetingContact?.name && meetingContact?.role) {
-        // Only add if not an internal Korn Ferry user
-        if (!isInternalUser(meetingContact.name, meetingContact.title)) {
-          knownBuyingInfluences.push({
-            name: meetingContact.name,
-            title: meetingContact.title || "Unknown",
-            role: roleMapping[meetingContact.role] || meetingContact.role,
-            influence: meetingContact.influence || "unknown",
-            concerns: meetingContact.knownConcerns || ""
+      // Build comprehensive stakeholder evidence map from all discovery sources
+      interface StakeholderEvidence {
+        name: string;
+        title: string;
+        company: string;
+        role: string;
+        influence: string;
+        concerns: string;
+        decisionCriteria: string;
+        preferredOutcomes: string;
+        personalRapport: string;
+        sources: Array<{type: string; detail: string; date?: string}>;
+        aiInsights: string[];
+        sentiment?: string;
+        coachingNotes: string[];
+      }
+      
+      const stakeholderMap = new Map<string, StakeholderEvidence>();
+      
+      // Helper to normalize names for deduplication
+      const normalizeKey = (name: string) => name.toLowerCase().trim().replace(/\s+/g, ' ');
+      
+      // Helper to merge stakeholder data
+      const addOrMergeStakeholder = (data: Partial<StakeholderEvidence>, source: {type: string; detail: string; date?: string}) => {
+        if (!data.name) return;
+        const key = normalizeKey(data.name);
+        const existing = stakeholderMap.get(key);
+        if (existing) {
+          // Merge with existing - prefer more detailed info
+          existing.title = existing.title || data.title || "";
+          existing.company = existing.company || data.company || "";
+          existing.role = existing.role || data.role || "";
+          existing.influence = existing.influence || data.influence || "";
+          existing.concerns = [existing.concerns, data.concerns].filter(Boolean).join("; ");
+          existing.decisionCriteria = existing.decisionCriteria || data.decisionCriteria || "";
+          existing.preferredOutcomes = existing.preferredOutcomes || data.preferredOutcomes || "";
+          existing.personalRapport = existing.personalRapport || data.personalRapport || "";
+          existing.sources.push(source);
+          if (data.aiInsights) existing.aiInsights.push(...data.aiInsights);
+          if (data.sentiment) existing.sentiment = data.sentiment;
+          if (data.coachingNotes) existing.coachingNotes.push(...data.coachingNotes);
+        } else {
+          stakeholderMap.set(key, {
+            name: data.name,
+            title: data.title || "",
+            company: data.company || project.companyName,
+            role: data.role || "",
+            influence: data.influence || "unknown",
+            concerns: data.concerns || "",
+            decisionCriteria: data.decisionCriteria || "",
+            preferredOutcomes: data.preferredOutcomes || "",
+            personalRapport: data.personalRapport || "",
+            sources: [source],
+            aiInsights: data.aiInsights || [],
+            sentiment: data.sentiment,
+            coachingNotes: data.coachingNotes || []
           });
         }
+      };
+      
+      // 1. Add Green Sheet contact
+      if (meetingContact?.name && !isInternalUser(meetingContact.name, meetingContact.title || "")) {
+        addOrMergeStakeholder({
+          name: meetingContact.name,
+          title: meetingContact.title || "",
+          role: roleMapping[meetingContact.role] || meetingContact.role || "",
+          influence: meetingContact.influence || "unknown",
+          concerns: meetingContact.knownConcerns || "",
+          decisionCriteria: meetingContact.decisionCriteria || ""
+        }, { type: "Green Sheet", detail: "Primary meeting contact" });
       }
+      
+      // 2. Add Meeting Profile participants (rich attendee data)
+      if (meetingProfile) {
+        const participants = meetingProfile.participants || [];
+        const singleContact = meetingProfile.singleContact;
+        const transcriptAnalysis = meetingProfile.transcriptAnalysis as any;
+        
+        // Single contact mode
+        if (singleContact?.name && !isInternalUser(singleContact.name, singleContact.title || "")) {
+          addOrMergeStakeholder({
+            name: singleContact.name,
+            title: singleContact.title || "",
+            role: roleMapping[singleContact.role || ""] || "",
+            influence: singleContact.influence || "unknown",
+            concerns: singleContact.knownConcerns || "",
+            decisionCriteria: singleContact.decisionCriteria || ""
+          }, { type: "Meeting Profile", detail: "Single attendee mode contact" });
+        }
+        
+        // Multiple participants mode
+        for (const participant of participants) {
+          if (!isInternalUser(participant.name, participant.title || "")) {
+            // Check for sentiment data from transcript analysis
+            const sentiment = transcriptAnalysis?.stakeholderSentiment?.[participant.name];
+            addOrMergeStakeholder({
+              name: participant.name,
+              title: participant.title || "",
+              role: roleMapping[participant.role] || "",
+              influence: participant.influence || "unknown",
+              concerns: participant.knownConcerns || "",
+              decisionCriteria: participant.decisionCriteria || "",
+              preferredOutcomes: participant.preferredOutcomes || "",
+              personalRapport: participant.personalRapport || "",
+              sentiment: sentiment?.sentiment,
+              aiInsights: sentiment?.signals || []
+            }, { type: "Meeting Profile", detail: "Meeting participant" });
+          }
+        }
+        
+        // Add coaching notes for stakeholder context
+        if (transcriptAnalysis?.coachingNotes) {
+          for (const note of transcriptAnalysis.coachingNotes) {
+            // Try to attribute coaching notes to specific stakeholders
+            for (const [key, stakeholder] of stakeholderMap.entries()) {
+              if (note.area?.toLowerCase().includes(stakeholder.name.toLowerCase()) ||
+                  note.observation?.toLowerCase().includes(stakeholder.name.toLowerCase())) {
+                stakeholder.coachingNotes.push(`${note.area}: ${note.observation} → ${note.suggestion}`);
+              }
+            }
+          }
+        }
+      }
+      
+      // 3. Add Interaction Artifacts attendees with AI insights
+      for (const artifact of interactionArtifacts) {
+        const attendeeList = artifact.attendees || [];
+        const aiInsights = artifact.aiExtractedInsights as any;
+        const meetingDate = artifact.meetingDate?.toISOString().split('T')[0];
+        
+        for (const attendeeName of attendeeList) {
+          if (!isInternalUser(attendeeName, "")) {
+            // Look for insights about this person in the artifact
+            const personInsights: string[] = [];
+            if (artifact.aiSummary?.toLowerCase().includes(attendeeName.toLowerCase())) {
+              personInsights.push(`From ${artifact.meetingType || 'meeting'}: ${artifact.aiSummary}`);
+            }
+            if (aiInsights?.keyPoints) {
+              const relevant = aiInsights.keyPoints.filter((kp: string) => 
+                kp.toLowerCase().includes(attendeeName.toLowerCase())
+              );
+              personInsights.push(...relevant);
+            }
+            if (aiInsights?.stakeholderMentions) {
+              const mentions = aiInsights.stakeholderMentions.filter((m: string) =>
+                m.toLowerCase().includes(attendeeName.toLowerCase())
+              );
+              personInsights.push(...mentions);
+            }
+            
+            addOrMergeStakeholder({
+              name: attendeeName,
+              aiInsights: personInsights
+            }, { 
+              type: "Interaction Artifact", 
+              detail: `${artifact.meetingType || artifact.artifactType} - ${artifact.title || 'Untitled'}`,
+              date: meetingDate
+            });
+          }
+        }
+      }
+      
+      // Convert stakeholder map to array for known buying influences
+      const knownBuyingInfluences = Array.from(stakeholderMap.values())
+        .filter(s => !isInternalUser(s.name, s.title, s.company))
+        .map(s => ({
+          name: s.name,
+          title: s.title || "Unknown",
+          company: s.company,
+          role: s.role || "Unknown",
+          influence: s.influence,
+          concerns: s.concerns,
+          decisionCriteria: s.decisionCriteria,
+          preferredOutcomes: s.preferredOutcomes,
+          personalRapport: s.personalRapport,
+          sources: s.sources,
+          discoveredInsights: s.aiInsights,
+          sentiment: s.sentiment,
+          coachingContext: s.coachingNotes
+        }));
 
       // Extract stakeholders from enriched context and filter out internal users
       const rawStakeholderMentions = enrichedContext.artifactInsights.stakeholderMentions || [];
@@ -13571,12 +13749,15 @@ Generate 10+ specific, actionable items to:
     "concerns": "Known concerns or objections",
     "accessStrategy": "How to reach/influence this person",
     "stakeholderResearch": {
-      "background": "Role context and professional background",
-      "careerHistory": "Career trajectory and previous roles",
-      "priorities": "What they prioritize based on role and statements",
-      "communicationStyle": "How they prefer to communicate and decide",
-      "potentialMotivations": "Hidden motivations, aspirations, political factors",
-      "riskFactors": "Potential concerns or barriers to support"
+      "background": "Role context and professional background based on discovery evidence",
+      "careerHistory": "Career trajectory and previous roles inferred from title and context",
+      "priorities": "What they prioritize based on their statements and signals from conversations",
+      "communicationStyle": "How they prefer to communicate based on meeting observations",
+      "potentialMotivations": "Hidden motivations, aspirations, political factors inferred from discovery",
+      "riskFactors": "Potential concerns or barriers identified from conversations",
+      "sources": [{"type": "Source type", "detail": "What was learned", "date": "When"}],
+      "discoveredInsights": ["Key insights about this person from discovery conversations"],
+      "sentiment": "Overall sentiment detected from conversation analysis"
     }
   }],
   "summaryOfPositions": [{
@@ -13652,13 +13833,43 @@ ${context.kornFerrySolutions.length > 0 ? context.kornFerrySolutions.join(", ") 
 Objective: ${context.callObjective || "Not defined"}
 Desired Outcome: ${context.desiredOutcome || "Not defined"}
 ${synthesisSummary}
-## KNOWN BUYING INFLUENCES (from Green Sheet - CUSTOMER-SIDE ONLY)
+## KNOWN BUYING INFLUENCES WITH DISCOVERY EVIDENCE (CUSTOMER-SIDE ONLY)
 IMPORTANT: Only include people who work at ${context.companyName}. Do NOT include Korn Ferry consultants or internal team members.
+These stakeholders were identified from meetings, discovery artifacts, and conversation summaries. Use ALL the evidence to generate detailed stakeholderResearch profiles.
+
 ${context.knownBuyingInfluences.length > 0 
-  ? context.knownBuyingInfluences.map(bi => 
-      `- ${bi.name} (${bi.title}): Role=${bi.role}, Influence=${bi.influence}${bi.concerns ? `, Concerns: ${bi.concerns}` : ""}`
-    ).join("\n")
-  : "None identified - create RedFlags for missing buying influences"}
+  ? context.knownBuyingInfluences.map((bi: any) => {
+      let entry = `### ${bi.name}
+- Title: ${bi.title || "Unknown"}
+- Company: ${bi.company || context.companyName}
+- Role Type: ${bi.role || "To be determined"}
+- Influence Level: ${bi.influence || "Unknown"}`;
+      if (bi.concerns) entry += `\n- Known Concerns: ${bi.concerns}`;
+      if (bi.decisionCriteria) entry += `\n- Decision Criteria: ${bi.decisionCriteria}`;
+      if (bi.preferredOutcomes) entry += `\n- Preferred Outcomes: ${bi.preferredOutcomes}`;
+      if (bi.personalRapport) entry += `\n- Personal Rapport: ${bi.personalRapport}`;
+      if (bi.sentiment) entry += `\n- Sentiment from Conversations: ${bi.sentiment}`;
+      if (bi.sources?.length > 0) {
+        entry += `\n- Data Sources:`;
+        bi.sources.forEach((s: any) => {
+          entry += `\n  * ${s.type}: ${s.detail}${s.date ? ` (${s.date})` : ""}`;
+        });
+      }
+      if (bi.discoveredInsights?.length > 0) {
+        entry += `\n- Insights from Discovery Conversations:`;
+        bi.discoveredInsights.slice(0, 5).forEach((insight: string) => {
+          entry += `\n  * ${insight}`;
+        });
+      }
+      if (bi.coachingContext?.length > 0) {
+        entry += `\n- Coaching Context:`;
+        bi.coachingContext.slice(0, 3).forEach((note: string) => {
+          entry += `\n  * ${note}`;
+        });
+      }
+      return entry;
+    }).join("\n\n")
+  : "None identified - create RedFlags for missing buying influences. Generate actions to discover stakeholders."}
 
 ## STAKEHOLDER MENTIONS (from Discovery Artifacts - CUSTOMER-SIDE ONLY)
 Filter to only include stakeholders at ${context.companyName}, exclude any Korn Ferry/KF/internal mentions:
@@ -13798,6 +14009,77 @@ ${context.intelligenceData ? JSON.stringify(context.intelligenceData, null, 2).s
           const customerRoles = ["ceo", "cfo", "coo", "cto", "chro", "cmo", "president", "vp", "director", "head", "manager", "lead", "owner"];
           return customerRoles.some(role => title.toLowerCase().includes(role));
         });
+        
+        // Merge collected stakeholder evidence into AI-generated buying influences
+        blueSheetData.buyingInfluences = blueSheetData.buyingInfluences.map((bi: any) => {
+          const nameKey = normalizeKey(bi.name || "");
+          const matchedEvidence = knownBuyingInfluences.find(
+            (kbi: any) => normalizeKey(kbi.name) === nameKey
+          );
+          
+          if (matchedEvidence) {
+            // Ensure stakeholderResearch exists
+            bi.stakeholderResearch = bi.stakeholderResearch || {};
+            
+            // Merge sources from discovery data
+            if (matchedEvidence.sources?.length > 0) {
+              bi.stakeholderResearch.sources = matchedEvidence.sources;
+            }
+            
+            // Merge discovered insights from conversations
+            if (matchedEvidence.discoveredInsights?.length > 0) {
+              bi.stakeholderResearch.discoveredInsights = matchedEvidence.discoveredInsights;
+            }
+            
+            // Merge sentiment from transcript analysis
+            if (matchedEvidence.sentiment) {
+              bi.stakeholderResearch.sentiment = matchedEvidence.sentiment;
+            }
+            
+            // Merge coaching context if available
+            if (matchedEvidence.coachingContext?.length > 0) {
+              bi.stakeholderResearch.coachingContext = matchedEvidence.coachingContext;
+            }
+            
+            // Fill in any missing basic fields from evidence
+            if (!bi.title && matchedEvidence.title) bi.title = matchedEvidence.title;
+            if (!bi.company && matchedEvidence.company) bi.company = matchedEvidence.company;
+            if (!bi.concerns && matchedEvidence.concerns) bi.concerns = matchedEvidence.concerns;
+            if (!bi.decisionCriteria && matchedEvidence.decisionCriteria) {
+              bi.stakeholderResearch.priorities = bi.stakeholderResearch.priorities || matchedEvidence.decisionCriteria;
+            }
+            if (!bi.personalWins && matchedEvidence.preferredOutcomes) {
+              bi.personalWins = matchedEvidence.preferredOutcomes;
+            }
+          }
+          
+          return bi;
+        });
+        
+        // Add any stakeholders from evidence that AI missed
+        const aiNames = new Set(blueSheetData.buyingInfluences.map((bi: any) => normalizeKey(bi.name || "")));
+        for (const evidence of knownBuyingInfluences) {
+          if (!aiNames.has(normalizeKey(evidence.name))) {
+            // AI missed this stakeholder - add them
+            blueSheetData.buyingInfluences.push({
+              name: evidence.name,
+              title: evidence.title || "Unknown",
+              company: evidence.company,
+              role: evidence.role || "Unknown",
+              degreeOfInfluence: evidence.influence || "unknown",
+              concerns: evidence.concerns,
+              personalWins: evidence.preferredOutcomes,
+              mode: "growth", // Default
+              stakeholderResearch: {
+                background: `Identified through discovery process. ${evidence.personalRapport || ""}`,
+                sources: evidence.sources,
+                discoveredInsights: evidence.discoveredInsights,
+                sentiment: evidence.sentiment,
+                coachingContext: evidence.coachingContext
+              }
+            });
+          }
+        }
       }
 
       // Calculate section completion

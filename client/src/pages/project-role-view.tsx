@@ -9306,6 +9306,63 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                                             <p className="text-muted-foreground">{influence.stakeholderResearch.riskFactors}</p>
                                           </div>
                                         )}
+                                        
+                                        {/* Discovered Insights from Conversations */}
+                                        {influence.stakeholderResearch.discoveredInsights?.length > 0 && (
+                                          <div className="border-t pt-2 mt-2">
+                                            <span className="font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                                              <MessageSquare className="w-3 h-3" />
+                                              Key Discovery Insights:
+                                            </span>
+                                            <ul className="text-muted-foreground list-disc ml-4 mt-1 space-y-0.5">
+                                              {influence.stakeholderResearch.discoveredInsights.slice(0, 4).map((insight: string, i: number) => (
+                                                <li key={i}>{insight}</li>
+                                              ))}
+                                            </ul>
+                                          </div>
+                                        )}
+                                        
+                                        {/* Source Attribution */}
+                                        {influence.stakeholderResearch.sources?.length > 0 && (
+                                          <div className="border-t pt-2 mt-2">
+                                            <span className="font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                              <FileText className="w-3 h-3" />
+                                              Data Sources:
+                                            </span>
+                                            <div className="mt-1 space-y-1">
+                                              {influence.stakeholderResearch.sources.map((source: any, i: number) => (
+                                                <div key={i} className="flex items-center gap-2 text-muted-foreground">
+                                                  <Badge variant="outline" className="text-[10px] px-1 py-0">
+                                                    {source.type}
+                                                  </Badge>
+                                                  <span>{source.detail}</span>
+                                                  {source.date && (
+                                                    <span className="text-slate-400">({source.date})</span>
+                                                  )}
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                        
+                                        {/* Conversation Sentiment */}
+                                        {influence.stakeholderResearch.sentiment && (
+                                          <div className="flex items-center gap-2 mt-2 pt-2 border-t">
+                                            <span className="font-medium text-purple-700 dark:text-purple-400">Sentiment:</span>
+                                            <Badge 
+                                              variant="outline" 
+                                              className={
+                                                influence.stakeholderResearch.sentiment.toLowerCase().includes('positive') 
+                                                  ? 'bg-green-50 text-green-700 border-green-200' 
+                                                  : influence.stakeholderResearch.sentiment.toLowerCase().includes('negative')
+                                                    ? 'bg-red-50 text-red-700 border-red-200'
+                                                    : 'bg-slate-50 text-slate-700 border-slate-200'
+                                              }
+                                            >
+                                              {influence.stakeholderResearch.sentiment}
+                                            </Badge>
+                                          </div>
+                                        )}
                                       </div>
                                     )}
                                   </div>
