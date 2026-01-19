@@ -13291,65 +13291,253 @@ Provide a JSON response with:
         return res.status(404).json({ error: "Project not found" });
       }
 
-      // Gather discovery context
-      const discoveryNotes = await storage.getDiscoveryNotes(projectId);
+      // Gather comprehensive discovery context in parallel
       const theme = validatedBody.theme || project.discoveryTheme || "General";
-      const intelligence = await storage.getProjectIntelligence(projectId, theme);
-      const jobThemes = await storage.getJobThemes(projectId);
+      const [
+        discoveryNotes,
+        intelligence,
+        jobThemes,
+        enrichedContext,
+        strategySelection,
+        competitiveIntel,
+        competitiveSummary,
+        discoveryQuestions,
+        questionResponses
+      ] = await Promise.all([
+        storage.getDiscoveryNotes(projectId),
+        storage.getProjectIntelligence(projectId, theme),
+        storage.getJobThemes(projectId),
+        getEnrichedDiscoveryContext(projectId, storage),
+        storage.getStrategySelection(projectId),
+        storage.getCompetitiveIntelligence(projectId),
+        storage.getCompetitiveSummary(projectId),
+        storage.getDiscoveryQuestions(projectId),
+        storage.getQuestionResponsesByProject(projectId)
+      ]);
+
+      // Extract Green Sheet buying influence data and map role to Miller Heiman format
+      const greenSheetData = project.greenSheetData as any;
+      const meetingContact = greenSheetData?.meetingContact;
       
-      // Build context for AI
+      // Map Green Sheet roles to Miller Heiman Blue Sheet roles
+      const roleMapping: Record<string, string> = {
+        "economic_buyer": "EconomicBuyer",
+        "user_buyer": "UserBuyer", 
+        "technical_buyer": "TechnicalBuyer",
+        "coach": "Coach",
+        "champion": "Coach" // Champions are a type of Coach
+      };
+      
+      const knownBuyingInfluences: Array<{name: string; title: string; role: string; influence: string; concerns: string}> = [];
+      if (meetingContact?.name && meetingContact?.role) {
+        knownBuyingInfluences.push({
+          name: meetingContact.name,
+          title: meetingContact.title || "Unknown",
+          role: roleMapping[meetingContact.role] || meetingContact.role,
+          influence: meetingContact.influence || "unknown",
+          concerns: meetingContact.knownConcerns || ""
+        });
+      }
+
+      // Extract stakeholders from enriched context
+      const stakeholderMentions = enrichedContext.artifactInsights.stakeholderMentions || [];
+
+      // Build Korn Ferry solution context from strategy selection
+      const selectedStrategies = (strategySelection?.selectedStrategiesData as any)?.strategies || [];
+      const kornFerrySolutions = selectedStrategies.map((s: any) => s.name || s.id).filter(Boolean);
+
+      // Build competitive landscape from intel
+      const competitors = competitiveIntel.map(ci => ({
+        name: ci.competitorName,
+        strengths: ci.strengths,
+        weaknesses: ci.weaknesses,
+        positioning: ci.positioning
+      }));
+
+      // Build discovery Q&A context
+      const qaContext = questionResponses.slice(0, 10).map(qr => {
+        const question = discoveryQuestions.find(q => q.id === qr.questionId);
+        return {
+          question: question?.question || "Unknown",
+          answer: qr.response || "",
+          methodology: question?.methodology
+        };
+      }).filter(qa => qa.answer);
+
+      // Build context for AI (use sector as fallback for industry)
       const context = {
         companyName: project.companyName,
-        industry: project.industry,
-        discoveryNotes: discoveryNotes?.notes || "",
+        industry: (project as any).industry || project.sector || "Unknown",
+        discoveryNotes: discoveryNotes?.notes || discoveryNotes?.freeformNotes || "",
         intelligenceData: intelligence?.data,
         theme: theme,
         jobThemes: jobThemes.map(jt => ({ theme: jt.theme, summary: jt.summary })),
+        kornFerrySolutions,
+        knownBuyingInfluences,
+        stakeholderMentions,
+        competitors,
+        competitiveSummary: competitiveSummary?.summary,
+        qaContext,
+        enrichedInsights: enrichedContext.artifactInsights,
+        greenSheet: enrichedContext.greenSheet,
+        callObjective: enrichedContext.greenSheet.callPlanner?.objective,
+        desiredOutcome: enrichedContext.greenSheet.callPlanner?.desiredOutcome,
       };
 
-      // Generate Blue Sheet using OpenAI
-      const systemPrompt = `You are a Strategic Selling® / Miller Heiman Blue Sheet analyst.
-Your job is to convert discovery artifacts into a Blue Sheet JSON.
+      // Generate Blue Sheet using OpenAI with comprehensive Miller Heiman methodology
+      const systemPrompt = `You are an expert Miller Heiman Strategic Selling® Blue Sheet analyst for Korn Ferry.
+Your job is to convert discovery artifacts into a comprehensive Blue Sheet JSON following the exact methodology.
 
-OUTPUT FORMAT (strict):
-- Output ONLY a JSON object matching the schema. No markdown, no commentary.
-- Use "Unknown" exactly where required/appropriate.
-- Use empty arrays when no items exist.
+## MILLER HEIMAN BLUE SHEET METHODOLOGY
 
-GLOBAL RULES:
-1) Everything ties back to the Single Sales Objective (SSO).
-2) If you do not know something, treat it as a RedFlag and create actions to resolve.
-3) Ensure summaryOfPositions includes at least one RedFlag.
-4) Customer point of view is the anchor.
+### SINGLE SALES OBJECTIVE (SSO)
+The SSO is the anchor for the entire Blue Sheet. Format: "To sell [Korn Ferry solution/outcome] to [customer company] by [target date/timeframe]"
+- Must tie to specific Korn Ferry solutions when available
+- Should reflect the discovery theme and customer priorities
+- Mark as RedFlag if unclear, Strength if well-defined
 
-Generate a Blue Sheet with these sections:
-- singleSalesObjective: "To sell [solution] to [customer] by [date]"
-- singleSalesObjectiveMarker: RedFlag/Strength/Unknown
-- customerTimingForPriorities: Urgent/Later/Unknown
-- customersStatedObjectives: Customer's business objective in their words
-- evaluationOfObjective: Effects/Implications/Benefits
-- currentPosition: Best/SharedBest/Shared/Trailing/Panic/Unknown
-- competitions: Array of competitor analysis
-- buyingInfluences: Array of stakeholders with roles, modes, ratings
-- summaryOfPositions: Array of Strengths and RedFlags
-- actionPlans: Array of 10+ concrete actions`;
+### BUYING INFLUENCES (Critical)
+Map all identified stakeholders to these exact Miller Heiman roles:
+- **Economic Buyer**: Final approval authority, releases funds. Usually 1 person. Rating: high/medium/low based on access/relationship.
+- **User Buyer**: Will use/supervise the solution. Focus on job impact. Can be multiple.
+- **Technical Buyer**: Screens out vendors, focuses on specs/compliance. Can block but not approve.
+- **Coach**: Internal advocate who provides information and guidance. Critical for complex sales.
 
-      const userPrompt = `Analyze this discovery data and generate a Blue Sheet:
+For each Buying Influence, identify:
+- mode: "growth" (seeking improvement), "trouble" (fixing problems), "even_keel" (status quo), or "overconfident" (complacent)
+- degreeOfInfluence: "high", "medium", "low"
+- degreeOfSupport: -5 to +5 (-5=blocking, 0=neutral, +5=champion)
+- personalWins: What this person gains personally (recognition, career, ease, security)
+- businessResults: What organizational outcomes they seek
 
+### COMPETITION ANALYSIS
+Identify competitors in this solution space:
+- For Leadership/Talent: Heidrick & Struggles, Spencer Stuart, Russell Reynolds, Egon Zehnder, Aon Hewitt, Mercer
+- For Sales Effectiveness: Corporate Visions, Richardson, RAIN Group, Sandler, Challenger
+- For Assessment: SHL, Hogan, DDI, CCL
+- Include "Do Nothing" and "Internal Solution" as competitors
+- Rate their position: Best, SharedBest, Shared, Trailing, or Unknown
+
+### SUMMARY OF POSITIONS
+List all Strengths and RedFlags:
+- RedFlags: Unknowns, gaps in access, missing buying influences, unclear needs, timing concerns
+- Strengths: Strong relationships, clear value alignment, competitive advantages
+- Priority: 1 (critical) to 5 (minor)
+- Every unknown = automatic RedFlag
+
+### ACTION PLANS
+Generate 10+ specific, actionable items to:
+- Leverage Strengths
+- Address RedFlags (especially unknowns)
+- Advance the sale toward the SSO
+- Each action: owner (KF consultant), target, action description, expected outcome
+
+## OUTPUT FORMAT (STRICT JSON)
+{
+  "singleSalesObjective": "To sell [solution] to [company] by [date]",
+  "singleSalesObjectiveMarker": "RedFlag" | "Strength" | "Unknown",
+  "customerTimingForPriorities": "Urgent" | "Later" | "Unknown",
+  "customersStatedObjectives": "Customer's business goal in their words",
+  "evaluationOfObjective": "Effects/Implications/Benefits of achieving the objective",
+  "currentPosition": "Best" | "SharedBest" | "Shared" | "Trailing" | "Panic" | "Unknown",
+  "competitions": [{
+    "competitor": "Name",
+    "strengths": ["..."],
+    "weaknesses": ["..."],
+    "currentPosition": "Best" | "SharedBest" | "Shared" | "Trailing" | "Unknown",
+    "differentiator": "How KF wins against this competitor"
+  }],
+  "buyingInfluences": [{
+    "name": "Name or Role Title",
+    "title": "Job Title",
+    "role": "EconomicBuyer" | "UserBuyer" | "TechnicalBuyer" | "Coach",
+    "mode": "growth" | "trouble" | "even_keel" | "overconfident",
+    "degreeOfInfluence": "high" | "medium" | "low",
+    "degreeOfSupport": -5 to +5,
+    "rating": "A+" | "A" | "A-" | "B+" | "B" | "B-" | "C+" | "C" | "C-",
+    "personalWins": "Personal motivations",
+    "businessResults": "Business outcomes they seek",
+    "concerns": "Known concerns or objections",
+    "accessStrategy": "How to reach/influence this person"
+  }],
+  "summaryOfPositions": [{
+    "type": "RedFlag" | "Strength",
+    "description": "Specific description",
+    "priority": 1-5,
+    "relatedBuyingInfluence": "Name if applicable",
+    "actionRequired": "What to do about it"
+  }],
+  "actionPlans": [{
+    "action": "Specific action description",
+    "owner": "KF Consultant",
+    "target": "Target person/organization",
+    "expectedOutcome": "What success looks like",
+    "priority": "high" | "medium" | "low",
+    "category": "Access" | "Information" | "Relationship" | "Competitive" | "Value"
+  }],
+  "conflicts": ["Any competing interests or internal conflicts identified"]
+}
+
+## RULES
+1. ALWAYS include at least one RedFlag (unknowns are RedFlags)
+2. If no buying influences are identified, create RedFlags and actions to discover them
+3. Always include "Do Nothing" as a competitor
+4. Tie SSO to Korn Ferry solutions when provided
+5. Generate minimum 10 action items
+6. Output ONLY valid JSON - no markdown, no commentary`;
+
+      const userPrompt = `Generate a comprehensive Miller Heiman Blue Sheet for this opportunity:
+
+## COMPANY & CONTEXT
 Company: ${context.companyName}
 Industry: ${context.industry || "Unknown"}
-Theme: ${context.theme}
+Discovery Theme: ${context.theme}
 
-Job Themes:
-${context.jobThemes.map(jt => `- ${jt.theme}: ${jt.summary || "No summary"}`).join("\n") || "None captured"}
+## KORN FERRY SOLUTIONS BEING PROPOSED
+${context.kornFerrySolutions.length > 0 ? context.kornFerrySolutions.join(", ") : "Not yet defined - mark SSO as RedFlag"}
 
-Discovery Notes:
+## CALL OBJECTIVE & DESIRED OUTCOME
+Objective: ${context.callObjective || "Not defined"}
+Desired Outcome: ${context.desiredOutcome || "Not defined"}
+
+## KNOWN BUYING INFLUENCES (from Green Sheet)
+${context.knownBuyingInfluences.length > 0 
+  ? context.knownBuyingInfluences.map(bi => 
+      `- ${bi.name} (${bi.title}): Role=${bi.role}, Influence=${bi.influence}${bi.concerns ? `, Concerns: ${bi.concerns}` : ""}`
+    ).join("\n")
+  : "None identified - create RedFlags for missing buying influences"}
+
+## STAKEHOLDER MENTIONS (from Discovery Artifacts)
+${context.stakeholderMentions.length > 0 ? context.stakeholderMentions.join(", ") : "None captured"}
+
+## COMPETITIVE LANDSCAPE
+${context.competitors.length > 0 
+  ? context.competitors.map(c => 
+      `- ${c.name}: Strengths: ${c.strengths?.slice(0,2).join("; ") || "Unknown"}, Weaknesses: ${c.weaknesses?.slice(0,2).join("; ") || "Unknown"}`
+    ).join("\n")
+  : "No competitors identified - include typical competitors for this solution area"}
+${context.competitiveSummary ? `\nCompetitive Summary: ${context.competitiveSummary}` : ""}
+
+## DISCOVERY INSIGHTS
+${context.jobThemes.map(jt => `Theme: ${jt.theme} - ${jt.summary || "No summary"}`).join("\n") || "None captured"}
+
+## DISCOVERY QUESTIONS & ANSWERS
+${context.qaContext.length > 0 
+  ? context.qaContext.map(qa => `Q (${qa.methodology || 'general'}): ${qa.question}\nA: ${qa.answer}`).join("\n\n")
+  : "No Q&A captured"}
+
+## ARTIFACT INSIGHTS
+${context.enrichedInsights.summaries?.join(" | ") || "None"}
+Risks: ${context.enrichedInsights.risks?.join("; ") || "None identified"}
+Action Items: ${context.enrichedInsights.actionItems?.join("; ") || "None"}
+
+## DISCOVERY NOTES
 ${context.discoveryNotes || "None captured"}
 
-Intelligence Data:
-${JSON.stringify(context.intelligenceData, null, 2) || "None captured"}
+## INTELLIGENCE DATA
+${context.intelligenceData ? JSON.stringify(context.intelligenceData, null, 2).slice(0, 2000) : "None captured"}
 
-Generate a comprehensive Blue Sheet JSON.`;
+Generate a complete Blue Sheet JSON with all sections populated. Every unknown should be a RedFlag with corresponding actions.`;
 
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -13386,9 +13574,9 @@ Generate a comprehensive Blue Sheet JSON.`;
           sourceContext: {
             discoveryTheme: context.theme,
             intelligenceData: !!context.intelligenceData,
-            greenSheetData: false,
-            discoveryQuestions: false,
-            meetingAttendees: false,
+            greenSheetData: !!greenSheetData,
+            discoveryQuestions: qaContext.length > 0,
+            meetingAttendees: context.knownBuyingInfluences.length > 0,
             storyBuilderData: false,
           },
           sectionCompletion,
@@ -13405,9 +13593,9 @@ Generate a comprehensive Blue Sheet JSON.`;
           sourceContext: {
             discoveryTheme: context.theme,
             intelligenceData: !!context.intelligenceData,
-            greenSheetData: false,
-            discoveryQuestions: false,
-            meetingAttendees: false,
+            greenSheetData: !!greenSheetData,
+            discoveryQuestions: qaContext.length > 0,
+            meetingAttendees: context.knownBuyingInfluences.length > 0,
             storyBuilderData: false,
           },
           sectionCompletion,
