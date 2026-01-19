@@ -8179,11 +8179,13 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
         return res.status(404).json({ error: "Project not found" });
       }
       
-      // Get pre-meeting artifacts
-      const artifacts = await storage.getInteractionArtifactsByContext(projectId, "pre_meeting");
+      // Get both pre-meeting AND post-meeting artifacts
+      const preMeetingArtifacts = await storage.getInteractionArtifactsByContext(projectId, "pre_meeting");
+      const postMeetingArtifacts = await storage.getInteractionArtifactsByContext(projectId, "post_meeting");
+      const artifacts = [...preMeetingArtifacts, ...postMeetingArtifacts];
       
       if (artifacts.length === 0) {
-        return res.status(400).json({ error: "No pre-meeting documents found. Please upload documents in the 'Pre-Meeting' section first." });
+        return res.status(400).json({ error: "No meeting documents found. Please upload documents in the 'Pre-Meeting' or 'Post-Meeting' section first." });
       }
       
       // Try to extract text from artifacts that don't have it yet
@@ -8249,28 +8251,65 @@ ${kpisOffTrack > 0 ? '1. Address off-track KPIs immediately\n' : ''}${kpisAtRisk
         return parts.join("\n");
       }).join("\n\n---\n\n");
       
-      // Get existing green sheet data
+      // Get existing green sheet data and meeting profile
       const existingGreenSheet = (project as any).greenSheetData;
+      const meetingProfile = await storage.getMeetingProfile(projectId);
+      const existingParticipants = meetingProfile?.participants || [];
+      
+      // Categorize artifacts by context for the AI
+      const preMeetingContent = artifactsWithContent
+        .filter(a => a.meetingContext === 'pre_meeting')
+        .map(a => {
+          const parts = [];
+          if (a.title) parts.push(`[PRE-MEETING: ${a.title}]`);
+          if (a.extractedText) parts.push(a.extractedText);
+          if (a.freeformNotes) parts.push(`Notes: ${a.freeformNotes}`);
+          return parts.join("\n");
+        }).join("\n\n---\n\n");
+      
+      const postMeetingContent = artifactsWithContent
+        .filter(a => a.meetingContext === 'post_meeting')
+        .map(a => {
+          const parts = [];
+          if (a.title) parts.push(`[POST-MEETING: ${a.title}]`);
+          if (a.extractedText) parts.push(a.extractedText);
+          if (a.freeformNotes) parts.push(`Notes: ${a.freeformNotes}`);
+          return parts.join("\n");
+        }).join("\n\n---\n\n");
       
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
           {
             role: "system",
-            content: `You are a Korn Ferry strategic sales consultant helping prepare for client meetings. 
-Analyze the provided pre-meeting documents and notes to suggest content for the Green Sheet meeting planner.
+            content: `You are a Korn Ferry strategic sales consultant helping prepare for and follow up on client meetings. 
+Analyze the provided pre-meeting AND post-meeting documents and notes to update the Green Sheet meeting planner.
+
+IMPORTANT: Extract ALL attendees/participants mentioned in the documents. If multiple people are mentioned (in meeting invites, transcripts, notes, etc.), capture each person separately.
 
 Extract and suggest:
-1. Call Objective: What is the primary goal for this meeting?
+1. Call Objective: What is/was the primary goal for this meeting?
 2. Desired Outcome: What specific outcomes should result from this meeting?
 3. Opening Statement: A strong opening to set context and credibility
 4. Best Action Commitment: The ideal next step or commitment to secure
 
-Also identify:
-- Contact information (name, title, role in buying process)
-- Known concerns or challenges the contact has
-- Decision criteria they might use
-- Any rapport-building personal notes
+For EACH attendee/participant mentioned, extract:
+- Name (as mentioned in documents)
+- Title/Position (if mentioned)
+- Role in buying process: economic_buyer (budget holder), user_buyer (end user), technical_buyer (evaluates solution), coach (internal champion), or champion (advocate)
+- Influence level: high, medium, or low
+- Known concerns or challenges they expressed
+- Preferred outcomes they mentioned
+- Personal rapport notes (interests, background, communication style)
+- Decision criteria they mentioned
+
+Look for attendee information in:
+- Meeting invites and attendee lists
+- Email signatures and headers
+- Transcript speaker labels
+- "Attendees:", "Participants:", "Present:" sections
+- Names mentioned in conversation
+- Sign-offs and greetings
 
 Be specific and actionable. Use the exact language and concerns from the documents where possible.`
           },
@@ -8282,8 +8321,14 @@ Initiative: ${project.name}
 Existing Green Sheet Data:
 ${existingGreenSheet ? JSON.stringify(existingGreenSheet, null, 2) : "None"}
 
-Pre-Meeting Documents and Notes:
-${combinedContent.substring(0, 20000)}`
+Existing Meeting Participants (do not duplicate these, but update if new info found):
+${existingParticipants.length > 0 ? JSON.stringify(existingParticipants.map(p => ({ name: p.name, title: p.title })), null, 2) : "None"}
+
+PRE-MEETING Documents and Notes:
+${preMeetingContent.substring(0, 12000) || "None"}
+
+POST-MEETING Documents and Notes:
+${postMeetingContent.substring(0, 12000) || "None"}`
           }
         ],
         response_format: {
@@ -8305,19 +8350,32 @@ ${combinedContent.substring(0, 20000)}`
                   required: ["objective", "desiredOutcome", "openingStatement", "bestActionCommitment"],
                   additionalProperties: false
                 },
-                meetingContact: {
-                  type: "object",
-                  properties: {
-                    name: { type: "string", description: "Contact name if found" },
-                    title: { type: "string", description: "Contact title if found" },
-                    role: { type: "string", description: "Buying role (economic_buyer, user_buyer, technical_buyer, coach)" },
-                    influence: { type: "string", description: "Influence level (decision_maker, strong_influencer, influencer, limited_influence)" },
-                    knownConcerns: { type: "string", description: "Known concerns or challenges" },
-                    decisionCriteria: { type: "string", description: "Decision criteria if mentioned" },
-                    personalRapport: { type: "string", description: "Personal notes for rapport building" }
-                  },
-                  required: ["name", "title", "role", "influence", "knownConcerns", "decisionCriteria", "personalRapport"],
-                  additionalProperties: false
+                attendees: {
+                  type: "array",
+                  description: "All attendees/participants found in documents",
+                  items: {
+                    type: "object",
+                    properties: {
+                      name: { type: "string", description: "Person's name" },
+                      title: { type: "string", description: "Job title if found, empty string if unknown" },
+                      role: { 
+                        type: "string", 
+                        enum: ["economic_buyer", "user_buyer", "technical_buyer", "coach", "champion"],
+                        description: "Buying role"
+                      },
+                      influence: { 
+                        type: "string", 
+                        enum: ["high", "medium", "low"],
+                        description: "Influence level"
+                      },
+                      knownConcerns: { type: "string", description: "Concerns or challenges they expressed" },
+                      preferredOutcomes: { type: "string", description: "Outcomes they want" },
+                      personalRapport: { type: "string", description: "Personal notes for rapport building" },
+                      decisionCriteria: { type: "string", description: "Decision criteria they mentioned" }
+                    },
+                    required: ["name", "title", "role", "influence", "knownConcerns", "preferredOutcomes", "personalRapport", "decisionCriteria"],
+                    additionalProperties: false
+                  }
                 },
                 sourcedFrom: {
                   type: "array",
@@ -8325,7 +8383,7 @@ ${combinedContent.substring(0, 20000)}`
                   description: "List of document titles that informed these suggestions"
                 }
               },
-              required: ["callPlanner", "meetingContact", "sourcedFrom"],
+              required: ["callPlanner", "attendees", "sourcedFrom"],
               additionalProperties: false
             }
           }
@@ -8333,9 +8391,81 @@ ${combinedContent.substring(0, 20000)}`
       });
       
       const suggestions = JSON.parse(response.choices[0].message.content || "{}");
+      
+      // Auto-add new attendees to the meeting profile
+      let attendeesAdded = 0;
+      let attendeesUpdated = 0;
+      
+      if (suggestions.attendees && suggestions.attendees.length > 0) {
+        // Get or create meeting profile
+        let profile = meetingProfile;
+        if (!profile) {
+          profile = await storage.createMeetingProfile({
+            projectId,
+            attendanceMode: suggestions.attendees.length > 1 ? "multiple" : "single",
+            participants: []
+          });
+        }
+        
+        const currentParticipants = profile.participants || [];
+        const updatedParticipants = [...currentParticipants];
+        
+        for (const attendee of suggestions.attendees) {
+          if (!attendee.name || attendee.name.trim() === "") continue;
+          
+          // Check if participant already exists (case-insensitive name match)
+          const existingIndex = updatedParticipants.findIndex(
+            p => p.name.toLowerCase().trim() === attendee.name.toLowerCase().trim()
+          );
+          
+          if (existingIndex >= 0) {
+            // Update existing participant with new information (merge, don't overwrite blanks)
+            const existing = updatedParticipants[existingIndex];
+            updatedParticipants[existingIndex] = {
+              ...existing,
+              title: attendee.title || existing.title,
+              role: attendee.role || existing.role,
+              influence: attendee.influence || existing.influence,
+              knownConcerns: attendee.knownConcerns || existing.knownConcerns,
+              preferredOutcomes: attendee.preferredOutcomes || existing.preferredOutcomes,
+              personalRapport: attendee.personalRapport || existing.personalRapport,
+              decisionCriteria: attendee.decisionCriteria || existing.decisionCriteria,
+            };
+            attendeesUpdated++;
+          } else {
+            // Add new participant
+            updatedParticipants.push({
+              id: `participant-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              name: attendee.name,
+              title: attendee.title || "",
+              role: attendee.role || "user_buyer",
+              influence: attendee.influence || "medium",
+              knownConcerns: attendee.knownConcerns || "",
+              preferredOutcomes: attendee.preferredOutcomes || "",
+              personalRapport: attendee.personalRapport || "",
+              decisionCriteria: attendee.decisionCriteria || "",
+            });
+            attendeesAdded++;
+          }
+        }
+        
+        // Update meeting profile with new participants
+        if (attendeesAdded > 0 || attendeesUpdated > 0) {
+          await storage.updateMeetingProfile(profile.id, {
+            participants: updatedParticipants,
+            attendanceMode: updatedParticipants.length > 1 ? "multiple" : "single"
+          });
+        }
+      }
+      
       res.json({ 
         suggestions,
-        artifactsAnalyzed: artifactsWithContent.length
+        artifactsAnalyzed: artifactsWithContent.length,
+        preMeetingDocs: preMeetingContent ? artifactsWithContent.filter(a => a.meetingContext === 'pre_meeting').length : 0,
+        postMeetingDocs: postMeetingContent ? artifactsWithContent.filter(a => a.meetingContext === 'post_meeting').length : 0,
+        attendeesDetected: suggestions.attendees?.length || 0,
+        attendeesAdded,
+        attendeesUpdated
       });
     } catch (error: any) {
       console.error("Error enriching green sheet:", error);
