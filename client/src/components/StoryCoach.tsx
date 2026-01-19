@@ -456,6 +456,7 @@ export function StoryCoach({
   const [showCoachingPanel, setShowCoachingPanel] = useState(true);
   const [showTemplates, setShowTemplates] = useState(false);
   const [selectedTemplates, setSelectedTemplates] = useState<Set<string>>(new Set());
+  const [expandedRationales, setExpandedRationales] = useState<Set<string>>(new Set());
   const [recommendations, setRecommendations] = useState<TemplateRecommendations | null>(null);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
   const [isMerging, setIsMerging] = useState(false);
@@ -809,55 +810,102 @@ export function StoryCoach({
             )}
             
             {/* Templates Grid with Multi-Select */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {storyTemplates.map(template => {
                 const recommendation = recommendations?.recommendations?.find(r => r.templateId === template.id);
                 const isSelected = selectedTemplates.has(template.id);
                 const isRecommended = recommendations?.suggestedCombination?.templateIds?.includes(template.id);
+                const showFullRationale = expandedRationales.has(template.id);
                 
                 return (
                   <div
                     key={template.id}
-                    className={`p-3 rounded-lg border bg-card transition-all ${isSelected ? "ring-2 ring-primary border-primary" : ""} ${isRecommended ? "border-emerald-400 dark:border-emerald-600" : ""}`}
+                    className={`p-3 rounded-lg border bg-card transition-all flex flex-col ${isSelected ? "ring-2 ring-primary border-primary" : ""} ${isRecommended ? "border-emerald-400 dark:border-emerald-600" : ""}`}
                     data-testid={`card-template-${template.id}`}
                   >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2">
+                    {/* Header: Checkbox + Title + Score + Apply */}
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
                         <Checkbox
                           checked={isSelected}
                           onCheckedChange={() => toggleTemplateSelection(template.id)}
+                          className="flex-shrink-0"
                           data-testid={`checkbox-template-${template.id}`}
                         />
-                        <div>
-                          <p className="text-sm font-medium">{template.name}</p>
-                          {recommendation && (
-                            <Badge 
-                              className={`text-[10px] mt-0.5 ${recommendation.score >= 80 ? "bg-emerald-500" : recommendation.score >= 60 ? "bg-amber-500" : "bg-muted"}`}
-                            >
-                              {recommendation.score}% fit
-                            </Badge>
-                          )}
-                        </div>
+                        <span className="text-sm font-medium truncate">{template.name}</span>
+                        {recommendation && (
+                          <Badge 
+                            variant="secondary"
+                            className={`text-[10px] flex-shrink-0 px-1.5 py-0 h-5 ${
+                              recommendation.score >= 80 
+                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300" 
+                                : recommendation.score >= 60 
+                                  ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300" 
+                                  : "bg-muted text-muted-foreground"
+                            }`}
+                          >
+                            {recommendation.score}%
+                          </Badge>
+                        )}
                       </div>
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-6 px-2 text-xs"
+                        className="h-6 px-2 text-xs flex-shrink-0"
                         onClick={() => applyTemplate(template.id)}
                         data-testid={`button-apply-template-${template.id}`}
                       >
                         Apply
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground">{template.description}</p>
+                    
+                    {/* Tagline */}
+                    <p className="text-xs text-muted-foreground mb-2 line-clamp-1">{template.description}</p>
+                    
+                    {/* AI Rationale - Compact */}
                     {recommendation && (
-                      <p className="text-[10px] text-muted-foreground mt-2 italic">{recommendation.rationale}</p>
+                      <div className="text-[11px] text-muted-foreground mb-2">
+                        <p className={showFullRationale ? "" : "line-clamp-2"}>
+                          {recommendation.rationale}
+                        </p>
+                        {recommendation.rationale.length > 120 && (
+                          <button 
+                            onClick={() => {
+                              setExpandedRationales(prev => {
+                                const next = new Set(prev);
+                                if (next.has(template.id)) {
+                                  next.delete(template.id);
+                                } else {
+                                  next.add(template.id);
+                                }
+                                return next;
+                              });
+                            }}
+                            className="text-primary hover:underline text-[10px] mt-0.5"
+                          >
+                            {showFullRationale ? "Show less" : "Show more"}
+                          </button>
+                        )}
+                      </div>
                     )}
+                    
+                    {/* Fit Reasons as Compact Chips */}
                     {recommendation?.fitReasons && recommendation.fitReasons.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
+                      <div className="flex flex-wrap gap-1 mt-auto pt-1">
                         {recommendation.fitReasons.slice(0, 2).map((reason, i) => (
-                          <Badge key={i} variant="outline" className="text-[9px]">{reason}</Badge>
+                          <span 
+                            key={i} 
+                            className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground truncate max-w-full"
+                            title={reason}
+                          >
+                            {reason.length > 35 ? reason.slice(0, 35) + "..." : reason}
+                          </span>
                         ))}
+                        {recommendation.fitReasons.length > 2 && (
+                          <span className="text-[10px] text-muted-foreground">
+                            +{recommendation.fitReasons.length - 2} more
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
