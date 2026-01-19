@@ -134,6 +134,7 @@ import { ArtifactUpload } from "@/components/ArtifactUpload";
 import { PostMeetingQuestionAnswers } from "@/components/PostMeetingQuestionAnswers";
 import { ArtifactLibrary } from "@/components/ArtifactLibrary";
 import { ExportButton } from "@/components/ExportButton";
+import { InteractiveTimeline } from "@/components/InteractiveTimeline";
 import { 
   generateIntelligencePPT, 
   generateIntelligencePDF,
@@ -10803,18 +10804,22 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
 
   const renderDeliveryWorkspace = () => (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-      <TabsList className="grid grid-cols-6 w-full max-w-4xl">
+      <TabsList className="grid grid-cols-7 w-full max-w-5xl">
         <TabsTrigger value="health" data-testid="tab-health">
           <Activity className="w-4 h-4 mr-2" />
-          Health Dashboard
+          Health
         </TabsTrigger>
         <TabsTrigger value="incoming-handoffs" data-testid="tab-incoming-handoffs">
           <Handshake className="w-4 h-4 mr-2" />
-          Incoming Handoffs
+          Handoffs
+        </TabsTrigger>
+        <TabsTrigger value="timeline" data-testid="tab-timeline">
+          <Clock className="w-4 h-4 mr-2" />
+          Timeline
         </TabsTrigger>
         <TabsTrigger value="kpis" data-testid="tab-kpis">
           <BarChart3 className="w-4 h-4 mr-2" />
-          Outcome Tracking
+          Outcomes
         </TabsTrigger>
         <TabsTrigger value="qbr" data-testid="tab-qbr">
           <Calendar className="w-4 h-4 mr-2" />
@@ -10822,11 +10827,11 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
         </TabsTrigger>
         <TabsTrigger value="governance" data-testid="tab-governance">
           <Layers className="w-4 h-4 mr-2" />
-          Value Governance
+          Governance
         </TabsTrigger>
         <TabsTrigger value="success-capture" data-testid="tab-success-capture">
           <Star className="w-4 h-4 mr-2" />
-          Success Capture
+          Success
         </TabsTrigger>
       </TabsList>
 
@@ -10972,6 +10977,14 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
         <IncomingHandoffsTab 
           projectId={projectId} 
           project={project}
+        />
+      </TabsContent>
+
+      {/* Interactive Timeline - Visual project progress tracking */}
+      <TabsContent value="timeline" className="space-y-6" data-demo-step="project-timeline">
+        <InteractiveTimeline 
+          projectId={projectId} 
+          companyName={project?.companyName}
         />
       </TabsContent>
 
