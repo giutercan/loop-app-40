@@ -9151,7 +9151,12 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                             const roleLabel = roleKey.replace(/Buyer$/i, '');
                             
                             const hasResearch = influence.stakeholderResearch && 
-                              Object.values(influence.stakeholderResearch).some((v: any) => v && v.trim());
+                              Object.values(influence.stakeholderResearch).some((v: any) => {
+                                if (!v) return false;
+                                if (Array.isArray(v)) return v.length > 0;
+                                if (typeof v === 'string') return v.trim().length > 0;
+                                return true;
+                              });
                             const isExpanded = expandedResearch.has(idx);
                             
                             return (
