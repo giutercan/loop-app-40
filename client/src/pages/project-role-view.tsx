@@ -7396,126 +7396,173 @@ export default function ProjectRoleView() {
                                 </div>
                               </div>
                               
-                              {/* Expanded Research Panel */}
+                              {/* Expanded Research Panel - Visual Card Layout */}
                               {isExpanded && attendee.aiResearch && (
                                 <div className="px-3 pb-3 border-t border-purple-200 bg-gradient-to-b from-purple-50/50 to-white" data-testid={`panel-research-${displayIndex}`}>
                                   <div className="pt-3 space-y-3">
-                                    {/* Role Context */}
+                                    {/* Quick Insights Bar - Visual Summary */}
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {attendee.aiResearch.keyPriorities && attendee.aiResearch.keyPriorities.length > 0 && (
+                                        <Badge variant="outline" className="bg-purple-50 border-purple-200 text-purple-700 text-[10px] gap-1">
+                                          <Target className="w-2.5 h-2.5" />
+                                          {attendee.aiResearch.keyPriorities.length} Priorities
+                                        </Badge>
+                                      )}
+                                      {attendee.aiResearch.questionsToAsk && attendee.aiResearch.questionsToAsk.length > 0 && (
+                                        <Badge variant="outline" className="bg-amber-50 border-amber-200 text-amber-700 text-[10px] gap-1">
+                                          <HelpCircle className="w-2.5 h-2.5" />
+                                          {attendee.aiResearch.questionsToAsk.length} Questions
+                                        </Badge>
+                                      )}
+                                      {attendee.aiResearch.rapportBuildingTips && attendee.aiResearch.rapportBuildingTips.length > 0 && (
+                                        <Badge variant="outline" className="bg-emerald-50 border-emerald-200 text-emerald-700 text-[10px] gap-1">
+                                          <Heart className="w-2.5 h-2.5" />
+                                          {attendee.aiResearch.rapportBuildingTips.length} Tips
+                                        </Badge>
+                                      )}
+                                      {attendee.aiResearch.redFlags && attendee.aiResearch.redFlags.length > 0 && (
+                                        <Badge variant="outline" className="bg-red-50 border-red-200 text-red-600 text-[10px] gap-1">
+                                          <AlertTriangle className="w-2.5 h-2.5" />
+                                          {attendee.aiResearch.redFlags.length} Cautions
+                                        </Badge>
+                                      )}
+                                    </div>
+
+                                    {/* Role Context - Compact Card */}
                                     {attendee.aiResearch.roleContext && (
-                                      <div>
-                                        <Label className="text-xs font-semibold text-purple-700 flex items-center gap-1">
-                                          <Briefcase className="w-3 h-3" />
-                                          Role Context
-                                        </Label>
-                                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{attendee.aiResearch.roleContext}</p>
+                                      <div className="p-2 rounded-md bg-white border border-purple-100 flex gap-2">
+                                        <Briefcase className="w-4 h-4 text-purple-500 shrink-0 mt-0.5" />
+                                        <p className="text-xs text-muted-foreground leading-relaxed">{attendee.aiResearch.roleContext}</p>
                                       </div>
                                     )}
                                     
-                                    {/* Key Priorities */}
-                                    {attendee.aiResearch.keyPriorities && attendee.aiResearch.keyPriorities.length > 0 && (
-                                      <div>
-                                        <Label className="text-xs font-semibold text-purple-700 flex items-center gap-1">
-                                          <Target className="w-3 h-3" />
-                                          Key Priorities
-                                        </Label>
-                                        <ul className="mt-1 space-y-0.5">
-                                          {attendee.aiResearch.keyPriorities.map((priority, i) => (
-                                            <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                              <span className="text-purple-500 mt-0.5">•</span>
-                                              {priority}
-                                            </li>
-                                          ))}
-                                        </ul>
-                                      </div>
-                                    )}
+                                    {/* 2-Column Visual Grid */}
+                                    <div className="grid grid-cols-2 gap-2">
+                                      {/* Key Priorities Card */}
+                                      {attendee.aiResearch.keyPriorities && attendee.aiResearch.keyPriorities.length > 0 && (
+                                        <div className="p-2 rounded-md bg-purple-50/80 border border-purple-100">
+                                          <div className="flex items-center gap-1.5 mb-1.5">
+                                            <div className="w-5 h-5 rounded-full bg-purple-100 flex items-center justify-center">
+                                              <Target className="w-3 h-3 text-purple-600" />
+                                            </div>
+                                            <span className="text-[10px] font-semibold text-purple-700 uppercase tracking-wide">Priorities</span>
+                                          </div>
+                                          <div className="space-y-1">
+                                            {attendee.aiResearch.keyPriorities.slice(0, 3).map((priority, i) => (
+                                              <div key={i} className="flex items-start gap-1.5">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0 mt-1.5" />
+                                                <span className="text-[11px] text-purple-900 leading-tight line-clamp-2">{priority}</span>
+                                              </div>
+                                            ))}
+                                            {attendee.aiResearch.keyPriorities.length > 3 && (
+                                              <span className="text-[10px] text-purple-500 pl-3">+{attendee.aiResearch.keyPriorities.length - 3} more</span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Rapport Tips Card */}
+                                      {attendee.aiResearch.rapportBuildingTips && attendee.aiResearch.rapportBuildingTips.length > 0 && (
+                                        <div className="p-2 rounded-md bg-emerald-50/80 border border-emerald-100">
+                                          <div className="flex items-center gap-1.5 mb-1.5">
+                                            <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                                              <Heart className="w-3 h-3 text-emerald-600" />
+                                            </div>
+                                            <span className="text-[10px] font-semibold text-emerald-700 uppercase tracking-wide">Rapport</span>
+                                          </div>
+                                          <div className="space-y-1">
+                                            {attendee.aiResearch.rapportBuildingTips.slice(0, 3).map((tip, i) => (
+                                              <div key={i} className="flex items-start gap-1.5">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 mt-1.5" />
+                                                <span className="text-[11px] text-emerald-900 leading-tight line-clamp-2">{tip}</span>
+                                              </div>
+                                            ))}
+                                            {attendee.aiResearch.rapportBuildingTips.length > 3 && (
+                                              <span className="text-[10px] text-emerald-500 pl-3">+{attendee.aiResearch.rapportBuildingTips.length - 3} more</span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Questions Card */}
+                                      {attendee.aiResearch.questionsToAsk && attendee.aiResearch.questionsToAsk.length > 0 && (
+                                        <div className="p-2 rounded-md bg-amber-50/80 border border-amber-100">
+                                          <div className="flex items-center gap-1.5 mb-1.5">
+                                            <div className="w-5 h-5 rounded-full bg-amber-100 flex items-center justify-center">
+                                              <HelpCircle className="w-3 h-3 text-amber-600" />
+                                            </div>
+                                            <span className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide">Ask</span>
+                                          </div>
+                                          <div className="space-y-1">
+                                            {attendee.aiResearch.questionsToAsk.slice(0, 2).map((q, i) => (
+                                              <div key={i} className="flex items-start gap-1.5">
+                                                <span className="text-amber-500 text-[11px] font-bold shrink-0">?</span>
+                                                <span className="text-[11px] text-amber-900 leading-tight line-clamp-2">{q}</span>
+                                              </div>
+                                            ))}
+                                            {attendee.aiResearch.questionsToAsk.length > 2 && (
+                                              <span className="text-[10px] text-amber-500 pl-3">+{attendee.aiResearch.questionsToAsk.length - 2} more</span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Messaging Card */}
+                                      {attendee.aiResearch.messagingThatResonates && attendee.aiResearch.messagingThatResonates.length > 0 && (
+                                        <div className="p-2 rounded-md bg-blue-50/80 border border-blue-100">
+                                          <div className="flex items-center gap-1.5 mb-1.5">
+                                            <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center">
+                                              <MessageCircle className="w-3 h-3 text-blue-600" />
+                                            </div>
+                                            <span className="text-[10px] font-semibold text-blue-700 uppercase tracking-wide">Messaging</span>
+                                          </div>
+                                          <div className="space-y-1">
+                                            {attendee.aiResearch.messagingThatResonates.slice(0, 2).map((msg, i) => (
+                                              <div key={i} className="flex items-start gap-1.5">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0 mt-1.5" />
+                                                <span className="text-[11px] text-blue-900 leading-tight line-clamp-2">{msg}</span>
+                                              </div>
+                                            ))}
+                                            {attendee.aiResearch.messagingThatResonates.length > 2 && (
+                                              <span className="text-[10px] text-blue-500 pl-3">+{attendee.aiResearch.messagingThatResonates.length - 2} more</span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
                                     
-                                    {/* Rapport Building Tips */}
-                                    {attendee.aiResearch.rapportBuildingTips && attendee.aiResearch.rapportBuildingTips.length > 0 && (
-                                      <div>
-                                        <Label className="text-xs font-semibold text-purple-700 flex items-center gap-1">
-                                          <Heart className="w-3 h-3" />
-                                          Rapport Building Tips
-                                        </Label>
-                                        <ul className="mt-1 space-y-0.5">
-                                          {attendee.aiResearch.rapportBuildingTips.map((tip, i) => (
-                                            <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                              <span className="text-emerald-500 mt-0.5">•</span>
-                                              {tip}
-                                            </li>
-                                          ))}
-                                        </ul>
-                                      </div>
-                                    )}
-                                    
-                                    {/* Messaging That Resonates */}
-                                    {attendee.aiResearch.messagingThatResonates && attendee.aiResearch.messagingThatResonates.length > 0 && (
-                                      <div>
-                                        <Label className="text-xs font-semibold text-purple-700 flex items-center gap-1">
-                                          <MessageCircle className="w-3 h-3" />
-                                          Messaging That Resonates
-                                        </Label>
-                                        <ul className="mt-1 space-y-0.5">
-                                          {attendee.aiResearch.messagingThatResonates.map((msg, i) => (
-                                            <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                              <span className="text-blue-500 mt-0.5">•</span>
-                                              {msg}
-                                            </li>
-                                          ))}
-                                        </ul>
-                                      </div>
-                                    )}
-                                    
-                                    {/* Questions to Ask */}
-                                    {attendee.aiResearch.questionsToAsk && attendee.aiResearch.questionsToAsk.length > 0 && (
-                                      <div>
-                                        <Label className="text-xs font-semibold text-purple-700 flex items-center gap-1">
-                                          <HelpCircle className="w-3 h-3" />
-                                          Discovery Questions
-                                        </Label>
-                                        <ul className="mt-1 space-y-0.5">
-                                          {attendee.aiResearch.questionsToAsk.map((q, i) => (
-                                            <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                              <span className="text-amber-500 mt-0.5">?</span>
-                                              {q}
-                                            </li>
-                                          ))}
-                                        </ul>
-                                      </div>
-                                    )}
-                                    
-                                    {/* Red Flags */}
+                                    {/* Red Flags - Highlighted Warning */}
                                     {attendee.aiResearch.redFlags && attendee.aiResearch.redFlags.length > 0 && (
-                                      <div>
-                                        <Label className="text-xs font-semibold text-red-600 flex items-center gap-1">
-                                          <AlertTriangle className="w-3 h-3" />
-                                          Things to Avoid
-                                        </Label>
-                                        <ul className="mt-1 space-y-0.5">
+                                      <div className="p-2 rounded-md bg-red-50 border border-red-200 flex gap-2">
+                                        <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
+                                        <div className="flex flex-wrap gap-1">
                                           {attendee.aiResearch.redFlags.map((flag, i) => (
-                                            <li key={i} className="text-xs text-red-600/80 flex items-start gap-1.5">
-                                              <span className="mt-0.5">!</span>
+                                            <Badge key={i} variant="outline" className="bg-white border-red-200 text-red-700 text-[10px]">
                                               {flag}
-                                            </li>
+                                            </Badge>
                                           ))}
-                                        </ul>
+                                        </div>
                                       </div>
                                     )}
                                     
-                                    {/* Story Angle */}
+                                    {/* Story Angle - Featured Insight */}
                                     {attendee.aiResearch.storyAngle && (
-                                      <div className="p-2 rounded bg-purple-100/50 border border-purple-200">
-                                        <Label className="text-xs font-semibold text-purple-700 flex items-center gap-1">
-                                          <Lightbulb className="w-3 h-3" />
-                                          Recommended Story Angle
-                                        </Label>
-                                        <p className="text-xs text-purple-800 mt-1 leading-relaxed">{attendee.aiResearch.storyAngle}</p>
+                                      <div className="p-2.5 rounded-md bg-gradient-to-r from-purple-100 to-indigo-100 border border-purple-200 flex gap-2">
+                                        <div className="w-6 h-6 rounded-full bg-purple-200 flex items-center justify-center shrink-0">
+                                          <Lightbulb className="w-3.5 h-3.5 text-purple-700" />
+                                        </div>
+                                        <div>
+                                          <span className="text-[10px] font-semibold text-purple-700 uppercase tracking-wide">Story Angle</span>
+                                          <p className="text-[11px] text-purple-900 mt-0.5 leading-relaxed">{attendee.aiResearch.storyAngle}</p>
+                                        </div>
                                       </div>
                                     )}
                                     
                                     {/* Researched timestamp */}
                                     {attendee.aiResearch.researchedAt && (
-                                      <div className="text-[10px] text-muted-foreground pt-1 border-t">
-                                        Researched {new Date(attendee.aiResearch.researchedAt).toLocaleDateString()} at {new Date(attendee.aiResearch.researchedAt).toLocaleTimeString()}
+                                      <div className="text-[10px] text-muted-foreground pt-1 border-t flex items-center gap-1">
+                                        <Sparkles className="w-3 h-3 text-purple-400" />
+                                        AI researched {new Date(attendee.aiResearch.researchedAt).toLocaleDateString()}
                                       </div>
                                     )}
                                   </div>
