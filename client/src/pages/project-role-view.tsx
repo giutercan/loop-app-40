@@ -8186,6 +8186,14 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 }));
                 toast({ title: "Story added to Evidence" });
               }}
+              projectId={projectId}
+              discoveryTheme={selectedDiscoveryTheme ? discoveryThemes.find(t => t.id === selectedDiscoveryTheme)?.name : undefined}
+              greenSheet={greenSheetEdits ? {
+                objective: greenSheetEdits.objective || undefined,
+                desiredOutcome: greenSheetEdits.desiredOutcome || undefined,
+                openingStatement: greenSheetEdits.openingStatement || undefined
+              } : undefined}
+              meetingAttendees={meetingAttendees || []}
             />
 
             {/* Story Test - Validate Your Story */}

@@ -7,10 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
 import {
   BookOpen, Sparkles, CheckCircle2, AlertCircle, ChevronDown, ChevronRight,
   Pencil, PlayCircle, Target, Lightbulb, Zap, MessageCircle, Trophy,
-  ArrowRight, Loader2, Mic, RefreshCw, FileText, Eye, EyeOff
+  ArrowRight, Loader2, Mic, RefreshCw, FileText, Eye, EyeOff, Wand2, Combine
 } from "lucide-react";
 
 interface StoryBuilderData {
@@ -72,6 +74,22 @@ interface SuggestedStory {
   url?: string;
 }
 
+interface TemplateRecommendation {
+  templateId: string;
+  score: number;
+  rationale: string;
+  fitReasons: string[];
+  bestFor?: string;
+}
+
+interface TemplateRecommendations {
+  recommendations: TemplateRecommendation[];
+  suggestedCombination?: {
+    templateIds: string[];
+    reason: string;
+  };
+}
+
 interface StoryCoachProps {
   storyBuilderData: StoryBuilderData;
   setStoryBuilderData: React.Dispatch<React.SetStateAction<StoryBuilderData>>;
@@ -93,6 +111,19 @@ interface StoryCoachProps {
   isLoadingStories?: boolean;
   suggestedStories?: SuggestedStory[];
   onSelectStory?: (story: SuggestedStory) => void;
+  projectId?: number;
+  discoveryTheme?: string;
+  greenSheet?: {
+    objective?: string;
+    desiredOutcome?: string;
+    openingStatement?: string;
+  };
+  meetingAttendees?: Array<{
+    name: string;
+    title?: string;
+    role?: string;
+    affiliation?: string;
+  }>;
 }
 
 type ElementStatus = "empty" | "draft" | "strong";
@@ -412,13 +443,126 @@ export function StoryCoach({
   onFindSuccessStories,
   isLoadingStories,
   suggestedStories,
-  onSelectStory
+  onSelectStory,
+  projectId,
+  discoveryTheme,
+  greenSheet,
+  meetingAttendees
 }: StoryCoachProps) {
+  const { toast } = useToast();
   const [expandedElements, setExpandedElements] = useState<Set<string>>(new Set(["singleMessage"]));
   const [showPreview, setShowPreview] = useState(false);
   const [activePhase, setActivePhase] = useState<"before" | "during" | "after">("before");
   const [showCoachingPanel, setShowCoachingPanel] = useState(true);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [selectedTemplates, setSelectedTemplates] = useState<Set<string>>(new Set());
+  const [recommendations, setRecommendations] = useState<TemplateRecommendations | null>(null);
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
+  const [isMerging, setIsMerging] = useState(false);
+  const [mergeMode, setMergeMode] = useState<"overwrite" | "fill_gaps">("fill_gaps");
+  
+  const toggleTemplateSelection = (templateId: string) => {
+    setSelectedTemplates(prev => {
+      const next = new Set(prev);
+      if (next.has(templateId)) {
+        next.delete(templateId);
+      } else {
+        next.add(templateId);
+      }
+      return next;
+    });
+  };
+  
+  const fetchRecommendations = async () => {
+    if (!projectId) {
+      toast({ title: "Project context required", description: "Cannot generate recommendations without project context", variant: "destructive" });
+      return;
+    }
+    setIsLoadingRecommendations(true);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/ai/suggest-templates`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          templates: storyTemplates.map(t => ({
+            id: t.id,
+            name: t.name,
+            description: t.description,
+            tags: t.tags,
+            themes: t.themes,
+            useCases: t.useCases,
+            audienceRoles: t.audienceRoles,
+            kornFerrySolutions: t.kornFerrySolutions
+          })),
+          discoveryTheme,
+          greenSheet,
+          meetingAttendees
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRecommendations(data);
+        if (data.suggestedCombination?.templateIds) {
+          setSelectedTemplates(new Set(data.suggestedCombination.templateIds));
+        }
+        toast({ title: "AI recommendations ready", description: `Ranked ${data.recommendations?.length || 0} templates for your context` });
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        toast({ title: "Could not get recommendations", description: errorData.error || "Please try again", variant: "destructive" });
+      }
+    } catch (error) {
+      console.error("Error fetching recommendations:", error);
+      toast({ title: "Error fetching recommendations", description: "Please try again", variant: "destructive" });
+    } finally {
+      setIsLoadingRecommendations(false);
+    }
+  };
+  
+  const mergeSelectedTemplates = async () => {
+    if (!projectId || selectedTemplates.size === 0) return;
+    setIsMerging(true);
+    try {
+      const templatesToMerge = storyTemplates.filter(t => selectedTemplates.has(t.id));
+      const res = await fetch(`/api/projects/${projectId}/ai/merge-templates`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          templates: templatesToMerge,
+          discoveryTheme,
+          greenSheet,
+          meetingAttendees,
+          currentStoryData: storyBuilderData,
+          mergeMode
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.mergedStory) {
+          setStoryBuilderData(prev => ({
+            ...prev,
+            before: { ...prev.before, ...data.mergedStory.before },
+            during: { ...prev.during, ...data.mergedStory.during },
+            after: { ...prev.after, ...data.mergedStory.after }
+          }));
+          setShowTemplates(false);
+          setSelectedTemplates(new Set());
+          toast({
+            title: "Story merged successfully",
+            description: data.narrativeSummary || `Combined ${templatesToMerge.length} templates into a unified narrative`
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error merging templates:", error);
+      toast({
+        title: "Error merging templates",
+        description: "Please try again",
+        variant: "destructive"
+      });
+    } finally {
+      setIsMerging(false);
+    }
+  };
   
   const applyTemplate = (templateId: string) => {
     const template = storyTemplates.find(t => t.id === templateId);
@@ -623,26 +767,139 @@ export function StoryCoach({
         {/* Story Templates Panel */}
         {showTemplates && (
           <div className="mt-4 p-4 rounded-lg border bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
               <div className="flex items-center gap-2">
                 <Zap className="w-4 h-4 text-purple-600" />
-                <span className="font-semibold text-sm">Quick Start Templates</span>
+                <span className="font-semibold text-sm">Story Templates</span>
               </div>
-              <Badge variant="outline" className="text-[10px]">Click to apply</Badge>
+              <div className="flex items-center gap-2">
+                {projectId && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={fetchRecommendations}
+                    disabled={isLoadingRecommendations}
+                    data-testid="button-get-recommendations"
+                  >
+                    {isLoadingRecommendations ? (
+                      <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                    ) : (
+                      <Wand2 className="w-3 h-3 mr-1" />
+                    )}
+                    Get AI Suggestions
+                  </Button>
+                )}
+                {selectedTemplates.size > 0 && (
+                  <Badge variant="secondary" className="text-[10px]">
+                    {selectedTemplates.size} selected
+                  </Badge>
+                )}
+              </div>
             </div>
+            
+            {/* AI Recommendations Banner */}
+            {recommendations?.suggestedCombination && (
+              <div className="mb-3 p-3 rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 border border-emerald-200 dark:border-emerald-800">
+                <div className="flex items-center gap-2 mb-1">
+                  <Sparkles className="w-4 h-4 text-emerald-600" />
+                  <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">AI Recommended Combination</span>
+                </div>
+                <p className="text-xs text-emerald-600 dark:text-emerald-400">{recommendations.suggestedCombination.reason}</p>
+              </div>
+            )}
+            
+            {/* Templates Grid with Multi-Select */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {storyTemplates.map(template => (
-                <button
-                  key={template.id}
-                  onClick={() => applyTemplate(template.id)}
-                  className="p-3 rounded-lg border bg-card text-left hover:bg-purple-50 dark:hover:bg-purple-950/30 transition-colors"
-                  data-testid={`button-template-${template.id}`}
-                >
-                  <p className="text-sm font-medium">{template.name}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{template.description}</p>
-                </button>
-              ))}
+              {storyTemplates.map(template => {
+                const recommendation = recommendations?.recommendations?.find(r => r.templateId === template.id);
+                const isSelected = selectedTemplates.has(template.id);
+                const isRecommended = recommendations?.suggestedCombination?.templateIds?.includes(template.id);
+                
+                return (
+                  <div
+                    key={template.id}
+                    className={`p-3 rounded-lg border bg-card transition-all ${isSelected ? "ring-2 ring-primary border-primary" : ""} ${isRecommended ? "border-emerald-400 dark:border-emerald-600" : ""}`}
+                    data-testid={`card-template-${template.id}`}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleTemplateSelection(template.id)}
+                          data-testid={`checkbox-template-${template.id}`}
+                        />
+                        <div>
+                          <p className="text-sm font-medium">{template.name}</p>
+                          {recommendation && (
+                            <Badge 
+                              className={`text-[10px] mt-0.5 ${recommendation.score >= 80 ? "bg-emerald-500" : recommendation.score >= 60 ? "bg-amber-500" : "bg-muted"}`}
+                            >
+                              {recommendation.score}% fit
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => applyTemplate(template.id)}
+                        data-testid={`button-apply-template-${template.id}`}
+                      >
+                        Apply
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{template.description}</p>
+                    {recommendation && (
+                      <p className="text-[10px] text-muted-foreground mt-2 italic">{recommendation.rationale}</p>
+                    )}
+                    {recommendation?.fitReasons && recommendation.fitReasons.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {recommendation.fitReasons.slice(0, 2).map((reason, i) => (
+                          <Badge key={i} variant="outline" className="text-[9px]">{reason}</Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
+            
+            {/* Merge Action Bar */}
+            {selectedTemplates.size > 0 && (
+              <div className="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/20 flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs">Merge Mode:</Label>
+                    <Select value={mergeMode} onValueChange={(v: "overwrite" | "fill_gaps") => setMergeMode(v)}>
+                      <SelectTrigger className="h-7 w-[120px] text-xs" data-testid="select-merge-mode">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="fill_gaps">Fill Gaps</SelectItem>
+                        <SelectItem value="overwrite">Overwrite All</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {mergeMode === "fill_gaps" ? "Only fills empty fields" : "Replaces all content"}
+                  </span>
+                </div>
+                <Button
+                  onClick={mergeSelectedTemplates}
+                  disabled={isMerging || selectedTemplates.size === 0}
+                  size="sm"
+                  data-testid="button-merge-templates"
+                >
+                  {isMerging ? (
+                    <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                  ) : (
+                    <Combine className="w-3 h-3 mr-1" />
+                  )}
+                  Merge {selectedTemplates.size} Template{selectedTemplates.size !== 1 ? "s" : ""} into Story
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </CardHeader>
