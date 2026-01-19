@@ -8001,6 +8001,60 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
               onVoiceInput={(field) => { setVoiceTargetField(field); setIsVoiceCommandOpen(true); }}
               onExport={handleExportStory}
               refineResult={storyRefineResult}
+              onOpenTensionQuestions={() => setTensionQuestionsDialogOpen(true)}
+              tensionQuestions={storyBuilderData.before.tensionQuestions}
+              onRemoveTensionQuestion={(id) => {
+                setStoryBuilderData(prev => ({
+                  ...prev,
+                  before: {
+                    ...prev.before,
+                    tensionQuestions: prev.before.tensionQuestions.filter(q => q.id !== id)
+                  }
+                }));
+              }}
+              onUpdateTensionQuestionResponse={(id, response) => {
+                setStoryBuilderData(prev => ({
+                  ...prev,
+                  before: {
+                    ...prev.before,
+                    tensionQuestions: prev.before.tensionQuestions.map(q => 
+                      q.id === id ? { ...q, response } : q
+                    )
+                  }
+                }));
+              }}
+              onFindSuccessStories={async () => {
+                setIsGeneratingStories(true);
+                try {
+                  const response = await apiRequest("POST", `/api/projects/${projectId}/ai/suggest-success-stories`, {
+                    companyName: project?.companyName,
+                    industry: project?.sector,
+                    theme: selectedDiscoveryTheme ? discoveryThemes.find(t => t.id === selectedDiscoveryTheme)?.name : "Leadership Development",
+                    keyMessage: storyBuilderData.before.singleMessage,
+                    insights: insights?.slice(0, 3).map((i: any) => i.label) || []
+                  });
+                  const data = await response.json();
+                  if (data.stories && data.stories.length > 0) {
+                    setSuggestedStories(data.stories);
+                    toast({ title: "Stories found", description: `${data.stories.length} relevant success stories` });
+                  }
+                } catch (error) {
+                  toast({ title: "Could not find stories", variant: "destructive" });
+                }
+                setIsGeneratingStories(false);
+              }}
+              isLoadingStories={isGeneratingStories}
+              suggestedStories={suggestedStories}
+              onSelectStory={(story) => {
+                setStoryBuilderData(prev => ({ 
+                  ...prev, 
+                  before: { 
+                    ...prev.before, 
+                    evidenceToReference: `${story.title}: ${story.outcome}` 
+                  }
+                }));
+                toast({ title: "Story added to Evidence" });
+              }}
             />
 
             {/* Story Test - Validate Your Story */}

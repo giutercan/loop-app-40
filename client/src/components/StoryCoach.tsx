@@ -21,7 +21,7 @@ interface StoryBuilderData {
     storyStructure: string;
     heroCharacter: string;
     evidenceToReference: string;
-    tensionQuestions: Array<{ prompt: string; response: string; order: number }>;
+    tensionQuestions: Array<{ id?: string; prompt: string; response: string; order: number; methodology?: string; rationale?: string; source?: "ai" | "manual" }>;
   };
   during: {
     openingLine: string;
@@ -50,6 +50,28 @@ interface StoryRefineResult {
   nextSteps: string[];
 }
 
+interface TensionQuestion {
+  id?: string;
+  prompt: string;
+  response: string;
+  methodology?: string;
+  rationale?: string;
+  source?: "ai" | "manual";
+  order: number;
+}
+
+interface SuggestedStory {
+  title: string;
+  client?: string;
+  industry?: string;
+  challenge?: string;
+  outcome: string;
+  metrics?: string[];
+  solution?: string;
+  relevance?: string;
+  url?: string;
+}
+
 interface StoryCoachProps {
   storyBuilderData: StoryBuilderData;
   setStoryBuilderData: React.Dispatch<React.SetStateAction<StoryBuilderData>>;
@@ -63,6 +85,14 @@ interface StoryCoachProps {
   onVoiceInput?: (field: string) => void;
   onExport: () => void;
   refineResult?: StoryRefineResult | null;
+  onOpenTensionQuestions?: () => void;
+  tensionQuestions?: TensionQuestion[];
+  onRemoveTensionQuestion?: (id: string) => void;
+  onUpdateTensionQuestionResponse?: (id: string, response: string) => void;
+  onFindSuccessStories?: () => void;
+  isLoadingStories?: boolean;
+  suggestedStories?: SuggestedStory[];
+  onSelectStory?: (story: SuggestedStory) => void;
 }
 
 type ElementStatus = "empty" | "draft" | "strong";
@@ -220,7 +250,15 @@ export function StoryCoach({
   aiSuggestionLoading,
   onVoiceInput,
   onExport,
-  refineResult
+  refineResult,
+  onOpenTensionQuestions,
+  tensionQuestions,
+  onRemoveTensionQuestion,
+  onUpdateTensionQuestionResponse,
+  onFindSuccessStories,
+  isLoadingStories,
+  suggestedStories,
+  onSelectStory
 }: StoryCoachProps) {
   const [expandedElements, setExpandedElements] = useState<Set<string>>(new Set(["singleMessage"]));
   const [showPreview, setShowPreview] = useState(false);
@@ -601,6 +639,161 @@ export function StoryCoach({
                   </Collapsible>
                 );
               })}
+
+              {/* BEFORE Phase Special Sections: Tension Questions & Success Stories */}
+              {activePhase === "before" && (
+                <div className="space-y-3 mt-4">
+                  {/* Tension Questions Section */}
+                  <div className="p-4 rounded-lg border bg-blue-500/5 border-blue-500/20">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">?</div>
+                        <Label className="font-medium">Tension Questions</Label>
+                        <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-700 border-blue-500/30">
+                          SPIN • Miller Heiman • PSS
+                        </Badge>
+                      </div>
+                      {onOpenTensionQuestions && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={onOpenTensionQuestions}
+                          className="h-7 gap-1 border-blue-500/30 text-blue-600"
+                          data-testid="button-add-tension-questions"
+                        >
+                          <Sparkles className="w-3 h-3" />
+                          <span className="text-xs">Generate Questions</span>
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-3 italic">
+                      AI-generated questions based on Korn Ferry methodologies to keep the conversation flowing
+                    </p>
+
+                    {tensionQuestions && tensionQuestions.length > 0 ? (
+                      <div className="space-y-2">
+                        {tensionQuestions.map((q, idx) => (
+                          <div key={q.id || `tq-${idx}`} className="p-3 rounded-lg border bg-card">
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {q.methodology && (
+                                  <Badge 
+                                    variant="outline" 
+                                    className={`text-[10px] shrink-0 ${
+                                      q.methodology === "SPIN" ? "bg-blue-500/10 text-blue-700 border-blue-500/30" :
+                                      q.methodology === "MILLER_HEIMAN" ? "bg-purple-500/10 text-purple-700 border-purple-500/30" :
+                                      q.methodology === "PSS" ? "bg-amber-500/10 text-amber-700 border-amber-500/30" :
+                                      "bg-gray-500/10 text-gray-700 border-gray-500/30"
+                                    }`}
+                                  >
+                                    {q.methodology === "MILLER_HEIMAN" ? "Miller Heiman" : q.methodology}
+                                  </Badge>
+                                )}
+                                {q.source === "ai" && (
+                                  <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-700 border-emerald-500/30">
+                                    <Sparkles className="w-2.5 h-2.5 mr-0.5" />
+                                    AI
+                                  </Badge>
+                                )}
+                              </div>
+                              {onRemoveTensionQuestion && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                                  onClick={() => onRemoveTensionQuestion(q.id || `tq-${idx}`)}
+                                >
+                                  ×
+                                </Button>
+                              )}
+                            </div>
+                            <p className="text-sm font-medium mb-2">{q.prompt}</p>
+                            {q.rationale && <p className="text-xs text-muted-foreground mb-2 italic">{q.rationale}</p>}
+                            {onUpdateTensionQuestionResponse && (
+                              <Textarea
+                                placeholder="Add your notes or the response you received..."
+                                value={q.response}
+                                onChange={(e) => onUpdateTensionQuestionResponse(q.id || `tq-${idx}`, e.target.value)}
+                                className="min-h-[50px] text-sm"
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-4 border-2 border-dashed rounded-lg">
+                        <MessageCircle className="w-6 h-6 mx-auto text-muted-foreground/50 mb-2" />
+                        <p className="text-xs text-muted-foreground">No questions added yet</p>
+                        <p className="text-xs text-muted-foreground mt-1">Click "Generate Questions" for AI-powered recommendations</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Success Stories Section */}
+                  <div className="p-4 rounded-lg border bg-amber-500/5 border-amber-500/20">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Trophy className="w-5 h-5 text-amber-600" />
+                        <Label className="font-medium">Korn Ferry Success Stories</Label>
+                      </div>
+                      {onFindSuccessStories && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={onFindSuccessStories}
+                          disabled={isLoadingStories}
+                          className="h-7 gap-1 border-amber-500/30 text-amber-700"
+                          data-testid="button-find-stories"
+                        >
+                          {isLoadingStories ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trophy className="w-3 h-3" />}
+                          <span className="text-xs">Find Relevant Stories</span>
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-3 italic">
+                      Reference past client successes to build credibility
+                    </p>
+
+                    {suggestedStories && suggestedStories.length > 0 ? (
+                      <div className="space-y-2">
+                        {suggestedStories.map((story, idx) => (
+                          <div 
+                            key={idx} 
+                            className="p-3 rounded-lg border bg-card cursor-pointer hover:bg-amber-50/50 dark:hover:bg-amber-950/20 transition-colors"
+                            onClick={() => onSelectStory?.(story)}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <p className="text-sm font-medium">{story.title}</p>
+                                {(story.client || story.industry) && (
+                                  <p className="text-xs text-muted-foreground">
+                                    {[story.client, story.industry].filter(Boolean).join(" • ")}
+                                  </p>
+                                )}
+                              </div>
+                              <Badge variant="outline" className="text-[10px] shrink-0">Use</Badge>
+                            </div>
+                            <p className="text-xs mt-1">{story.outcome}</p>
+                            {story.metrics && story.metrics.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {story.metrics.slice(0, 3).map((m, i) => (
+                                  <Badge key={i} variant="secondary" className="text-[10px]">{m}</Badge>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-4 border-2 border-dashed rounded-lg">
+                        <Trophy className="w-6 h-6 mx-auto text-muted-foreground/50 mb-2" />
+                        <p className="text-xs text-muted-foreground">No stories loaded yet</p>
+                        <p className="text-xs text-muted-foreground mt-1">Click "Find Relevant Stories" to get AI suggestions</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
