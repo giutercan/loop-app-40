@@ -134,6 +134,7 @@ import { ArtifactUpload } from "@/components/ArtifactUpload";
 import { PostMeetingQuestionAnswers } from "@/components/PostMeetingQuestionAnswers";
 import { ArtifactLibrary } from "@/components/ArtifactLibrary";
 import { ExportOptionsDialog } from "@/components/ExportOptionsDialog";
+import { ExportButton } from "@/components/ExportButton";
 import { InteractiveTimeline } from "@/components/InteractiveTimeline";
 import { StoryCoach } from "@/components/StoryCoach";
 import { 
