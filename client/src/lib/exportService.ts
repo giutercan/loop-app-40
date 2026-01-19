@@ -11,6 +11,9 @@ const KORN_FERRY_COLORS = {
   text: "#1E293B",
   muted: "#64748B",
   white: "#FFFFFF",
+  teal: "#0891B2",
+  purple: "#7C3AED",
+  cardBg: "#F1F5F9",
 };
 
 const FONTS = {
@@ -18,28 +21,53 @@ const FONTS = {
   body: "Arial",
 };
 
+// Export Options Interface
+export interface ExportOptions {
+  includeTheme: boolean;
+  includeIntelligence: boolean;
+  includeClientInteraction: boolean;
+  includeSummary: boolean;
+}
+
+export const DEFAULT_EXPORT_OPTIONS: ExportOptions = {
+  includeTheme: true,
+  includeIntelligence: true,
+  includeClientInteraction: true,
+  includeSummary: true,
+};
+
+interface ExternalLink {
+  label: string;
+  url: string;
+  source?: string;
+}
+
 interface IntelligenceExportData {
   companyName: string;
   industry?: string;
   theme?: string;
   executiveSummary?: string;
+  companyWebsite?: string;
   insights: Array<{
     title: string;
     value: string;
     category?: string;
     priority?: string;
+    sourceUrl?: string;
   }>;
   annualReportSummary?: {
     fiscalYear: string;
     ceoLetterHighlights?: string[];
     strategicPriorities?: string[];
     riskFactors?: string[];
+    reportUrl?: string;
   };
   earningsCallHighlights?: {
     quarter: string;
     executiveCommentary?: string[];
     workforceDiscussions?: string[];
     futureOutlook?: string;
+    transcriptUrl?: string;
   };
   followUpResearch?: Array<{
     question: string;
@@ -51,6 +79,7 @@ interface IntelligenceExportData {
     role?: string;
     influence?: string;
     affiliation?: string;
+    linkedInUrl?: string;
   }>;
   greenSheet?: {
     objective?: string;
@@ -75,6 +104,7 @@ interface IntelligenceExportData {
       methodology?: string;
     }>;
   };
+  externalLinks?: ExternalLink[];
 }
 
 interface OutcomeExportData {
@@ -111,36 +141,103 @@ interface CoachingExportData {
   nextSteps?: string[];
 }
 
-function addKFHeader(pres: pptxgen, slide: pptxgen.Slide, title: string) {
+// Visual styling helpers for enhanced exports
+function addGradientHeader(slide: pptxgen.Slide, title: string, subtitle?: string) {
+  // Gradient effect using two overlapping rectangles
   slide.addShape("rect", {
     x: 0,
     y: 0,
     w: "100%",
-    h: 0.8,
+    h: 1.0,
     fill: { color: KORN_FERRY_COLORS.primary.replace("#", "") },
+  });
+  slide.addShape("rect", {
+    x: 0,
+    y: 0.7,
+    w: "100%",
+    h: 0.3,
+    fill: { color: KORN_FERRY_COLORS.teal.replace("#", "") },
   });
 
   slide.addText(title, {
     x: 0.5,
-    y: 0.2,
+    y: 0.25,
     w: 8,
     h: 0.4,
-    fontSize: 20,
+    fontSize: 22,
     fontFace: FONTS.heading,
     color: KORN_FERRY_COLORS.white.replace("#", ""),
     bold: true,
   });
 
+  if (subtitle) {
+    slide.addText(subtitle, {
+      x: 0.5,
+      y: 0.65,
+      w: 8,
+      h: 0.25,
+      fontSize: 11,
+      fontFace: FONTS.body,
+      color: KORN_FERRY_COLORS.white.replace("#", ""),
+    });
+  }
+
   slide.addText("KORN FERRY", {
     x: 8,
-    y: 0.25,
+    y: 0.3,
     w: 1.5,
     h: 0.3,
     fontSize: 10,
     fontFace: FONTS.body,
     color: KORN_FERRY_COLORS.secondary.replace("#", ""),
     align: "right",
+    bold: true,
   });
+}
+
+function addCardContainer(slide: pptxgen.Slide, x: number, y: number, w: number, h: number, accentColor?: string) {
+  slide.addShape("rect", {
+    x,
+    y,
+    w,
+    h,
+    fill: { color: KORN_FERRY_COLORS.cardBg.replace("#", "") },
+    line: { color: "E2E8F0", pt: 1 },
+  });
+  if (accentColor) {
+    slide.addShape("rect", {
+      x,
+      y,
+      w: 0.08,
+      h,
+      fill: { color: accentColor.replace("#", "") },
+    });
+  }
+}
+
+function addSectionDivider(slide: pptxgen.Slide, y: number, label: string, color?: string) {
+  const lineColor = color || KORN_FERRY_COLORS.teal;
+  slide.addShape("rect", {
+    x: 0.5,
+    y,
+    w: 9,
+    h: 0.02,
+    fill: { color: lineColor.replace("#", "") },
+  });
+  slide.addText(label.toUpperCase(), {
+    x: 0.5,
+    y: y + 0.05,
+    w: 3,
+    h: 0.25,
+    fontSize: 9,
+    fontFace: FONTS.heading,
+    color: lineColor.replace("#", ""),
+    bold: true,
+  });
+}
+
+function addKFHeader(pres: pptxgen, slide: pptxgen.Slide, title: string) {
+  addGradientHeader(slide, title);
 }
 
 function addKFFooter(slide: pptxgen.Slide, pageNum: number) {
@@ -167,15 +264,17 @@ function addKFFooter(slide: pptxgen.Slide, pageNum: number) {
   });
 }
 
-export function generateIntelligencePPT(data: IntelligenceExportData): void {
+export function generateIntelligencePPT(data: IntelligenceExportData, options: ExportOptions = DEFAULT_EXPORT_OPTIONS): void {
   const pres = new pptxgen();
-  pres.title = `${data.companyName} - Intelligence Report`;
+  pres.title = `${data.companyName} - Discovery Report`;
   pres.author = "Korn Ferry Loop";
   pres.layout = "LAYOUT_WIDE";
 
   let pageNum = 1;
 
+  // Enhanced Title Slide with gradient and visual elements
   const titleSlide = pres.addSlide();
+  // Background gradient effect
   titleSlide.addShape("rect", {
     x: 0,
     y: 0,
@@ -183,19 +282,36 @@ export function generateIntelligencePPT(data: IntelligenceExportData): void {
     h: "100%",
     fill: { color: KORN_FERRY_COLORS.primary.replace("#", "") },
   });
-  titleSlide.addText("INTELLIGENCE REPORT", {
+  // Accent stripe
+  titleSlide.addShape("rect", {
+    x: 0,
+    y: 4.2,
+    w: "100%",
+    h: 0.15,
+    fill: { color: KORN_FERRY_COLORS.teal.replace("#", "") },
+  });
+  // Secondary accent
+  titleSlide.addShape("rect", {
+    x: 0,
+    y: 4.4,
+    w: "100%",
+    h: 0.08,
+    fill: { color: KORN_FERRY_COLORS.secondary.replace("#", "") },
+  });
+  
+  titleSlide.addText("DISCOVERY REPORT", {
     x: 0.5,
-    y: 1.5,
+    y: 1.3,
     w: 9,
     h: 0.6,
-    fontSize: 36,
+    fontSize: 38,
     fontFace: FONTS.heading,
     color: KORN_FERRY_COLORS.white.replace("#", ""),
     bold: true,
   });
   titleSlide.addText(data.companyName, {
     x: 0.5,
-    y: 2.2,
+    y: 2.0,
     w: 9,
     h: 0.5,
     fontSize: 28,
@@ -205,7 +321,7 @@ export function generateIntelligencePPT(data: IntelligenceExportData): void {
   if (data.industry) {
     titleSlide.addText(data.industry, {
       x: 0.5,
-      y: 2.8,
+      y: 2.6,
       w: 9,
       h: 0.4,
       fontSize: 18,
@@ -213,26 +329,66 @@ export function generateIntelligencePPT(data: IntelligenceExportData): void {
       color: KORN_FERRY_COLORS.white.replace("#", ""),
     });
   }
+  if (options.includeTheme && data.theme) {
+    titleSlide.addText(`Theme: ${data.theme}`, {
+      x: 0.5,
+      y: 3.1,
+      w: 9,
+      h: 0.35,
+      fontSize: 14,
+      fontFace: FONTS.body,
+      color: KORN_FERRY_COLORS.teal.replace("#", ""),
+      italic: true,
+    });
+  }
+  // Company website link if available
+  if (data.companyWebsite) {
+    titleSlide.addText(data.companyWebsite, {
+      x: 0.5,
+      y: 3.6,
+      w: 9,
+      h: 0.3,
+      fontSize: 11,
+      fontFace: FONTS.body,
+      color: KORN_FERRY_COLORS.teal.replace("#", ""),
+      hyperlink: { url: data.companyWebsite },
+    });
+  }
   titleSlide.addText(`Generated ${new Date().toLocaleDateString()}`, {
     x: 0.5,
-    y: 4.8,
+    y: 4.7,
     w: 9,
     h: 0.3,
     fontSize: 12,
     fontFace: FONTS.body,
     color: KORN_FERRY_COLORS.muted.replace("#", ""),
   });
+  titleSlide.addText("KORN FERRY", {
+    x: 8,
+    y: 0.3,
+    w: 1.5,
+    h: 0.3,
+    fontSize: 12,
+    fontFace: FONTS.heading,
+    color: KORN_FERRY_COLORS.secondary.replace("#", ""),
+    align: "right",
+    bold: true,
+  });
 
-  if (data.executiveSummary) {
+  // Intelligence Section (controlled by includeIntelligence option)
+  if (options.includeIntelligence && data.executiveSummary) {
     pageNum++;
     const summarySlide = pres.addSlide();
-    addKFHeader(pres, summarySlide, "Executive Summary");
+    addGradientHeader(summarySlide, "Executive Summary", "Company Overview & Strategic Context");
+    
+    // Add card container for executive summary
+    addCardContainer(summarySlide, 0.5, 1.3, 9, 3.5, KORN_FERRY_COLORS.teal);
     summarySlide.addText(data.executiveSummary, {
-      x: 0.5,
-      y: 1.2,
-      w: 9,
-      h: 3.8,
-      fontSize: 14,
+      x: 0.7,
+      y: 1.45,
+      w: 8.6,
+      h: 3.2,
+      fontSize: 13,
       fontFace: FONTS.body,
       color: KORN_FERRY_COLORS.text.replace("#", ""),
       valign: "top",
@@ -240,7 +396,7 @@ export function generateIntelligencePPT(data: IntelligenceExportData): void {
     addKFFooter(summarySlide, pageNum);
   }
 
-  if (data.insights.length > 0) {
+  if (options.includeIntelligence && data.insights.length > 0) {
     pageNum++;
     const insightsSlide = pres.addSlide();
     addKFHeader(pres, insightsSlide, "Key Insights");
@@ -272,10 +428,10 @@ export function generateIntelligencePPT(data: IntelligenceExportData): void {
     addKFFooter(insightsSlide, pageNum);
   }
 
-  if (data.annualReportSummary) {
+  if (options.includeIntelligence && data.annualReportSummary) {
     pageNum++;
     const arSlide = pres.addSlide();
-    addKFHeader(pres, arSlide, `Annual Report Summary - ${data.annualReportSummary.fiscalYear}`);
+    addGradientHeader(arSlide, `Annual Report - ${data.annualReportSummary.fiscalYear}`, data.annualReportSummary.reportUrl ? "Click link below for full report" : undefined);
 
     let yPos = 1.2;
 
@@ -335,10 +491,10 @@ export function generateIntelligencePPT(data: IntelligenceExportData): void {
     addKFFooter(arSlide, pageNum);
   }
 
-  if (data.earningsCallHighlights) {
+  if (options.includeIntelligence && data.earningsCallHighlights) {
     pageNum++;
     const ecSlide = pres.addSlide();
-    addKFHeader(pres, ecSlide, `Earnings Call Highlights - ${data.earningsCallHighlights.quarter}`);
+    addGradientHeader(ecSlide, `Earnings Call - ${data.earningsCallHighlights.quarter}`, data.earningsCallHighlights.transcriptUrl ? "Click link below for transcript" : undefined);
 
     let yPos = 1.2;
 
@@ -396,11 +552,12 @@ export function generateIntelligencePPT(data: IntelligenceExportData): void {
     addKFFooter(ecSlide, pageNum);
   }
 
+  // Client Interaction Section (controlled by includeClientInteraction option)
   // Meeting Attendees slide
-  if (data.meetingAttendees && data.meetingAttendees.length > 0) {
+  if (options.includeClientInteraction && data.meetingAttendees && data.meetingAttendees.length > 0) {
     pageNum++;
     const attendeesSlide = pres.addSlide();
-    addKFHeader(pres, attendeesSlide, "Meeting Attendees");
+    addGradientHeader(attendeesSlide, "Meeting Attendees", "Key Stakeholders & Decision Makers");
 
     const attendeeRows: pptxgen.TableRow[] = [
       [
@@ -433,10 +590,10 @@ export function generateIntelligencePPT(data: IntelligenceExportData): void {
   }
 
   // Green Sheet / Call Planner slide
-  if (data.greenSheet && (data.greenSheet.objective || data.greenSheet.desiredOutcome)) {
+  if (options.includeClientInteraction && data.greenSheet && (data.greenSheet.objective || data.greenSheet.desiredOutcome)) {
     pageNum++;
     const gsSlide = pres.addSlide();
-    addKFHeader(pres, gsSlide, "Call Planner (Green Sheet)");
+    addGradientHeader(gsSlide, "Call Planner", "Meeting Preparation & Objectives");
 
     let yPos = 1.2;
     const sections = [
@@ -476,11 +633,12 @@ export function generateIntelligencePPT(data: IntelligenceExportData): void {
     addKFFooter(gsSlide, pageNum);
   }
 
+  // Summary Section (controlled by includeSummary option)
   // Discovery Questions slide
-  if (data.discoveryQuestions && data.discoveryQuestions.length > 0) {
+  if (options.includeSummary && data.discoveryQuestions && data.discoveryQuestions.length > 0) {
     pageNum++;
     const questionsSlide = pres.addSlide();
-    addKFHeader(pres, questionsSlide, "Discovery Questions & Responses");
+    addGradientHeader(questionsSlide, "Discovery Questions", "Guided Discovery Q&A");
 
     let yPos = 1.2;
     data.discoveryQuestions.slice(0, 5).forEach((q, idx) => {
@@ -526,10 +684,10 @@ export function generateIntelligencePPT(data: IntelligenceExportData): void {
   }
 
   // Story Coaching slide
-  if (data.storyCoaching && (data.storyCoaching.keyMessage || data.storyCoaching.openingHook)) {
+  if (options.includeSummary && data.storyCoaching && (data.storyCoaching.keyMessage || data.storyCoaching.openingHook)) {
     pageNum++;
     const storySlide = pres.addSlide();
-    addKFHeader(pres, storySlide, "Story Coaching Framework");
+    addGradientHeader(storySlide, "Story Coaching", "Narrative Framework & Key Messages");
 
     let yPos = 1.2;
     const storyElements = [
@@ -597,34 +755,83 @@ export function generateIntelligencePPT(data: IntelligenceExportData): void {
     addKFFooter(storySlide, pageNum);
   }
 
+  // External Links slide (if any links provided)
+  if (data.externalLinks && data.externalLinks.length > 0) {
+    pageNum++;
+    const linksSlide = pres.addSlide();
+    addGradientHeader(linksSlide, "External Links", "Additional Resources & References");
+
+    let yPos = 1.3;
+    data.externalLinks.forEach((link) => {
+      if (yPos < 4.5) {
+        addCardContainer(linksSlide, 0.5, yPos, 9, 0.5, KORN_FERRY_COLORS.teal);
+        linksSlide.addText(link.label, {
+          x: 0.7,
+          y: yPos + 0.1,
+          w: 4,
+          h: 0.3,
+          fontSize: 11,
+          fontFace: FONTS.heading,
+          color: KORN_FERRY_COLORS.primary.replace("#", ""),
+          bold: true,
+        });
+        linksSlide.addText(link.url, {
+          x: 4.8,
+          y: yPos + 0.1,
+          w: 4.5,
+          h: 0.3,
+          fontSize: 10,
+          fontFace: FONTS.body,
+          color: KORN_FERRY_COLORS.teal.replace("#", ""),
+          hyperlink: { url: link.url },
+        });
+        yPos += 0.6;
+      }
+    });
+
+    addKFFooter(linksSlide, pageNum);
+  }
+
   pres.writeFile({ fileName: `${data.companyName}_Discovery_Report.pptx` });
 }
 
-export function generateIntelligencePDF(data: IntelligenceExportData): void {
+export function generateIntelligencePDF(data: IntelligenceExportData, options: ExportOptions = DEFAULT_EXPORT_OPTIONS): void {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
   let yPos = 20;
 
-  doc.setFillColor(10, 34, 64);
-  doc.rect(0, 0, pageWidth, 40, "F");
+  // Enhanced header with gradient effect
+  doc.setFillColor(0, 51, 141); // primary
+  doc.rect(0, 0, pageWidth, 35, "F");
+  doc.setFillColor(8, 145, 178); // teal accent
+  doc.rect(0, 35, pageWidth, 8, "F");
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(24);
   doc.setFont("helvetica", "bold");
-  doc.text("INTELLIGENCE REPORT", margin, 25);
+  doc.text("DISCOVERY REPORT", margin, 22);
 
   doc.setFontSize(14);
-  doc.setTextColor(0, 163, 224);
-  doc.text(data.companyName, margin, 35);
+  doc.setTextColor(255, 107, 53); // secondary
+  doc.text(data.companyName, margin, 32);
 
-  yPos = 55;
+  if (options.includeTheme && data.theme) {
+    doc.setFontSize(11);
+    doc.setTextColor(8, 145, 178);
+    doc.text(`Theme: ${data.theme}`, margin, 48);
+    yPos = 58;
+  } else {
+    yPos = 52;
+  }
+
   doc.setTextColor(30, 41, 59);
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.text(`Generated ${new Date().toLocaleDateString()}`, margin, yPos);
+  yPos += 10;
 
-  if (data.executiveSummary) {
+  if (options.includeIntelligence && data.executiveSummary) {
     yPos += 15;
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
@@ -640,7 +847,7 @@ export function generateIntelligencePDF(data: IntelligenceExportData): void {
     yPos += lines.length * 5 + 10;
   }
 
-  if (data.insights.length > 0) {
+  if (options.includeIntelligence && data.insights.length > 0) {
     if (yPos > 240) {
       doc.addPage();
       yPos = 20;
@@ -671,7 +878,7 @@ export function generateIntelligencePDF(data: IntelligenceExportData): void {
     });
   }
 
-  if (data.annualReportSummary) {
+  if (options.includeIntelligence && data.annualReportSummary) {
     if (yPos > 200) {
       doc.addPage();
       yPos = 20;
@@ -701,8 +908,9 @@ export function generateIntelligencePDF(data: IntelligenceExportData): void {
     }
   }
 
+  // Client Interaction Section
   // Meeting Attendees section
-  if (data.meetingAttendees && data.meetingAttendees.length > 0) {
+  if (options.includeClientInteraction && data.meetingAttendees && data.meetingAttendees.length > 0) {
     doc.addPage();
     yPos = 20;
     
@@ -735,7 +943,7 @@ export function generateIntelligencePDF(data: IntelligenceExportData): void {
   }
 
   // Green Sheet section
-  if (data.greenSheet && (data.greenSheet.objective || data.greenSheet.desiredOutcome)) {
+  if (options.includeClientInteraction && data.greenSheet && (data.greenSheet.objective || data.greenSheet.desiredOutcome)) {
     if (yPos > 200) {
       doc.addPage();
       yPos = 20;
@@ -777,8 +985,9 @@ export function generateIntelligencePDF(data: IntelligenceExportData): void {
     });
   }
 
+  // Summary Section
   // Discovery Questions section
-  if (data.discoveryQuestions && data.discoveryQuestions.length > 0) {
+  if (options.includeSummary && data.discoveryQuestions && data.discoveryQuestions.length > 0) {
     doc.addPage();
     yPos = 20;
     
@@ -818,7 +1027,7 @@ export function generateIntelligencePDF(data: IntelligenceExportData): void {
   }
 
   // Story Coaching section
-  if (data.storyCoaching && (data.storyCoaching.keyMessage || data.storyCoaching.openingHook)) {
+  if (options.includeSummary && data.storyCoaching && (data.storyCoaching.keyMessage || data.storyCoaching.openingHook)) {
     doc.addPage();
     yPos = 20;
     

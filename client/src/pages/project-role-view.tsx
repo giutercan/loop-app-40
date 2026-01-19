@@ -133,7 +133,7 @@ import { InlineEditableBaseline } from "@/components/InlineEditableField";
 import { ArtifactUpload } from "@/components/ArtifactUpload";
 import { PostMeetingQuestionAnswers } from "@/components/PostMeetingQuestionAnswers";
 import { ArtifactLibrary } from "@/components/ArtifactLibrary";
-import { ExportButton } from "@/components/ExportButton";
+import { ExportOptionsDialog } from "@/components/ExportOptionsDialog";
 import { InteractiveTimeline } from "@/components/InteractiveTimeline";
 import { StoryCoach } from "@/components/StoryCoach";
 import { 
@@ -145,7 +145,7 @@ import {
   generateCoachingPDF,
   type IntelligenceExportData,
   type OutcomeExportData,
-  type CoachingExportData
+  type CoachingExportData,
 } from "@/lib/exportService";
 
 type Role = "sales" | "consultant" | "delivery" | "csm" | "client_sponsor";
@@ -2001,6 +2001,7 @@ export default function ProjectRoleView() {
   const [isLoadingIntelligence, setIsLoadingIntelligence] = useState(false);
   const [intelligenceError, setIntelligenceError] = useState<string | null>(null);
   const [intelligenceIsSaved, setIntelligenceIsSaved] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
   
   // Probe chat state
   const [probeQuestion, setProbeQuestion] = useState("");
@@ -6153,10 +6154,21 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                         <CheckCircle className="w-3 h-3 mr-1" />
                         Live Data
                       </Badge>
-                      <ExportButton
-                        label="Export Report"
+                      <Button
+                        variant="outline"
                         size="sm"
-                        onExportPPT={() => {
+                        onClick={() => setShowExportDialog(true)}
+                        className="gap-1"
+                        data-testid="button-export-report"
+                      >
+                        <FileText className="w-3 h-3" />
+                        Export Report
+                      </Button>
+                      <ExportOptionsDialog
+                        open={showExportDialog}
+                        onOpenChange={setShowExportDialog}
+                        companyName={project.companyName}
+                        onExport={(format, options) => {
                           if (!liveIntelligence) return;
                           const exportData: IntelligenceExportData = {
                             companyName: project.companyName || "Company",
@@ -6169,8 +6181,14 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                               category: insight.category,
                               priority: insight.priority
                             })) || [],
-                            annualReportSummary: liveIntelligence.annualReportSummary,
-                            earningsCallHighlights: liveIntelligence.earningsCallHighlights,
+                            annualReportSummary: liveIntelligence.annualReportSummary ? {
+                              ...liveIntelligence.annualReportSummary,
+                              reportUrl: liveIntelligence.annualReportSummary.source
+                            } : undefined,
+                            earningsCallHighlights: liveIntelligence.earningsCallHighlights ? {
+                              ...liveIntelligence.earningsCallHighlights,
+                              transcriptUrl: liveIntelligence.earningsCallHighlights.source
+                            } : undefined,
                             meetingAttendees: meetingAttendees.map(a => ({
                               name: a.name,
                               title: a.title,
@@ -6200,57 +6218,22 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                                 response: q.response,
                                 methodology: q.methodology
                               }))
-                            } : undefined
+                            } : undefined,
+                            companyWebsite: liveIntelligence.companyOverview?.website,
+                            reportUrl: liveIntelligence.annualReportSummary?.source,
+                            transcriptUrl: liveIntelligence.earningsCallHighlights?.source,
+                            linkedInUrl: meetingAttendees.find(a => a.linkedInUrl)?.linkedInUrl,
+                            externalLinks: [
+                              liveIntelligence.companyOverview?.website ? { label: "Company Website", url: liveIntelligence.companyOverview.website } : null,
+                              liveIntelligence.annualReportSummary?.source ? { label: "Annual Report", url: liveIntelligence.annualReportSummary.source } : null,
+                              liveIntelligence.earningsCallHighlights?.source ? { label: "Earnings Call", url: liveIntelligence.earningsCallHighlights.source } : null
+                            ].filter(Boolean) as Array<{label: string; url: string}>
                           };
-                          generateIntelligencePPT(exportData);
-                        }}
-                        onExportPDF={() => {
-                          if (!liveIntelligence) return;
-                          const exportData: IntelligenceExportData = {
-                            companyName: project.companyName || "Company",
-                            industry: liveIntelligence.companyOverview?.industry,
-                            theme: selectedDiscoveryTheme || undefined,
-                            executiveSummary: liveIntelligence.companyOverview?.description,
-                            insights: liveIntelligence.strategicInsights?.map((insight: any) => ({
-                              title: insight.title || insight.category || "Insight",
-                              value: insight.insight || insight.description || "",
-                              category: insight.category,
-                              priority: insight.priority
-                            })) || [],
-                            annualReportSummary: liveIntelligence.annualReportSummary,
-                            earningsCallHighlights: liveIntelligence.earningsCallHighlights,
-                            meetingAttendees: meetingAttendees.map(a => ({
-                              name: a.name,
-                              title: a.title,
-                              role: a.role,
-                              influence: a.influence,
-                              affiliation: a.affiliation
-                            })),
-                            greenSheet: {
-                              objective: greenSheetEdits.objective,
-                              desiredOutcome: greenSheetEdits.desiredOutcome,
-                              openingStatement: greenSheetEdits.openingStatement,
-                              bestActionCommitment: greenSheetEdits.bestActionCommitment
-                            },
-                            discoveryQuestions: myCallFlow.map(q => ({
-                              question: q.question,
-                              answer: questionAnswers[q.id] || "",
-                              methodology: q.methodology
-                            })),
-                            storyCoaching: storyBuilderData ? {
-                              keyMessage: storyBuilderData.before?.singleMessage || "",
-                              emotionalGoal: storyBuilderData.before?.emotionalReaction || "",
-                              openingHook: storyBuilderData.before?.startingHook || "",
-                              turningPoint: storyBuilderData.during?.turningPoint || "",
-                              callToAction: storyBuilderData.after?.callToAction || "",
-                              tensionQuestions: (storyBuilderData.before?.tensionQuestions || []).map(q => ({
-                                prompt: q.prompt,
-                                response: q.response,
-                                methodology: q.methodology
-                              }))
-                            } : undefined
-                          };
-                          generateIntelligencePDF(exportData);
+                          if (format === "ppt") {
+                            generateIntelligencePPT(exportData, options);
+                          } else {
+                            generateIntelligencePDF(exportData, options);
+                          }
                         }}
                       />
                       <Button 
