@@ -2158,6 +2158,28 @@ export default function ProjectRoleView() {
     }
   });
 
+  // Research attendees mutation (AI enrichment)
+  const researchAttendeesMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", `/api/projects/${projectId}/meeting-profile/research-attendees`, {});
+      return response.json();
+    },
+    onSuccess: (result) => {
+      toast({
+        title: "Attendees researched",
+        description: `AI researched ${result.participantsResearched} attendee(s) with role context, priorities, and engagement tips.`
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/projects', projectId, 'meeting-profile'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Research failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
   // Map AI role values to valid BuyingRole enum
   const mapToBuyingRole = (aiRole: string): BuyingRole | null => {
     const normalizedRole = aiRole?.toLowerCase().replace(/[_\s-]/g, "");
@@ -6911,25 +6933,44 @@ export default function ProjectRoleView() {
                     {/* Multiple Attendees Mode - Attendee Roster */}
                     {meetingMode === "multiple" && (
                     <div className="p-4 rounded-xl border-2 border-emerald-500/20 bg-white/50 space-y-4">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
                         <h4 className="font-semibold text-sm flex items-center gap-2 text-emerald-800">
                           <Users className="w-5 h-5" />
                           Meeting Attendees ({meetingAttendees.length})
                           <span className="text-xs font-normal text-muted-foreground">(Add all stakeholders)</span>
                         </h4>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="gap-1.5 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10"
-                          onClick={() => {
-                            setEditingAttendee(null);
-                            setShowAddAttendeeDialog(true);
-                          }}
-                          data-testid="button-add-attendee"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          Add Attendee
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          {meetingAttendees.length > 0 && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1.5 text-purple-600 border-purple-500/30 hover:bg-purple-500/10"
+                              onClick={() => researchAttendeesMutation.mutate()}
+                              disabled={researchAttendeesMutation.isPending}
+                              data-testid="button-research-attendees"
+                            >
+                              {researchAttendeesMutation.isPending ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Sparkles className="w-3.5 h-3.5" />
+                              )}
+                              {researchAttendeesMutation.isPending ? "Researching..." : "Research Attendees"}
+                            </Button>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10"
+                            onClick={() => {
+                              setEditingAttendee(null);
+                              setShowAddAttendeeDialog(true);
+                            }}
+                            data-testid="button-add-attendee"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            Add Attendee
+                          </Button>
+                        </div>
                       </div>
 
                       {/* Attendee List */}
