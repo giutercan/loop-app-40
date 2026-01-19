@@ -9009,6 +9009,267 @@ Provide your response in this JSON format:
     }
   });
 
+  // POST /api/projects/:projectId/ai/suggest-templates - AI-powered template suggestions based on context
+  app.post("/api/projects/:projectId/ai/suggest-templates", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const project = await storage.getProject(projectId);
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const { 
+        templates, 
+        discoveryTheme, 
+        greenSheet, 
+        meetingAttendees,
+        discoveryInsights 
+      } = req.body;
+      
+      if (!templates || !Array.isArray(templates) || templates.length === 0) {
+        return res.status(400).json({ error: "templates array is required" });
+      }
+      
+      // Fetch stored insights if not provided
+      let insightsContext = "";
+      if (discoveryInsights && discoveryInsights.length > 0) {
+        insightsContext = discoveryInsights.slice(0, 8).map((i: any) => 
+          `- ${i.title || i.label}: ${i.content || i.value}`
+        ).join("\n");
+      } else {
+        const storedInsights = await storage.getCompanyDataPoints(projectId);
+        if (storedInsights.length > 0) {
+          insightsContext = storedInsights.slice(0, 8).map(i => 
+            `- ${i.label}: ${i.value || ''}`
+          ).join("\n");
+        }
+      }
+      
+      // Build attendee context
+      let attendeeContext = "";
+      if (meetingAttendees && meetingAttendees.length > 0) {
+        attendeeContext = meetingAttendees.map((a: any) => 
+          `- ${a.name}: ${a.title || ''} (${a.role || a.affiliation || ''})`
+        ).join("\n");
+      }
+      
+      const prompt = `You are an expert storytelling coach at Korn Ferry. Based on the client context, recommend the best story templates for this upcoming conversation.
+
+=== CLIENT CONTEXT ===
+Company: ${project.companyName}
+Industry: ${project.sector || 'Not specified'}
+Discovery Theme: ${discoveryTheme || project.discoveryTheme || 'General engagement'}
+
+=== GREEN SHEET CONTEXT ===
+${greenSheet?.objective ? `Call Objective: ${greenSheet.objective}` : ''}
+${greenSheet?.desiredOutcome ? `Desired Outcome: ${greenSheet.desiredOutcome}` : ''}
+${greenSheet?.openingStatement ? `Opening Statement: ${greenSheet.openingStatement}` : ''}
+
+=== MEETING ATTENDEES ===
+${attendeeContext || 'No specific attendees identified'}
+
+=== DISCOVERY INSIGHTS ===
+${insightsContext || 'No discovery insights available'}
+
+=== AVAILABLE TEMPLATES ===
+${templates.map((t: any) => `
+Template ID: ${t.id}
+Name: ${t.name}
+Description: ${t.description}
+Tags: ${t.tags?.join(', ') || 'None'}
+Themes: ${t.themes?.join(', ') || 'None'}
+Use Cases: ${t.useCases?.join(', ') || 'None'}
+Target Audience: ${t.audienceRoles?.join(', ') || 'Any'}
+Korn Ferry Solutions: ${t.kornFerrySolutions?.join(', ') || 'General'}
+`).join('\n---\n')}
+
+=== YOUR TASK ===
+Analyze the context and rank the templates by relevance. For each template, provide:
+1. A relevance score (0-100)
+2. A brief rationale explaining why this template fits or doesn't fit
+3. Specific fit reasons based on the context
+
+Return JSON:
+{
+  "recommendations": [
+    {
+      "templateId": "<template id>",
+      "score": <0-100>,
+      "rationale": "<2-3 sentence explanation of fit>",
+      "fitReasons": ["<reason 1>", "<reason 2>"],
+      "bestFor": "<specific scenario this works best for>"
+    }
+  ],
+  "suggestedCombination": {
+    "templateIds": ["<id1>", "<id2>"],
+    "reason": "<why these work well together>"
+  }
+}`;
+
+      console.log("[Template Suggestion] Generating recommendations for", project.companyName);
+      
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.7,
+        max_tokens: 1500,
+        response_format: { type: "json_object" }
+      });
+      
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error("No response from AI");
+      }
+      
+      const result = JSON.parse(content);
+      console.log("[Template Suggestion] Success! Ranked", result.recommendations?.length || 0, "templates");
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Template Suggestion API] Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/projects/:projectId/ai/merge-templates - Merge multiple templates into cohesive narrative
+  app.post("/api/projects/:projectId/ai/merge-templates", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const project = await storage.getProject(projectId);
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const { 
+        templates, 
+        discoveryTheme, 
+        greenSheet, 
+        meetingAttendees,
+        currentStoryData,
+        mergeMode 
+      } = req.body;
+      
+      if (!templates || !Array.isArray(templates) || templates.length < 1) {
+        return res.status(400).json({ error: "At least one template is required" });
+      }
+      
+      // Build attendee context
+      let attendeeContext = "";
+      if (meetingAttendees && meetingAttendees.length > 0) {
+        attendeeContext = meetingAttendees.map((a: any) => 
+          `- ${a.name}: ${a.title || ''} (${a.role || a.affiliation || ''})`
+        ).join("\n");
+      }
+      
+      const prompt = `You are an expert storytelling coach at Korn Ferry. Your task is to merge multiple story templates into a single, cohesive narrative that flows naturally.
+
+=== CLIENT CONTEXT ===
+Company: ${project.companyName}
+Industry: ${project.sector || 'Not specified'}
+Discovery Theme: ${discoveryTheme || project.discoveryTheme || 'General engagement'}
+
+=== GREEN SHEET CONTEXT ===
+${greenSheet?.objective ? `Call Objective: ${greenSheet.objective}` : ''}
+${greenSheet?.desiredOutcome ? `Desired Outcome: ${greenSheet.desiredOutcome}` : ''}
+
+=== MEETING ATTENDEES ===
+${attendeeContext || 'No specific attendees identified'}
+
+=== TEMPLATES TO MERGE ===
+${templates.map((t: any, idx: number) => `
+TEMPLATE ${idx + 1}: ${t.name}
+Description: ${t.description}
+BEFORE:
+- Key Message: ${t.data?.before?.singleMessage || ''}
+- Opening Hook: ${t.data?.before?.startingHook || ''}
+- Hero Character: ${t.data?.before?.heroCharacter || ''}
+- Emotional Goal: ${t.data?.before?.emotionalReaction || ''}
+- Story Structure: ${t.data?.before?.storyStructure || ''}
+DURING:
+- Opening Line: ${t.data?.during?.openingLine || ''}
+- Turning Point: ${t.data?.during?.turningPoint || ''}
+- Key Data Points: ${t.data?.during?.keyDataPoints || ''}
+AFTER:
+- Moment of Meaning: ${t.data?.after?.momentOfMeaning || ''}
+- Call to Action: ${t.data?.after?.callToAction || ''}
+`).join('\n---\n')}
+
+${currentStoryData && mergeMode === 'fill_gaps' ? `
+=== EXISTING STORY (preserve these elements) ===
+BEFORE:
+- Key Message: ${currentStoryData.before?.singleMessage || '[Empty - fill from templates]'}
+- Opening Hook: ${currentStoryData.before?.startingHook || '[Empty - fill from templates]'}
+- Hero Character: ${currentStoryData.before?.heroCharacter || '[Empty - fill from templates]'}
+DURING:
+- Opening Line: ${currentStoryData.during?.openingLine || '[Empty - fill from templates]'}
+- Turning Point: ${currentStoryData.during?.turningPoint || '[Empty - fill from templates]'}
+AFTER:
+- Moment of Meaning: ${currentStoryData.after?.momentOfMeaning || '[Empty - fill from templates]'}
+- Call to Action: ${currentStoryData.after?.callToAction || '[Empty - fill from templates]'}
+` : ''}
+
+=== YOUR TASK ===
+Create a unified, cohesive story that blends the best elements from the selected templates.
+${mergeMode === 'fill_gaps' ? 'IMPORTANT: Only fill empty elements. Preserve any existing content.' : 'Create a fresh narrative combining the templates\' strengths.'}
+
+The merged story should:
+1. Have a clear, unified core message that connects the themes
+2. Flow naturally from BEFORE → DURING → AFTER
+3. Be tailored to ${project.companyName} and the meeting context
+4. Feel like ONE story, not multiple stories stitched together
+
+Return JSON:
+{
+  "mergedStory": {
+    "before": {
+      "singleMessage": "<unified core message>",
+      "emotionalReaction": "<best fit emotion>",
+      "storyStructure": "<best fit structure>",
+      "startingHook": "<compelling opening>",
+      "heroCharacter": "<who the story is about>",
+      "evidenceToReference": ""
+    },
+    "during": {
+      "openingLine": "<opening line>",
+      "turningPoint": "<pivotal moment>",
+      "keyDataPoints": "<supporting metrics>"
+    },
+    "after": {
+      "momentOfMeaning": "<insight or lesson>",
+      "callToAction": "<specific next step>"
+    }
+  },
+  "narrativeSummary": "<2-3 sentence summary of the unified story>",
+  "templateContributions": [
+    { "templateId": "<id>", "elementsUsed": ["<element1>", "<element2>"] }
+  ]
+}`;
+
+      console.log("[Template Merge] Merging", templates.length, "templates for", project.companyName);
+      
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.8,
+        max_tokens: 2000,
+        response_format: { type: "json_object" }
+      });
+      
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error("No response from AI");
+      }
+      
+      const result = JSON.parse(content);
+      console.log("[Template Merge] Success! Created unified narrative");
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Template Merge API] Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // POST /api/projects/:projectId/ai/generate-methodology-questions - Generate methodology-tagged discovery questions
   app.post("/api/projects/:projectId/ai/generate-methodology-questions", async (req, res) => {
     try {

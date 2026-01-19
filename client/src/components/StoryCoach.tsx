@@ -238,12 +238,17 @@ const structureOptions = [
   { value: "hero-journey", label: "Hero's Journey" }
 ];
 
-// Story templates for common consulting scenarios
-const storyTemplates = [
+// Story templates for common consulting scenarios with AI-ranking metadata
+export const storyTemplates = [
   {
     id: "transformation",
     name: "Leadership Transformation",
     description: "How a leader or organization transformed through Korn Ferry",
+    tags: ["leadership", "transformation", "change", "development", "coaching", "executive"],
+    themes: ["Leadership Development", "Executive Coaching", "Organizational Change", "Team Effectiveness"],
+    useCases: ["New leader onboarding", "Leadership team alignment", "Succession planning", "Performance improvement"],
+    audienceRoles: ["CEO", "CHRO", "Chief People Officer", "SVP HR", "COO"],
+    kornFerrySolutions: ["Leadership Development", "Executive Coaching", "Team Effectiveness", "Leadership Assessment"],
     data: {
       before: {
         singleMessage: "Transformational leadership unlocks organizational potential",
@@ -269,6 +274,11 @@ const storyTemplates = [
     id: "talent-gap",
     name: "Closing the Talent Gap",
     description: "How we helped an organization build a winning talent strategy",
+    tags: ["talent", "recruitment", "hiring", "retention", "workforce", "skills gap"],
+    themes: ["Talent Acquisition", "Workforce Planning", "Skills Development", "Talent Strategy"],
+    useCases: ["High vacancy rates", "Talent shortage", "Skills mismatch", "Hiring quality issues"],
+    audienceRoles: ["CHRO", "VP Talent Acquisition", "Head of HR", "Chief People Officer", "VP HR"],
+    kornFerrySolutions: ["Talent Acquisition", "Workforce Planning", "Success Profiles", "RPO"],
     data: {
       before: {
         singleMessage: "The right talent strategy turns uncertainty into competitive advantage",
@@ -294,6 +304,11 @@ const storyTemplates = [
     id: "culture-shift",
     name: "Culture Shift",
     description: "How culture change drove business results",
+    tags: ["culture", "engagement", "values", "transformation", "organizational change"],
+    themes: ["Culture Transformation", "Employee Engagement", "Organizational Design", "Change Management"],
+    useCases: ["Merger integration", "Cultural misalignment", "Low engagement", "Values reset"],
+    audienceRoles: ["CEO", "CHRO", "Chief People Officer", "Head of Culture", "VP OD"],
+    kornFerrySolutions: ["Culture Shaping", "Employee Engagement", "Organizational Design", "Change Management"],
     data: {
       before: {
         singleMessage: "Culture is the invisible force that shapes everything",
@@ -319,6 +334,11 @@ const storyTemplates = [
     id: "executive-success",
     name: "Executive Success Profile",
     description: "How defining success enabled better hiring decisions",
+    tags: ["executive", "assessment", "hiring", "success profile", "selection", "C-suite"],
+    themes: ["Executive Search", "Leadership Assessment", "Succession Planning", "Selection"],
+    useCases: ["Executive hiring failures", "Succession gaps", "Leadership selection", "Board appointments"],
+    audienceRoles: ["CEO", "CHRO", "Board Member", "Chief People Officer", "Head of Executive Search"],
+    kornFerrySolutions: ["Executive Search", "Assessment", "Success Profiles", "Succession Management"],
     data: {
       before: {
         singleMessage: "You can't find what you haven't defined",
@@ -344,6 +364,11 @@ const storyTemplates = [
     id: "sales-effectiveness",
     name: "Sales Force Effectiveness",
     description: "How aligning sales strategy drove revenue growth",
+    tags: ["sales", "revenue", "performance", "growth", "go-to-market", "commercial"],
+    themes: ["Sales Effectiveness", "Commercial Excellence", "Revenue Growth", "Go-to-Market"],
+    useCases: ["Declining quota attainment", "Sales productivity issues", "New market entry", "Sales transformation"],
+    audienceRoles: ["CRO", "CSO", "VP Sales", "Head of Commercial", "CEO"],
+    kornFerrySolutions: ["Sales Effectiveness", "Rewards & Benefits", "Commercial Transformation"],
     data: {
       before: {
         singleMessage: "The best salespeople aren't born—they're developed",
