@@ -23,6 +23,7 @@ import Presentation from "@/pages/presentation";
 import CompanionCanvas from "@/pages/companion-canvas";
 import ProjectLayout from "@/components/ProjectLayout";
 import HandoffHub from "@/pages/handoff-hub";
+import DeliveryHub from "@/pages/delivery-hub";
 import Integrations from "@/pages/integrations";
 import LeaderWorkspace from "@/pages/LeaderWorkspace";
 import LeaderPackReview from "@/pages/LeaderPackReview";
@@ -93,6 +94,7 @@ function Router() {
       <Route path="/accounts/:id/:role" component={AccountRoleView} />
       <Route path="/accounts/:id" component={AccountValueSpine} />
       <Route path="/projects/:id/handoff" component={HandoffHub} />
+      <Route path="/projects/:id/delivery-hub" component={DeliveryHub} />
       <Route path="/projects/:id/:role" component={ProjectRoleView} />
       <Route path="/discovery">
         <Redirect to="/projects" />

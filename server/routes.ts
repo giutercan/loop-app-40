@@ -14282,4 +14282,201 @@ ${context.intelligenceData ? JSON.stringify(context.intelligenceData, null, 2).s
       res.status(500).json({ error: error.message });
     }
   });
+
+  // ===========================================================================
+  // DELIVERY HUB & CUSTOMER SUCCESS ROUTES
+  // ===========================================================================
+
+  // POST /api/projects/:id/handoff-package/generate - Generate AI-powered handoff package
+  app.post("/api/projects/:id/handoff-package/generate", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const { HandoffPackageService } = await import("./services/handoff-package.service");
+      const service = new HandoffPackageService(storage);
+      const result = await service.generateHandoffPackage(projectId);
+      
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+      
+      res.json(result.package);
+    } catch (error: any) {
+      console.error("[Handoff Package] Generation error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/projects/:id/handoff-package - Get existing handoff package
+  app.get("/api/projects/:id/handoff-package", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const { HandoffPackageService } = await import("./services/handoff-package.service");
+      const service = new HandoffPackageService(storage);
+      const pkg = await service.getHandoffPackage(projectId);
+      
+      if (!pkg) {
+        return res.json(null);
+      }
+      
+      res.json(pkg);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/projects/:id/delivery-readiness - Calculate delivery readiness score
+  app.get("/api/projects/:id/delivery-readiness", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const { HandoffPackageService } = await import("./services/handoff-package.service");
+      const service = new HandoffPackageService(storage);
+      const readiness = await service.calculateDeliveryReadiness(projectId);
+      res.json(readiness);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/projects/:id/success-plans/initialize - Create success plan from commitments
+  app.post("/api/projects/:id/success-plans/initialize", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const { HandoffPackageService } = await import("./services/handoff-package.service");
+      const service = new HandoffPackageService(storage);
+      const plan = await service.initializeSuccessPlan(projectId);
+      res.json(plan);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/projects/:id/success-plans - Get all success plans for project
+  app.get("/api/projects/:id/success-plans", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const plans = await storage.getSuccessPlans(projectId);
+      res.json(plans);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/success-plans/:id - Get single success plan
+  app.get("/api/success-plans/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const plan = await storage.getSuccessPlan(id);
+      if (!plan) {
+        return res.status(404).json({ error: "Success plan not found" });
+      }
+      res.json(plan);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PATCH /api/success-plans/:id - Update success plan
+  app.patch("/api/success-plans/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updateSchema = schema.insertSuccessPlanSchema.partial();
+      const parsed = updateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid request body", details: parsed.error.errors });
+      }
+      const updated = await storage.updateSuccessPlan(id, parsed.data);
+      if (!updated) {
+        return res.status(404).json({ error: "Success plan not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/success-plans/:id - Delete success plan
+  app.delete("/api/success-plans/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteSuccessPlan(id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PATCH /api/projects/:id/lifecycle - Update customer success lifecycle stage
+  app.patch("/api/projects/:id/lifecycle", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const lifecycleSchema = z.object({
+        csLifecycleStage: z.enum(["onboarding", "adoption", "value_realization", "expansion", "advocacy"]).optional(),
+        healthScore: z.number().min(0).max(100).optional(),
+        maturityScore: z.number().min(0).max(100).optional(),
+        healthFactors: z.object({
+          engagement: z.number().min(0).max(100),
+          adoption: z.number().min(0).max(100),
+          sentiment: z.number().min(0).max(100),
+          outcomes: z.number().min(0).max(100),
+        }).optional(),
+      });
+      
+      const parsed = lifecycleSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid request body", details: parsed.error.errors });
+      }
+      
+      const { csLifecycleStage, healthScore, maturityScore, healthFactors } = parsed.data;
+      
+      const updateData: any = {};
+      if (csLifecycleStage) updateData.csLifecycleStage = csLifecycleStage;
+      if (healthScore !== undefined) updateData.healthScore = healthScore;
+      if (maturityScore !== undefined) updateData.maturityScore = maturityScore;
+      if (healthFactors) {
+        updateData.healthFactors = { ...healthFactors, lastCalculated: new Date().toISOString() };
+        updateData.lastHealthUpdate = new Date();
+      }
+      
+      const updated = await storage.updateProject(projectId, updateData);
+      if (!updated) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/projects/:id/confirm-handoff - Confirm handoff to delivery
+  app.post("/api/projects/:id/confirm-handoff", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const handoffSchema = z.object({
+        confirmedBy: z.string().optional(),
+        notes: z.string().optional(),
+      });
+      
+      const parsed = handoffSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid request body", details: parsed.error.errors });
+      }
+      
+      const { confirmedBy, notes } = parsed.data;
+      
+      const updated = await storage.updateProject(projectId, {
+        handoffConfirmedAt: new Date(),
+        handoffConfirmedBy: confirmedBy || "System",
+        handoffNotes: notes,
+        lifecyclePhase: "realization",
+        csLifecycleStage: "onboarding",
+      });
+      
+      if (!updated) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 }

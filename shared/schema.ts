@@ -218,6 +218,41 @@ export const projects = pgTable("projects", {
   // Handoff tracking (sales-to-delivery transition)
   handoffNotes: text("handoff_notes"), // Notes from sales team to delivery
   handoffConfirmedAt: timestamp("handoff_confirmed_at"), // When handoff was confirmed
+  handoffConfirmedBy: text("handoff_confirmed_by"), // Who confirmed the handoff
+  
+  // Customer Success Lifecycle (post-handoff stages)
+  csLifecycleStage: text("cs_lifecycle_stage", { 
+    enum: ["onboarding", "adoption", "value_realization", "expansion", "advocacy"] 
+  }).default("onboarding"),
+  
+  // Health & Maturity Tracking
+  healthScore: integer("health_score").default(100), // 0-100 composite health score
+  maturityScore: integer("maturity_score").default(0), // 0-100 customer maturity
+  lastHealthUpdate: timestamp("last_health_update"),
+  healthFactors: jsonb("health_factors").$type<{
+    engagement: number; // 0-100 based on touchpoints, meetings
+    adoption: number; // 0-100 based on usage/feature uptake
+    sentiment: number; // 0-100 based on NPS, feedback
+    outcomes: number; // 0-100 based on KPI achievement
+    lastCalculated?: string;
+  }>(),
+  
+  // Handoff Package (AI-generated summary for delivery team)
+  handoffPackage: jsonb("handoff_package").$type<{
+    executiveSummary: string;
+    whyTheyBought: string[];
+    successCriteria: string[];
+    keyStakeholders: Array<{
+      name: string;
+      role: string;
+      influence: string;
+      notes: string;
+    }>;
+    risksAndConcerns: string[];
+    specialCommitments: string[];
+    recommendedActions: string[];
+    generatedAt?: string;
+  }>(),
   
   // Discovery progress tracking (Guided Discovery wizard state)
   discoveryTheme: text("discovery_theme"), // Selected theme ID (e.g., "leadership", "kf-full-search")
@@ -1170,6 +1205,66 @@ export type JobThemeWithKPIs = z.infer<typeof jobThemeWithKPIsSchema>;
 // ============================================================================
 // PHASE 1: VALUE REALIZATION FEATURES
 // ============================================================================
+
+// Success Plans - Joint success plans co-created with customers
+export const successPlans = pgTable("success_plans", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  title: text("title").notNull().default("Success Plan"),
+  status: text("status", { 
+    enum: ["draft", "active", "completed", "archived"] 
+  }).notNull().default("draft"),
+  
+  // Customer Context
+  desiredOutcomes: jsonb("desired_outcomes").$type<Array<{
+    id: string;
+    outcome: string;
+    businessImpact: string;
+    successMetric: string;
+    targetDate: string;
+    status: "not_started" | "in_progress" | "achieved" | "at_risk";
+    linkedKPIIds?: number[];
+  }>>(),
+  
+  // Responsibilities & Ownership
+  customerResponsibilities: text("customer_responsibilities").array(),
+  vendorResponsibilities: text("vendor_responsibilities").array(),
+  executiveSponsor: text("executive_sponsor"),
+  deliveryLead: text("delivery_lead"),
+  
+  // Timeline & Cadence
+  kickoffDate: timestamp("kickoff_date"),
+  targetCompletionDate: timestamp("target_completion_date"),
+  reviewCadence: text("review_cadence", { 
+    enum: ["weekly", "bi-weekly", "monthly", "quarterly"] 
+  }).default("monthly"),
+  nextReviewDate: timestamp("next_review_date"),
+  
+  // Health & Progress
+  overallProgress: integer("overall_progress").default(0), // 0-100%
+  riskLevel: text("risk_level", { 
+    enum: ["low", "medium", "high"] 
+  }).default("low"),
+  riskNotes: text("risk_notes"),
+  
+  // Audit
+  createdBy: text("created_by"),
+  lastUpdatedBy: text("last_updated_by"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertSuccessPlanSchema = createInsertSchema(successPlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  kickoffDate: z.coerce.date().nullable().optional(),
+  targetCompletionDate: z.coerce.date().nullable().optional(),
+  nextReviewDate: z.coerce.date().nullable().optional(),
+});
+export type InsertSuccessPlan = z.infer<typeof insertSuccessPlanSchema>;
+export type SuccessPlan = typeof successPlans.$inferSelect;
 
 // Business Reviews - Regular meetings to validate alignment and track progress
 export const businessReviews = pgTable("business_reviews", {

@@ -36,6 +36,7 @@ import type {
   JobThemeKPI, InsertJobThemeKPI,
   DiscoveryPhaseTransfer, InsertDiscoveryPhaseTransfer,
   BusinessReview, InsertBusinessReview,
+  SuccessPlan, InsertSuccessPlan,
   KPIActual, InsertKPIActual,
   SuccessStory, InsertSuccessStory,
   AlignmentShareLink, InsertAlignmentShareLink,
@@ -205,6 +206,13 @@ export interface IStorage {
   updateDiscoveryPhaseTransfer(id: number, transfer: Partial<InsertDiscoveryPhaseTransfer>): Promise<DiscoveryPhaseTransfer | undefined>;
   
   // PHASE 1: Value Realization Features
+  
+  // Success Plans
+  getSuccessPlans(projectId: number): Promise<SuccessPlan[]>;
+  getSuccessPlan(id: number): Promise<SuccessPlan | undefined>;
+  createSuccessPlan(plan: InsertSuccessPlan): Promise<SuccessPlan>;
+  updateSuccessPlan(id: number, plan: Partial<InsertSuccessPlan>): Promise<SuccessPlan | undefined>;
+  deleteSuccessPlan(id: number): Promise<void>;
   
   // Business Reviews
   getBusinessReviews(projectId: number): Promise<BusinessReview[]>;
@@ -1065,6 +1073,36 @@ export class DbStorage implements IStorage {
   // ============================================================================
   // PHASE 1: VALUE REALIZATION FEATURES
   // ============================================================================
+  
+  // Success Plans
+  async getSuccessPlans(projectId: number): Promise<SuccessPlan[]> {
+    return await db.select().from(schema.successPlans)
+      .where(eq(schema.successPlans.projectId, projectId))
+      .orderBy(desc(schema.successPlans.createdAt));
+  }
+  
+  async getSuccessPlan(id: number): Promise<SuccessPlan | undefined> {
+    const results = await db.select().from(schema.successPlans)
+      .where(eq(schema.successPlans.id, id));
+    return results[0];
+  }
+  
+  async createSuccessPlan(plan: InsertSuccessPlan): Promise<SuccessPlan> {
+    const results = await db.insert(schema.successPlans).values(plan).returning();
+    return results[0];
+  }
+  
+  async updateSuccessPlan(id: number, plan: Partial<InsertSuccessPlan>): Promise<SuccessPlan | undefined> {
+    const results = await db.update(schema.successPlans)
+      .set({...plan, updatedAt: new Date()})
+      .where(eq(schema.successPlans.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deleteSuccessPlan(id: number): Promise<void> {
+    await db.delete(schema.successPlans).where(eq(schema.successPlans.id, id));
+  }
   
   // Business Reviews
   async getBusinessReviews(projectId: number): Promise<BusinessReview[]> {
