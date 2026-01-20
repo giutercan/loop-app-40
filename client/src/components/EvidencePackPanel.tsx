@@ -31,7 +31,12 @@ import {
   Clock,
   User,
   Shield,
-  Download
+  Download,
+  Users,
+  Building2,
+  BarChart3,
+  Heart,
+  GraduationCap
 } from "lucide-react";
 import { SourceLink, SourcePreviewDrawer } from "@/components/evidence-pack";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -94,6 +99,29 @@ const itemTypeIcons = {
   benchmark: FileText,
   testimonial: MessageSquare,
   artifact: Package,
+  // Quantitative evidence
+  kpi: BarChart3,
+  baseline: BarChart3,
+  target: Target,
+  assumption: AlertCircle,
+  // Discovery evidence
+  stakeholder_claim: Users,
+  meeting_insight: MessageSquare,
+  // Skills & coaching (internal-facing)
+  coaching_observation: GraduationCap,
+  communication_signal: MessageSquare,
+  leadership_behavior: Award,
+  skill_growth_metric: TrendingUp,
+  // Relationship building
+  stakeholder_trust_signal: Heart,
+  relationship_milestone: CheckCircle2,
+  engagement_indicator: Eye,
+  // Deal progression
+  risk: AlertCircle,
+  decision: CheckCircle2,
+  commitment: Target,
+  deliverable: Package,
+  next_action: Clock,
 };
 
 const valuePillarColors = {
@@ -101,6 +129,21 @@ const valuePillarColors = {
   optimise: "bg-blue-500/20 text-blue-700 dark:text-blue-400",
   derisk: "bg-orange-500/20 text-orange-700 dark:text-orange-400",
   strengthen: "bg-purple-500/20 text-purple-700 dark:text-purple-400",
+};
+
+// Audience scope configuration
+const audienceScopeConfig = {
+  customer: { label: "Customer-Facing", icon: Building2, color: "bg-blue-500/20 text-blue-700 dark:text-blue-400" },
+  internal: { label: "Internal/Leadership", icon: Users, color: "bg-purple-500/20 text-purple-700 dark:text-purple-400" },
+  both: { label: "All Audiences", icon: Eye, color: "bg-muted text-muted-foreground" },
+};
+
+// Skill domain configuration
+const skillDomainConfig = {
+  soft_skill: { label: "Soft Skills", icon: Heart, color: "bg-pink-500/20 text-pink-700 dark:text-pink-400" },
+  hard_data: { label: "Hard Data", icon: BarChart3, color: "bg-green-500/20 text-green-700 dark:text-green-400" },
+  relationship: { label: "Relationship", icon: Users, color: "bg-blue-500/20 text-blue-700 dark:text-blue-400" },
+  skills_building: { label: "Skills Building", icon: GraduationCap, color: "bg-orange-500/20 text-orange-700 dark:text-orange-400" },
 };
 
 export function EvidencePackPanel({ 
@@ -117,6 +160,7 @@ export function EvidencePackPanel({
   const [newItemSection, setNewItemSection] = useState("");
   const [previewItem, setPreviewItem] = useState<EvidencePackItem | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [audienceFilter, setAudienceFilter] = useState<"all" | "customer" | "internal">("all");
 
   const { data, isLoading, refetch } = useQuery<EvidencePackResponse>({
     queryKey: [`/api/projects/${projectId}/evidence-pack`],
@@ -268,7 +312,20 @@ export function EvidencePackPanel({
   const qualityScore = pack?.qualityScore ?? 0;
   const StatusIcon = pack?.status ? statusConfig[pack.status as keyof typeof statusConfig]?.icon : FileText;
 
-  const groupedItems = items.reduce((acc, item) => {
+  // Filter items by audience scope
+  const filteredItems = items.filter(item => {
+    if (audienceFilter === "all") return true;
+    const itemAudience = (item as any).audienceScope || "both";
+    if (audienceFilter === "customer") {
+      return itemAudience === "customer" || itemAudience === "both";
+    }
+    if (audienceFilter === "internal") {
+      return itemAudience === "internal" || itemAudience === "both";
+    }
+    return true;
+  });
+
+  const groupedItems = filteredItems.reduce((acc, item) => {
     const section = item.section || "General";
     if (!acc[section]) acc[section] = [];
     acc[section].push(item);
@@ -543,11 +600,124 @@ export function EvidencePackPanel({
                 </CardContent>
               </Card>
 
+              {/* Audience Filter Toggle */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
+                  <Button
+                    size="sm"
+                    variant={audienceFilter === "all" ? "default" : "ghost"}
+                    onClick={() => setAudienceFilter("all")}
+                    className="h-7 text-xs"
+                    data-testid="filter-all"
+                  >
+                    <Eye className="w-3 h-3 mr-1" />
+                    All
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={audienceFilter === "customer" ? "default" : "ghost"}
+                    onClick={() => setAudienceFilter("customer")}
+                    className="h-7 text-xs"
+                    data-testid="filter-customer"
+                  >
+                    <Building2 className="w-3 h-3 mr-1" />
+                    Customer
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={audienceFilter === "internal" ? "default" : "ghost"}
+                    onClick={() => setAudienceFilter("internal")}
+                    className="h-7 text-xs"
+                    data-testid="filter-internal"
+                  >
+                    <Users className="w-3 h-3 mr-1" />
+                    Internal
+                  </Button>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {audienceFilter === "customer" && "Showing client-shareable content"}
+                  {audienceFilter === "internal" && "Showing leadership/coaching content"}
+                </div>
+              </div>
+
+              {/* Skills & Relationship Scorecard - shows when viewing internal content */}
+              {audienceFilter === "internal" && filteredItems.length > 0 && (
+                <Card className="mb-4 border-purple-500/20 bg-purple-500/5">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <GraduationCap className="w-4 h-4 text-purple-500" />
+                      Skills & Relationship Metrics
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="grid grid-cols-2 gap-3">
+                      {Object.entries(skillDomainConfig).map(([domain, config]) => {
+                        const domainItems = filteredItems.filter(
+                          (item) => (item as any).skillDomain === domain
+                        );
+                        const DomainIcon = config.icon;
+                        const validatedCount = domainItems.filter(
+                          (item) => item.itemStatus === "approved" || item.itemStatus === "validated"
+                        ).length;
+                        
+                        return (
+                          <div key={domain} className="p-2 rounded-md bg-background border">
+                            <div className="flex items-center gap-2 mb-1">
+                              <DomainIcon className="w-3 h-3 text-muted-foreground" />
+                              <span className="text-xs font-medium">{config.label}</span>
+                            </div>
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-lg font-bold">{domainItems.length}</span>
+                              <span className="text-xs text-muted-foreground">items</span>
+                              {validatedCount > 0 && (
+                                <span className="text-xs text-green-600 ml-auto">
+                                  {validatedCount} validated
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* Relationship health summary */}
+                    {(() => {
+                      const trustSignals = filteredItems.filter(
+                        (item) => item.itemType === "stakeholder_trust_signal"
+                      );
+                      if (trustSignals.length === 0) return null;
+                      
+                      const avgRating = trustSignals.reduce((sum, item) => {
+                        const val = parseFloat((item as any).metricValue || "0");
+                        return sum + (isNaN(val) ? 0 : val);
+                      }, 0) / trustSignals.length;
+                      
+                      return (
+                        <div className="mt-3 p-2 rounded-md bg-blue-500/10 border border-blue-500/20">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Users className="w-4 h-4 text-blue-500" />
+                              <span className="text-sm font-medium">Relationship Health</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg font-bold text-blue-600">{avgRating.toFixed(1)}</span>
+                              <span className="text-xs text-muted-foreground">/ 5</span>
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Based on {trustSignals.length} stakeholder trust signal{trustSignals.length > 1 ? "s" : ""}
+                          </p>
+                        </div>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+              )}
+
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="w-full">
                   <TabsTrigger value="items" className="flex-1" data-testid="tab-items">
                     <Package className="w-4 h-4 mr-1" />
-                    Items ({items.length})
+                    Items ({filteredItems.length}{audienceFilter !== "all" ? ` of ${items.length}` : ""})
                   </TabsTrigger>
                   <TabsTrigger value="recommendations" className="flex-1" data-testid="tab-recommendations">
                     <Sparkles className="w-4 h-4 mr-1" />
@@ -595,6 +765,21 @@ export function EvidencePackPanel({
                                           {item.valuePillar && (
                                             <Badge className={`text-xs ${valuePillarColors[item.valuePillar as keyof typeof valuePillarColors]}`}>
                                               {item.valuePillar}
+                                            </Badge>
+                                          )}
+                                          {(item as any).skillDomain && skillDomainConfig[(item as any).skillDomain as keyof typeof skillDomainConfig] && (
+                                            <Badge className={`text-xs ${skillDomainConfig[(item as any).skillDomain as keyof typeof skillDomainConfig].color}`}>
+                                              {(() => {
+                                                const DomainIcon = skillDomainConfig[(item as any).skillDomain as keyof typeof skillDomainConfig].icon;
+                                                return <DomainIcon className="w-3 h-3 mr-1" />;
+                                              })()}
+                                              {skillDomainConfig[(item as any).skillDomain as keyof typeof skillDomainConfig].label}
+                                            </Badge>
+                                          )}
+                                          {(item as any).audienceScope === "internal" && (
+                                            <Badge variant="outline" className="text-xs border-purple-500/30 text-purple-600 dark:text-purple-400">
+                                              <Users className="w-3 h-3 mr-1" />
+                                              Internal Only
                                             </Badge>
                                           )}
                                           {item.aiGenerated && (

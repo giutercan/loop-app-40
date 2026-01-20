@@ -2499,7 +2499,11 @@ export const evidencePackItems = pgTable("evidence_pack_items", {
       // Delivery proof
       "outcome_signal", "proof_object",
       // Deal progression
-      "risk", "decision", "commitment", "deliverable", "next_action"
+      "risk", "decision", "commitment", "deliverable", "next_action",
+      // Skills & coaching (internal-facing)
+      "coaching_observation", "communication_signal", "leadership_behavior", "skill_growth_metric",
+      // Relationship building
+      "stakeholder_trust_signal", "relationship_milestone", "engagement_indicator"
     ] 
   }).notNull(),
   
@@ -2605,6 +2609,44 @@ export const evidencePackItems = pgTable("evidence_pack_items", {
   
   // Value pillar alignment
   valuePillar: text("value_pillar", { enum: ["grow", "optimise", "derisk", "strengthen"] }),
+  
+  // Audience targeting - who should see this evidence
+  audienceScope: text("audience_scope", { 
+    enum: ["customer", "internal", "both"] 
+  }).default("both"),
+  
+  // Evidence sensitivity - controls sharing
+  evidenceSensitivity: text("evidence_sensitivity", {
+    enum: ["client_shareable", "internal_only", "leadership_only"]
+  }).default("client_shareable"),
+  
+  // Skill domain classification - for metrics and coaching
+  skillDomain: text("skill_domain", {
+    enum: ["soft_skill", "hard_data", "relationship", "skills_building"]
+  }),
+  
+  // Skill category - specific skill being demonstrated/measured
+  skillCategory: text("skill_category", {
+    enum: [
+      // Soft skills
+      "communication", "coaching", "leadership", "influence", "negotiation", "presentation",
+      // Relationship building
+      "stakeholder_trust", "engagement", "rapport", "alignment", "collaboration",
+      // Hard data/quantitative
+      "financial_impact", "operational_metrics", "performance_data", "benchmark_comparison",
+      // Skills building
+      "methodology_application", "discovery_technique", "value_articulation", "objection_handling"
+    ]
+  }),
+  
+  // Metric tracking for skills/relationship building
+  metricType: text("metric_type", {
+    enum: ["quantitative", "qualitative", "behavioral", "milestone"]
+  }),
+  metricValue: text("metric_value"), // The measured value (could be number or rating)
+  metricUnit: text("metric_unit"), // e.g., "%, score, count, rating"
+  metricBaseline: text("metric_baseline"), // Starting point for comparison
+  metricTarget: text("metric_target"), // Goal to achieve
   
   // Idempotency key for deduplication when syncing
   idempotencyKey: text("idempotency_key").unique(),

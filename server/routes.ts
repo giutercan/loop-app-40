@@ -12256,8 +12256,18 @@ Provide a JSON response with:
       
       const items = await storage.getEvidencePackItems(pack.id);
       
-      // Only return approved items for external view
-      const approvedItems = items.filter(item => item.itemStatus === "approved");
+      // Only return approved items that are customer-shareable for external view
+      // Filter out internal-only items and items marked as leadership-only
+      const approvedItems = items.filter(item => {
+        if (item.itemStatus !== "approved") return false;
+        // Filter by audience scope - exclude internal-only items
+        const audienceScope = (item as any).audienceScope;
+        if (audienceScope === "internal") return false;
+        // Filter by sensitivity - exclude internal/leadership-only items
+        const sensitivity = (item as any).evidenceSensitivity;
+        if (sensitivity === "internal_only" || sensitivity === "leadership_only") return false;
+        return true;
+      });
       
       // Get project info for context
       const project = await storage.getProject(pack.projectId);

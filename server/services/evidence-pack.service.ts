@@ -270,6 +270,7 @@ export class EvidencePackService {
         const stakeholderKey = `manual-${stakeholderIdStr}-stakeholder_claim`;
         if (existingSourceIds.has(stakeholderKey)) continue;
 
+        // Create customer-facing stakeholder claim
         const stakeholderItem = await this.storage.createEvidencePackItem({
           packId: pack.id,
           itemType: "stakeholder_claim" as any,
@@ -281,6 +282,10 @@ export class EvidencePackService {
           confidenceLevel: "medium" as any,
           itemStatus: "needs_stakeholder_validation" as any,
           valuePillar: null,
+          audienceScope: "customer" as any,
+          evidenceSensitivity: "client_shareable" as any,
+          skillDomain: "relationship" as any,
+          skillCategory: "stakeholder_trust" as any,
           content: {
             stakeholderName: influence.name,
             stakeholderRole: influence.role,
@@ -295,7 +300,45 @@ export class EvidencePackService {
         } as any);
         createdItems.push(stakeholderItem);
         existingSourceIds.add(stakeholderKey);
-        console.log(`[Evidence Pack] Created stakeholder item for ${influence.name || 'unknown'}`)
+        
+        // Create internal trust signal for relationship tracking
+        const trustKey = `manual-${stakeholderIdStr}-stakeholder_trust_signal`;
+        if (!existingSourceIds.has(trustKey)) {
+          const trustItem = await this.storage.createEvidencePackItem({
+            packId: pack.id,
+            itemType: "stakeholder_trust_signal" as any,
+            claim: `Trust indicator for ${influence.name}: ${influence.rating || 'Unknown'} rating, ${influence.degree || 'Unknown'} degree of influence`,
+            sourceType: "manual",
+            sourceId: typeof influence.id === 'number' ? influence.id : null,
+            sourceKind: "human" as any,
+            sourceEventId: `trust-${stakeholderIdStr}`,
+            confidenceLevel: influence.rating === 5 ? "high" : influence.rating >= 3 ? "medium" : "exploratory",
+            itemStatus: "draft" as any,
+            valuePillar: null,
+            audienceScope: "internal" as any,
+            evidenceSensitivity: "internal_only" as any,
+            skillDomain: "relationship" as any,
+            skillCategory: "stakeholder_trust" as any,
+            metricType: "quantitative" as any,
+            metricValue: influence.rating ? String(influence.rating) : null,
+            metricUnit: "rating (1-5)",
+            content: {
+              stakeholderName: influence.name,
+              stakeholderRole: influence.role,
+            },
+            links: {
+              projectId: pack.projectId,
+              bluesheetId: bluesheet!.id,
+              stakeholderIds: influence.id ? [influence.id] : undefined,
+            },
+            displayOrder: startOrder + createdItems.length,
+            section: "Relationship Metrics",
+          } as any);
+          createdItems.push(trustItem);
+          existingSourceIds.add(trustKey);
+        }
+        
+        console.log(`[Evidence Pack] Created stakeholder + trust items for ${influence.name || 'unknown'}`)
       }
     }
 

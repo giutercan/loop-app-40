@@ -4841,7 +4841,11 @@ const validItemTypes = [
   "stakeholder_claim", "meeting_insight",
   "behavior_condition", "behavior_signal", "lever_applied",
   "outcome_signal", "proof_object",
-  "risk", "decision", "commitment", "deliverable", "next_action"
+  "risk", "decision", "commitment", "deliverable", "next_action",
+  // Skills & coaching (internal-facing)
+  "coaching_observation", "communication_signal", "leadership_behavior", "skill_growth_metric",
+  // Relationship building
+  "stakeholder_trust_signal", "relationship_milestone", "engagement_indicator"
 ] as const;
 const validValuePillars = ["grow", "optimise", "derisk", "strengthen"] as const;
 
@@ -4961,6 +4965,31 @@ const normalizeItemType = (val: unknown): typeof validItemTypes[number] => {
     'lesson_learned': 'insight',
     'lesson': 'insight',
     'takeaway': 'insight',
+    // Skills & coaching types (internal-facing)
+    'coaching_observation': 'coaching_observation',
+    'coaching': 'coaching_observation',
+    'coaching_note': 'coaching_observation',
+    'coaching_tip': 'coaching_observation',
+    'feedback': 'coaching_observation',
+    'communication_signal': 'communication_signal',
+    'communication': 'communication_signal',
+    'presentation_skill': 'communication_signal',
+    'leadership_behavior': 'leadership_behavior',
+    'leadership': 'leadership_behavior',
+    'leadership_skill': 'leadership_behavior',
+    'skill_growth_metric': 'skill_growth_metric',
+    'skill_metric': 'skill_growth_metric',
+    'growth_metric': 'skill_growth_metric',
+    'performance_metric': 'skill_growth_metric',
+    // Relationship building types
+    'stakeholder_trust_signal': 'stakeholder_trust_signal',
+    'trust_signal': 'stakeholder_trust_signal',
+    'trust_indicator': 'stakeholder_trust_signal',
+    'relationship_milestone': 'relationship_milestone',
+    'relationship_progress': 'relationship_milestone',
+    'engagement_indicator': 'engagement_indicator',
+    'engagement_signal': 'engagement_indicator',
+    'engagement': 'engagement_indicator',
   };
   const result = mappings[normalized];
   if (!result) {
