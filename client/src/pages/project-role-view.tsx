@@ -5846,6 +5846,323 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
     );
   };
 
+  // Evidence Pack Inline Component
+  const EvidencePackInline = ({ projectId, projectName }: { projectId: number; projectName?: string }) => {
+    const [addItemOpen, setAddItemOpen] = useState(false);
+    const [newItemClaim, setNewItemClaim] = useState("");
+    const [newItemType, setNewItemType] = useState<string>("claim");
+    
+    const { data: evidenceData, isLoading: evidenceLoading, refetch: refetchEvidence } = useQuery<any>({
+      queryKey: [`/api/projects/${projectId}/evidence-pack`],
+      enabled: !!projectId,
+    });
+
+    const createPackMutation = useMutation({
+      mutationFn: async () => {
+        return await apiRequest("POST", `/api/projects/${projectId}/evidence-pack`, {
+          title: `${projectName || 'Project'} - Evidence Pack`,
+          ownerName: "Seller",
+          ownerId: "current-user",
+        });
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/evidence-pack`] });
+        toast({ title: "Evidence Pack created" });
+      },
+      onError: (error: Error) => {
+        toast({ title: "Failed to create pack", description: error.message, variant: "destructive" });
+      },
+    });
+
+    const addItemMutation = useMutation({
+      mutationFn: async (itemData: { claim: string; itemType: string }) => {
+        return await apiRequest("POST", `/api/evidence-packs/${evidenceData?.pack?.id}/items`, {
+          ...itemData,
+          actorName: "Seller",
+          actorId: "current-user",
+        });
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/evidence-pack`] });
+        setNewItemClaim("");
+        setNewItemType("claim");
+        setAddItemOpen(false);
+        toast({ title: "Item added to pack" });
+      },
+    });
+
+    const deleteItemMutation = useMutation({
+      mutationFn: async (itemId: number) => {
+        return await apiRequest("DELETE", `/api/evidence-pack-items/${itemId}`, {
+          actorName: "Seller",
+          actorId: "current-user",
+        });
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/evidence-pack`] });
+        toast({ title: "Item removed" });
+      },
+    });
+
+    const submitForReviewMutation = useMutation({
+      mutationFn: async () => {
+        return await apiRequest("PATCH", `/api/evidence-packs/${evidenceData?.pack?.id}`, {
+          status: "pending_review",
+          actorName: "Seller",
+          actorId: "current-user",
+        });
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/evidence-pack`] });
+        toast({ title: "Submitted for review" });
+      },
+    });
+
+    const getRecommendationsMutation = useMutation({
+      mutationFn: async () => {
+        return await apiRequest("POST", `/api/evidence-packs/${evidenceData?.pack?.id}/recommendations`, {
+          phase: "discovery"
+        });
+      },
+      onSuccess: (data: any) => {
+        toast({ title: "AI generated recommendations" });
+        refetchEvidence();
+      },
+    });
+
+    const pack = evidenceData?.pack;
+    const items = evidenceData?.items || [];
+
+    const statusConfig: Record<string, { label: string; color: string; icon: typeof FileText }> = {
+      draft: { label: "Draft", color: "bg-muted text-muted-foreground", icon: FileText },
+      pending_review: { label: "Pending Review", color: "bg-yellow-500/20 text-yellow-700", icon: Clock },
+      in_review: { label: "In Review", color: "bg-blue-500/20 text-blue-700", icon: Eye },
+      approved: { label: "Approved", color: "bg-green-500/20 text-green-700", icon: CheckCircle2 },
+      rejected: { label: "Needs Work", color: "bg-red-500/20 text-red-700", icon: AlertCircle },
+      shared: { label: "Shared", color: "bg-purple-500/20 text-purple-700", icon: ExternalLink },
+    };
+
+    const itemTypeIcons: Record<string, typeof Target> = {
+      claim: Target,
+      insight: Lightbulb,
+      outcome: TrendingUp,
+      success_story: Award,
+      benchmark: FileText,
+      testimonial: MessageSquare,
+      artifact: Briefcase,
+    };
+
+    if (evidenceLoading) {
+      return (
+        <Card>
+          <CardContent className="py-12">
+            <div className="flex items-center justify-center">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-muted-foreground">Loading evidence pack...</span>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (!pack) {
+      return (
+        <Card className="border-dashed border-2" data-testid="evidence-pack-empty">
+          <CardContent className="py-12">
+            <div className="text-center">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center mx-auto mb-4">
+                <Briefcase className="w-8 h-8 text-amber-600" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Create Evidence Pack</h3>
+              <p className="text-muted-foreground text-sm mb-4 max-w-md mx-auto">
+                Build a collection of claims and proof points to support your value proposition with stakeholders.
+              </p>
+              <Button 
+                onClick={() => createPackMutation.mutate()}
+                disabled={createPackMutation.isPending}
+                className="bg-amber-600 hover:bg-amber-700"
+                data-testid="button-create-evidence-pack"
+              >
+                {createPackMutation.isPending ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating...</>
+                ) : (
+                  <><Plus className="w-4 h-4 mr-2" /> Create Evidence Pack</>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    const status = statusConfig[pack.status] || statusConfig.draft;
+    const StatusIcon = status.icon;
+
+    return (
+      <div className="space-y-6" data-testid="evidence-pack-content">
+        {/* Header */}
+        <Card className="bg-gradient-to-r from-amber-500/5 via-orange-500/5 to-red-500/5 border-amber-500/20">
+          <CardHeader>
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center">
+                  <Briefcase className="w-6 h-6 text-amber-600" />
+                </div>
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    Evidence Pack
+                    <Badge className={`${status.color} text-xs`}>
+                      <StatusIcon className="w-3 h-3 mr-1" />
+                      {status.label}
+                    </Badge>
+                  </CardTitle>
+                  <CardDescription>
+                    {items.length} item{items.length !== 1 ? 's' : ''} · Claims & proof points for stakeholder conversations
+                  </CardDescription>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => getRecommendationsMutation.mutate()}
+                  disabled={getRecommendationsMutation.isPending}
+                  data-testid="button-ai-recommendations"
+                >
+                  {getRecommendationsMutation.isPending ? (
+                    <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generating...</>
+                  ) : (
+                    <><Sparkles className="w-4 h-4 mr-1" /> AI Suggest</>
+                  )}
+                </Button>
+                {pack.status === "draft" && items.length > 0 && (
+                  <Button
+                    size="sm"
+                    onClick={() => submitForReviewMutation.mutate()}
+                    disabled={submitForReviewMutation.isPending}
+                    data-testid="button-submit-review"
+                  >
+                    <Send className="w-4 h-4 mr-1" />
+                    Submit for Review
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
+
+        {/* Add Item Section */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Pack Items</CardTitle>
+              <Button 
+                size="sm" 
+                onClick={() => setAddItemOpen(!addItemOpen)}
+                data-testid="button-add-item"
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Add Item
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {addItemOpen && (
+              <div className="mb-4 p-4 rounded-lg border bg-muted/30 space-y-3">
+                <div>
+                  <Label htmlFor="item-claim">Claim or Statement</Label>
+                  <Textarea
+                    id="item-claim"
+                    placeholder="e.g., Increased sales productivity by 25% within 6 months"
+                    value={newItemClaim}
+                    onChange={(e) => setNewItemClaim(e.target.value)}
+                    className="mt-1"
+                    data-testid="input-item-claim"
+                  />
+                </div>
+                <div>
+                  <Label>Item Type</Label>
+                  <Select value={newItemType} onValueChange={setNewItemType}>
+                    <SelectTrigger className="mt-1" data-testid="select-item-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="claim">Claim</SelectItem>
+                      <SelectItem value="insight">Insight</SelectItem>
+                      <SelectItem value="outcome">Outcome</SelectItem>
+                      <SelectItem value="success_story">Success Story</SelectItem>
+                      <SelectItem value="benchmark">Benchmark</SelectItem>
+                      <SelectItem value="testimonial">Testimonial</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    size="sm"
+                    onClick={() => addItemMutation.mutate({ claim: newItemClaim, itemType: newItemType })}
+                    disabled={!newItemClaim.trim() || addItemMutation.isPending}
+                    data-testid="button-save-item"
+                  >
+                    {addItemMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add Item"}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setAddItemOpen(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {items.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileCheck className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No items yet. Add claims and proof points to build your evidence pack.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {items.map((item: any) => {
+                  const ItemIcon = itemTypeIcons[item.itemType] || Target;
+                  return (
+                    <div 
+                      key={item.id}
+                      className="flex items-start gap-3 p-3 rounded-lg border bg-background hover-elevate group"
+                      data-testid={`evidence-item-${item.id}`}
+                    >
+                      <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+                        <ItemIcon className="w-4 h-4 text-amber-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{item.claim}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className="text-xs capitalize">
+                            {item.itemType?.replace('_', ' ')}
+                          </Badge>
+                          {item.valuePillar && (
+                            <Badge variant="secondary" className="text-xs capitalize">
+                              {item.valuePillar}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                        onClick={() => deleteItemMutation.mutate(item.id)}
+                        data-testid={`button-delete-item-${item.id}`}
+                      >
+                        <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
   // Calculate workflow stage completion for progress indicator
   const getWorkflowProgress = () => {
     const hasDiscoveryInsights = insights.length > 0;
@@ -5859,6 +6176,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
       strategy: 0, // Blue Sheet completion - will be calculated from blueSheet data
       align: hasConfirmedCommitments ? 100 : (hasCommitments ? 50 : 0),
       handoff: hasHandoffs ? 100 : (hasConfirmedCommitments ? 50 : 0),
+      evidence: 0, // Evidence pack progress - will be calculated from evidence pack data
     };
   };
   
@@ -5875,12 +6193,14 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
             { id: "align", label: "Outcomes & Alignment", icon: Target, progress: workflowProgress.align, description: "Design & Confirm Value" },
             { id: "strategy", label: "Strategy Synthesis", icon: FileText, progress: workflowProgress.strategy, description: "Auto-Generated Blue Sheet", isSynthesis: true },
             { id: "handoff", label: "Handoff", icon: ArrowUpRight, progress: workflowProgress.handoff, description: "Transition to Delivery" },
+            { id: "evidence", label: "Evidence Pack", icon: Briefcase, progress: workflowProgress.evidence, description: "Claims & Proof Points", isEvidence: true },
           ].map((stage, idx) => {
             const isActive = activeTab === stage.id;
             const isComplete = stage.progress === 100;
             const StageIcon = stage.icon;
             
             const isSynthesis = (stage as any).isSynthesis;
+            const isEvidence = (stage as any).isEvidence;
             return (
               <button
                 key={stage.id}
@@ -5890,7 +6210,9 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                     ? "bg-primary/10 border-primary/30 shadow-sm" 
                     : isSynthesis
                       ? "bg-gradient-to-r from-purple-500/5 to-blue-500/5 border-purple-500/20 hover-elevate"
-                      : "bg-background border-border/50 hover-elevate"
+                      : isEvidence
+                        ? "bg-gradient-to-r from-amber-500/5 to-orange-500/5 border-amber-500/20 hover-elevate"
+                        : "bg-background border-border/50 hover-elevate"
                 }`}
                 data-testid={`nav-${stage.id}`}
               >
@@ -5902,7 +6224,9 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                         ? "bg-primary text-primary-foreground" 
                         : isSynthesis
                           ? "bg-gradient-to-r from-purple-500/20 to-blue-500/20 text-purple-600"
-                          : "bg-muted text-muted-foreground"
+                          : isEvidence
+                            ? "bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-600"
+                            : "bg-muted text-muted-foreground"
                   }`}>
                     {isComplete ? <Check className="w-4 h-4" /> : isSynthesis ? <Brain className="w-4 h-4" /> : <StageIcon className="w-4 h-4" />}
                   </div>
@@ -5912,6 +6236,11 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                       {isSynthesis && (
                         <Badge variant="outline" className="text-[10px] py-0 h-4 border-purple-500/30 text-purple-600 bg-purple-500/5">
                           AI
+                        </Badge>
+                      )}
+                      {isEvidence && (
+                        <Badge variant="outline" className="text-[10px] py-0 h-4 border-amber-500/30 text-amber-600 bg-amber-500/5">
+                          Proof
                         </Badge>
                       )}
                     </div>
@@ -5952,7 +6281,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
       <div className="flex-1 min-w-0">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           {/* Mobile Tab Navigation */}
-          <TabsList className="grid grid-cols-4 w-full lg:hidden">
+          <TabsList className="grid grid-cols-5 w-full lg:hidden">
             <TabsTrigger value="discover" data-testid="tab-discover">
               <Sparkles className="w-4 h-4 mr-1" />
               <span className="hidden sm:inline">Discover</span>
@@ -5968,6 +6297,10 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
             <TabsTrigger value="handoff" data-testid="tab-handoff">
               <ArrowUpRight className="w-4 h-4 mr-1" />
               <span className="hidden sm:inline">Handoff</span>
+            </TabsTrigger>
+            <TabsTrigger value="evidence" data-testid="tab-evidence">
+              <Briefcase className="w-4 h-4 mr-1" />
+              <span className="hidden sm:inline">Evidence</span>
             </TabsTrigger>
           </TabsList>
 
@@ -10014,6 +10347,11 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
           {/* STAGE 4: HANDOFF - Transition to Delivery */}
           <TabsContent value="handoff" className="space-y-6">
             <HandoffTab projectId={projectId} project={project} />
+          </TabsContent>
+
+          {/* STAGE 5: EVIDENCE PACK - Claims & Proof Points */}
+          <TabsContent value="evidence" className="space-y-6" data-testid="tab-content-evidence">
+            <EvidencePackInline projectId={projectId} projectName={project?.companyName || project?.name} />
           </TabsContent>
         </Tabs>
       </div>
