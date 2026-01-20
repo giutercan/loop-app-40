@@ -10347,7 +10347,8 @@ Respond in JSON format:
   app.patch("/api/projects/:projectId/handoffs/:id/accept", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const { csmOwnerName, csmOwnerEmail, acceptanceNotes } = req.body;
+      const projectId = parseInt(req.params.projectId);
+      const { csmOwnerName, csmOwnerEmail, acceptanceNotes, initializeSuccessPlan } = req.body;
       
       const updated = await storage.updateHandoffPacket(id, {
         acceptanceState: "accepted",
@@ -10368,7 +10369,51 @@ Respond in JSON format:
         }
       }
       
-      res.json(updated);
+      // Initialize success plan if requested
+      let successPlan = null;
+      if (initializeSuccessPlan) {
+        const project = await storage.getProject(projectId);
+        const commitments = updated.commitmentIds 
+          ? await Promise.all(updated.commitmentIds.map((cId: number) => storage.getKpiCommitment(cId)))
+          : [];
+        
+        // Create success plan with outcomes from commitments
+        const desiredOutcomes = commitments
+          .filter((c): c is NonNullable<typeof c> => c !== undefined)
+          .map(c => ({
+            id: String(c.id),
+            outcome: c.commitmentTitle || 'Outcome',
+            businessImpact: `Target: ${c.targetValue || 'TBD'}`,
+            successMetric: c.kpiName || 'TBD',
+            targetDate: c.targetDate ? new Date(c.targetDate).toISOString().split('T')[0] : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            status: "not_started" as const,
+            linkedKPIIds: [c.id],
+          }));
+        
+        successPlan = await storage.createSuccessPlan({
+          projectId,
+          title: `${project?.companyName || 'Client'} Success Plan`,
+          status: "active",
+          desiredOutcomes,
+          customerResponsibilities: [
+            "Provide timely access to data and stakeholders",
+            "Participate in regular check-in meetings",
+            "Communicate changes in priorities or scope"
+          ],
+          vendorResponsibilities: [
+            "Deliver on agreed outcomes within timeline",
+            "Provide regular progress updates",
+            "Escalate risks proactively"
+          ],
+        });
+        
+        // Update project lifecycle stage to onboarding
+        await storage.updateProject(projectId, {
+          csLifecycleStage: "onboarding",
+        });
+      }
+      
+      res.json({ handoff: updated, successPlan });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

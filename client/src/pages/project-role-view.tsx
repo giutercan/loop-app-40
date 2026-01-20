@@ -12688,13 +12688,24 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
     projectId: number; 
     project: Project; 
   }) => {
+    const [editingOutcome, setEditingOutcome] = useState<string | null>(null);
+    const [outcomeStatus, setOutcomeStatus] = useState<Record<string, string>>({});
+    
     // Fetch success plans
-    const { data: successPlans = [], isLoading: plansLoading } = useQuery<Array<{
+    const { data: successPlans = [], isLoading: plansLoading, error: plansError } = useQuery<Array<{
       id: number;
       projectId: number;
       title: string;
       status: string;
-      desiredOutcomes: string[];
+      desiredOutcomes: Array<{
+        id: string;
+        outcome: string;
+        businessImpact: string;
+        successMetric: string;
+        targetDate: string;
+        status: "not_started" | "in_progress" | "achieved" | "at_risk";
+        linkedKPIIds?: number[];
+      }>;
       customerResponsibilities: string[];
       vendorResponsibilities: string[];
       executiveSponsor: string | null;
@@ -12709,6 +12720,36 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
     }>>({
       queryKey: ["/api/projects", projectId, "success-plans"],
     });
+
+    // Mutation to update success plan
+    const updatePlanMutation = useMutation({
+      mutationFn: async (data: { id: number; updates: any }) => {
+        const res = await apiRequest("PATCH", `/api/success-plans/${data.id}`, data.updates);
+        return res.json();
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "success-plans"] });
+        setEditingOutcome(null);
+        toast({ title: "Outcome Updated", description: "Status has been updated successfully." });
+      },
+      onError: () => {
+        toast({ variant: "destructive", title: "Error", description: "Failed to update outcome status." });
+      },
+    });
+
+    const updateOutcomeStatus = (planId: number, outcomeId: string, newStatus: string) => {
+      const plan = successPlans.find(p => p.id === planId);
+      if (!plan) return;
+      
+      const updatedOutcomes = plan.desiredOutcomes.map(o => 
+        o.id === outcomeId ? { ...o, status: newStatus as any } : o
+      );
+      
+      updatePlanMutation.mutate({
+        id: planId,
+        updates: { desiredOutcomes: updatedOutcomes }
+      });
+    };
 
     const currentPlan = successPlans[0];
 
@@ -12771,8 +12812,13 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 </div>
                 <div className="p-4 rounded-lg bg-background border">
                   <p className="text-sm text-muted-foreground">Desired Outcomes</p>
-                  <p className="text-2xl font-bold text-amber-600">{currentPlan.desiredOutcomes.length}</p>
+                  <p className="text-2xl font-bold text-amber-600">{currentPlan.desiredOutcomes?.length || 0}</p>
                 </div>
+              </div>
+            ) : plansError ? (
+              <div className="text-center py-6 text-destructive">
+                <AlertCircle className="w-10 h-10 mx-auto mb-3" />
+                <p className="text-sm">Failed to load success plans</p>
               </div>
             ) : (
               <div className="text-center py-6">
@@ -12834,6 +12880,78 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 </CardContent>
               </Card>
             </div>
+
+            {/* Desired Outcomes Management */}
+            {currentPlan.desiredOutcomes && currentPlan.desiredOutcomes.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Target className="w-5 h-5 text-amber-600" />
+                    Desired Outcomes
+                  </CardTitle>
+                  <CardDescription>Track and manage customer success outcomes</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {currentPlan.desiredOutcomes.map((outcome) => (
+                      <div 
+                        key={outcome.id} 
+                        className="p-4 rounded-lg border bg-background"
+                        data-testid={`outcome-${outcome.id}`}
+                      >
+                        <div className="flex items-start justify-between gap-4 mb-3">
+                          <div className="flex-1">
+                            <h4 className="font-medium">{outcome.outcome}</h4>
+                            <p className="text-sm text-muted-foreground mt-1">{outcome.businessImpact}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Select 
+                              value={outcome.status} 
+                              onValueChange={(val) => updateOutcomeStatus(currentPlan.id, outcome.id, val)}
+                              disabled={updatePlanMutation.isPending}
+                            >
+                              <SelectTrigger className="w-36" data-testid={`select-outcome-status-${outcome.id}`}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="not_started">Not Started</SelectItem>
+                                <SelectItem value="in_progress">In Progress</SelectItem>
+                                <SelectItem value="achieved">Achieved</SelectItem>
+                                <SelectItem value="at_risk">At Risk</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="grid gap-3 md:grid-cols-3 text-sm">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Success Metric</p>
+                            <p className="font-medium">{outcome.successMetric}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Target Date</p>
+                            <p className="font-medium">
+                              {outcome.targetDate ? new Date(outcome.targetDate).toLocaleDateString() : "—"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Status</p>
+                            <Badge 
+                              variant={
+                                outcome.status === "achieved" ? "default" :
+                                outcome.status === "in_progress" ? "secondary" :
+                                outcome.status === "at_risk" ? "destructive" : "outline"
+                              }
+                            >
+                              {outcome.status.replace("_", " ")}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Key Stakeholders */}
             <Card>
@@ -12905,17 +13023,19 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
     const [clarificationQuestion, setClarificationQuestion] = useState("");
     const [selectedHandoff, setSelectedHandoff] = useState<any>(null);
     const [acceptanceNotes, setAcceptanceNotes] = useState("");
+    const [initializeSuccessPlan, setInitializeSuccessPlan] = useState(true);
     const [isAcceptDialogOpen, setIsAcceptDialogOpen] = useState(false);
     const [isClarifyDialogOpen, setIsClarifyDialogOpen] = useState(false);
     const [showAIPackageDetails, setShowAIPackageDetails] = useState(false);
 
     // Fetch handoff packets
-    const { data: handoffPackets = [], isLoading: packetsLoading } = useQuery({
+    const { data: handoffPackets = [], isLoading: packetsLoading, error: packetsError } = useQuery({
       queryKey: ["/api/projects", projectId, "handoffs"],
+      enabled: !!projectId,
     });
 
     // Fetch AI handoff package
-    const { data: aiHandoffPackage, isLoading: aiPackageLoading, refetch: refetchAIPackage } = useQuery<{
+    const { data: aiHandoffPackage, isLoading: aiPackageLoading, error: aiPackageError, refetch: refetchAIPackage } = useQuery<{
       handoffBrief: string;
       keyCommitments: Array<{ name: string; target: string; timeline: string }>;
       criticalSuccessFactors: string[];
@@ -12923,14 +13043,16 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
       riskAreas: string[];
     }>({
       queryKey: ["/api/projects", projectId, "handoff-package"],
+      enabled: !!projectId,
     });
 
     // Fetch delivery readiness
-    const { data: deliveryReadiness, isLoading: readinessLoading } = useQuery<{
+    const { data: deliveryReadiness, isLoading: readinessLoading, error: readinessError } = useQuery<{
       score: number;
       checks: Array<{ label: string; passed: boolean; weight: number }>;
     }>({
       queryKey: ["/api/projects", projectId, "delivery-readiness"],
+      enabled: !!projectId,
     });
 
     // Generate AI handoff package mutation
@@ -12959,13 +13081,18 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
         const response = await apiRequest("PATCH", `/api/projects/${projectId}/handoffs/${id}/accept`, data);
         return response.json();
       },
-      onSuccess: () => {
+      onSuccess: (data) => {
         queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "handoffs"] });
         queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "commitments"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "success-plans"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId] });
         setIsAcceptDialogOpen(false);
         setSelectedHandoff(null);
         setAcceptanceNotes("");
-        toast({ title: "Handoff accepted", description: "Outcomes are now ready for delivery tracking." });
+        const message = data?.successPlan 
+          ? "Handoff accepted and success plan initialized."
+          : "Outcomes are now ready for delivery tracking.";
+        toast({ title: "Handoff accepted", description: message });
       },
       onError: () => {
         toast({ variant: "destructive", title: "Error", description: "Failed to accept handoff." });
@@ -13414,6 +13541,17 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                   data-testid="input-acceptance-notes"
                 />
               </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="initialize-success-plan"
+                  checked={initializeSuccessPlan}
+                  onCheckedChange={(checked) => setInitializeSuccessPlan(checked === true)}
+                  data-testid="checkbox-initialize-success-plan"
+                />
+                <Label htmlFor="initialize-success-plan" className="text-sm font-medium cursor-pointer">
+                  Initialize Success Plan from handoff outcomes
+                </Label>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsAcceptDialogOpen(false)}>
@@ -13427,6 +13565,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                       data: {
                         csmOwnerName: "CSM Team",
                         acceptanceNotes,
+                        initializeSuccessPlan,
                       }
                     });
                   }
