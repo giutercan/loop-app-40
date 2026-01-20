@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Skeleton } from "@/components/ui/skeleton";
 import { 
   ArrowLeft,
   ArrowRight,
@@ -83,6 +84,7 @@ import {
   MessageCircle,
   ExternalLink,
   X,
+  XCircle,
   Play,
   Search,
   RefreshCw,
@@ -12678,6 +12680,220 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
     );
   };
 
+  // Success Plan Tab Component
+  const SuccessPlanTab = ({ 
+    projectId, 
+    project 
+  }: { 
+    projectId: number; 
+    project: Project; 
+  }) => {
+    // Fetch success plans
+    const { data: successPlans = [], isLoading: plansLoading } = useQuery<Array<{
+      id: number;
+      projectId: number;
+      title: string;
+      status: string;
+      desiredOutcomes: string[];
+      customerResponsibilities: string[];
+      vendorResponsibilities: string[];
+      executiveSponsor: string | null;
+      deliveryLead: string | null;
+      kickoffDate: string | null;
+      targetCompletionDate: string | null;
+      reviewCadence: string;
+      nextReviewDate: string | null;
+      overallProgress: number;
+      riskLevel: string;
+      riskNotes: string | null;
+    }>>({
+      queryKey: ["/api/projects", projectId, "success-plans"],
+    });
+
+    const currentPlan = successPlans[0];
+
+    return (
+      <div className="space-y-6">
+        {/* Success Plan Header */}
+        <Card className="bg-gradient-to-r from-amber-500/5 to-orange-500/5 border-amber-500/20">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                  <Star className="w-6 h-6 text-amber-600" />
+                </div>
+                <div>
+                  <CardTitle>Joint Success Plan</CardTitle>
+                  <CardDescription>Collaborative success planning with customer stakeholders</CardDescription>
+                </div>
+              </div>
+              {currentPlan && (
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">Overall Progress</p>
+                  <div className="flex items-center gap-2">
+                    <Progress value={currentPlan.overallProgress} className="w-24 h-2" />
+                    <span className="text-lg font-bold">{currentPlan.overallProgress}%</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {plansLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-24 w-full" />
+              </div>
+            ) : currentPlan ? (
+              <div className="grid gap-4 md:grid-cols-4">
+                <div className="p-4 rounded-lg bg-background border">
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  <Badge 
+                    variant={currentPlan.status === "active" ? "default" : "secondary"}
+                    className="mt-1"
+                    data-testid="badge-plan-status"
+                  >
+                    {currentPlan.status.charAt(0).toUpperCase() + currentPlan.status.slice(1)}
+                  </Badge>
+                </div>
+                <div className="p-4 rounded-lg bg-background border">
+                  <p className="text-sm text-muted-foreground">Review Cadence</p>
+                  <p className="font-medium capitalize">{currentPlan.reviewCadence}</p>
+                </div>
+                <div className="p-4 rounded-lg bg-background border">
+                  <p className="text-sm text-muted-foreground">Risk Level</p>
+                  <Badge 
+                    variant={currentPlan.riskLevel === "low" ? "default" : currentPlan.riskLevel === "medium" ? "secondary" : "destructive"}
+                    data-testid="badge-risk-level"
+                  >
+                    {currentPlan.riskLevel.charAt(0).toUpperCase() + currentPlan.riskLevel.slice(1)}
+                  </Badge>
+                </div>
+                <div className="p-4 rounded-lg bg-background border">
+                  <p className="text-sm text-muted-foreground">Desired Outcomes</p>
+                  <p className="text-2xl font-bold text-amber-600">{currentPlan.desiredOutcomes.length}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <Star className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground mb-3">No success plan created yet</p>
+                <p className="text-xs text-muted-foreground">
+                  Success plans will be auto-generated when handoff is confirmed
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {currentPlan && (
+          <>
+            {/* Responsibilities */}
+            <div className="grid gap-6 lg:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-blue-600" />
+                    Customer Responsibilities
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {currentPlan.customerResponsibilities.map((resp, idx) => (
+                      <div key={idx} className="flex items-start gap-2 p-2 rounded-md bg-muted/50" data-testid={`customer-responsibility-${idx}`}>
+                        <CheckCircle2 className="w-4 h-4 text-blue-500 mt-0.5" />
+                        <span className="text-sm">{resp}</span>
+                      </div>
+                    ))}
+                    {currentPlan.customerResponsibilities.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-4">No responsibilities defined</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Briefcase className="w-5 h-5 text-emerald-600" />
+                    Korn Ferry Responsibilities
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {currentPlan.vendorResponsibilities.map((resp, idx) => (
+                      <div key={idx} className="flex items-start gap-2 p-2 rounded-md bg-muted/50" data-testid={`vendor-responsibility-${idx}`}>
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500 mt-0.5" />
+                        <span className="text-sm">{resp}</span>
+                      </div>
+                    ))}
+                    {currentPlan.vendorResponsibilities.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-4">No responsibilities defined</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Key Stakeholders */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <UserCheck className="w-5 h-5" />
+                  Key Stakeholders
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="p-4 rounded-lg border">
+                    <p className="text-sm text-muted-foreground">Executive Sponsor</p>
+                    <p className="font-medium">{currentPlan.executiveSponsor || "Not assigned"}</p>
+                  </div>
+                  <div className="p-4 rounded-lg border">
+                    <p className="text-sm text-muted-foreground">Delivery Lead</p>
+                    <p className="font-medium">{currentPlan.deliveryLead || "Not assigned"}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Timeline */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="w-5 h-5" />
+                  Timeline & Reviews
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="p-4 rounded-lg border">
+                    <p className="text-sm text-muted-foreground">Kickoff Date</p>
+                    <p className="font-medium">
+                      {currentPlan.kickoffDate ? new Date(currentPlan.kickoffDate).toLocaleDateString() : "Not set"}
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-lg border">
+                    <p className="text-sm text-muted-foreground">Target Completion</p>
+                    <p className="font-medium">
+                      {currentPlan.targetCompletionDate ? new Date(currentPlan.targetCompletionDate).toLocaleDateString() : "Not set"}
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-lg border">
+                    <p className="text-sm text-muted-foreground">Next Review</p>
+                    <p className="font-medium">
+                      {currentPlan.nextReviewDate ? new Date(currentPlan.nextReviewDate).toLocaleDateString() : "Not scheduled"}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
+      </div>
+    );
+  };
+
   // Incoming Handoffs Tab Component (CSM receives KPIs from Sales)
   const IncomingHandoffsTab = ({ 
     projectId, 
@@ -12691,10 +12907,45 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
     const [acceptanceNotes, setAcceptanceNotes] = useState("");
     const [isAcceptDialogOpen, setIsAcceptDialogOpen] = useState(false);
     const [isClarifyDialogOpen, setIsClarifyDialogOpen] = useState(false);
+    const [showAIPackageDetails, setShowAIPackageDetails] = useState(false);
 
     // Fetch handoff packets
     const { data: handoffPackets = [], isLoading: packetsLoading } = useQuery({
       queryKey: ["/api/projects", projectId, "handoffs"],
+    });
+
+    // Fetch AI handoff package
+    const { data: aiHandoffPackage, isLoading: aiPackageLoading, refetch: refetchAIPackage } = useQuery<{
+      handoffBrief: string;
+      keyCommitments: Array<{ name: string; target: string; timeline: string }>;
+      criticalSuccessFactors: string[];
+      recommendedActions: string[];
+      riskAreas: string[];
+    }>({
+      queryKey: ["/api/projects", projectId, "handoff-package"],
+    });
+
+    // Fetch delivery readiness
+    const { data: deliveryReadiness, isLoading: readinessLoading } = useQuery<{
+      score: number;
+      checks: Array<{ label: string; passed: boolean; weight: number }>;
+    }>({
+      queryKey: ["/api/projects", projectId, "delivery-readiness"],
+    });
+
+    // Generate AI handoff package mutation
+    const generateAIPackageMutation = useMutation({
+      mutationFn: async () => {
+        const response = await apiRequest("POST", `/api/projects/${projectId}/handoff-package/generate`);
+        return response.json();
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "handoff-package"] });
+        toast({ title: "AI Package Generated", description: "The handoff brief has been created." });
+      },
+      onError: () => {
+        toast({ variant: "destructive", title: "Error", description: "Failed to generate AI package." });
+      }
     });
 
     // Fetch commitments for display
@@ -12809,6 +13060,172 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
             </div>
           </CardContent>
         </Card>
+
+        {/* AI Handoff Package & Delivery Readiness */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Delivery Readiness Score */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="w-5 h-5 text-blue-600" />
+                  Delivery Readiness
+                </CardTitle>
+                <CardDescription>Pre-handoff checklist completion</CardDescription>
+              </div>
+              {deliveryReadiness && (
+                <Badge 
+                  variant={deliveryReadiness.score >= 80 ? "default" : "secondary"}
+                  data-testid="badge-readiness-status"
+                >
+                  {deliveryReadiness.score >= 80 ? "Ready" : "In Progress"}
+                </Badge>
+              )}
+            </CardHeader>
+            <CardContent>
+              {readinessLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-24 w-full" />
+                </div>
+              ) : deliveryReadiness ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <div className="text-3xl font-bold" data-testid="text-readiness-score">
+                      {deliveryReadiness.score}%
+                    </div>
+                    <Progress value={deliveryReadiness.score} className="flex-1 h-3" />
+                  </div>
+                  <div className="grid gap-2">
+                    {deliveryReadiness.checks.map((check, idx) => (
+                      <div 
+                        key={idx}
+                        className="flex items-center gap-2 p-2 rounded-md bg-muted/50"
+                        data-testid={`readiness-check-${idx}`}
+                      >
+                        {check.passed ? (
+                          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        <span className="text-sm flex-1">{check.label}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {check.weight}%
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Unable to calculate readiness</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* AI Handoff Package */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-purple-600" />
+                  AI Handoff Brief
+                </CardTitle>
+                <CardDescription>AI-generated engagement summary</CardDescription>
+              </div>
+              <Button
+                size="sm"
+                variant={aiHandoffPackage ? "outline" : "default"}
+                onClick={() => generateAIPackageMutation.mutate()}
+                disabled={generateAIPackageMutation.isPending}
+                data-testid="button-generate-ai-package"
+              >
+                {generateAIPackageMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4 mr-2" />
+                )}
+                {aiHandoffPackage ? "Regenerate" : "Generate"}
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {aiPackageLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ) : aiHandoffPackage ? (
+                <div className="space-y-4">
+                  <div className="p-3 rounded-lg bg-purple-500/5 border border-purple-500/20">
+                    <p className="text-sm whitespace-pre-wrap">{aiHandoffPackage.handoffBrief}</p>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setShowAIPackageDetails(!showAIPackageDetails)}
+                    className="w-full"
+                    data-testid="button-toggle-ai-details"
+                  >
+                    {showAIPackageDetails ? (
+                      <ChevronUp className="w-4 h-4 mr-2" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 mr-2" />
+                    )}
+                    {showAIPackageDetails ? "Hide Details" : "Show Details"}
+                  </Button>
+                  {showAIPackageDetails && (
+                    <div className="space-y-4">
+                      {aiHandoffPackage.keyCommitments?.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-medium mb-2">Key Commitments</h4>
+                          <div className="space-y-2">
+                            {aiHandoffPackage.keyCommitments.map((c, i) => (
+                              <div key={i} className="p-2 rounded bg-muted/50 text-sm">
+                                <span className="font-medium">{c.name}</span>
+                                <span className="text-muted-foreground ml-2">
+                                  Target: {c.target} by {c.timeline}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {aiHandoffPackage.criticalSuccessFactors?.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-medium mb-2">Critical Success Factors</h4>
+                          <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                            {aiHandoffPackage.criticalSuccessFactors.map((f, i) => (
+                              <li key={i}>{f}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {aiHandoffPackage.riskAreas?.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                            <AlertTriangle className="w-4 h-4 text-amber-500" />
+                            Risk Areas
+                          </h4>
+                          <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                            {aiHandoffPackage.riskAreas.map((r, i) => (
+                              <li key={i}>{r}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <Sparkles className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Generate an AI-powered handoff brief to summarize this engagement
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Pending Handoffs */}
         {pendingPackets.length > 0 && (
@@ -13114,6 +13531,183 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
 
       {/* Health Dashboard - CS-style health scores (Trend #4: CS playbooks in value governance) */}
       <TabsContent value="health" className="space-y-6">
+        {/* Customer Success Lifecycle Stage */}
+        <Card className="bg-gradient-to-r from-indigo-500/5 to-purple-500/5 border-indigo-500/20">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                  <TrendingUp className="w-6 h-6 text-indigo-600" />
+                </div>
+                <div>
+                  <CardTitle>Customer Success Lifecycle</CardTitle>
+                  <CardDescription>Track engagement through the success journey</CardDescription>
+                </div>
+              </div>
+              <Badge variant="outline" className="text-indigo-600 border-indigo-300" data-testid="badge-lifecycle-stage">
+                {project?.csLifecycleStage ? project.csLifecycleStage.charAt(0).toUpperCase() + project.csLifecycleStage.slice(1) : "Onboarding"}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              {["onboarding", "adoption", "value_realization", "expansion", "advocacy"].map((stage, idx) => {
+                const currentStageIdx = ["onboarding", "adoption", "value_realization", "expansion", "advocacy"].indexOf(project?.csLifecycleStage || "onboarding");
+                const isActive = idx === currentStageIdx;
+                const isCompleted = idx < currentStageIdx;
+                const stageLabels: Record<string, string> = {
+                  onboarding: "Onboarding",
+                  adoption: "Adoption",
+                  value_realization: "Value Realization",
+                  expansion: "Expansion",
+                  advocacy: "Advocacy"
+                };
+                return (
+                  <div key={stage} className="flex-1 flex flex-col items-center" data-testid={`lifecycle-stage-${stage}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                      isActive ? "bg-indigo-600 text-white" : 
+                      isCompleted ? "bg-emerald-500 text-white" : 
+                      "bg-muted text-muted-foreground"
+                    }`}>
+                      {isCompleted ? <Check className="w-4 h-4" /> : idx + 1}
+                    </div>
+                    <span className={`text-xs mt-1 text-center ${isActive ? "font-medium" : "text-muted-foreground"}`}>
+                      {stageLabels[stage]}
+                    </span>
+                    {idx < 4 && (
+                      <div className={`hidden sm:block h-0.5 w-full mt-4 ${isCompleted ? "bg-emerald-500" : "bg-muted"}`} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Health & Maturity Scores */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="w-5 h-5 text-emerald-600" />
+                Health Score
+              </CardTitle>
+              <CardDescription>Composite engagement health indicator</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4 mb-4">
+                <div className="relative w-24 h-24">
+                  <svg className="w-24 h-24 -rotate-90">
+                    <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="8" fill="none" className="text-muted" />
+                    <circle 
+                      cx="48" cy="48" r="40" 
+                      stroke="currentColor" 
+                      strokeWidth="8" 
+                      fill="none" 
+                      strokeDasharray={`${((project?.healthScore || 100) / 100) * 251} 251`}
+                      className={`${(project?.healthScore || 100) >= 70 ? "text-emerald-500" : (project?.healthScore || 100) >= 40 ? "text-amber-500" : "text-red-500"}`}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-2xl font-bold" data-testid="text-health-score">{project?.healthScore || 100}</span>
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm text-muted-foreground mb-2">Health Factors</p>
+                  <div className="space-y-1">
+                    {(project as any)?.healthFactors ? (
+                      <>
+                        <div className="flex items-center justify-between text-sm">
+                          <span>KPI Performance</span>
+                          <Badge variant={(project as any).healthFactors.kpiPerformance >= 70 ? "default" : "secondary"}>
+                            {(project as any).healthFactors.kpiPerformance}%
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span>Engagement Activity</span>
+                          <Badge variant={(project as any).healthFactors.engagementActivity >= 70 ? "default" : "secondary"}>
+                            {(project as any).healthFactors.engagementActivity}%
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span>Stakeholder Alignment</span>
+                          <Badge variant={(project as any).healthFactors.stakeholderAlignment >= 70 ? "default" : "secondary"}>
+                            {(project as any).healthFactors.stakeholderAlignment}%
+                          </Badge>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between text-sm">
+                          <span>KPI Performance</span>
+                          <Badge variant={kpisAtRisk === 0 ? "default" : "secondary"}>
+                            {kpisAtRisk === 0 ? "Good" : "Needs Attention"}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span>Engagement Activity</span>
+                          <Badge variant="default">Active</Badge>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span>Stakeholder Alignment</span>
+                          <Badge variant="default">Aligned</Badge>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-blue-600" />
+                Maturity Score
+              </CardTitle>
+              <CardDescription>Customer success maturity level</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4 mb-4">
+                <div className="relative w-24 h-24">
+                  <svg className="w-24 h-24 -rotate-90">
+                    <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="8" fill="none" className="text-muted" />
+                    <circle 
+                      cx="48" cy="48" r="40" 
+                      stroke="currentColor" 
+                      strokeWidth="8" 
+                      fill="none" 
+                      strokeDasharray={`${((project?.maturityScore || 0) / 100) * 251} 251`}
+                      className="text-blue-500"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-2xl font-bold" data-testid="text-maturity-score">{project?.maturityScore || 0}</span>
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm text-muted-foreground mb-2">Maturity Indicators</p>
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span>Process Adoption</span>
+                      <Progress value={(project?.maturityScore || 0) * 0.6} className="w-20 h-2" />
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span>Value Realization</span>
+                      <Progress value={(project?.maturityScore || 0) * 0.4} className="w-20 h-2" />
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span>Self-Service</span>
+                      <Progress value={(project?.maturityScore || 0) * 0.25} className="w-20 h-2" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         <Card className="bg-gradient-to-r from-emerald-500/5 to-blue-500/5 border-emerald-500/20" data-demo-step="delivery-dashboard">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -13122,12 +13716,12 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                   <Activity className="w-6 h-6 text-emerald-600" />
                 </div>
                 <div>
-                  <CardTitle>Engagement Health Dashboard</CardTitle>
-                  <CardDescription>Real-time health scores and value delivery status</CardDescription>
+                  <CardTitle>Outcome Health Summary</CardTitle>
+                  <CardDescription>Real-time value delivery status</CardDescription>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-xs text-muted-foreground">Overall Health</p>
+                <p className="text-xs text-muted-foreground">Overall Status</p>
                 <div className="flex items-center gap-2">
                   <div className={`w-3 h-3 rounded-full ${kpisAtRisk === 0 ? "bg-emerald-500" : kpisAtRisk <= 2 ? "bg-amber-500" : "bg-red-500"}`} />
                   <span className="text-xl font-bold">
@@ -13496,95 +14090,9 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
         </Card>
       </TabsContent>
 
-      {/* Success Capture - Capture success stories (Trend #6: HR value quantification) */}
+      {/* Success Plan Management - Joint success planning with customer */}
       <TabsContent value="success-capture" className="space-y-6">
-        <Card className="bg-gradient-to-r from-amber-500/5 to-orange-500/5 border-amber-500/20">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                <Star className="w-6 h-6 text-amber-600" />
-              </div>
-              <div>
-                <CardTitle>Success Story Capture</CardTitle>
-                <CardDescription>Document wins and outcomes for future proof points</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="p-4 rounded-lg bg-background border">
-                <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp className="w-4 h-4 text-emerald-600" />
-                  <span className="font-medium text-sm">Quantified Outcomes</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Document measurable improvements with before/after data
-                </p>
-              </div>
-              <div className="p-4 rounded-lg bg-background border">
-                <div className="flex items-center gap-2 mb-2">
-                  <MessageSquare className="w-4 h-4 text-blue-600" />
-                  <span className="font-medium text-sm">Client Testimonials</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Capture quotes and feedback from stakeholders
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Star className="w-5 h-5 text-amber-600" />
-                Captured Success Stories
-              </CardTitle>
-              <CardDescription>Stories ready for verification and library addition</CardDescription>
-            </div>
-            <Button data-testid="button-capture-story">
-              <Plus className="w-4 h-4 mr-2" />
-              Capture Story
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8">
-              <Star className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground mb-2">No success stories captured yet</p>
-              <p className="text-sm text-muted-foreground">
-                Document wins as they happen to build your proof point library
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Story Template</CardTitle>
-            <CardDescription>Use this structure to capture compelling success stories</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="p-3 rounded-lg border">
-                <span className="text-sm font-medium">Challenge</span>
-                <p className="text-xs text-muted-foreground mt-1">What was the business problem?</p>
-              </div>
-              <div className="p-3 rounded-lg border">
-                <span className="text-sm font-medium">Solution</span>
-                <p className="text-xs text-muted-foreground mt-1">What Korn Ferry solution was implemented?</p>
-              </div>
-              <div className="p-3 rounded-lg border">
-                <span className="text-sm font-medium">Outcome</span>
-                <p className="text-xs text-muted-foreground mt-1">What measurable results were achieved?</p>
-              </div>
-              <div className="p-3 rounded-lg border">
-                <span className="text-sm font-medium">Quote</span>
-                <p className="text-xs text-muted-foreground mt-1">Client testimonial or endorsement</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <SuccessPlanTab projectId={projectId} project={project} />
       </TabsContent>
     </Tabs>
   );
