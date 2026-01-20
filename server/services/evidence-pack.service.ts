@@ -266,8 +266,8 @@ export class EvidencePackService {
         const influence = influences[i];
         if (!influence.personalWins && !influence.businessResults) continue;
 
-        const stakeholderId = influence.id || `${bluesheet!.id}-${i}`;
-        const stakeholderKey = `manual-${stakeholderId}-stakeholder_claim`;
+        const stakeholderIdStr = influence.id ? String(influence.id) : `bluesheet-${bluesheet!.id}-${i}`;
+        const stakeholderKey = `manual-${stakeholderIdStr}-stakeholder_claim`;
         if (existingSourceIds.has(stakeholderKey)) continue;
 
         const stakeholderItem = await this.storage.createEvidencePackItem({
@@ -275,9 +275,9 @@ export class EvidencePackService {
           itemType: "stakeholder_claim" as any,
           claim: influence.personalWins || influence.businessResults || `${influence.name} - ${influence.role}`,
           sourceType: "manual",
-          sourceId: stakeholderId as any,
+          sourceId: typeof influence.id === 'number' ? influence.id : null,
           sourceKind: "human" as any,
-          sourceEventId: `stakeholder-${stakeholderId}`,
+          sourceEventId: `stakeholder-${stakeholderIdStr}`,
           confidenceLevel: "medium" as any,
           itemStatus: "needs_stakeholder_validation" as any,
           valuePillar: null,
@@ -295,6 +295,7 @@ export class EvidencePackService {
         } as any);
         createdItems.push(stakeholderItem);
         existingSourceIds.add(stakeholderKey);
+        console.log(`[Evidence Pack] Created stakeholder item for ${influence.name || 'unknown'}`)
       }
     }
 

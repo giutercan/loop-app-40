@@ -4946,9 +4946,27 @@ const normalizeItemType = (val: unknown): typeof validItemTypes[number] => {
     'nextaction': 'next_action',
     'action_item': 'next_action',
     'todo': 'next_action',
+    // Additional AI-generated types that need mapping
+    'heuristic': 'insight',
+    'rule_of_thumb': 'insight',
+    'best_practice': 'insight',
+    'recommendation': 'insight',
+    'principle': 'insight',
+    'guidance': 'insight',
+    'metric': 'kpi',
+    'measurement': 'kpi',
+    'indicator': 'kpi',
+    'finding': 'insight',
+    'observation': 'insight',
+    'lesson_learned': 'insight',
+    'lesson': 'insight',
+    'takeaway': 'insight',
   };
   const result = mappings[normalized];
-  if (!result) throw new Error(`Unknown itemType: ${val}`);
+  if (!result) {
+    console.warn(`[AI Evidence Pack] Unknown itemType: ${val}, defaulting to 'insight'`);
+    return 'insight';
+  }
   return result;
 };
 
