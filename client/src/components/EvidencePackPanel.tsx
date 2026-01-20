@@ -160,7 +160,7 @@ export function EvidencePackPanel({
   const [newItemSection, setNewItemSection] = useState("");
   const [previewItem, setPreviewItem] = useState<EvidencePackItem | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [audienceFilter, setAudienceFilter] = useState<"all" | "customer" | "internal">("all");
+  const [audienceFilter, setAudienceFilter] = useState<"all" | "customer" | "internal">("customer");
 
   const { data, isLoading, refetch } = useQuery<EvidencePackResponse>({
     queryKey: [`/api/projects/${projectId}/evidence-pack`],
@@ -600,47 +600,271 @@ export function EvidencePackPanel({
                 </CardContent>
               </Card>
 
-              {/* Audience Filter Toggle */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
-                  <Button
-                    size="sm"
-                    variant={audienceFilter === "all" ? "default" : "ghost"}
-                    onClick={() => setAudienceFilter("all")}
-                    className="h-7 text-xs"
-                    data-testid="filter-all"
-                  >
-                    <Eye className="w-3 h-3 mr-1" />
-                    All
-                  </Button>
+              {/* View Mode Toggle - Client View vs Coaching View */}
+              <div className="mb-4">
+                <div className="flex items-center gap-2 p-1 bg-muted rounded-lg">
                   <Button
                     size="sm"
                     variant={audienceFilter === "customer" ? "default" : "ghost"}
                     onClick={() => setAudienceFilter("customer")}
-                    className="h-7 text-xs"
+                    className="flex-1 h-9"
                     data-testid="filter-customer"
                   >
-                    <Building2 className="w-3 h-3 mr-1" />
-                    Customer
+                    <Building2 className="w-4 h-4 mr-2" />
+                    Client View
                   </Button>
                   <Button
                     size="sm"
-                    variant={audienceFilter === "internal" ? "default" : "ghost"}
+                    variant={audienceFilter === "internal" ? "secondary" : "ghost"}
                     onClick={() => setAudienceFilter("internal")}
-                    className="h-7 text-xs"
+                    className="flex-1 h-9"
                     data-testid="filter-internal"
                   >
-                    <Users className="w-3 h-3 mr-1" />
-                    Internal
+                    <GraduationCap className="w-4 h-4 mr-2" />
+                    Coaching View
                   </Button>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  {audienceFilter === "customer" && "Showing client-shareable content"}
-                  {audienceFilter === "internal" && "Showing leadership/coaching content"}
+                <div className="flex items-center justify-between mt-2">
+                  <p className="text-xs text-muted-foreground">
+                    {audienceFilter === "customer" && "What clients will see when you share this pack"}
+                    {audienceFilter === "internal" && "Internal coaching metrics & leadership content"}
+                    {audienceFilter === "all" && "Showing all content"}
+                  </p>
+                  {audienceFilter === "internal" && (() => {
+                    const hiddenCount = items.filter(item => {
+                      const scope = (item as any).audienceScope;
+                      return scope === "internal";
+                    }).length;
+                    return hiddenCount > 0 ? (
+                      <Badge variant="outline" className="text-xs border-purple-500/30 text-purple-600 dark:text-purple-400">
+                        {hiddenCount} internal-only item{hiddenCount > 1 ? "s" : ""}
+                      </Badge>
+                    ) : null;
+                  })()}
                 </div>
               </div>
 
-              {/* Skills & Relationship Scorecard - shows when viewing internal content */}
+              {/* CLIENT VIEW - Executive Summary & Value Pillar Cards */}
+              {audienceFilter === "customer" && (
+                <>
+                  {/* Executive Summary Header */}
+                  <Card className="mb-4 border-blue-500/20 bg-gradient-to-r from-blue-500/5 to-transparent">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h3 className="font-semibold text-lg">{projectName || "Engagement"} Value Summary</h3>
+                          <p className="text-sm text-muted-foreground">Evidence of delivered value and outcomes</p>
+                        </div>
+                        <Badge className="bg-blue-500/20 text-blue-700 dark:text-blue-400">
+                          {filteredItems.length} Evidence Items
+                        </Badge>
+                      </div>
+                      
+                      {/* Key Metrics Row */}
+                      <div className="grid grid-cols-3 gap-3 mt-4">
+                        <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                          <div className="flex items-center gap-2 mb-1">
+                            <TrendingUp className="w-4 h-4 text-green-600" />
+                            <span className="text-xs font-medium text-green-700 dark:text-green-400">Outcomes</span>
+                          </div>
+                          <span className="text-xl font-bold">{filteredItems.filter(i => i.itemType === "outcome" || i.itemType === "kpi").length}</span>
+                        </div>
+                        <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                          <div className="flex items-center gap-2 mb-1">
+                            <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                            <span className="text-xs font-medium text-blue-700 dark:text-blue-400">Validated</span>
+                          </div>
+                          <span className="text-xl font-bold">{filteredItems.filter(i => i.itemStatus === "approved").length}</span>
+                        </div>
+                        <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Award className="w-4 h-4 text-amber-600" />
+                            <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Success Stories</span>
+                          </div>
+                          <span className="text-xl font-bold">{filteredItems.filter(i => i.itemType === "success_story" || i.itemType === "testimonial").length}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Value Pillar Sections */}
+                  <div className="space-y-4 mb-4">
+                    {(["grow", "optimise", "derisk", "strengthen"] as const).map((pillar) => {
+                      const pillarItems = filteredItems.filter(item => item.valuePillar === pillar);
+                      if (pillarItems.length === 0) return null;
+                      
+                      const pillarConfig = {
+                        grow: { label: "Grow", icon: TrendingUp, color: "border-green-500/30 bg-green-500/5", headerColor: "text-green-700 dark:text-green-400", description: "Revenue & market expansion" },
+                        optimise: { label: "Optimise", icon: Target, color: "border-blue-500/30 bg-blue-500/5", headerColor: "text-blue-700 dark:text-blue-400", description: "Efficiency & cost reduction" },
+                        derisk: { label: "De-risk", icon: Shield, color: "border-orange-500/30 bg-orange-500/5", headerColor: "text-orange-700 dark:text-orange-400", description: "Risk mitigation & compliance" },
+                        strengthen: { label: "Strengthen", icon: Users, color: "border-purple-500/30 bg-purple-500/5", headerColor: "text-purple-700 dark:text-purple-400", description: "Talent & capability building" },
+                      };
+                      
+                      const config = pillarConfig[pillar];
+                      const PillarIcon = config.icon;
+                      
+                      return (
+                        <Card key={pillar} className={config.color}>
+                          <CardHeader className="pb-2">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <PillarIcon className={`w-5 h-5 ${config.headerColor}`} />
+                                <div>
+                                  <CardTitle className={`text-base ${config.headerColor}`}>{config.label}</CardTitle>
+                                  <p className="text-xs text-muted-foreground">{config.description}</p>
+                                </div>
+                              </div>
+                              <Badge variant="outline" className="text-xs">
+                                {pillarItems.length} item{pillarItems.length > 1 ? "s" : ""}
+                              </Badge>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="pt-0">
+                            <div className="space-y-2">
+                              {pillarItems.map((item) => {
+                                const ItemIcon = itemTypeIcons[item.itemType as keyof typeof itemTypeIcons] || FileText;
+                                const kfOffering = (item as any).links?.kfOffering || (item as any).content?.kfOffering;
+                                
+                                return (
+                                  <div 
+                                    key={item.id}
+                                    className="flex items-start gap-3 p-3 rounded-lg bg-background border hover-elevate cursor-pointer"
+                                    onClick={() => {
+                                      setPreviewItem(item);
+                                      setPreviewOpen(true);
+                                    }}
+                                    data-testid={`client-item-${item.id}`}
+                                  >
+                                    <div className={`p-2 rounded-md ${config.color}`}>
+                                      <ItemIcon className={`w-4 h-4 ${config.headerColor}`} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium line-clamp-2">{item.claim}</p>
+                                      <div className="flex flex-wrap items-center gap-2 mt-2">
+                                        <Badge variant="outline" className="text-xs capitalize">
+                                          {item.itemType.replace('_', ' ')}
+                                        </Badge>
+                                        {kfOffering && (
+                                          <Badge className="text-xs bg-primary/10 text-primary border-primary/20">
+                                            {kfOffering}
+                                          </Badge>
+                                        )}
+                                        {item.itemStatus === "approved" && (
+                                          <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                                        )}
+                                        {item.sourceType && (
+                                          <span className="text-xs text-muted-foreground">
+                                            Source: {item.sourceType.replace('_', ' ')}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <Eye className="w-4 h-4 text-muted-foreground shrink-0" />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                    
+                    {/* Uncategorized items (no value pillar) */}
+                    {(() => {
+                      const uncategorizedItems = filteredItems.filter(item => !item.valuePillar);
+                      if (uncategorizedItems.length === 0) return null;
+                      
+                      return (
+                        <Card className="border-muted">
+                          <CardHeader className="pb-2">
+                            <div className="flex items-center justify-between">
+                              <CardTitle className="text-base text-muted-foreground">Other Evidence</CardTitle>
+                              <Badge variant="outline" className="text-xs">
+                                {uncategorizedItems.length} item{uncategorizedItems.length > 1 ? "s" : ""}
+                              </Badge>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="pt-0">
+                            <div className="space-y-2">
+                              {uncategorizedItems.map((item) => {
+                                const ItemIcon = itemTypeIcons[item.itemType as keyof typeof itemTypeIcons] || FileText;
+                                
+                                return (
+                                  <div 
+                                    key={item.id}
+                                    className="flex items-start gap-3 p-3 rounded-lg bg-background border hover-elevate cursor-pointer"
+                                    onClick={() => {
+                                      setPreviewItem(item);
+                                      setPreviewOpen(true);
+                                    }}
+                                    data-testid={`client-item-${item.id}`}
+                                  >
+                                    <ItemIcon className="w-4 h-4 text-muted-foreground mt-0.5" />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm">{item.claim}</p>
+                                      <div className="flex items-center gap-2 mt-1">
+                                        <Badge variant="outline" className="text-xs capitalize">
+                                          {item.itemType.replace('_', ' ')}
+                                        </Badge>
+                                        {item.itemStatus === "approved" && (
+                                          <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                                        )}
+                                      </div>
+                                    </div>
+                                    <Eye className="w-4 h-4 text-muted-foreground shrink-0" />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })()}
+
+                    {/* Success Stories Section */}
+                    {(() => {
+                      const successItems = filteredItems.filter(i => i.itemType === "success_story" || i.itemType === "testimonial");
+                      if (successItems.length === 0) return null;
+                      
+                      return (
+                        <Card className="border-amber-500/30 bg-amber-500/5">
+                          <CardHeader className="pb-2">
+                            <div className="flex items-center gap-2">
+                              <Award className="w-5 h-5 text-amber-600" />
+                              <CardTitle className="text-base text-amber-700 dark:text-amber-400">Success Stories & Testimonials</CardTitle>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="pt-0">
+                            <div className="space-y-3">
+                              {successItems.map((item) => (
+                                <div 
+                                  key={item.id}
+                                  className="p-4 rounded-lg bg-background border border-amber-500/20"
+                                  data-testid={`success-story-${item.id}`}
+                                >
+                                  <div className="flex items-start gap-3">
+                                    <MessageSquare className="w-5 h-5 text-amber-500 shrink-0 mt-1" />
+                                    <div>
+                                      <p className="text-sm italic">"{item.claim}"</p>
+                                      {item.sourceType && (
+                                        <p className="text-xs text-muted-foreground mt-2">
+                                          — via {item.sourceType.replace('_', ' ')}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })()}
+                  </div>
+                </>
+              )}
+
+              {/* COACHING VIEW - Skills & Relationship Scorecard */}
               {audienceFilter === "internal" && filteredItems.length > 0 && (
                 <Card className="mb-4 border-purple-500/20 bg-purple-500/5">
                   <CardHeader className="pb-2">
@@ -713,15 +937,17 @@ export function EvidencePackPanel({
                 </Card>
               )}
 
+              {/* Coaching View uses Tabs for Items/AI Suggestions */}
+              {audienceFilter === "internal" && (
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="w-full">
                   <TabsTrigger value="items" className="flex-1" data-testid="tab-items">
                     <Package className="w-4 h-4 mr-1" />
-                    Items ({filteredItems.length}{audienceFilter !== "all" ? ` of ${items.length}` : ""})
+                    All Items ({filteredItems.length})
                   </TabsTrigger>
                   <TabsTrigger value="recommendations" className="flex-1" data-testid="tab-recommendations">
                     <Sparkles className="w-4 h-4 mr-1" />
-                    AI Suggestions
+                    AI Coaching
                   </TabsTrigger>
                 </TabsList>
 
@@ -1038,6 +1264,7 @@ export function EvidencePackPanel({
                   </ScrollArea>
                 </TabsContent>
               </Tabs>
+              )}
             </>
           )}
         </div>
