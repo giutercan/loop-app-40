@@ -13817,7 +13817,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                     <Users className="w-4 h-4 text-blue-600" />
                     <span className="font-medium text-sm">Stakeholders</span>
                   </div>
-                  <p className="text-lg font-semibold">{stakeholders.length}</p>
+                  <p className="text-lg font-semibold">{project?.stakeholders?.length || 0}</p>
                 </div>
                 <div className="p-4 rounded-lg bg-muted/50 border">
                   <div className="flex items-center gap-2 mb-2">
