@@ -4827,58 +4827,106 @@ export interface EvidencePackRecommendationsResult {
   generatedAt: string;
 }
 
-const normalizeItemType = (val: string): "insight" | "outcome" | "success_story" | "benchmark" | "claim" | "testimonial" => {
-  const normalized = val.toLowerCase().replace(/[_-]/g, '_');
-  const mappings: Record<string, "insight" | "outcome" | "success_story" | "benchmark" | "claim" | "testimonial"> = {
+const validItemTypes = ["insight", "outcome", "success_story", "benchmark", "claim", "testimonial"] as const;
+const validValuePillars = ["grow", "optimise", "derisk", "strengthen"] as const;
+
+const normalizeItemType = (val: unknown): typeof validItemTypes[number] => {
+  if (typeof val !== 'string') throw new Error(`Invalid itemType: ${val}`);
+  const normalized = val.toLowerCase().trim().replace(/[\s_-]+/g, '_').replace(/s$/, '');
+  const mappings: Record<string, typeof validItemTypes[number]> = {
+    'insight': 'insight',
+    'insights': 'insight',
+    'finding': 'insight',
+    'findings': 'insight',
+    'discovery': 'insight',
+    'observation': 'insight',
+    'outcome': 'outcome',
+    'outcomes': 'outcome',
     'client_outcome': 'outcome',
     'customer_outcome': 'outcome',
     'business_outcome': 'outcome',
+    'result': 'outcome',
+    'results': 'outcome',
+    'success_story': 'success_story',
+    'success_stories': 'success_story',
+    'successstory': 'success_story',
     'case_study': 'success_story',
     'casestudy': 'success_story',
+    'case_studies': 'success_story',
     'success': 'success_story',
+    'benchmark': 'benchmark',
+    'benchmarks': 'benchmark',
     'data_point': 'benchmark',
     'datapoint': 'benchmark',
     'stat': 'benchmark',
     'statistic': 'benchmark',
-    'quote': 'testimonial',
-    'customer_quote': 'testimonial',
-    'client_quote': 'testimonial',
-    'finding': 'insight',
-    'discovery': 'insight',
+    'statistics': 'benchmark',
+    'metric': 'benchmark',
+    'metrics': 'benchmark',
+    'claim': 'claim',
+    'claims': 'claim',
     'statement': 'claim',
     'assertion': 'claim',
+    'testimonial': 'testimonial',
+    'testimonials': 'testimonial',
+    'quote': 'testimonial',
+    'quotes': 'testimonial',
+    'customer_quote': 'testimonial',
+    'client_quote': 'testimonial',
+    'endorsement': 'testimonial',
   };
-  return mappings[normalized] || (["insight", "outcome", "success_story", "benchmark", "claim", "testimonial"].includes(normalized) ? normalized as any : 'claim');
+  const result = mappings[normalized];
+  if (!result) throw new Error(`Unknown itemType: ${val}`);
+  return result;
 };
 
-const normalizeValuePillar = (val: string | null): "grow" | "optimise" | "derisk" | "strengthen" | null => {
-  if (!val) return null;
-  const normalized = val.toLowerCase().trim();
-  const mappings: Record<string, "grow" | "optimise" | "derisk" | "strengthen"> = {
+const normalizeValuePillar = (val: unknown): typeof validValuePillars[number] | null => {
+  if (val === null || val === undefined) return null;
+  if (typeof val !== 'string') return null;
+  const normalized = val.toLowerCase().trim().replace(/[\s_-]+/g, '_');
+  const mappings: Record<string, typeof validValuePillars[number]> = {
+    'grow': 'grow',
+    'growth': 'grow',
+    'revenue': 'grow',
+    'revenue_growth': 'grow',
+    'expand': 'grow',
+    'expansion': 'grow',
+    'market_expansion': 'grow',
+    'sales': 'grow',
+    'optimise': 'optimise',
     'optimize': 'optimise',
     'optimisation': 'optimise',
     'optimization': 'optimise',
-    'growth': 'grow',
-    'revenue': 'grow',
-    'expand': 'grow',
-    'risk': 'derisk',
-    'de-risk': 'derisk',
+    'cost': 'optimise',
+    'cost_reduction': 'optimise',
+    'efficiency': 'optimise',
+    'productivity': 'optimise',
+    'streamline': 'optimise',
+    'derisk': 'derisk',
     'de_risk': 'derisk',
+    'risk': 'derisk',
+    'risk_mitigation': 'derisk',
     'mitigate': 'derisk',
+    'compliance': 'derisk',
+    'retention': 'derisk',
+    'talent_retention': 'derisk',
+    'strengthen': 'strengthen',
     'culture': 'strengthen',
+    'cultural': 'strengthen',
     'leadership': 'strengthen',
     'talent': 'strengthen',
-    'cost': 'optimise',
-    'efficiency': 'optimise',
+    'succession': 'strengthen',
+    'transformation': 'strengthen',
+    'capability': 'strengthen',
   };
-  return mappings[normalized] || (["grow", "optimise", "derisk", "strengthen"].includes(normalized) ? normalized as any : null);
+  return mappings[normalized] || null;
 };
 
 const evidenceRecommendationsSchema = z.object({
   recommendations: z.array(z.object({
     claim: z.string(),
-    itemType: z.string().transform(normalizeItemType),
-    valuePillar: z.string().nullable().transform(normalizeValuePillar),
+    itemType: z.preprocess(normalizeItemType, z.enum(validItemTypes)),
+    valuePillar: z.preprocess(normalizeValuePillar, z.enum(validValuePillars).nullable()),
     section: z.string(),
     confidence: z.number().min(0).max(100),
     reasoning: z.string(),
