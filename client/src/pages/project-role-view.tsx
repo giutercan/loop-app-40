@@ -111,7 +111,8 @@ import {
   ThumbsUp,
   Package,
   Filter,
-  Crown
+  Crown,
+  Rocket
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -1851,6 +1852,7 @@ export default function ProjectRoleView() {
   const isSalesRoleParam = roleParam === "sales" || roleParam === "consultant";
   const isDeliveryRoleParam = roleParam === "delivery" || roleParam === "csm";
   const [activeTab, setActiveTab] = useState(isSalesRoleParam ? "discover" : "health");
+  const [activeLifecycleStage, setActiveLifecycleStage] = useState<string>("onboarding");
   const [isLogKPIOpen, setIsLogKPIOpen] = useState(false);
   const [showHandoffConfirmDialog, setShowHandoffConfirmDialog] = useState(false);
   
@@ -3565,6 +3567,13 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
     queryKey: ["/api/projects", projectId],
     enabled: projectId > 0
   });
+
+  // Sync lifecycle stage when project data loads
+  useEffect(() => {
+    if (project?.csLifecycleStage) {
+      setActiveLifecycleStage(project.csLifecycleStage);
+    }
+  }, [project?.csLifecycleStage]);
 
   const { data: insights = [] } = useQuery<ProjectInsight[]>({
     queryKey: ["/api/projects", projectId, "insights"],
@@ -13635,97 +13644,318 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
     );
   };
 
-  const renderDeliveryWorkspace = () => (
-    <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-      <TabsList className="grid grid-cols-7 w-full max-w-5xl">
-        <TabsTrigger value="health" data-testid="tab-health">
-          <Activity className="w-4 h-4 mr-2" />
-          Health
-        </TabsTrigger>
-        <TabsTrigger value="incoming-handoffs" data-testid="tab-incoming-handoffs">
-          <Handshake className="w-4 h-4 mr-2" />
-          Handoffs
-        </TabsTrigger>
-        <TabsTrigger value="timeline" data-testid="tab-timeline">
-          <Clock className="w-4 h-4 mr-2" />
-          Timeline
-        </TabsTrigger>
-        <TabsTrigger value="kpis" data-testid="tab-kpis">
-          <BarChart3 className="w-4 h-4 mr-2" />
-          Outcomes
-        </TabsTrigger>
-        <TabsTrigger value="qbr" data-testid="tab-qbr">
-          <Calendar className="w-4 h-4 mr-2" />
-          QBR
-        </TabsTrigger>
-        <TabsTrigger value="governance" data-testid="tab-governance">
-          <Layers className="w-4 h-4 mr-2" />
-          Governance
-        </TabsTrigger>
-        <TabsTrigger value="success-capture" data-testid="tab-success-capture">
-          <Star className="w-4 h-4 mr-2" />
-          Success
-        </TabsTrigger>
-      </TabsList>
+  // Lifecycle stage configuration with icons and descriptions
+  const lifecycleStages = [
+    { 
+      id: "onboarding", 
+      label: "Onboarding", 
+      icon: Handshake,
+      description: "Handoff acceptance & kickoff",
+      gradient: "from-blue-500/5 to-cyan-500/5",
+      borderColor: "border-blue-500/20",
+      iconBg: "bg-blue-500/10",
+      iconColor: "text-blue-600"
+    },
+    { 
+      id: "adoption", 
+      label: "Adoption", 
+      icon: Users,
+      description: "Training & usage tracking",
+      gradient: "from-emerald-500/5 to-teal-500/5",
+      borderColor: "border-emerald-500/20",
+      iconBg: "bg-emerald-500/10",
+      iconColor: "text-emerald-600"
+    },
+    { 
+      id: "value_realization", 
+      label: "Value Realization", 
+      icon: TrendingUp,
+      description: "KPIs, health & reviews",
+      gradient: "from-amber-500/5 to-orange-500/5",
+      borderColor: "border-amber-500/20",
+      iconBg: "bg-amber-500/10",
+      iconColor: "text-amber-600"
+    },
+    { 
+      id: "expansion", 
+      label: "Expansion", 
+      icon: Rocket,
+      description: "Growth opportunities",
+      gradient: "from-purple-500/5 to-pink-500/5",
+      borderColor: "border-purple-500/20",
+      iconBg: "bg-purple-500/10",
+      iconColor: "text-purple-600"
+    },
+    { 
+      id: "advocacy", 
+      label: "Advocacy", 
+      icon: Star,
+      description: "Success stories & referrals",
+      gradient: "from-indigo-500/5 to-violet-500/5",
+      borderColor: "border-indigo-500/20",
+      iconBg: "bg-indigo-500/10",
+      iconColor: "text-indigo-600"
+    }
+  ];
 
-      {/* Health Dashboard - CS-style health scores (Trend #4: CS playbooks in value governance) */}
-      <TabsContent value="health" className="space-y-6">
-        {/* Customer Success Lifecycle Stage */}
-        <Card className="bg-gradient-to-r from-indigo-500/5 to-purple-500/5 border-indigo-500/20">
-          <CardHeader>
-            <div className="flex items-center justify-between">
+  const currentProjectStageIdx = lifecycleStages.findIndex(s => s.id === (project?.csLifecycleStage || "onboarding"));
+
+  const renderDeliveryWorkspace = () => (
+    <div className="space-y-6">
+      {/* Lifecycle Stage Navigation */}
+      <Card className="bg-gradient-to-r from-slate-500/5 to-gray-500/5 border-slate-500/20">
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-semibold">Customer Success Journey</h2>
+              <p className="text-sm text-muted-foreground">Navigate through lifecycle stages</p>
+            </div>
+            <Badge variant="outline" className="text-indigo-600 border-indigo-300" data-testid="badge-lifecycle-stage">
+              Current: {lifecycleStages.find(s => s.id === (project?.csLifecycleStage || "onboarding"))?.label}
+            </Badge>
+          </div>
+          
+          {/* Clickable Lifecycle Stages */}
+          <div className="flex items-stretch gap-2">
+            {lifecycleStages.map((stage, idx) => {
+              const StageIcon = stage.icon;
+              const isCurrentProjectStage = idx === currentProjectStageIdx;
+              const isCompleted = idx < currentProjectStageIdx;
+              const isSelected = activeLifecycleStage === stage.id;
+              
+              return (
+                <button
+                  key={stage.id}
+                  onClick={() => setActiveLifecycleStage(stage.id)}
+                  className={`flex-1 p-4 rounded-lg border-2 transition-all hover-elevate cursor-pointer ${
+                    isSelected 
+                      ? `bg-gradient-to-r ${stage.gradient} ${stage.borderColor} ring-2 ring-offset-2 ring-primary/30` 
+                      : "bg-background border-border hover:border-primary/30"
+                  }`}
+                  data-testid={`lifecycle-nav-${stage.id}`}
+                >
+                  <div className="flex flex-col items-center text-center gap-2">
+                    <div className={`relative w-10 h-10 rounded-full flex items-center justify-center ${
+                      isCurrentProjectStage ? "bg-indigo-600 text-white" :
+                      isCompleted ? "bg-emerald-500 text-white" :
+                      isSelected ? stage.iconBg : "bg-muted"
+                    }`}>
+                      {isCompleted ? (
+                        <Check className="w-5 h-5" />
+                      ) : (
+                        <StageIcon className={`w-5 h-5 ${isCurrentProjectStage ? "text-white" : isSelected ? stage.iconColor : "text-muted-foreground"}`} />
+                      )}
+                      {isCurrentProjectStage && (
+                        <span className="absolute -top-1 -right-1 w-3 h-3 bg-indigo-600 rounded-full border-2 border-background animate-pulse" />
+                      )}
+                    </div>
+                    <span className={`text-sm font-medium ${isSelected ? "text-foreground" : "text-muted-foreground"}`}>
+                      {stage.label}
+                    </span>
+                    <span className="text-xs text-muted-foreground hidden lg:block">
+                      {stage.description}
+                    </span>
+                  </div>
+                  
+                  {/* Progress connector */}
+                  {idx < lifecycleStages.length - 1 && (
+                    <div className={`absolute top-1/2 -right-3 w-4 h-0.5 hidden xl:block ${
+                      isCompleted ? "bg-emerald-500" : "bg-muted"
+                    }`} />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Stage Content */}
+      {activeLifecycleStage === "onboarding" && (
+        <div className="space-y-6" data-testid="stage-onboarding">
+          {/* Onboarding Header */}
+          <Card className="bg-gradient-to-r from-blue-500/5 to-cyan-500/5 border-blue-500/20">
+            <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-indigo-500/10 flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-indigo-600" />
+                <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                  <Handshake className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
-                  <CardTitle>Customer Success Lifecycle</CardTitle>
-                  <CardDescription>Track engagement through the success journey</CardDescription>
+                  <CardTitle>Onboarding Stage</CardTitle>
+                  <CardDescription>Accept handoffs, set up success plans, and kick off the engagement</CardDescription>
                 </div>
               </div>
-              <Badge variant="outline" className="text-indigo-600 border-indigo-300" data-testid="badge-lifecycle-stage">
-                {project?.csLifecycleStage ? project.csLifecycleStage.charAt(0).toUpperCase() + project.csLifecycleStage.slice(1) : "Onboarding"}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              {["onboarding", "adoption", "value_realization", "expansion", "advocacy"].map((stage, idx) => {
-                const currentStageIdx = ["onboarding", "adoption", "value_realization", "expansion", "advocacy"].indexOf(project?.csLifecycleStage || "onboarding");
-                const isActive = idx === currentStageIdx;
-                const isCompleted = idx < currentStageIdx;
-                const stageLabels: Record<string, string> = {
-                  onboarding: "Onboarding",
-                  adoption: "Adoption",
-                  value_realization: "Value Realization",
-                  expansion: "Expansion",
-                  advocacy: "Advocacy"
-                };
-                return (
-                  <div key={stage} className="flex-1 flex flex-col items-center" data-testid={`lifecycle-stage-${stage}`}>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                      isActive ? "bg-indigo-600 text-white" : 
-                      isCompleted ? "bg-emerald-500 text-white" : 
-                      "bg-muted text-muted-foreground"
-                    }`}>
-                      {isCompleted ? <Check className="w-4 h-4" /> : idx + 1}
-                    </div>
-                    <span className={`text-xs mt-1 text-center ${isActive ? "font-medium" : "text-muted-foreground"}`}>
-                      {stageLabels[stage]}
-                    </span>
-                    {idx < 4 && (
-                      <div className={`hidden sm:block h-0.5 w-full mt-4 ${isCompleted ? "bg-emerald-500" : "bg-muted"}`} />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+            </CardHeader>
+          </Card>
 
-        {/* Health & Maturity Scores */}
-        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Incoming Handoffs */}
+          <IncomingHandoffsTab projectId={projectId} project={project} />
+          
+          {/* Success Plan Setup (if initialized) */}
+          <SuccessPlanTab projectId={projectId} project={project} />
+          
+          {/* Kickoff Planning */}
           <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-blue-600" />
+                Kickoff Planning
+              </CardTitle>
+              <CardDescription>Schedule and prepare for the project kickoff</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="p-4 rounded-lg bg-muted/50 border">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calendar className="w-4 h-4 text-blue-600" />
+                    <span className="font-medium text-sm">Kickoff Date</span>
+                  </div>
+                  <p className="text-lg font-semibold">{project?.kickoffDate ? new Date(project.kickoffDate).toLocaleDateString() : "Not scheduled"}</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50 border">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Users className="w-4 h-4 text-blue-600" />
+                    <span className="font-medium text-sm">Stakeholders</span>
+                  </div>
+                  <p className="text-lg font-semibold">{stakeholders.length}</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50 border">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Target className="w-4 h-4 text-blue-600" />
+                    <span className="font-medium text-sm">Agreed Outcomes</span>
+                  </div>
+                  <p className="text-lg font-semibold">{kpis.filter(k => k.isSelected).length}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {activeLifecycleStage === "adoption" && (
+        <div className="space-y-6" data-testid="stage-adoption">
+          {/* Adoption Header */}
+          <Card className="bg-gradient-to-r from-emerald-500/5 to-teal-500/5 border-emerald-500/20">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                  <Users className="w-6 h-6 text-emerald-600" />
+                </div>
+                <div>
+                  <CardTitle>Adoption Stage</CardTitle>
+                  <CardDescription>Track user training, system usage, and early wins</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+
+          {/* Training Status */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <GraduationCap className="w-5 h-5 text-emerald-600" />
+                Training Progress
+              </CardTitle>
+              <CardDescription>Track stakeholder training completion</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                      <GraduationCap className="w-5 h-5 text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Core Training Program</p>
+                      <p className="text-sm text-muted-foreground">Essential skills and workflows</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-emerald-600">0%</p>
+                    <p className="text-xs text-muted-foreground">Completed</p>
+                  </div>
+                </div>
+                <div className="text-center py-4">
+                  <p className="text-sm text-muted-foreground mb-3">No training sessions tracked yet</p>
+                  <Button variant="outline" size="sm">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Training Session
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Usage Metrics */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-emerald-600" />
+                Usage Metrics
+              </CardTitle>
+              <CardDescription>Monitor system adoption and engagement</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="p-4 rounded-lg bg-muted/50 border text-center">
+                  <p className="text-3xl font-bold text-emerald-600">—</p>
+                  <p className="text-sm text-muted-foreground">Active Users</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50 border text-center">
+                  <p className="text-3xl font-bold text-emerald-600">—</p>
+                  <p className="text-sm text-muted-foreground">Sessions/Week</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50 border text-center">
+                  <p className="text-3xl font-bold text-emerald-600">—</p>
+                  <p className="text-sm text-muted-foreground">Feature Adoption</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Early Wins */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-amber-600" />
+                Early Wins
+              </CardTitle>
+              <CardDescription>Capture quick wins to build momentum</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <Trophy className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-sm text-muted-foreground mb-3">No early wins captured yet</p>
+                <Button variant="outline" size="sm">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Capture Win
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {activeLifecycleStage === "value_realization" && (
+        <div className="space-y-6" data-testid="stage-value-realization">
+          {/* Value Realization Header */}
+          <Card className="bg-gradient-to-r from-amber-500/5 to-orange-500/5 border-amber-500/20">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                  <TrendingUp className="w-6 h-6 text-amber-600" />
+                </div>
+                <div>
+                  <CardTitle>Value Realization Stage</CardTitle>
+                  <CardDescription>Track KPIs, monitor health, and conduct business reviews</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+
+          {/* Health & Maturity Scores */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Activity className="w-5 h-5 text-emerald-600" />
@@ -13980,260 +14210,256 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
             </CardContent>
           </Card>
         </div>
-      </TabsContent>
 
-      {/* Incoming Handoffs - CSM receives outcomes from Sales */}
-      <TabsContent value="incoming-handoffs" className="space-y-6" data-demo-step="incoming-handoffs">
-        <IncomingHandoffsTab 
-          projectId={projectId} 
-          project={project}
-        />
-      </TabsContent>
-
-      {/* Interactive Timeline - Visual project progress tracking */}
-      <TabsContent value="timeline" className="space-y-6" data-demo-step="project-timeline">
-        <InteractiveTimeline 
-          projectId={projectId} 
-          companyName={project?.companyName}
-        />
-      </TabsContent>
-
-      <TabsContent value="kpis" className="space-y-6" data-demo-step="kpi-tracking">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <div>
-              <CardTitle>Outcome Tracking</CardTitle>
-              <CardDescription>Monitor and log outcome measurements</CardDescription>
-            </div>
-            <Button onClick={() => setIsLogKPIOpen(true)} data-testid="button-log-kpi-main">
-              <Plus className="w-4 h-4 mr-2" />
-              Log Measurement
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {kpis.map(kpi => (
-                <div key={kpi.id} className="p-4 rounded-lg border hover-elevate">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h4 className="font-semibold">{kpi.name}</h4>
-                      <p className="text-sm text-muted-foreground">{kpi.unit || "units"}</p>
-                    </div>
-                    <Badge variant={
-                      kpi.status === "on-track" ? "default" :
-                      kpi.status === "at-risk" ? "secondary" : 
-                      kpi.status === "off-track" ? "destructive" : "outline"
-                    }>
-                      {kpi.status}
-                    </Badge>
+          {/* QBR Section */}
+          <Card className="bg-gradient-to-r from-blue-500/5 to-indigo-500/5 border-blue-500/20">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                    <Calendar className="w-6 h-6 text-blue-600" />
                   </div>
-                  <div className="grid grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Baseline</span>
-                      <p className="font-medium">{kpi.baselineValue ?? "—"}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Current</span>
-                      <p className="font-medium">{kpi.currentValue ?? "—"}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Target</span>
-                      <p className="font-medium">{kpi.targetValue ?? "—"}</p>
-                    </div>
+                  <div>
+                    <CardTitle>Quarterly Business Review</CardTitle>
+                    <CardDescription>Generate QBR decks and capture evidence</CardDescription>
                   </div>
-                  <Progress 
-                    value={kpi.currentValue && kpi.targetValue ? 
-                      Math.min(100, ((kpi.currentValue - (kpi.baselineValue || 0)) / ((kpi.targetValue || 1) - (kpi.baselineValue || 0))) * 100) : 0
-                    } 
-                    className="mt-3"
-                  />
                 </div>
-              ))}
-              {kpis.length === 0 && (
-                <div className="text-center py-8">
-                  <BarChart3 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No outcomes to track</p>
+                <Button data-testid="button-generate-qbr">
+                  <Download className="w-4 h-4 mr-2" />
+                  Generate QBR Deck
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="p-4 rounded-lg bg-background border">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileCheck className="w-4 h-4 text-emerald-600" />
+                    <span className="font-medium text-sm">Evidence Collected</span>
+                  </div>
+                  <p className="text-2xl font-bold">0</p>
+                  <p className="text-xs text-muted-foreground">Screenshots & documents</p>
                 </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
+                <div className="p-4 rounded-lg bg-background border">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Star className="w-4 h-4 text-amber-600" />
+                    <span className="font-medium text-sm">Success Stories</span>
+                  </div>
+                  <p className="text-2xl font-bold">0</p>
+                  <p className="text-xs text-muted-foreground">Ready for QBR</p>
+                </div>
+                <div className="p-4 rounded-lg bg-background border">
+                  <div className="flex items-center gap-2 mb-2">
+                    <TrendingUp className="w-4 h-4 text-blue-600" />
+                    <span className="font-medium text-sm">Outcomes Tracked</span>
+                  </div>
+                  <p className="text-2xl font-bold">{kpis.length}</p>
+                  <p className="text-xs text-muted-foreground">With baseline & target</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* QBR - Quarterly Business Reviews (Trend #4: CS playbooks in value governance) */}
-      <TabsContent value="qbr" className="space-y-6">
-        <Card className="bg-gradient-to-r from-blue-500/5 to-indigo-500/5 border-blue-500/20">
-          <CardHeader>
-            <div className="flex items-center justify-between">
+          {/* Timeline */}
+          <InteractiveTimeline 
+            projectId={projectId} 
+            companyName={project?.companyName}
+          />
+        </div>
+      )}
+
+      {activeLifecycleStage === "expansion" && (
+        <div className="space-y-6" data-testid="stage-expansion">
+          {/* Expansion Header */}
+          <Card className="bg-gradient-to-r from-purple-500/5 to-pink-500/5 border-purple-500/20">
+            <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                  <Calendar className="w-6 h-6 text-blue-600" />
+                <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                  <Rocket className="w-6 h-6 text-purple-600" />
                 </div>
                 <div>
-                  <CardTitle>Quarterly Business Review</CardTitle>
-                  <CardDescription>Generate QBR decks and capture evidence</CardDescription>
+                  <CardTitle>Expansion Stage</CardTitle>
+                  <CardDescription>Identify growth opportunities and upsell potential</CardDescription>
                 </div>
               </div>
-              <Button data-testid="button-generate-qbr">
-                <Download className="w-4 h-4 mr-2" />
-                Generate QBR Deck
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="p-4 rounded-lg bg-background border">
-                <div className="flex items-center gap-2 mb-2">
-                  <FileCheck className="w-4 h-4 text-emerald-600" />
-                  <span className="font-medium text-sm">Evidence Collected</span>
-                </div>
-                <p className="text-2xl font-bold">0</p>
-                <p className="text-xs text-muted-foreground">Screenshots & documents</p>
-              </div>
-              <div className="p-4 rounded-lg bg-background border">
-                <div className="flex items-center gap-2 mb-2">
-                  <Star className="w-4 h-4 text-amber-600" />
-                  <span className="font-medium text-sm">Success Stories</span>
-                </div>
-                <p className="text-2xl font-bold">0</p>
-                <p className="text-xs text-muted-foreground">Ready for QBR</p>
-              </div>
-              <div className="p-4 rounded-lg bg-background border">
-                <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp className="w-4 h-4 text-blue-600" />
-                  <span className="font-medium text-sm">Outcomes Tracked</span>
-                </div>
-                <p className="text-2xl font-bold">{kpis.length}</p>
-                <p className="text-xs text-muted-foreground">With baseline & target</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardHeader>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileCheck className="w-5 h-5" />
-              Evidence Collection
-            </CardTitle>
-            <CardDescription>Upload screenshots, documents, and testimonials for QBR</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="border-2 border-dashed rounded-lg p-8 text-center">
-              <FileCheck className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground mb-3">
-                Drag and drop files here, or click to upload
-              </p>
-              <Button variant="outline" size="sm">
-                <Plus className="w-4 h-4 mr-2" />
-                Upload Evidence
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
-
-      {/* Value Governance - VRO principles (Trend #3: Value Realisation Office) */}
-      <TabsContent value="governance" className="space-y-6">
-        <Card className="bg-gradient-to-r from-purple-500/5 to-pink-500/5 border-purple-500/20">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                <Layers className="w-6 h-6 text-purple-600" />
-              </div>
-              <div>
-                <CardTitle>Value Governance</CardTitle>
-                <CardDescription>Value Realisation Office principles and tracking</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="p-4 rounded-lg bg-background border">
-                <div className="flex items-center gap-2 mb-2">
-                  <Target className="w-4 h-4 text-emerald-600" />
-                  <span className="font-medium text-sm">Benefit Owner Assigned</span>
+          {/* Growth Opportunities */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lightbulb className="w-5 h-5 text-purple-600" />
+                Growth Opportunities
+              </CardTitle>
+              <CardDescription>AI-identified expansion possibilities based on engagement</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="p-4 rounded-lg border bg-gradient-to-r from-purple-500/5 to-pink-500/5">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-purple-600" />
+                      <span className="font-medium">Additional Department Rollout</span>
+                    </div>
+                    <Badge variant="outline" className="text-purple-600">High Potential</Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Based on current adoption success, 3 additional departments could benefit from similar implementation.</p>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Each outcome has a designated client owner accountable for measurement
-                </p>
-              </div>
-              <div className="p-4 rounded-lg bg-background border">
-                <div className="flex items-center gap-2 mb-2">
-                  <Calendar className="w-4 h-4 text-blue-600" />
-                  <span className="font-medium text-sm">Regular Cadence</span>
+                <div className="p-4 rounded-lg border bg-gradient-to-r from-purple-500/5 to-pink-500/5">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-purple-600" />
+                      <span className="font-medium">Advanced Feature Adoption</span>
+                    </div>
+                    <Badge variant="outline" className="text-purple-600">Medium Potential</Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Customer is ready for advanced analytics and automation features.</p>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Monthly check-ins with quarterly reviews scheduled
-                </p>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <UserCheck className="w-5 h-5" />
-              Governance Checklist
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                <CheckCircle2 className={`w-5 h-5 ${kpis.length >= 3 ? "text-emerald-600" : "text-muted-foreground"}`} />
-                <span className={kpis.length >= 3 ? "" : "text-muted-foreground"}>
-                  3-5 shared outcomes defined with benefit owners
-                </span>
+          {/* Upsell Pipeline */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-purple-600" />
+                Expansion Pipeline
+              </CardTitle>
+              <CardDescription>Track upsell and cross-sell opportunities</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <DollarSign className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-sm text-muted-foreground mb-3">No expansion opportunities tracked yet</p>
+                <Button variant="outline" size="sm">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Opportunity
+                </Button>
               </div>
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                <CheckCircle2 className="w-5 h-5 text-muted-foreground" />
-                <span className="text-muted-foreground">
-                  Monthly outcome review cadence established
-                </span>
-              </div>
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                <CheckCircle2 className="w-5 h-5 text-muted-foreground" />
-                <span className="text-muted-foreground">
-                  Quarterly business review scheduled
-                </span>
-              </div>
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                <CheckCircle2 className="w-5 h-5 text-muted-foreground" />
-                <span className="text-muted-foreground">
-                  Value realisation report template prepared
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-amber-600" />
-              Issues & Risks
-            </CardTitle>
-            <CardDescription>Track blockers and risks to value delivery</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-6">
-              <AlertTriangle className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground mb-3">No issues or risks logged yet</p>
-              <Button variant="outline" size="sm">
-                <Plus className="w-4 h-4 mr-2" />
-                Log Issue
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
+          {/* Account Growth Score */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-purple-600" />
+                Account Growth Score
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="p-4 rounded-lg bg-muted/50 border text-center">
+                  <p className="text-3xl font-bold text-purple-600">—</p>
+                  <p className="text-sm text-muted-foreground">NPS Score</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50 border text-center">
+                  <p className="text-3xl font-bold text-purple-600">—</p>
+                  <p className="text-sm text-muted-foreground">Expansion Likelihood</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50 border text-center">
+                  <p className="text-3xl font-bold text-purple-600">$0</p>
+                  <p className="text-sm text-muted-foreground">Pipeline Value</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
-      {/* Success Plan Management - Joint success planning with customer */}
-      <TabsContent value="success-capture" className="space-y-6">
-        <SuccessPlanTab projectId={projectId} project={project} />
-      </TabsContent>
-    </Tabs>
+      {activeLifecycleStage === "advocacy" && (
+        <div className="space-y-6" data-testid="stage-advocacy">
+          {/* Advocacy Header */}
+          <Card className="bg-gradient-to-r from-indigo-500/5 to-violet-500/5 border-indigo-500/20">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                  <Star className="w-6 h-6 text-indigo-600" />
+                </div>
+                <div>
+                  <CardTitle>Advocacy Stage</CardTitle>
+                  <CardDescription>Capture success stories, testimonials, and referrals</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+
+          {/* Success Stories */}
+          <SuccessPlanTab projectId={projectId} project={project} />
+
+          {/* Testimonials */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageCircle className="w-5 h-5 text-indigo-600" />
+                Testimonials
+              </CardTitle>
+              <CardDescription>Collect and manage customer testimonials</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <MessageCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-sm text-muted-foreground mb-3">No testimonials collected yet</p>
+                <Button variant="outline" size="sm">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Request Testimonial
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Case Studies */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-indigo-600" />
+                Case Studies
+              </CardTitle>
+              <CardDescription>Build case studies from successful outcomes</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-sm text-muted-foreground mb-3">No case studies created yet</p>
+                <Button variant="outline" size="sm">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Case Study
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Referral Tracking */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-indigo-600" />
+                Referrals
+              </CardTitle>
+              <CardDescription>Track customer referrals and introductions</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="p-4 rounded-lg bg-muted/50 border text-center">
+                  <p className="text-3xl font-bold text-indigo-600">0</p>
+                  <p className="text-sm text-muted-foreground">Referrals Made</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50 border text-center">
+                  <p className="text-3xl font-bold text-indigo-600">0</p>
+                  <p className="text-sm text-muted-foreground">Converted</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50 border text-center">
+                  <p className="text-3xl font-bold text-indigo-600">$0</p>
+                  <p className="text-sm text-muted-foreground">Referral Value</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
   );
 
   const otherRole = isSalesRole ? "delivery" : isDeliveryRole ? "sales" : null;
