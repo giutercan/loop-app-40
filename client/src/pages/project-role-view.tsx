@@ -107,10 +107,13 @@ import {
   Upload,
   GitBranch,
   ThumbsUp,
-  Package
+  Package,
+  Filter
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Checkbox } from "@/components/ui/checkbox";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Project, JobTheme } from "@shared/schema";
@@ -5856,6 +5859,14 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
     const [newItemType, setNewItemType] = useState<string>("claim");
     const [audienceView, setAudienceView] = useState<"customer" | "internal">("customer");
     
+    // New state for enhanced pack items
+    const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
+    const [previewItem, setPreviewItem] = useState<any>(null);
+    const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+    const [filterType, setFilterType] = useState<string>("all");
+    const [filterStatus, setFilterStatus] = useState<string>("all");
+    const [filterPillar, setFilterPillar] = useState<string>("all");
+    
     const { data: evidenceData, isLoading: evidenceLoading, refetch: refetchEvidence } = useQuery<any>({
       queryKey: [`/api/projects/${projectId}/evidence-pack`],
       enabled: !!projectId,
@@ -5908,6 +5919,63 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
       },
     });
 
+    const updateItemStatusMutation = useMutation({
+      mutationFn: async ({ itemId, status }: { itemId: number; status: string }) => {
+        return await apiRequest("PATCH", `/api/evidence-pack-items/${itemId}`, {
+          itemStatus: status,
+          actorName: "Seller",
+          actorId: "current-user",
+        });
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/evidence-pack`] });
+        toast({ title: "Item status updated" });
+      },
+    });
+
+    const bulkUpdateStatusMutation = useMutation({
+      mutationFn: async ({ itemIds, status }: { itemIds: number[]; status: string }) => {
+        const promises = itemIds.map(itemId => 
+          apiRequest("PATCH", `/api/evidence-pack-items/${itemId}`, {
+            itemStatus: status,
+            actorName: "Seller",
+            actorId: "current-user",
+          })
+        );
+        return Promise.all(promises);
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/evidence-pack`] });
+        setSelectedItems(new Set());
+        toast({ title: "Items updated" });
+      },
+      onError: (error: Error) => {
+        queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/evidence-pack`] });
+        toast({ title: "Some items failed to update", description: error.message, variant: "destructive" });
+      },
+    });
+
+    const bulkDeleteMutation = useMutation({
+      mutationFn: async (itemIds: number[]) => {
+        const promises = itemIds.map(itemId => 
+          apiRequest("DELETE", `/api/evidence-pack-items/${itemId}`, {
+            actorName: "Seller",
+            actorId: "current-user",
+          })
+        );
+        return Promise.all(promises);
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/evidence-pack`] });
+        setSelectedItems(new Set());
+        toast({ title: "Items deleted" });
+      },
+      onError: (error: Error) => {
+        queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/evidence-pack`] });
+        toast({ title: "Some items failed to delete", description: error.message, variant: "destructive" });
+      },
+    });
+
     const submitForReviewMutation = useMutation({
       mutationFn: async () => {
         return await apiRequest("PATCH", `/api/evidence-packs/${evidenceData?.pack?.id}`, {
@@ -5953,14 +6021,63 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
     const pack = evidenceData?.pack;
     const allItems = evidenceData?.items || [];
     
-    // Filter items by audience scope
+    // Filter items by audience scope, type, status, and pillar
     const items = allItems.filter((item: any) => {
       const scope = item.audienceScope || "both";
-      if (audienceView === "customer") {
-        return scope === "customer" || scope === "both";
-      }
-      return scope === "internal" || scope === "both";
+      const matchesAudience = audienceView === "customer" 
+        ? (scope === "customer" || scope === "both")
+        : (scope === "internal" || scope === "both");
+      const matchesType = filterType === "all" || item.itemType === filterType;
+      const matchesStatus = filterStatus === "all" || item.itemStatus === filterStatus;
+      const matchesPillar = filterPillar === "all" || (item.valuePillar || "unassigned") === filterPillar;
+      return matchesAudience && matchesType && matchesStatus && matchesPillar;
     });
+    
+    // Get unique item types and statuses for filter dropdowns
+    const uniqueTypes: string[] = Array.from(new Set(allItems.map((i: any) => i.itemType).filter(Boolean) as string[]));
+    const uniqueStatuses: string[] = Array.from(new Set(allItems.map((i: any) => i.itemStatus).filter(Boolean) as string[]));
+    
+    // Helper functions for selection
+    const toggleItemSelection = (itemId: number) => {
+      setSelectedItems(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(itemId)) newSet.delete(itemId);
+        else newSet.add(itemId);
+        return newSet;
+      });
+    };
+    
+    const selectAllItems = () => {
+      if (selectedItems.size === items.length) {
+        setSelectedItems(new Set());
+      } else {
+        setSelectedItems(new Set(items.map((i: any) => i.id)));
+      }
+    };
+    
+    const toggleSection = (sectionKey: string) => {
+      setCollapsedSections(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(sectionKey)) newSet.delete(sectionKey);
+        else newSet.add(sectionKey);
+        return newSet;
+      });
+    };
+    
+    // Group items by type for organized display
+    const itemsByType = items.reduce((acc: Record<string, any[]>, item: any) => {
+      const type = item.itemType || "other";
+      if (!acc[type]) acc[type] = [];
+      acc[type].push(item);
+      return acc;
+    }, {});
+    
+    // KF Offerings lookup helper
+    const getKFOffering = (item: any): string | null => {
+      if (item.kfOffering) return item.kfOffering;
+      if (item.provenance?.kfOffering) return item.provenance.kfOffering;
+      return null;
+    };
     
     // Value pillar grouping for Client View
     const valuePillarConfig: Record<string, { label: string; color: string; bgColor: string; description: string }> = {
@@ -6319,11 +6436,14 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
           </Card>
         )}
 
-        {/* Add Item Section */}
+        {/* Pack Items with Filter Bar */}
         <Card>
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Pack Items</CardTitle>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base">Pack Items</CardTitle>
+                <Badge variant="secondary" className="text-xs">{items.length} of {allItems.length}</Badge>
+              </div>
               <Button 
                 size="sm" 
                 onClick={() => setAddItemOpen(!addItemOpen)}
@@ -6332,6 +6452,58 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 <Plus className="w-4 h-4 mr-1" />
                 Add Item
               </Button>
+            </div>
+            
+            {/* Filter Bar */}
+            <div className="flex items-center gap-2 mt-3 flex-wrap">
+              <Select value={filterType} onValueChange={setFilterType}>
+                <SelectTrigger className="w-[140px] text-xs" data-testid="filter-type">
+                  <Filter className="w-3 h-3 mr-1" />
+                  <SelectValue placeholder="Item Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  {uniqueTypes.map((type: string) => (
+                    <SelectItem key={type} value={type} className="capitalize">{type.replace(/_/g, ' ')}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-[130px] text-xs" data-testid="filter-status">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  {uniqueStatuses.map((status: string) => (
+                    <SelectItem key={status} value={status} className="capitalize">{status.replace(/_/g, ' ')}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <Select value={filterPillar} onValueChange={setFilterPillar}>
+                <SelectTrigger className="w-[130px] text-xs" data-testid="filter-pillar">
+                  <SelectValue placeholder="Value Pillar" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Pillars</SelectItem>
+                  {Object.entries(valuePillarConfig).map(([key, config]) => (
+                    <SelectItem key={key} value={key}>{config.label}</SelectItem>
+                  ))}
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              {(filterType !== "all" || filterStatus !== "all" || filterPillar !== "all") && (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => { setFilterType("all"); setFilterStatus("all"); setFilterPillar("all"); }}
+                  data-testid="button-clear-filters"
+                >
+                  <X className="w-3 h-3 mr-1" /> Clear
+                </Button>
+              )}
             </div>
           </CardHeader>
           <CardContent>
@@ -6402,81 +6574,209 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 <p className="text-sm">No items yet. Add claims and proof points to build your evidence pack.</p>
               </div>
             ) : (
-              <div className="space-y-2">
-                {items.map((item: any) => {
-                  const ItemIcon = itemTypeIcons[item.itemType] || Target;
-                  const itemStatus = itemStatusConfig[item.itemStatus] || itemStatusConfig.draft;
-                  const sourceLabels: Record<string, string> = {
-                    kpi_commitment: "View KPI",
-                    discovery_insight: "View Discovery",
-                    bluesheet: "View Blue Sheet",
-                    manual: "Manual",
-                    ai_generated: "AI Generated",
-                  };
-                  const sourceTabMap: Record<string, string> = {
-                    kpi_commitment: "align",
-                    discovery_insight: "discover",
-                    bluesheet: "strategy",
-                  };
-                  const handleSourceClick = (sourceType: string) => {
-                    const targetTab = sourceTabMap[sourceType];
-                    if (targetTab) {
-                      setActiveTab(targetTab);
-                    }
-                  };
+              <div className="space-y-4">
+                {/* Select All Header */}
+                <div className="flex items-center gap-2 pb-2 border-b">
+                  <Checkbox
+                    checked={selectedItems.size === items.length && items.length > 0}
+                    onCheckedChange={selectAllItems}
+                    data-testid="checkbox-select-all"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    {selectedItems.size > 0 ? `${selectedItems.size} selected` : "Select all"}
+                  </span>
+                </div>
+                
+                {/* Collapsible Sections by Type */}
+                {Object.entries(itemsByType).map(([type, typeItems]: [string, any[]]) => {
+                  const TypeIcon = itemTypeIcons[type] || Target;
+                  const isCollapsed = collapsedSections.has(type);
+                  
                   return (
-                    <div 
-                      key={item.id}
-                      className="flex items-start gap-3 p-3 rounded-lg border bg-background hover-elevate group"
-                      data-testid={`evidence-item-${item.id}`}
-                    >
-                      <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center flex-shrink-0">
-                        <ItemIcon className="w-4 h-4 text-amber-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">{item.claim}</p>
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          <Badge variant="outline" className="text-xs capitalize">
-                            {item.itemType?.replace(/_/g, ' ')}
-                          </Badge>
-                          {item.valuePillar && (
-                            <Badge variant="secondary" className="text-xs capitalize">
-                              {item.valuePillar}
-                            </Badge>
-                          )}
-                          {item.sourceType && item.sourceType !== 'manual' && sourceTabMap[item.sourceType] && (
-                            <Badge 
-                              className="text-xs bg-blue-500/10 text-blue-700 border-blue-500/20 cursor-pointer hover:bg-blue-500/20"
-                              onClick={() => handleSourceClick(item.sourceType)}
-                              data-testid={`link-source-${item.id}`}
-                            >
-                              <Link2 className="w-3 h-3 mr-1" />
-                              {sourceLabels[item.sourceType] || item.sourceType}
-                              <ArrowRight className="w-3 h-3 ml-1" />
-                            </Badge>
-                          )}
-                          {item.sourceKind === 'ai' && (
-                            <Badge className="text-xs bg-purple-500/10 text-purple-700 border-purple-500/20">
-                              <Sparkles className="w-3 h-3 mr-1" />
-                              AI
-                            </Badge>
-                          )}
-                          {item.itemStatus && item.itemStatus !== 'draft' && (
-                            <Badge className={`text-xs ${itemStatus.color}`}>
-                              {itemStatus.label}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
-                        onClick={() => deleteItemMutation.mutate(item.id)}
-                        data-testid={`button-delete-item-${item.id}`}
+                    <div key={type} className="border rounded-lg">
+                      <button
+                        onClick={() => toggleSection(type)}
+                        className="w-full flex items-center justify-between p-3 hover-elevate rounded-t-lg"
+                        data-testid={`section-toggle-${type}`}
                       >
-                        <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
-                      </Button>
+                        <div className="flex items-center gap-2">
+                          <TypeIcon className="w-4 h-4 text-amber-600" />
+                          <span className="text-sm font-medium capitalize">{type.replace(/_/g, ' ')}</span>
+                          <Badge variant="secondary" className="text-xs">{typeItems.length}</Badge>
+                        </div>
+                        {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </button>
+                      
+                      {!isCollapsed && (
+                        <div className="p-2 space-y-2 border-t">
+                          {typeItems.map((item: any) => {
+                            const ItemIcon = itemTypeIcons[item.itemType] || Target;
+                            const itemStatusCfg = itemStatusConfig[item.itemStatus] || itemStatusConfig.draft;
+                            const kfOffering = getKFOffering(item);
+                            const isSelected = selectedItems.has(item.id);
+                            
+                            const sourceLabels: Record<string, string> = {
+                              kpi_commitment: "KPI",
+                              discovery_insight: "Discovery",
+                              bluesheet: "Blue Sheet",
+                              artifact: "Artifact",
+                              interaction: "Interaction",
+                              manual: "Manual",
+                              ai_generated: "AI",
+                            };
+                            const sourceTabMap: Record<string, string> = {
+                              kpi_commitment: "align",
+                              discovery_insight: "discover",
+                              bluesheet: "strategy",
+                            };
+                            
+                            return (
+                              <div 
+                                key={item.id}
+                                className={`flex items-start gap-3 p-3 rounded-lg border bg-background hover-elevate group ${isSelected ? 'ring-2 ring-primary/50' : ''}`}
+                                data-testid={`evidence-item-${item.id}`}
+                              >
+                                {/* Checkbox */}
+                                <Checkbox
+                                  checked={isSelected}
+                                  onCheckedChange={() => toggleItemSelection(item.id)}
+                                  className="mt-1"
+                                  data-testid={`checkbox-item-${item.id}`}
+                                />
+                                
+                                {/* Icon */}
+                                <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+                                  <ItemIcon className="w-4 h-4 text-amber-600" />
+                                </div>
+                                
+                                {/* Content */}
+                                <div className="flex-1 min-w-0">
+                                  <p 
+                                    className="text-sm font-medium cursor-pointer hover:text-primary"
+                                    onClick={() => setPreviewItem(item)}
+                                    data-testid={`link-preview-${item.id}`}
+                                  >
+                                    {item.claim}
+                                  </p>
+                                  
+                                  {/* Metadata Row */}
+                                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                    {/* Value Pillar */}
+                                    {item.valuePillar && valuePillarConfig[item.valuePillar] && (
+                                      <Badge className={`text-xs ${valuePillarConfig[item.valuePillar].bgColor}`}>
+                                        {valuePillarConfig[item.valuePillar].label}
+                                      </Badge>
+                                    )}
+                                    
+                                    {/* KF Offering Tag */}
+                                    {kfOffering && (
+                                      <Badge variant="outline" className="text-xs bg-blue-500/5 border-blue-500/30 text-blue-700 dark:text-blue-300">
+                                        {kfOffering}
+                                      </Badge>
+                                    )}
+                                    
+                                    {/* Confidence Indicator */}
+                                    {item.confidence && (
+                                      <Badge variant="outline" className="text-xs">
+                                        {item.confidence > 0.7 ? <CheckCircle2 className="w-3 h-3 mr-1 text-green-500" /> : <AlertCircle className="w-3 h-3 mr-1 text-yellow-500" />}
+                                        {Math.round(item.confidence * 100)}%
+                                      </Badge>
+                                    )}
+                                    
+                                    {/* Stakeholder Link */}
+                                    {item.stakeholderName && (
+                                      <Badge variant="outline" className="text-xs">
+                                        <Users className="w-3 h-3 mr-1" />
+                                        {item.stakeholderName}
+                                      </Badge>
+                                    )}
+                                    
+                                    {/* Clickable Source */}
+                                    {item.sourceType && item.sourceType !== 'manual' && sourceTabMap[item.sourceType] && (
+                                      <Button 
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          const tab = sourceTabMap[item.sourceType];
+                                          if (tab) setActiveTab(tab);
+                                        }}
+                                        data-testid={`link-source-${item.id}`}
+                                      >
+                                        <Link2 className="w-3 h-3 mr-1" />
+                                        {sourceLabels[item.sourceType] || item.sourceType.replace(/_/g, ' ')}
+                                        <ArrowRight className="w-3 h-3 ml-1" />
+                                      </Button>
+                                    )}
+                                    {item.sourceType && item.sourceType !== 'manual' && !sourceTabMap[item.sourceType] && (
+                                      <Badge variant="secondary" className="text-xs">
+                                        <Link2 className="w-3 h-3 mr-1" />
+                                        {sourceLabels[item.sourceType] || item.sourceType.replace(/_/g, ' ')}
+                                      </Badge>
+                                    )}
+                                    
+                                    {/* AI Badge */}
+                                    {(item.sourceKind === 'ai' || item.sourceType === 'ai_generated') && (
+                                      <Badge className="text-xs bg-purple-500/10 text-purple-700 border-purple-500/20">
+                                        <Sparkles className="w-3 h-3 mr-1" />
+                                        AI
+                                      </Badge>
+                                    )}
+                                    
+                                    {/* Status Badge */}
+                                    {item.itemStatus && item.itemStatus !== 'draft' && (
+                                      <Badge className={`text-xs ${itemStatusCfg.color}`}>
+                                        {itemStatusCfg.label}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                {/* Action Buttons */}
+                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    onClick={() => updateItemStatusMutation.mutate({ itemId: item.id, status: 'validated' })}
+                                    disabled={item.itemStatus === 'validated'}
+                                    title="Validate"
+                                    data-testid={`button-validate-${item.id}`}
+                                  >
+                                    <CheckCircle2 className="w-4 h-4 text-green-600" />
+                                  </Button>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    onClick={() => updateItemStatusMutation.mutate({ itemId: item.id, status: 'flagged' })}
+                                    disabled={item.itemStatus === 'flagged'}
+                                    title="Flag for Review"
+                                    data-testid={`button-flag-${item.id}`}
+                                  >
+                                    <Flag className="w-4 h-4 text-orange-500" />
+                                  </Button>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    onClick={() => setPreviewItem(item)}
+                                    title="View Details"
+                                    data-testid={`button-preview-${item.id}`}
+                                  >
+                                    <Eye className="w-4 h-4 text-muted-foreground" />
+                                  </Button>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    onClick={() => deleteItemMutation.mutate(item.id)}
+                                    title="Delete"
+                                    data-testid={`button-delete-item-${item.id}`}
+                                  >
+                                    <Trash2 className="w-4 h-4 text-muted-foreground" />
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -6484,6 +6784,200 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
             )}
           </CardContent>
         </Card>
+        
+        {/* Floating Bulk Action Bar */}
+        {selectedItems.size > 0 && (
+          <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-background border shadow-lg rounded-lg p-3 flex items-center gap-3" data-testid="bulk-action-bar">
+            <span className="text-sm font-medium">{selectedItems.size} selected</span>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => bulkUpdateStatusMutation.mutate({ itemIds: Array.from(selectedItems), status: 'validated' })}
+                disabled={bulkUpdateStatusMutation.isPending}
+                data-testid="button-bulk-validate"
+              >
+                <CheckCircle2 className="w-4 h-4 mr-1 text-green-600" />
+                Validate All
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => bulkUpdateStatusMutation.mutate({ itemIds: Array.from(selectedItems), status: 'flagged' })}
+                disabled={bulkUpdateStatusMutation.isPending}
+                data-testid="button-bulk-flag"
+              >
+                <Flag className="w-4 h-4 mr-1 text-orange-500" />
+                Flag All
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => bulkDeleteMutation.mutate(Array.from(selectedItems))}
+                disabled={bulkDeleteMutation.isPending}
+                data-testid="button-bulk-delete"
+              >
+                <Trash2 className="w-4 h-4 mr-1" />
+                Delete
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setSelectedItems(new Set())}
+                data-testid="button-clear-selection"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+        
+        {/* Preview Drawer/Sheet */}
+        <Sheet open={!!previewItem} onOpenChange={() => setPreviewItem(null)}>
+          <SheetContent className="overflow-y-auto" data-testid="preview-drawer">
+            {previewItem && (
+              <>
+                <SheetHeader>
+                  <SheetTitle className="flex items-center gap-2">
+                    {(() => {
+                      const Icon = itemTypeIcons[previewItem.itemType] || Target;
+                      return <Icon className="w-5 h-5 text-amber-600" />;
+                    })()}
+                    <span className="capitalize">{previewItem.itemType?.replace(/_/g, ' ')}</span>
+                  </SheetTitle>
+                  <SheetDescription>
+                    Full details and provenance tracking
+                  </SheetDescription>
+                </SheetHeader>
+                
+                <div className="mt-6 space-y-6">
+                  {/* Claim */}
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Claim</Label>
+                    <p className="mt-1 text-sm font-medium">{previewItem.claim}</p>
+                  </div>
+                  
+                  {/* Evidence/Supporting Details */}
+                  {previewItem.evidence && (
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Evidence</Label>
+                      <p className="mt-1 text-sm">{previewItem.evidence}</p>
+                    </div>
+                  )}
+                  
+                  {/* Status */}
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Status</Label>
+                      <Badge className={`mt-1 ${(itemStatusConfig[previewItem.itemStatus] || itemStatusConfig.draft).color}`}>
+                        {(itemStatusConfig[previewItem.itemStatus] || itemStatusConfig.draft).label}
+                      </Badge>
+                    </div>
+                    {previewItem.valuePillar && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Value Pillar</Label>
+                        <Badge className={`mt-1 ${valuePillarConfig[previewItem.valuePillar]?.bgColor || ''}`}>
+                          {valuePillarConfig[previewItem.valuePillar]?.label || previewItem.valuePillar}
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Metadata Grid */}
+                  <div className="grid grid-cols-2 gap-4 p-3 bg-muted/30 rounded-lg">
+                    {previewItem.audienceScope && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Audience</Label>
+                        <p className="text-sm capitalize">{previewItem.audienceScope}</p>
+                      </div>
+                    )}
+                    {previewItem.skillDomain && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Skill Domain</Label>
+                        <p className="text-sm capitalize">{previewItem.skillDomain.replace(/_/g, ' ')}</p>
+                      </div>
+                    )}
+                    {previewItem.metricValue && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Metric Value</Label>
+                        <p className="text-sm">{previewItem.metricValue} {previewItem.metricUnit || ''}</p>
+                      </div>
+                    )}
+                    {previewItem.confidence && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Confidence</Label>
+                        <p className="text-sm">{Math.round(previewItem.confidence * 100)}%</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Provenance Section */}
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-2 block">Provenance</Label>
+                    <div className="p-3 border rounded-lg bg-blue-500/5 space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Source Type</span>
+                        <span className="font-medium capitalize">{previewItem.sourceType?.replace(/_/g, ' ') || 'Manual'}</span>
+                      </div>
+                      {previewItem.sourceId && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Source ID</span>
+                          <span className="font-mono text-xs">{previewItem.sourceId}</span>
+                        </div>
+                      )}
+                      {previewItem.sourceKind && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Source Kind</span>
+                          <Badge variant="outline" className="text-xs capitalize">{previewItem.sourceKind}</Badge>
+                        </div>
+                      )}
+                      {previewItem.provenance && (
+                        <div className="pt-2 border-t">
+                          <p className="text-xs text-muted-foreground mb-1">Raw Provenance Data</p>
+                          <pre className="text-xs bg-muted p-2 rounded overflow-x-auto">
+                            {JSON.stringify(previewItem.provenance, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 pt-4 border-t">
+                    <Button
+                      size="sm"
+                      onClick={() => updateItemStatusMutation.mutate({ itemId: previewItem.id, status: 'validated' })}
+                      disabled={previewItem.itemStatus === 'validated' || updateItemStatusMutation.isPending}
+                    >
+                      <CheckCircle2 className="w-4 h-4 mr-1" />
+                      Validate
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => updateItemStatusMutation.mutate({ itemId: previewItem.id, status: 'flagged' })}
+                      disabled={previewItem.itemStatus === 'flagged' || updateItemStatusMutation.isPending}
+                    >
+                      <Flag className="w-4 h-4 mr-1" />
+                      Flag
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => {
+                        deleteItemMutation.mutate(previewItem.id);
+                        setPreviewItem(null);
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+          </SheetContent>
+        </Sheet>
       </div>
     );
   };
