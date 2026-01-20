@@ -6888,18 +6888,39 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                             const isSelected = selectedItems.has(item.id);
                             
                             const sourceLabels: Record<string, string> = {
-                              kpi_commitment: "KPI",
-                              discovery_insight: "Discovery",
+                              kpi_commitment: "KPI Commitment",
+                              discovery_insight: "Discovery Insight",
                               bluesheet: "Blue Sheet",
                               artifact: "Artifact",
+                              evidence_artefact: "Document",
                               interaction: "Interaction",
+                              notes: "Notes",
+                              discovery_notes: "Discovery Notes",
+                              engagement_log: "Engagement",
+                              meeting_notes: "Meeting",
+                              success_story: "Success Story",
+                              success_story_library: "Success Library",
+                              business_review: "Business Review",
+                              assumption_revision: "Adaptation",
+                              decision_log: "Decision",
+                              kpi_actual: "KPI Result",
+                              deliverable: "Deliverable",
                               manual: "Manual",
                               ai_generated: "AI",
                             };
                             const sourceTabMap: Record<string, string> = {
                               kpi_commitment: "align",
                               discovery_insight: "discover",
+                              discovery_notes: "discover",
+                              notes: "discover",
                               bluesheet: "strategy",
+                              success_story: "realize",
+                              success_story_library: "realize",
+                              business_review: "realize",
+                              kpi_actual: "realize",
+                              deliverable: "realize",
+                              engagement_log: "engage",
+                              meeting_notes: "engage",
                             };
                             
                             return (

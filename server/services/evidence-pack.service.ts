@@ -24,6 +24,9 @@ export interface AutoPopulateOptions {
   includeArtifacts?: boolean;
   includeRisks?: boolean;
   includeDecisions?: boolean;
+  includeNotes?: boolean;
+  includeSuccessStories?: boolean;
+  includeBusinessReviews?: boolean;
 }
 
 const DEFAULT_OPTIONS: AutoPopulateOptions = {
@@ -33,6 +36,9 @@ const DEFAULT_OPTIONS: AutoPopulateOptions = {
   includeArtifacts: true,
   includeRisks: true,
   includeDecisions: true,
+  includeNotes: true,
+  includeSuccessStories: true,
+  includeBusinessReviews: true,
 };
 
 // Evidence phase mapping based on item type
@@ -143,7 +149,27 @@ export class EvidencePackService {
       createdItems.push(...bluesheetItems);
     }
 
+    if (options.includeNotes !== false) {
+      const noteItems = await this.importDiscoveryNotes(pack, existingSourceIds, createdItems.length);
+      createdItems.push(...noteItems);
+    }
+
+    if (options.includeSuccessStories !== false) {
+      const successItems = await this.importSuccessStories(pack, existingSourceIds, createdItems.length);
+      createdItems.push(...successItems);
+    }
+
+    if (options.includeBusinessReviews !== false) {
+      const reviewItems = await this.importBusinessReviews(pack, existingSourceIds, createdItems.length);
+      createdItems.push(...reviewItems);
+    }
+
     console.log(`[Evidence Pack Auto-Populate] Created ${createdItems.length} items for pack ${packId}`);
+
+    // Count by phase for summary
+    const leadingItems = createdItems.filter((i) => i.evidencePhase === "leading");
+    const midLoopItems = createdItems.filter((i) => i.evidencePhase === "mid_loop");
+    const laggingItems = createdItems.filter((i) => i.evidencePhase === "lagging");
 
     return {
       success: true,
@@ -152,11 +178,20 @@ export class EvidencePackService {
         kpis: createdItems.filter((i) => i.itemType === "kpi").length,
         baselines: createdItems.filter((i) => i.itemType === "baseline").length,
         targets: createdItems.filter((i) => i.itemType === "target").length,
-        insights: createdItems.filter((i) => i.itemType === "meeting_insight").length,
+        insights: createdItems.filter((i) => i.itemType === "meeting_insight" || i.itemType === "insight").length,
         stakeholderClaims: createdItems.filter((i) => i.itemType === "stakeholder_claim").length,
         artifacts: createdItems.filter((i) => i.itemType === "artifact").length,
         risks: createdItems.filter((i) => i.itemType === "risk").length,
         decisions: createdItems.filter((i) => i.itemType === "decision").length,
+        notes: createdItems.filter((i) => i.sourceType === "discovery_notes").length,
+        successStories: createdItems.filter((i) => i.itemType === "success_story").length,
+        businessReviews: createdItems.filter((i) => i.sourceType === "business_review").length,
+        adaptations: createdItems.filter((i) => i.itemType === "assumption_revision" || i.itemType === "coaching_observation").length,
+      },
+      phaseBreakdown: {
+        leading: leadingItems.length,
+        midLoop: midLoopItems.length,
+        lagging: laggingItems.length,
       },
       items: createdItems,
     };
@@ -566,6 +601,327 @@ export class EvidencePackService {
           existingSourceIds.add(decisionKey);
         }
       }
+    }
+
+    return createdItems;
+  }
+
+  private async importDiscoveryNotes(
+    pack: EvidencePack,
+    existingSourceIds: Set<string>,
+    startOrder: number
+  ): Promise<any[]> {
+    const createdItems: any[] = [];
+    const notes = await this.storage.getDiscoveryNotes(pack.projectId);
+
+    if (!notes) return createdItems;
+
+    const notesData = notes as any;
+    
+    // Import key themes as Leading evidence
+    if (notesData.keyThemes && Array.isArray(notesData.keyThemes)) {
+      for (let i = 0; i < notesData.keyThemes.length; i++) {
+        const theme = notesData.keyThemes[i];
+        if (!theme) continue;
+        
+        const themeKey = `discovery_notes-${notes.id}-theme-${i}`;
+        if (existingSourceIds.has(themeKey)) continue;
+
+        const themeItem = await this.storage.createEvidencePackItem({
+          packId: pack.id,
+          itemType: "insight" as any,
+          evidencePhase: getEvidencePhase("insight") as any,
+          claim: typeof theme === 'string' ? theme : theme.theme || theme.name || JSON.stringify(theme),
+          sourceType: "discovery_notes",
+          sourceId: notes.id,
+          sourceKind: "human" as any,
+          sourceEventId: `notes-theme-${i}`,
+          confidenceLevel: "medium" as any,
+          itemStatus: "draft" as any,
+          valuePillar: null,
+          audienceScope: "both" as any,
+          evidenceSensitivity: "client_shareable" as any,
+          skillDomain: "soft_skill" as any,
+          skillCategory: "discovery",
+          content: {
+            whatThisProves: `Key theme identified during discovery conversations`,
+          },
+          links: {
+            projectId: pack.projectId,
+            notesId: notes.id,
+          },
+          displayOrder: startOrder + createdItems.length,
+          section: "What We Saw Before Results",
+        } as any);
+        createdItems.push(themeItem);
+        existingSourceIds.add(themeKey);
+      }
+    }
+
+    // Import adaptations/pivots as Mid-Loop evidence
+    if (notesData.adaptations && Array.isArray(notesData.adaptations)) {
+      for (let i = 0; i < notesData.adaptations.length; i++) {
+        const adaptation = notesData.adaptations[i];
+        if (!adaptation) continue;
+        
+        const adaptKey = `discovery_notes-${notes.id}-adapt-${i}`;
+        if (existingSourceIds.has(adaptKey)) continue;
+
+        const adaptItem = await this.storage.createEvidencePackItem({
+          packId: pack.id,
+          itemType: "assumption_revision" as any,
+          evidencePhase: getEvidencePhase("assumption_revision") as any,
+          claim: typeof adaptation === 'string' ? adaptation : adaptation.description || JSON.stringify(adaptation),
+          sourceType: "discovery_notes",
+          sourceId: notes.id,
+          sourceKind: "human" as any,
+          sourceEventId: `notes-adapt-${i}`,
+          confidenceLevel: "high" as any,
+          itemStatus: "draft" as any,
+          valuePillar: null,
+          audienceScope: "internal" as any,
+          evidenceSensitivity: "internal_only" as any,
+          skillDomain: "soft_skill" as any,
+          skillCategory: "adaptability",
+          content: {
+            whatThisProves: `Demonstrated ability to adapt approach based on new information`,
+          },
+          links: {
+            projectId: pack.projectId,
+            notesId: notes.id,
+          },
+          displayOrder: startOrder + createdItems.length,
+          section: "How Discipline Held Under Pressure",
+        } as any);
+        createdItems.push(adaptItem);
+        existingSourceIds.add(adaptKey);
+      }
+    }
+
+    // Import summary as context if available
+    if (notesData.summary) {
+      const summaryKey = `discovery_notes-${notes.id}-summary`;
+      if (!existingSourceIds.has(summaryKey)) {
+        const summaryItem = await this.storage.createEvidencePackItem({
+          packId: pack.id,
+          itemType: "claim" as any,
+          evidencePhase: getEvidencePhase("claim") as any,
+          claim: notesData.summary.substring(0, 300) + (notesData.summary.length > 300 ? '...' : ''),
+          sourceType: "discovery_notes",
+          sourceId: notes.id,
+          sourceKind: "human" as any,
+          sourceEventId: `notes-summary`,
+          confidenceLevel: "high" as any,
+          itemStatus: "draft" as any,
+          valuePillar: null,
+          audienceScope: "both" as any,
+          evidenceSensitivity: "client_shareable" as any,
+          skillDomain: "soft_skill" as any,
+          skillCategory: "synthesis",
+          content: {
+            whatThisProves: `Discovery summary capturing key client needs and context`,
+          },
+          links: {
+            projectId: pack.projectId,
+            notesId: notes.id,
+          },
+          displayOrder: startOrder + createdItems.length,
+          section: "What We Saw Before Results",
+        } as any);
+        createdItems.push(summaryItem);
+        existingSourceIds.add(summaryKey);
+      }
+    }
+
+    return createdItems;
+  }
+
+  private async importSuccessStories(
+    pack: EvidencePack,
+    existingSourceIds: Set<string>,
+    startOrder: number
+  ): Promise<any[]> {
+    const createdItems: any[] = [];
+    
+    // Get project-specific success stories from attachments that might be tagged as success stories
+    // Also get from the success story library if linked to this project
+    try {
+      const stories = await this.storage.getSuccessStoryLibrary();
+      
+      for (const story of stories) {
+        const storyKey = `success_story_library-${story.id}-success_story`;
+        if (existingSourceIds.has(storyKey)) continue;
+
+        const storyData = story as any;
+        const storyItem = await this.storage.createEvidencePackItem({
+          packId: pack.id,
+          itemType: "success_story" as any,
+          evidencePhase: getEvidencePhase("success_story") as any,
+          claim: `${storyData.title || 'Success Story'}: ${storyData.clientName || 'Client'} - ${storyData.outcomeDescription || storyData.description || 'Value delivered'}`,
+          sourceType: "success_story_library",
+          sourceId: story.id,
+          sourceKind: "human" as any,
+          sourceEventId: `success-${story.id}`,
+          confidenceLevel: storyData.approvalStatus === 'approved' ? "high" : "medium",
+          itemStatus: storyData.approvalStatus === 'approved' ? "validated" : "draft",
+          valuePillar: (storyData.valuePillar as any) || null,
+          audienceScope: "customer" as any,
+          evidenceSensitivity: "client_shareable" as any,
+          skillDomain: "hard_data" as any,
+          skillCategory: "case_study",
+          metricType: storyData.quantifiedValue ? "quantitative" : "qualitative",
+          metricValue: storyData.quantifiedValue || null,
+          content: {
+            clientName: storyData.clientName,
+            industry: storyData.industry,
+            capabilityName: storyData.capabilityName,
+            outcomeDescription: storyData.outcomeDescription,
+            whatThisProves: `Proven success story demonstrating ${storyData.capabilityName || 'capability'} value`,
+          },
+          links: {
+            projectId: pack.projectId,
+            successStoryId: story.id,
+          },
+          displayOrder: startOrder + createdItems.length,
+          section: "Results with Context",
+        } as any);
+        createdItems.push(storyItem);
+        existingSourceIds.add(storyKey);
+      }
+    } catch (error) {
+      console.log('[Evidence Pack] No success stories found or error fetching:', error);
+    }
+
+    return createdItems;
+  }
+
+  private async importBusinessReviews(
+    pack: EvidencePack,
+    existingSourceIds: Set<string>,
+    startOrder: number
+  ): Promise<any[]> {
+    const createdItems: any[] = [];
+    
+    try {
+      const reviews = await this.storage.getBusinessReviews(pack.projectId);
+      
+      for (const review of reviews) {
+        const reviewKey = `business_review-${review.id}-outcome`;
+        if (existingSourceIds.has(reviewKey)) continue;
+
+        const reviewData = review as any;
+        
+        // Main review outcome
+        const reviewItem = await this.storage.createEvidencePackItem({
+          packId: pack.id,
+          itemType: "outcome" as any,
+          evidencePhase: getEvidencePhase("outcome") as any,
+          claim: `${reviewData.title || 'Business Review'}: ${reviewData.summary || reviewData.keyFindings || 'Review completed'}`,
+          sourceType: "business_review",
+          sourceId: review.id,
+          sourceKind: "human" as any,
+          sourceEventId: `review-${review.id}`,
+          confidenceLevel: "high" as any,
+          itemStatus: reviewData.status === 'completed' ? "validated" : "draft",
+          valuePillar: null,
+          audienceScope: "both" as any,
+          evidenceSensitivity: "client_shareable" as any,
+          skillDomain: "hard_data" as any,
+          skillCategory: "business_review",
+          content: {
+            reviewDate: reviewData.reviewDate,
+            period: reviewData.period,
+            keyFindings: reviewData.keyFindings,
+            whatThisProves: `Formal business review documenting progress and outcomes`,
+          },
+          links: {
+            projectId: pack.projectId,
+            businessReviewId: review.id,
+          },
+          displayOrder: startOrder + createdItems.length,
+          section: "Results with Context",
+        } as any);
+        createdItems.push(reviewItem);
+        existingSourceIds.add(reviewKey);
+
+        // Import specific achievements from the review
+        if (reviewData.achievements && Array.isArray(reviewData.achievements)) {
+          for (let i = 0; i < reviewData.achievements.length; i++) {
+            const achievement = reviewData.achievements[i];
+            const achieveKey = `business_review-${review.id}-achieve-${i}`;
+            if (existingSourceIds.has(achieveKey)) continue;
+
+            const achieveItem = await this.storage.createEvidencePackItem({
+              packId: pack.id,
+              itemType: "outcome_signal" as any,
+              evidencePhase: getEvidencePhase("outcome_signal") as any,
+              claim: typeof achievement === 'string' ? achievement : achievement.description || JSON.stringify(achievement),
+              sourceType: "business_review",
+              sourceId: review.id,
+              sourceKind: "human" as any,
+              sourceEventId: `review-achieve-${i}`,
+              confidenceLevel: "high" as any,
+              itemStatus: "draft" as any,
+              valuePillar: null,
+              audienceScope: "customer" as any,
+              evidenceSensitivity: "client_shareable" as any,
+              skillDomain: "hard_data" as any,
+              skillCategory: "achievement",
+              content: {
+                whatThisProves: `Documented achievement from business review`,
+              },
+              links: {
+                projectId: pack.projectId,
+                businessReviewId: review.id,
+              },
+              displayOrder: startOrder + createdItems.length,
+              section: "Results with Context",
+            } as any);
+            createdItems.push(achieveItem);
+            existingSourceIds.add(achieveKey);
+          }
+        }
+
+        // Import lessons learned as Mid-Loop evidence (How we adapted)
+        if (reviewData.lessonsLearned && Array.isArray(reviewData.lessonsLearned)) {
+          for (let i = 0; i < reviewData.lessonsLearned.length; i++) {
+            const lesson = reviewData.lessonsLearned[i];
+            const lessonKey = `business_review-${review.id}-lesson-${i}`;
+            if (existingSourceIds.has(lessonKey)) continue;
+
+            const lessonItem = await this.storage.createEvidencePackItem({
+              packId: pack.id,
+              itemType: "coaching_observation" as any,
+              evidencePhase: getEvidencePhase("coaching_observation") as any,
+              claim: typeof lesson === 'string' ? lesson : lesson.description || JSON.stringify(lesson),
+              sourceType: "business_review",
+              sourceId: review.id,
+              sourceKind: "human" as any,
+              sourceEventId: `review-lesson-${i}`,
+              confidenceLevel: "high" as any,
+              itemStatus: "draft" as any,
+              valuePillar: null,
+              audienceScope: "internal" as any,
+              evidenceSensitivity: "internal_only" as any,
+              skillDomain: "soft_skill" as any,
+              skillCategory: "learning",
+              content: {
+                whatThisProves: `Lesson learned demonstrating continuous improvement`,
+              },
+              links: {
+                projectId: pack.projectId,
+                businessReviewId: review.id,
+              },
+              displayOrder: startOrder + createdItems.length,
+              section: "How Discipline Held Under Pressure",
+            } as any);
+            createdItems.push(lessonItem);
+            existingSourceIds.add(lessonKey);
+          }
+        }
+      }
+    } catch (error) {
+      console.log('[Evidence Pack] No business reviews found or error fetching:', error);
     }
 
     return createdItems;
