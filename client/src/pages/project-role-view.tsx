@@ -6364,27 +6364,118 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
           </CardHeader>
         </Card>
         
-        {/* CLIENT VIEW - Executive Summary & Value Pillars */}
+        {/* CLIENT VIEW - Journey Narrative (Executive-Friendly Storytelling) */}
         {audienceView === "customer" && items.length > 0 && (
-          <Card className="border-blue-500/20 bg-blue-500/5">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-blue-500" />
-                Executive Summary
+          <Card className="border-blue-500/20 bg-gradient-to-br from-blue-500/5 via-background to-green-500/5" data-testid="client-view-narrative">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-blue-500" />
+                The Value Story
               </CardTitle>
+              <CardDescription>
+                How we created measurable impact through disciplined engagement
+              </CardDescription>
             </CardHeader>
-            <CardContent className="pt-0">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="text-center p-3 bg-background rounded-lg border">
-                  <div className="text-2xl font-bold text-green-600">{kpiItems.length}</div>
-                  <div className="text-xs text-muted-foreground">Outcomes</div>
+            <CardContent className="space-y-6">
+              {/* Journey Timeline - Visual Story Flow */}
+              <div className="flex items-center justify-center gap-4 flex-wrap mb-6" data-testid="journey-timeline">
+                <div className="flex items-center gap-2" data-testid="timeline-phase-discovered">
+                  <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
+                    <Eye className="w-4 h-4 text-blue-500" />
+                  </div>
+                  <span className="text-xs font-medium text-blue-600" data-testid="text-discovered">Discovered</span>
                 </div>
-                <div className="text-center p-3 bg-background rounded-lg border">
-                  <div className="text-2xl font-bold text-blue-600">{approvedCount}</div>
-                  <div className="text-xs text-muted-foreground">Validated</div>
+                <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                <div className="flex items-center gap-2" data-testid="timeline-phase-adapted">
+                  <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center">
+                    <Shield className="w-4 h-4 text-amber-500" />
+                  </div>
+                  <span className="text-xs font-medium text-amber-600" data-testid="text-adapted">Adapted</span>
                 </div>
-                <div className="text-center p-3 bg-background rounded-lg border">
-                  <div className="text-2xl font-bold text-amber-600">{successStories.length}</div>
+                <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                <div className="flex items-center gap-2" data-testid="timeline-phase-achieved">
+                  <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                    <Trophy className="w-4 h-4 text-green-500" />
+                  </div>
+                  <span className="text-xs font-medium text-green-600" data-testid="text-achieved">Achieved</span>
+                </div>
+              </div>
+              
+              {/* Three-Column Journey Summary */}
+              <div className="grid grid-cols-3 gap-4" data-testid="journey-summary-columns">
+                {/* Discovery Column */}
+                <div className="p-4 rounded-lg border border-blue-500/30 bg-blue-500/5" data-testid="summary-column-discovered">
+                  <h4 className="text-sm font-semibold text-blue-700 dark:text-blue-400 mb-2 flex items-center gap-2">
+                    <Eye className="w-4 h-4" /> What We Found
+                  </h4>
+                  <div className="space-y-2">
+                    {(itemsByPhase['leading'] || []).slice(0, 2).map((item: any) => (
+                      <p key={item.id} className="text-xs text-muted-foreground line-clamp-2">
+                        {item.claim}
+                      </p>
+                    ))}
+                    {(itemsByPhase['leading'] || []).length > 2 && (
+                      <p className="text-xs text-blue-600">+{(itemsByPhase['leading'] || []).length - 2} more insights</p>
+                    )}
+                    {!(itemsByPhase['leading'] || []).length && (
+                      <p className="text-xs text-muted-foreground italic">Building discovery...</p>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Discipline Column */}
+                <div className="p-4 rounded-lg border border-amber-500/30 bg-amber-500/5" data-testid="summary-column-adapted">
+                  <h4 className="text-sm font-semibold text-amber-700 dark:text-amber-400 mb-2 flex items-center gap-2">
+                    <Shield className="w-4 h-4" /> How We Adapted
+                  </h4>
+                  <div className="space-y-2">
+                    {(itemsByPhase['mid_loop'] || []).slice(0, 2).map((item: any) => (
+                      <p key={item.id} className="text-xs text-muted-foreground line-clamp-2">
+                        {item.claim}
+                      </p>
+                    ))}
+                    {(itemsByPhase['mid_loop'] || []).length > 2 && (
+                      <p className="text-xs text-amber-600">+{(itemsByPhase['mid_loop'] || []).length - 2} more signals</p>
+                    )}
+                    {!(itemsByPhase['mid_loop'] || []).length && (
+                      <p className="text-xs text-muted-foreground italic">Tracking discipline...</p>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Results Column */}
+                <div className="p-4 rounded-lg border border-green-500/30 bg-green-500/5" data-testid="summary-column-achieved">
+                  <h4 className="text-sm font-semibold text-green-700 dark:text-green-400 mb-2 flex items-center gap-2">
+                    <Trophy className="w-4 h-4" /> What We Achieved
+                  </h4>
+                  <div className="space-y-2">
+                    {(itemsByPhase['lagging'] || []).slice(0, 2).map((item: any) => (
+                      <p key={item.id} className="text-xs text-muted-foreground line-clamp-2">
+                        {item.claim}
+                      </p>
+                    ))}
+                    {(itemsByPhase['lagging'] || []).length > 2 && (
+                      <p className="text-xs text-green-600">+{(itemsByPhase['lagging'] || []).length - 2} more outcomes</p>
+                    )}
+                    {!(itemsByPhase['lagging'] || []).length && (
+                      <p className="text-xs text-muted-foreground italic">Capturing results...</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Key Metrics Summary */}
+              <div className="grid grid-cols-3 gap-4 pt-4 border-t" data-testid="journey-metrics">
+                <div className="text-center p-3 bg-background rounded-lg border" data-testid="metric-outcomes">
+                  <div className="text-2xl font-bold text-green-600" data-testid="value-outcomes">{kpiItems.length}</div>
+                  <div className="text-xs text-muted-foreground">Outcomes Delivered</div>
+                </div>
+                <div className="text-center p-3 bg-background rounded-lg border" data-testid="metric-validated">
+                  <div className="text-2xl font-bold text-blue-600" data-testid="value-validated">{approvedCount}</div>
+                  <div className="text-xs text-muted-foreground">Validated Points</div>
+                </div>
+                <div className="text-center p-3 bg-background rounded-lg border" data-testid="metric-stories">
+                  <div className="text-2xl font-bold text-amber-600" data-testid="value-stories">{successStories.length}</div>
                   <div className="text-xs text-muted-foreground">Success Stories</div>
                 </div>
               </div>
@@ -6393,40 +6484,46 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
         )}
         
         {/* CLIENT VIEW - Value Pillar Cards */}
-        {audienceView === "customer" && items.length > 0 && (
-          <div className="grid grid-cols-2 gap-4">
-            {Object.entries(valuePillarConfig).map(([pillarKey, pillarInfo]) => {
-              const pillarItems = itemsByPillar[pillarKey] || [];
-              if (pillarItems.length === 0) return null;
-              
-              return (
-                <Card key={pillarKey} className={`${pillarInfo.bgColor} border`}>
-                  <CardHeader className="pb-2">
-                    <CardTitle className={`text-sm ${pillarInfo.color}`}>
-                      {pillarInfo.label}
-                    </CardTitle>
-                    <CardDescription className="text-xs">{pillarInfo.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="pt-0 space-y-2">
-                    {pillarItems.slice(0, 3).map((item: any) => {
-                      const ItemIcon = itemTypeIcons[item.itemType] || Target;
-                      return (
-                        <div key={item.id} className="flex items-start gap-2 p-2 bg-background rounded border text-sm">
-                          <ItemIcon className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
-                          <span className="line-clamp-2">{item.claim}</span>
-                        </div>
-                      );
-                    })}
-                    {pillarItems.length > 3 && (
-                      <p className="text-xs text-muted-foreground text-center">
-                        +{pillarItems.length - 3} more items
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+        {audienceView === "customer" && items.length > 0 && Object.entries(valuePillarConfig).some(([k]) => (itemsByPillar[k] || []).length > 0) && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Target className="w-4 h-4" />
+                Value by Strategic Pillar
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4">
+                {Object.entries(valuePillarConfig).map(([pillarKey, pillarInfo]) => {
+                  const pillarItems = itemsByPillar[pillarKey] || [];
+                  if (pillarItems.length === 0) return null;
+                  
+                  return (
+                    <div key={pillarKey} className={`p-4 rounded-lg ${pillarInfo.bgColor} border`}>
+                      <h4 className={`text-sm font-semibold ${pillarInfo.color} mb-1`}>{pillarInfo.label}</h4>
+                      <p className="text-xs text-muted-foreground mb-3">{pillarInfo.description}</p>
+                      <div className="space-y-2">
+                        {pillarItems.slice(0, 3).map((item: any) => {
+                          const ItemIcon = itemTypeIcons[item.itemType] || Target;
+                          return (
+                            <div key={item.id} className="flex items-start gap-2 p-2 bg-background rounded border text-sm">
+                              <ItemIcon className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                              <span className="line-clamp-2">{item.claim}</span>
+                            </div>
+                          );
+                        })}
+                        {pillarItems.length > 3 && (
+                          <p className="text-xs text-muted-foreground text-center">
+                            +{pillarItems.length - 3} more items
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
         )}
         
         {/* CLIENT VIEW - Success Stories */}
@@ -6730,17 +6827,42 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                   </span>
                 </div>
                 
+                {/* Story Thread Connector */}
+                {(() => {
+                  const hasLeading = (itemsByPhase['leading'] || []).length > 0;
+                  const hasMidLoop = (itemsByPhase['mid_loop'] || []).length > 0;
+                  const hasLagging = (itemsByPhase['lagging'] || []).length > 0;
+                  const threadCount = [hasLeading, hasMidLoop, hasLagging].filter(Boolean).length;
+                  
+                  if (threadCount < 2) return null;
+                  
+                  return (
+                    <div className="flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-blue-500/5 via-amber-500/5 to-green-500/5 rounded-lg border border-dashed" data-testid="story-thread-connector">
+                      <Link2 className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">
+                        Story flows through {threadCount} phases
+                        {threadCount === 3 && " — Complete journey documented"}
+                      </span>
+                      {threadCount === 3 && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+                    </div>
+                  );
+                })()}
+                
                 {/* Journey Phase Sections - Storytelling Approach */}
-                {['leading', 'mid_loop', 'lagging'].map((phase) => {
+                {['leading', 'mid_loop', 'lagging'].map((phase, phaseIndex) => {
                   const phaseItems = itemsByPhase[phase] || [];
                   if (phaseItems.length === 0) return null;
                   
                   const phaseConfig = journeyPhaseConfig[phase];
                   const PhaseIcon = phaseConfig.icon;
                   const isCollapsed = collapsedSections.has(phase);
+                  const phases = ['leading', 'mid_loop', 'lagging'];
+                  const nextPhase = phases[phaseIndex + 1];
+                  const hasNextPhase = nextPhase && (itemsByPhase[nextPhase] || []).length > 0;
                   
                   return (
-                    <div key={phase} className={`border rounded-lg ${phaseConfig.bgColor}`}>
+                    <div key={phase}>
+                      <div className={`border rounded-lg ${phaseConfig.bgColor}`}>
                       <button
                         onClick={() => toggleSection(phase)}
                         className="w-full flex items-start justify-between p-4 hover-elevate rounded-t-lg"
@@ -6939,6 +7061,17 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                               </div>
                             );
                           })}
+                        </div>
+                      )}
+                      </div>
+                      
+                      {/* Story Thread Arrow to Next Phase */}
+                      {hasNextPhase && (
+                        <div className="flex items-center justify-center py-2">
+                          <div className="flex items-center gap-2 px-3 py-1 bg-muted/50 rounded-full">
+                            <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">Leads to</span>
+                          </div>
                         </div>
                       )}
                     </div>
