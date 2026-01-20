@@ -1,0 +1,86 @@
+{
+  "meta": {
+    "name": "Loop Living Evidence Pack - Prompt Templates",
+    "version": "0.1.0",
+    "notes": [
+      "All templates are deterministic-leaning and structured.",
+      "Use placeholders like {{variable}} and replace at runtime.",
+      "AI must never invent facts; if required fields are missing, return questions[] and mark items as 'needs_input'.",
+      "Every output must validate against the response_schema for that template."
+    ]
+  },
+  "shared": {
+    "enums": {
+      "persona": ["seller", "manager", "delivery", "system"],
+      "confidence_level": ["high", "medium", "exploratory"],
+      "evidence_item_type": [
+        "KPI",
+        "Baseline",
+        "Target",
+        "Assumption",
+        "StakeholderClaim",
+        "MeetingInsight",
+        "BehaviorCondition",
+        "BehaviorSignal",
+        "LeverApplied",
+        "OutcomeSignal",
+        "Risk",
+        "Decision",
+        "Commitment",
+        "Deliverable",
+        "ProofObject",
+        "NextAction"
+      ],
+      "evidence_status": ["draft", "validated", "rejected", "needs_stakeholder_validation", "needs_input"],
+      "stage_readiness_severity": ["blocker", "warning", "info"],
+      "action_priority": ["p0", "p1", "p2"],
+      "action_category": [
+        "success_frame",
+        "stakeholder_alignment",
+        "method_reinforcement",
+        "deal_progression",
+        "value_case",
+        "risk_mitigation",
+        "delivery_alignment",
+        "renewal_readiness"
+      ]
+    },
+    "schemas": {
+      "evidence_item": {
+        "type": "object",
+        "required": ["type", "title", "content", "source", "status", "confidence_level", "timestamp"],
+        "properties": {
+          "idempotency_key": {
+            "type": "string",
+            "description": "Stable key for deduping, e.g., sha256(spine_id + event_id + type + title)"
+          },
+          "type": { "type": "string" },
+          "title": { "type": "string" },
+          "content": { "type": "object" },
+          "source": {
+            "type": "object",
+            "required": ["kind"],
+            "properties": {
+              "kind": { "type": "string", "description": "AI_draft | Human | System_event | Integration" },
+              "event_id": { "type": "string" },
+              "meeting_id": { "type": "string" },
+              "artifact_id": { "type": "string" },
+              "raw_excerpt": {
+                "type": "string",
+                "description": "Optional; keep short; do NOT fabricate. Use only if provided in input."
+              }
+            }
+          },
+          "links": {
+            "type": "object",
+            "properties": {
+              "account_id": { "type": "string" },
+              "opportunity_id": { "type": "string" },
+              "engagement_id": { "type": "string" },
+              "spine_id": { "type": "string" },
+              "stakeholder_ids": { "type": "array", "items": { "type": "string" } },
+              "kpi_ids": { "type": "array", "items": { "type": "string" } },
+              "behavior_condition_ids": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "status": { "type": "string" },

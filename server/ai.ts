@@ -4827,11 +4827,58 @@ export interface EvidencePackRecommendationsResult {
   generatedAt: string;
 }
 
+const normalizeItemType = (val: string): "insight" | "outcome" | "success_story" | "benchmark" | "claim" | "testimonial" => {
+  const normalized = val.toLowerCase().replace(/[_-]/g, '_');
+  const mappings: Record<string, "insight" | "outcome" | "success_story" | "benchmark" | "claim" | "testimonial"> = {
+    'client_outcome': 'outcome',
+    'customer_outcome': 'outcome',
+    'business_outcome': 'outcome',
+    'case_study': 'success_story',
+    'casestudy': 'success_story',
+    'success': 'success_story',
+    'data_point': 'benchmark',
+    'datapoint': 'benchmark',
+    'stat': 'benchmark',
+    'statistic': 'benchmark',
+    'quote': 'testimonial',
+    'customer_quote': 'testimonial',
+    'client_quote': 'testimonial',
+    'finding': 'insight',
+    'discovery': 'insight',
+    'statement': 'claim',
+    'assertion': 'claim',
+  };
+  return mappings[normalized] || (["insight", "outcome", "success_story", "benchmark", "claim", "testimonial"].includes(normalized) ? normalized as any : 'claim');
+};
+
+const normalizeValuePillar = (val: string | null): "grow" | "optimise" | "derisk" | "strengthen" | null => {
+  if (!val) return null;
+  const normalized = val.toLowerCase().trim();
+  const mappings: Record<string, "grow" | "optimise" | "derisk" | "strengthen"> = {
+    'optimize': 'optimise',
+    'optimisation': 'optimise',
+    'optimization': 'optimise',
+    'growth': 'grow',
+    'revenue': 'grow',
+    'expand': 'grow',
+    'risk': 'derisk',
+    'de-risk': 'derisk',
+    'de_risk': 'derisk',
+    'mitigate': 'derisk',
+    'culture': 'strengthen',
+    'leadership': 'strengthen',
+    'talent': 'strengthen',
+    'cost': 'optimise',
+    'efficiency': 'optimise',
+  };
+  return mappings[normalized] || (["grow", "optimise", "derisk", "strengthen"].includes(normalized) ? normalized as any : null);
+};
+
 const evidenceRecommendationsSchema = z.object({
   recommendations: z.array(z.object({
     claim: z.string(),
-    itemType: z.enum(["insight", "outcome", "success_story", "benchmark", "claim", "testimonial"]),
-    valuePillar: z.enum(["grow", "optimise", "derisk", "strengthen"]).nullable(),
+    itemType: z.string().transform(normalizeItemType),
+    valuePillar: z.string().nullable().transform(normalizeValuePillar),
     section: z.string(),
     confidence: z.number().min(0).max(100),
     reasoning: z.string(),
