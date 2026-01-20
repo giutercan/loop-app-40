@@ -6479,6 +6479,37 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                   <div className="text-xs text-muted-foreground">Success Stories</div>
                 </div>
               </div>
+              
+              {/* Data Source Attribution */}
+              <div className="pt-4 border-t" data-testid="source-attribution">
+                <h4 className="text-xs font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+                  <Link2 className="w-3 h-3" /> Evidence Sources
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {(() => {
+                    const sourceCounts: Record<string, number> = {};
+                    items.forEach((item: any) => {
+                      const source = item.sourceType || 'manual';
+                      sourceCounts[source] = (sourceCounts[source] || 0) + 1;
+                    });
+                    const sourceLabelsInline: Record<string, string> = {
+                      kpi_commitment: "KPI Commitments",
+                      discovery_insight: "Discovery Insights",
+                      discovery_notes: "Discovery Notes",
+                      bluesheet: "Blue Sheet",
+                      evidence_artefact: "Documents",
+                      success_story_library: "Success Stories",
+                      business_review: "Business Reviews",
+                      manual: "Manual Entries",
+                    };
+                    return Object.entries(sourceCounts).map(([source, count]) => (
+                      <Badge key={source} variant="outline" className="text-xs" data-testid={`source-count-${source}`}>
+                        {sourceLabelsInline[source] || source.replace(/_/g, ' ')}: {count}
+                      </Badge>
+                    ));
+                  })()}
+                </div>
+              </div>
             </CardContent>
           </Card>
         )}

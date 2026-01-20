@@ -13,6 +13,15 @@ export interface AutoPopulateResult {
     artifacts: number;
     risks: number;
     decisions: number;
+    notes: number;
+    successStories: number;
+    businessReviews: number;
+    adaptations: number;
+  };
+  phaseBreakdown: {
+    leading: number;
+    midLoop: number;
+    lagging: number;
   };
   items: any[];
 }
