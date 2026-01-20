@@ -13118,18 +13118,39 @@ Provide a JSON response with:
   // ----------------------
 
   // Blue Sheet Zod validation schemas
+  // Flexible schemas that accept both AI-generated (lowercase) and UI-generated (capitalized) values
   const blueSheetBuyingInfluenceSchema = z.object({
-    name: z.string(),
+    name: z.string().optional(),
+    contactName: z.string().optional(), // AI uses contactName, UI uses name
     title: z.string().optional(),
     company: z.string().optional(),
-    role: z.enum(["Economic", "User", "Technical", "Coach"]),
-    mode: z.enum(["Growth", "Trouble", "EvenKeel", "Overconfident"]).optional(),
-    rating: z.enum(["+5", "+4", "+3", "+2", "+1", "0", "-1", "-2", "-3", "-4", "-5"]).optional(),
-    degreeOfInfluence: z.enum(["High", "Medium", "Low"]).optional(),
+    // Accept both formats: "Economic" or "EconomicBuyer", lowercase variants
+    role: z.string().optional(),
+    buyingInfluenceRoles: z.array(z.string()).optional(), // AI format uses array
+    // Accept multiple mode formats: lowercase (AI) and capitalized (UI)
+    mode: z.string().optional(),
+    buyingMode: z.string().optional(), // AI format
+    // Accept any rating format: numeric strings, letter grades, or numbers
+    rating: z.union([z.string(), z.number()]).optional(),
+    degreeOfSupport: z.union([z.string(), z.number()]).optional(), // AI format
+    // Accept both lowercase and capitalized
+    degreeOfInfluence: z.string().optional(),
+    degreeOfInfluenceMarker: z.string().optional(),
     coveredBy: z.string().optional(),
     resultsWanted: z.string().optional(),
+    businessResults: z.string().optional(), // AI format
     personalWins: z.string().optional(),
-    positionMarker: z.enum(["RedFlag", "Strength", "Unknown"]).optional(),
+    personalWinsMarker: z.string().optional(),
+    businessResultsMarker: z.string().optional(),
+    positionMarker: z.string().optional(),
+    ratingMarker: z.string().optional(),
+    ratingText: z.string().optional(),
+    ratingEvidence: z.string().optional(),
+    competitivePreference: z.string().optional(),
+    competitivePreferenceMarker: z.string().optional(),
+    buyingModeMarker: z.string().optional(),
+    concerns: z.string().optional(),
+    accessStrategy: z.string().optional(),
     notes: z.string().optional(),
     stakeholderResearch: z.object({
       background: z.string().optional(),
@@ -13147,53 +13168,96 @@ Provide a JSON response with:
       sentiment: z.string().optional(),
     }).optional(),
     isManuallyAdded: z.boolean().optional(),
-  });
+  }).passthrough(); // Allow additional fields from AI generation
 
+  // Flexible competition schema - accepts various AI output formats
   const blueSheetCompetitionSchema = z.object({
-    competitor: z.string(),
-    strengths: z.string().optional(),
-    weaknesses: z.string().optional(),
+    competitor: z.string().optional(),
+    competitorName: z.string().optional(), // Alternative field name
+    name: z.string().optional(), // Another alternative
+    competitorType: z.string().optional(),
+    competitorTypeMarker: z.string().optional(),
+    competitorNameMarker: z.string().optional(),
+    strengths: z.union([z.string(), z.array(z.string())]).optional(),
+    weaknesses: z.union([z.string(), z.array(z.string())]).optional(),
     strategy: z.string().optional(),
+    differentiator: z.string().optional(),
     uniqueBusinessStrength: z.string().optional(),
-    rating: z.enum(["Strong", "Moderate", "Weak"]).optional(),
-  });
+    currentPosition: z.string().optional(),
+    positionVsCompetitor: z.string().optional(),
+    positionVsCompetitorMarker: z.string().optional(),
+    competitiveDetail: z.string().optional(),
+    competitiveDetailMarker: z.string().optional(),
+    rating: z.string().optional(),
+  }).passthrough();
 
+  // Flexible summary position schema
   const blueSheetSummaryPositionSchema = z.object({
-    type: z.enum(["RedFlag", "Strength"]),
+    type: z.string().optional(),
+    positionType: z.string().optional(), // Alternative field name
     description: z.string(),
-    priority: z.enum(["High", "Medium", "Low"]).optional(),
+    priority: z.union([z.string(), z.number()]).optional(),
+    relatedBuyingInfluence: z.string().optional(),
     buyingInfluenceName: z.string().optional(),
-  });
+    actionRequired: z.string().optional(),
+    createdAt: z.string().optional(),
+  }).passthrough();
 
+  // Flexible action plan schema
   const blueSheetActionPlanSchema = z.object({
-    action: z.string(),
+    id: z.string().optional(),
+    action: z.string().optional(),
+    subject: z.string().optional(),
+    description: z.string().optional(),
     targetDate: z.string().optional(),
+    scheduledStart: z.string().optional(),
+    scheduledEnd: z.string().optional(),
     owner: z.string().optional(),
-    status: z.enum(["pending", "in_progress", "completed"]).optional(),
+    assignedTo: z.string().optional(),
+    contactName: z.string().optional(),
+    target: z.string().optional(),
+    expectedOutcome: z.string().optional(),
+    status: z.string().optional(),
     addressesRedFlag: z.string().optional(),
     leveragesStrength: z.string().optional(),
-    priority: z.number().optional(),
-  });
+    priority: z.union([z.string(), z.number()]).optional(),
+    customActionType: z.string().optional(),
+    customPlanPriority: z.string().optional(),
+    perspectiveType: z.string().optional(),
+    category: z.string().optional(),
+    completedAt: z.string().optional(),
+    notes: z.string().optional(),
+  }).passthrough();
 
+  // Flexible conflict schema
   const blueSheetConflictSchema = z.object({
-    description: z.string(),
+    field: z.string().optional(),
+    description: z.string().optional(),
+    conflictDescription: z.string().optional(),
     buyingInfluencesInvolved: z.array(z.string()).optional(),
+    sourceValues: z.record(z.string()).optional(),
+    severity: z.string().optional(),
     resolution: z.string().optional(),
-  });
+    resolvedAt: z.string().optional(),
+  }).passthrough();
 
+  // Main Blue Sheet data schema - very flexible to accept AI and UI formats
   const blueSheetDataSchema = z.object({
     singleSalesObjective: z.string().optional(),
-    singleSalesObjectiveMarker: z.enum(["RedFlag", "Strength", "Unknown"]).optional(),
-    customerTimingForPriorities: z.enum(["Urgent", "Later", "Unknown"]).optional(),
+    singleSalesObjectiveMarker: z.string().optional(),
+    customerTimingForPriorities: z.string().optional(),
+    customerTimingForPrioritiesMarker: z.string().optional(),
     customersStatedObjectives: z.string().optional(),
     evaluationOfObjective: z.string().optional(),
-    currentPosition: z.enum(["Best", "SharedBest", "Shared", "Trailing", "Panic", "Unknown"]).optional(),
+    evaluationOfObjectiveMarker: z.string().optional(),
+    currentPosition: z.string().optional(),
+    currentPositionMarker: z.string().optional(),
     competitions: z.array(blueSheetCompetitionSchema).optional(),
     buyingInfluences: z.array(blueSheetBuyingInfluenceSchema).optional(),
     summaryOfPositions: z.array(blueSheetSummaryPositionSchema).optional(),
     actionPlans: z.array(blueSheetActionPlanSchema).optional(),
-    conflicts: z.array(blueSheetConflictSchema).optional(),
-  });
+    conflicts: z.union([z.array(blueSheetConflictSchema), z.array(z.string())]).optional(),
+  }).passthrough(); // Allow additional fields from AI generation
 
   const createBlueSheetRequestSchema = z.object({
     data: blueSheetDataSchema,
