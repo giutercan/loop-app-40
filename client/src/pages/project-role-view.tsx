@@ -11677,6 +11677,21 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
       queryKey: ["/api/projects", projectId, "discovery-questions"],
     });
 
+    // Fetch Blue Sheet data (Miller Heiman Strategic Selling)
+    const { data: bluesheetData } = useQuery<any>({
+      queryKey: ["/api/projects", projectId, "bluesheet"],
+      queryFn: async () => {
+        const response = await fetch(`/api/projects/${projectId}/bluesheet`);
+        if (!response.ok) return null;
+        return response.json();
+      },
+    });
+
+    // Fetch Evidence Pack data
+    const { data: evidencePackData } = useQuery<any>({
+      queryKey: [`/api/projects/${projectId}/evidence-pack`],
+    });
+
     // Toggle section expansion
     const toggleSection = (section: string) => {
       setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -11884,16 +11899,34 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
     const outcomesWithProvenance = allOutcomes.filter((c: any) => c.provenance?.source || c.sourceAiSuggestion);
     const isHandoffConfirmed = project?.handoffConfirmedAt;
 
-    // Readiness checks for handoff - focus on confirmed commitments
+    // Extract Blue Sheet strategic fields
+    const bluesheetContent = bluesheetData?.data || {};
+    const hasSingleSalesObjective = !!bluesheetContent.singleSalesObjective;
+    const hasBuyingInfluences = (bluesheetContent.buyingInfluences || []).length > 0;
+    const hasRedFlags = (bluesheetContent.redFlags || []).length > 0;
+    const hasStrengths = (bluesheetContent.strengthsOfPosition || []).length > 0;
+
+    // Extract Evidence Pack items by journey phase
+    const evidenceItems = evidencePackData?.items || [];
+    const leadingEvidence = evidenceItems.filter((e: any) => e.journeyPhase === "leading");
+    const midLoopEvidence = evidenceItems.filter((e: any) => e.journeyPhase === "mid_loop");
+    const laggingEvidence = evidenceItems.filter((e: any) => e.journeyPhase === "lagging");
+
+    // Enhanced Readiness checks for handoff - Miller Heiman quality gates
     const readinessChecks = [
-      { label: "Client confirmed outcomes", passed: confirmedCommitments.length > 0, icon: CheckCircle2 },
-      { label: "Discovery insights captured", passed: discoveryInsights.length > 0, icon: Lightbulb },
-      { label: "Strategic themes identified", passed: jobThemes.length > 0, icon: Layers },
-      { label: "Value targets established", passed: confirmedCommitments.some((c: any) => c.targetValue != null), icon: TrendingUp },
-      { label: "Baseline values set", passed: confirmedCommitments.some((c: any) => c.baselineValue != null), icon: Target },
+      { label: "Client confirmed outcomes", passed: confirmedCommitments.length > 0, icon: CheckCircle2, required: true },
+      { label: "Discovery insights captured", passed: discoveryInsights.length > 0, icon: Lightbulb, required: true },
+      { label: "Strategic themes identified", passed: jobThemes.length > 0, icon: Layers, required: false },
+      { label: "Value targets established", passed: confirmedCommitments.some((c: any) => c.targetValue != null), icon: TrendingUp, required: true },
+      { label: "Baseline values set", passed: confirmedCommitments.some((c: any) => c.baselineValue != null), icon: Target, required: true },
+      { label: "Blue Sheet: Sales Objective", passed: hasSingleSalesObjective, icon: FileText, required: false },
+      { label: "Blue Sheet: Buying Influences", passed: hasBuyingInfluences, icon: Users, required: false },
+      { label: "Evidence captured", passed: evidenceItems.length > 0, icon: ClipboardCheck, required: false },
     ];
     const readinessScore = Math.round((readinessChecks.filter(c => c.passed).length / readinessChecks.length) * 100);
-    const canConfirmHandoff = confirmedCommitments.length > 0;
+    const requiredChecksPassed = readinessChecks.filter(c => c.required).every(c => c.passed);
+    const meetsMinimumThreshold = readinessScore >= 80 && requiredChecksPassed;
+    const canConfirmHandoff = confirmedCommitments.length > 0 && meetsMinimumThreshold;
 
     return (
       <div className="space-y-6">
@@ -11921,16 +11954,27 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 </div>
               </div>
               {!isHandoffConfirmed && (
-                <Button 
-                  size="lg"
-                  onClick={() => setIsConfirmHandoffOpen(true)}
-                  disabled={!canConfirmHandoff}
-                  className="bg-emerald-600 hover:bg-emerald-700"
-                  data-testid="button-approve-handoff"
-                >
-                  <Send className="w-5 h-5 mr-2" />
-                  Approve & Send to Delivery
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <Button 
+                        size="lg"
+                        onClick={() => setIsConfirmHandoffOpen(true)}
+                        disabled={!canConfirmHandoff}
+                        className={canConfirmHandoff ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+                        data-testid="button-approve-handoff"
+                      >
+                        <Send className="w-5 h-5 mr-2" />
+                        Approve & Send to Delivery
+                      </Button>
+                    </div>
+                  </TooltipTrigger>
+                  {!canConfirmHandoff && (
+                    <TooltipContent side="bottom">
+                      <p className="text-sm">Complete required items and reach 80% readiness to enable handoff</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
               )}
             </div>
           </CardHeader>
@@ -12012,40 +12056,277 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
           </CardContent>
         </Card>
 
-        {/* Readiness Checklist */}
-        <Card>
+        {/* Readiness Checklist with Visual Gauge */}
+        <Card className={!meetsMinimumThreshold ? "border-amber-500/50" : "border-emerald-500/30"}>
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <ClipboardCheck className="w-5 h-5 text-emerald-600" />
-                Handoff Readiness
-              </CardTitle>
-              <div className="flex items-center gap-2">
-                <Progress value={readinessScore} className="w-24 h-2" />
-                <span className={`text-sm font-bold ${readinessScore >= 80 ? 'text-emerald-600' : readinessScore >= 60 ? 'text-amber-600' : 'text-red-600'}`}>
-                  {readinessScore}%
-                </span>
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                <div className={`relative w-16 h-16 rounded-full flex items-center justify-center ${
+                  readinessScore >= 80 ? 'bg-emerald-500/10' : readinessScore >= 60 ? 'bg-amber-500/10' : 'bg-red-500/10'
+                }`}>
+                  <svg className="w-16 h-16 transform -rotate-90 absolute">
+                    <circle
+                      cx="32"
+                      cy="32"
+                      r="28"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="transparent"
+                      className="text-muted/30"
+                    />
+                    <circle
+                      cx="32"
+                      cy="32"
+                      r="28"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="transparent"
+                      strokeDasharray={`${readinessScore * 1.76} 176`}
+                      className={readinessScore >= 80 ? 'text-emerald-500' : readinessScore >= 60 ? 'text-amber-500' : 'text-red-500'}
+                    />
+                  </svg>
+                  <span className={`text-lg font-bold ${
+                    readinessScore >= 80 ? 'text-emerald-600' : readinessScore >= 60 ? 'text-amber-600' : 'text-red-600'
+                  }`}>{readinessScore}%</span>
+                </div>
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <ClipboardCheck className="w-5 h-5 text-emerald-600" />
+                    Handoff Readiness Score
+                  </CardTitle>
+                  <CardDescription>
+                    {meetsMinimumThreshold 
+                      ? "Ready to send to Delivery" 
+                      : "Complete required items before handoff"}
+                  </CardDescription>
+                </div>
               </div>
+              {!meetsMinimumThreshold && (
+                <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/30">
+                  <AlertCircle className="w-3 h-3 mr-1" />
+                  Minimum 80% + required items needed
+                </Badge>
+              )}
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-2 md:grid-cols-5">
+            <div className="grid gap-2 md:grid-cols-4">
               {readinessChecks.map((check, idx) => {
                 const IconComponent = check.icon;
                 return (
-                  <div key={idx} className={`flex items-center gap-2 p-2 rounded-lg ${check.passed ? 'bg-emerald-500/10' : 'bg-muted/50'}`}>
+                  <div key={idx} className={`flex items-center gap-2 p-2 rounded-lg ${
+                    check.passed ? 'bg-emerald-500/10' : check.required ? 'bg-red-500/5 border border-red-500/20' : 'bg-muted/50'
+                  }`}>
                     {check.passed ? (
                       <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    ) : check.required ? (
+                      <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
                     ) : (
                       <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/30 shrink-0" />
                     )}
-                    <span className={`text-xs ${check.passed ? '' : 'text-muted-foreground'}`}>{check.label}</span>
+                    <span className={`text-xs ${check.passed ? '' : 'text-muted-foreground'}`}>
+                      {check.label}
+                      {check.required && !check.passed && <span className="text-red-500 ml-1">*</span>}
+                    </span>
                   </div>
                 );
               })}
             </div>
+            <p className="text-[10px] text-muted-foreground mt-3">* Required items must be completed before handoff</p>
           </CardContent>
         </Card>
+
+        {/* Blue Sheet Summary - Miller Heiman Strategic Selling */}
+        {bluesheetData && (
+          <Card className="bg-gradient-to-r from-blue-500/5 to-indigo-500/5 border-blue-500/20" data-testid="card-bluesheet-summary">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-blue-600" />
+                  Blue Sheet Summary
+                  <Badge variant="outline" className="text-[10px]">Miller Heiman</Badge>
+                </CardTitle>
+                <div className="flex gap-1">
+                  {hasSingleSalesObjective && <Badge className="bg-blue-500/10 text-blue-600 text-[10px]">SSO</Badge>}
+                  {hasBuyingInfluences && <Badge className="bg-indigo-500/10 text-indigo-600 text-[10px]">Influences</Badge>}
+                  {hasRedFlags && <Badge className="bg-red-500/10 text-red-600 text-[10px]">Red Flags</Badge>}
+                  {hasStrengths && <Badge className="bg-emerald-500/10 text-emerald-600 text-[10px]">Strengths</Badge>}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Single Sales Objective */}
+              {bluesheetContent.singleSalesObjective && (
+                <div className="p-3 rounded-lg border bg-blue-500/5 border-blue-500/20">
+                  <p className="text-xs font-medium text-blue-600 uppercase mb-1">Single Sales Objective</p>
+                  <p className="text-sm font-medium">{bluesheetContent.singleSalesObjective}</p>
+                </div>
+              )}
+
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* Buying Influences */}
+                {(bluesheetContent.buyingInfluences || []).length > 0 && (
+                  <div className="p-3 rounded-lg border bg-indigo-500/5 border-indigo-500/20">
+                    <p className="text-xs font-medium text-indigo-600 uppercase mb-2">Key Buying Influences</p>
+                    <div className="space-y-2">
+                      {bluesheetContent.buyingInfluences.slice(0, 4).map((influence: any, idx: number) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <Users className="w-3 h-3 text-indigo-500" />
+                          <span className="text-sm">{influence.name || influence.role}</span>
+                          {influence.type && (
+                            <Badge variant="outline" className="text-[10px]">{influence.type}</Badge>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Red Flags & Strengths */}
+                <div className="space-y-3">
+                  {(bluesheetContent.redFlags || []).length > 0 && (
+                    <div className="p-3 rounded-lg border bg-red-500/5 border-red-500/20">
+                      <p className="text-xs font-medium text-red-600 uppercase mb-2">Red Flags</p>
+                      <div className="space-y-1">
+                        {bluesheetContent.redFlags.slice(0, 3).map((flag: any, idx: number) => (
+                          <div key={idx} className="flex items-start gap-2">
+                            <AlertCircle className="w-3 h-3 text-red-500 mt-0.5 shrink-0" />
+                            <span className="text-xs">{typeof flag === 'string' ? flag : flag.description || flag.flag}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {(bluesheetContent.strengthsOfPosition || []).length > 0 && (
+                    <div className="p-3 rounded-lg border bg-emerald-500/5 border-emerald-500/20">
+                      <p className="text-xs font-medium text-emerald-600 uppercase mb-2">Strengths of Position</p>
+                      <div className="space-y-1">
+                        {bluesheetContent.strengthsOfPosition.slice(0, 3).map((strength: any, idx: number) => (
+                          <div key={idx} className="flex items-start gap-2">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-500 mt-0.5 shrink-0" />
+                            <span className="text-xs">{typeof strength === 'string' ? strength : strength.description || strength.strength}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Evidence Pack Summary by Journey Phase */}
+        {evidenceItems.length > 0 && (
+          <Card className="bg-gradient-to-r from-purple-500/5 to-pink-500/5 border-purple-500/20" data-testid="card-evidence-summary">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Award className="w-5 h-5 text-purple-600" />
+                  Evidence Pack Summary
+                  <Badge variant="outline">{evidenceItems.length} items</Badge>
+                </CardTitle>
+              </div>
+              <CardDescription>Claims and proof points organized by customer journey phase</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                {/* Leading Phase */}
+                <div className="p-4 rounded-lg border bg-blue-500/5 border-blue-500/20">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
+                      <Search className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm text-blue-700">Leading</p>
+                      <p className="text-[10px] text-muted-foreground">Discovery signals</p>
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold text-blue-600 mb-2">{leadingEvidence.length}</p>
+                  {leadingEvidence.length > 0 ? (
+                    <div className="space-y-1">
+                      {leadingEvidence.slice(0, 2).map((e: any, idx: number) => (
+                        <p key={idx} className="text-xs text-muted-foreground truncate">
+                          {e.title || e.evidenceType}
+                        </p>
+                      ))}
+                      {leadingEvidence.length > 2 && (
+                        <p className="text-[10px] text-blue-600">+{leadingEvidence.length - 2} more</p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No leading evidence yet</p>
+                  )}
+                </div>
+
+                {/* Mid-Loop Phase */}
+                <div className="p-4 rounded-lg border bg-amber-500/5 border-amber-500/20">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center">
+                      <RefreshCw className="w-4 h-4 text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm text-amber-700">Mid-Loop</p>
+                      <p className="text-[10px] text-muted-foreground">Behavior under pressure</p>
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold text-amber-600 mb-2">{midLoopEvidence.length}</p>
+                  {midLoopEvidence.length > 0 ? (
+                    <div className="space-y-1">
+                      {midLoopEvidence.slice(0, 2).map((e: any, idx: number) => (
+                        <p key={idx} className="text-xs text-muted-foreground truncate">
+                          {e.title || e.evidenceType}
+                        </p>
+                      ))}
+                      {midLoopEvidence.length > 2 && (
+                        <p className="text-[10px] text-amber-600">+{midLoopEvidence.length - 2} more</p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No mid-loop evidence yet</p>
+                  )}
+                </div>
+
+                {/* Lagging Phase */}
+                <div className="p-4 rounded-lg border bg-emerald-500/5 border-emerald-500/20">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                      <Trophy className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm text-emerald-700">Lagging</p>
+                      <p className="text-[10px] text-muted-foreground">Results with context</p>
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold text-emerald-600 mb-2">{laggingEvidence.length}</p>
+                  {laggingEvidence.length > 0 ? (
+                    <div className="space-y-1">
+                      {laggingEvidence.slice(0, 2).map((e: any, idx: number) => (
+                        <p key={idx} className="text-xs text-muted-foreground truncate">
+                          {e.title || e.evidenceType}
+                        </p>
+                      ))}
+                      {laggingEvidence.length > 2 && (
+                        <p className="text-[10px] text-emerald-600">+{laggingEvidence.length - 2} more</p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No lagging evidence yet</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Journey Flow Connector */}
+              <div className="flex items-center justify-center gap-2 mt-4 text-xs text-muted-foreground">
+                <span>Discovered</span>
+                <ChevronRight className="w-4 h-4" />
+                <span>Adapted</span>
+                <ChevronRight className="w-4 h-4" />
+                <span>Achieved</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* SECTION 1: Discovery Summary */}
         <Card data-testid="card-discovery-summary">
