@@ -4800,9 +4800,17 @@ Make the narrative emotionally compelling while grounded in data. Use specific n
 // EVIDENCE PACK AI RECOMMENDATIONS
 // ============================================================================
 
+export type EvidenceItemType = 
+  | "insight" | "outcome" | "success_story" | "benchmark" | "claim" | "testimonial" | "artifact"
+  | "kpi" | "baseline" | "target" | "assumption"
+  | "stakeholder_claim" | "meeting_insight"
+  | "behavior_condition" | "behavior_signal" | "lever_applied"
+  | "outcome_signal" | "proof_object"
+  | "risk" | "decision" | "commitment" | "deliverable" | "next_action";
+
 export interface EvidenceRecommendation {
   claim: string;
-  itemType: "insight" | "outcome" | "success_story" | "benchmark" | "claim" | "testimonial";
+  itemType: EvidenceItemType;
   valuePillar: "grow" | "optimise" | "derisk" | "strengthen" | null;
   section: string;
   confidence: number;
@@ -4827,13 +4835,21 @@ export interface EvidencePackRecommendationsResult {
   generatedAt: string;
 }
 
-const validItemTypes = ["insight", "outcome", "success_story", "benchmark", "claim", "testimonial"] as const;
+const validItemTypes = [
+  "insight", "outcome", "success_story", "benchmark", "claim", "testimonial", "artifact",
+  "kpi", "baseline", "target", "assumption",
+  "stakeholder_claim", "meeting_insight",
+  "behavior_condition", "behavior_signal", "lever_applied",
+  "outcome_signal", "proof_object",
+  "risk", "decision", "commitment", "deliverable", "next_action"
+] as const;
 const validValuePillars = ["grow", "optimise", "derisk", "strengthen"] as const;
 
 const normalizeItemType = (val: unknown): typeof validItemTypes[number] => {
   if (typeof val !== 'string') throw new Error(`Invalid itemType: ${val}`);
   const normalized = val.toLowerCase().trim().replace(/[\s_-]+/g, '_').replace(/s$/, '');
   const mappings: Record<string, typeof validItemTypes[number]> = {
+    // Original types
     'insight': 'insight',
     'insights': 'insight',
     'finding': 'insight',
@@ -4874,6 +4890,62 @@ const normalizeItemType = (val: unknown): typeof validItemTypes[number] => {
     'customer_quote': 'testimonial',
     'client_quote': 'testimonial',
     'endorsement': 'testimonial',
+    'artifact': 'artifact',
+    'artefact': 'artifact',
+    'document': 'artifact',
+    // Quantitative evidence
+    'kpi': 'kpi',
+    'key_performance_indicator': 'kpi',
+    'baseline': 'baseline',
+    'current_state': 'baseline',
+    'target': 'target',
+    'goal': 'target',
+    'assumption': 'assumption',
+    'hypothesis': 'assumption',
+    // Discovery evidence
+    'stakeholder_claim': 'stakeholder_claim',
+    'stakeholderclaim': 'stakeholder_claim',
+    'executive_quote': 'stakeholder_claim',
+    'meeting_insight': 'meeting_insight',
+    'meetinginsight': 'meeting_insight',
+    'conversation_insight': 'meeting_insight',
+    // Behavior/adoption
+    'behavior_condition': 'behavior_condition',
+    'behaviorcondition': 'behavior_condition',
+    'behaviour_condition': 'behavior_condition',
+    'behavior_signal': 'behavior_signal',
+    'behaviorsignal': 'behavior_signal',
+    'behaviour_signal': 'behavior_signal',
+    'adoption_signal': 'behavior_signal',
+    'lever_applied': 'lever_applied',
+    'leverapplied': 'lever_applied',
+    'intervention': 'lever_applied',
+    // Delivery proof
+    'outcome_signal': 'outcome_signal',
+    'outcomesignal': 'outcome_signal',
+    'progress_indicator': 'outcome_signal',
+    'proof_object': 'proof_object',
+    'proofobject': 'proof_object',
+    'evidence_artifact': 'proof_object',
+    // Deal progression
+    'risk': 'risk',
+    'risks': 'risk',
+    'blocker': 'risk',
+    'concern': 'risk',
+    'decision': 'decision',
+    'decisions': 'decision',
+    'approval': 'decision',
+    'commitment': 'commitment',
+    'commitments': 'commitment',
+    'promise': 'commitment',
+    'agreement': 'commitment',
+    'deliverable': 'deliverable',
+    'deliverables': 'deliverable',
+    'milestone': 'deliverable',
+    'next_action': 'next_action',
+    'nextaction': 'next_action',
+    'action_item': 'next_action',
+    'todo': 'next_action',
   };
   const result = mappings[normalized];
   if (!result) throw new Error(`Unknown itemType: ${val}`);

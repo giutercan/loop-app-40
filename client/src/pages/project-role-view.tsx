@@ -104,7 +104,10 @@ import {
   Edit2,
   ArrowRightCircle,
   Quote,
-  Upload
+  Upload,
+  GitBranch,
+  ThumbsUp,
+  Package
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -5930,6 +5933,22 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
       },
     });
 
+    const autoPopulateMutation = useMutation({
+      mutationFn: async () => {
+        return await apiRequest("POST", `/api/evidence-packs/${evidenceData?.pack?.id}/auto-populate`, {});
+      },
+      onSuccess: (data: any) => {
+        queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/evidence-pack`] });
+        toast({ 
+          title: "Evidence imported",
+          description: `Added ${data.itemsCreated} items from your project data`
+        });
+      },
+      onError: (error: Error) => {
+        toast({ title: "Import failed", description: error.message, variant: "destructive" });
+      },
+    });
+
     const pack = evidenceData?.pack;
     const items = evidenceData?.items || [];
 
@@ -5942,7 +5961,20 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
       shared: { label: "Shared", color: "bg-purple-500/20 text-purple-700", icon: ExternalLink },
     };
 
+    const itemStatusConfig: Record<string, { label: string; color: string }> = {
+      draft: { label: "Draft", color: "bg-muted text-muted-foreground" },
+      pending: { label: "Pending", color: "bg-yellow-500/20 text-yellow-700" },
+      validated: { label: "Validated", color: "bg-green-500/20 text-green-700" },
+      approved: { label: "Approved", color: "bg-green-500/20 text-green-700" },
+      flagged: { label: "Flagged", color: "bg-orange-500/20 text-orange-700" },
+      rejected: { label: "Rejected", color: "bg-red-500/20 text-red-700" },
+      needs_evidence: { label: "Needs Evidence", color: "bg-yellow-500/20 text-yellow-700" },
+      needs_stakeholder_validation: { label: "Needs Validation", color: "bg-blue-500/20 text-blue-700" },
+      needs_input: { label: "Needs Input", color: "bg-purple-500/20 text-purple-700" },
+    };
+
     const itemTypeIcons: Record<string, typeof Target> = {
+      // Original types
       claim: Target,
       insight: Lightbulb,
       outcome: TrendingUp,
@@ -5950,6 +5982,27 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
       benchmark: FileText,
       testimonial: MessageSquare,
       artifact: Briefcase,
+      // Quantitative evidence
+      kpi: TrendingUp,
+      baseline: BarChart3,
+      target: Target,
+      assumption: HelpCircle,
+      // Discovery evidence
+      stakeholder_claim: Users,
+      meeting_insight: MessageSquare,
+      // Behavior/adoption
+      behavior_condition: GitBranch,
+      behavior_signal: Activity,
+      lever_applied: Zap,
+      // Delivery proof
+      outcome_signal: CheckCircle2,
+      proof_object: FileCheck,
+      // Deal progression
+      risk: AlertTriangle,
+      decision: ThumbsUp,
+      commitment: Handshake,
+      deliverable: Package,
+      next_action: ArrowRight,
     };
 
     if (evidenceLoading) {
@@ -6025,6 +6078,19 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 <Button
                   variant="outline"
                   size="sm"
+                  onClick={() => autoPopulateMutation.mutate()}
+                  disabled={autoPopulateMutation.isPending}
+                  data-testid="button-auto-populate"
+                >
+                  {autoPopulateMutation.isPending ? (
+                    <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Importing...</>
+                  ) : (
+                    <><Database className="w-4 h-4 mr-1" /> Import Data</>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => getRecommendationsMutation.mutate()}
                   disabled={getRecommendationsMutation.isPending}
                   data-testid="button-ai-recommendations"
@@ -6090,9 +6156,18 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                       <SelectItem value="claim">Claim</SelectItem>
                       <SelectItem value="insight">Insight</SelectItem>
                       <SelectItem value="outcome">Outcome</SelectItem>
+                      <SelectItem value="kpi">KPI</SelectItem>
+                      <SelectItem value="baseline">Baseline</SelectItem>
+                      <SelectItem value="target">Target</SelectItem>
+                      <SelectItem value="stakeholder_claim">Stakeholder Quote</SelectItem>
+                      <SelectItem value="meeting_insight">Meeting Insight</SelectItem>
                       <SelectItem value="success_story">Success Story</SelectItem>
                       <SelectItem value="benchmark">Benchmark</SelectItem>
                       <SelectItem value="testimonial">Testimonial</SelectItem>
+                      <SelectItem value="risk">Risk</SelectItem>
+                      <SelectItem value="decision">Decision</SelectItem>
+                      <SelectItem value="commitment">Commitment</SelectItem>
+                      <SelectItem value="next_action">Next Action</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

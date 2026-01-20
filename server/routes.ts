@@ -12626,6 +12626,192 @@ Provide a JSON response with:
     }
   });
 
+  // POST /api/evidence-packs/:packId/auto-populate - Pull existing data into evidence pack as linked items
+  app.post("/api/evidence-packs/:packId/auto-populate", async (req, res) => {
+    try {
+      const packId = parseInt(req.params.packId);
+      const pack = await storage.getEvidencePack(packId);
+      
+      if (!pack) {
+        return res.status(404).json({ error: "Evidence pack not found" });
+      }
+      
+      const project = await storage.getProject(pack.projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const createdItems: any[] = [];
+      const existingItems = await storage.getEvidencePackItems(packId);
+      const existingSourceIds = new Set(existingItems.filter(i => i.sourceId).map(i => `${i.sourceType}-${i.sourceId}`));
+      
+      // 1. Pull KPI Commitments as KPI/Baseline/Target items
+      const commitments = await storage.getKpiCommitments(pack.projectId);
+      for (const c of commitments) {
+        const sourceKey = `kpi_commitment-${c.id}`;
+        if (existingSourceIds.has(sourceKey)) continue;
+        
+        // Create KPI item
+        const kpiItem = await storage.createEvidencePackItem({
+          packId,
+          itemType: "kpi",
+          claim: `${c.commitmentTitle}: ${c.kpiName || 'Key metric tracking'} with target of ${c.targetValue || 'TBD'} ${c.unit || ''}`,
+          sourceType: "kpi_commitment",
+          sourceId: c.id,
+          sourceKind: "system_event",
+          confidenceLevel: "high",
+          itemStatus: "draft",
+          valuePillar: c.valuePillar as any || null,
+          content: {
+            metricName: c.kpiName || undefined,
+            baselineValue: c.baselineValue || undefined,
+            targetValue: c.targetValue || undefined,
+            unit: c.unit || undefined,
+          },
+          links: {
+            projectId: pack.projectId,
+            accountId: pack.accountId || undefined,
+            commitmentIds: [c.id],
+          },
+          displayOrder: createdItems.length,
+          section: "KPI Commitments",
+        });
+        createdItems.push(kpiItem);
+        
+        // Create separate Baseline item if baseline exists
+        if (c.baselineValue) {
+          const baselineItem = await storage.createEvidencePackItem({
+            packId,
+            itemType: "baseline",
+            claim: `Current baseline for ${c.kpiName || c.commitmentTitle}: ${c.baselineValue} ${c.unit || ''}`,
+            sourceType: "kpi_commitment",
+            sourceId: c.id,
+            sourceKind: "system_event",
+            confidenceLevel: "medium",
+            itemStatus: "draft",
+            valuePillar: c.valuePillar as any || null,
+            content: {
+              metricName: c.kpiName || undefined,
+              baselineValue: c.baselineValue,
+              unit: c.unit || undefined,
+            },
+            links: {
+              projectId: pack.projectId,
+              commitmentIds: [c.id],
+            },
+            displayOrder: createdItems.length,
+            section: "Baselines",
+          });
+          createdItems.push(baselineItem);
+        }
+        
+        // Create Target item if target exists
+        if (c.targetValue) {
+          const targetItem = await storage.createEvidencePackItem({
+            packId,
+            itemType: "target",
+            claim: `Target for ${c.kpiName || c.commitmentTitle}: ${c.targetValue} ${c.unit || ''}`,
+            sourceType: "kpi_commitment",
+            sourceId: c.id,
+            sourceKind: "system_event",
+            confidenceLevel: "high",
+            itemStatus: "draft",
+            valuePillar: c.valuePillar as any || null,
+            content: {
+              metricName: c.kpiName || undefined,
+              targetValue: c.targetValue,
+              unit: c.unit || undefined,
+            },
+            links: {
+              projectId: pack.projectId,
+              commitmentIds: [c.id],
+            },
+            displayOrder: createdItems.length,
+            section: "Targets",
+          });
+          createdItems.push(targetItem);
+        }
+      }
+      
+      // 2. Pull Discovery Insights as meeting_insight items
+      const dataPoints = await storage.getCompanyDataPoints(pack.projectId);
+      for (const dp of dataPoints) {
+        const sourceKey = `discovery_insight-${dp.id}`;
+        if (existingSourceIds.has(sourceKey)) continue;
+        
+        const insightItem = await storage.createEvidencePackItem({
+          packId,
+          itemType: "meeting_insight",
+          claim: `${dp.label}: ${dp.value}`,
+          sourceType: "discovery_insight",
+          sourceId: dp.id,
+          sourceKind: "human",
+          confidenceLevel: dp.confidence === "high" ? "high" : dp.confidence === "low" ? "exploratory" : "medium",
+          itemStatus: "draft",
+          valuePillar: null,
+          links: {
+            projectId: pack.projectId,
+            insightIds: [dp.id],
+          },
+          displayOrder: createdItems.length,
+          section: "Discovery Insights",
+        });
+        createdItems.push(insightItem);
+      }
+      
+      // 3. Pull Bluesheet stakeholder quotes as stakeholder_claim items
+      const bluesheet = await storage.getBluesheet(pack.projectId);
+      if (bluesheet?.buyingInfluences) {
+        const influences = bluesheet.buyingInfluences as any[];
+        for (let i = 0; i < influences.length; i++) {
+          const influence = influences[i];
+          if (!influence.personalWins && !influence.businessResults) continue;
+          
+          const stakeholderItem = await storage.createEvidencePackItem({
+            packId,
+            itemType: "stakeholder_claim",
+            claim: influence.personalWins || influence.businessResults || `${influence.name} - ${influence.role}`,
+            sourceType: "manual",
+            sourceKind: "human",
+            confidenceLevel: "medium",
+            itemStatus: "needs_stakeholder_validation",
+            valuePillar: null,
+            content: {
+              stakeholderName: influence.name,
+              stakeholderRole: influence.role,
+            },
+            links: {
+              projectId: pack.projectId,
+              bluesheetId: bluesheet.id,
+              stakeholderIds: influence.id ? [influence.id] : undefined,
+            },
+            displayOrder: createdItems.length,
+            section: "Stakeholder Claims",
+          });
+          createdItems.push(stakeholderItem);
+        }
+      }
+      
+      console.log(`[Evidence Pack Auto-Populate] Created ${createdItems.length} items for pack ${packId}`);
+      
+      res.json({
+        success: true,
+        itemsCreated: createdItems.length,
+        breakdown: {
+          kpis: createdItems.filter(i => i.itemType === "kpi").length,
+          baselines: createdItems.filter(i => i.itemType === "baseline").length,
+          targets: createdItems.filter(i => i.itemType === "target").length,
+          insights: createdItems.filter(i => i.itemType === "meeting_insight").length,
+          stakeholderClaims: createdItems.filter(i => i.itemType === "stakeholder_claim").length,
+        },
+        items: createdItems,
+      });
+    } catch (error: any) {
+      console.error("[Evidence Pack Auto-Populate] Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // POST /api/evidence-pack-items/:itemId/coaching - Get AI coaching for specific item
   app.post("/api/evidence-pack-items/:itemId/coaching", async (req, res) => {
     try {
