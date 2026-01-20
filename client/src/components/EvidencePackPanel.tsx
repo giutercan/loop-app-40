@@ -33,6 +33,7 @@ import {
   Shield,
   Download
 } from "lucide-react";
+import { SourceLink, SourcePreviewDrawer } from "@/components/evidence-pack";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { EvidencePack, EvidencePackItem, EvidencePackComment } from "@shared/schema";
@@ -114,6 +115,8 @@ export function EvidencePackPanel({
   const [newItemType, setNewItemType] = useState<string>("claim");
   const [newItemPillar, setNewItemPillar] = useState<string>("");
   const [newItemSection, setNewItemSection] = useState("");
+  const [previewItem, setPreviewItem] = useState<EvidencePackItem | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const { data, isLoading, refetch } = useQuery<EvidencePackResponse>({
     queryKey: [`/api/projects/${projectId}/evidence-pack`],
@@ -606,6 +609,17 @@ export function EvidencePackPanel({
                                               Needs Work
                                             </Badge>
                                           )}
+                                          {item.sourceType && (
+                                            <SourceLink 
+                                              item={item} 
+                                              projectId={projectId} 
+                                              onNavigate={() => setOpen(false)}
+                                              onPreview={(item) => {
+                                                setPreviewItem(item);
+                                                setPreviewOpen(true);
+                                              }}
+                                            />
+                                          )}
                                         </div>
                                       </div>
                                       {pack.status === "draft" && (
@@ -883,6 +897,13 @@ export function EvidencePackPanel({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    
+    <SourcePreviewDrawer
+      item={previewItem}
+      projectId={projectId}
+      open={previewOpen}
+      onOpenChange={setPreviewOpen}
+    />
     </>
   );
 }
