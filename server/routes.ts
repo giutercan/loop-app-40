@@ -12318,9 +12318,26 @@ Provide a JSON response with:
         ? Math.max(...existingItems.map(i => i.displayOrder)) 
         : -1;
       
+      // Determine evidence phase based on item type if not provided
+      const itemType = req.body.itemType || "claim";
+      const phaseMap: Record<string, "leading" | "mid_loop" | "lagging"> = {
+        "insight": "leading", "meeting_insight": "leading", "stakeholder_claim": "leading",
+        "stakeholder_trust_signal": "leading", "success_frame": "leading", "engagement_indicator": "leading",
+        "claim": "leading", "assumption": "leading",
+        "behavior_condition": "mid_loop", "behavior_signal": "mid_loop", "lever_applied": "mid_loop",
+        "risk": "mid_loop", "risk_articulation": "mid_loop", "assumption_revision": "mid_loop",
+        "decision": "mid_loop", "coaching_observation": "mid_loop", "commitment": "mid_loop", "next_action": "mid_loop",
+        "kpi": "lagging", "baseline": "lagging", "target": "lagging", "outcome": "lagging",
+        "outcome_signal": "lagging", "proof_object": "lagging", "success_story": "lagging",
+        "benchmark": "lagging", "testimonial": "lagging", "deliverable": "lagging", "artifact": "lagging",
+        "handoff_quality": "lagging", "reusability_pattern": "lagging", "trust_milestone": "lagging",
+      };
+      const evidencePhase = req.body.evidencePhase || phaseMap[itemType] || "leading";
+      
       const itemData = insertEvidencePackItemSchema.parse({
         packId,
-        itemType: req.body.itemType || "claim",
+        itemType,
+        evidencePhase,
         sourceType: req.body.sourceType,
         sourceId: req.body.sourceId,
         claim: req.body.claim,

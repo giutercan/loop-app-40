@@ -108,7 +108,8 @@ import {
   GitBranch,
   ThumbsUp,
   Package,
-  Filter
+  Filter,
+  Crown
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -6072,6 +6073,14 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
       return acc;
     }, {});
     
+    // Group items by journey phase for narrative storytelling
+    const itemsByPhase = items.reduce((acc: Record<string, any[]>, item: any) => {
+      const phase = item.evidencePhase || "leading";
+      if (!acc[phase]) acc[phase] = [];
+      acc[phase].push(item);
+      return acc;
+    }, {});
+    
     // KF Offerings lookup helper
     const getKFOffering = (item: any): string | null => {
       if (item.kfOffering) return item.kfOffering;
@@ -6093,6 +6102,41 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
       hard_data: { label: "Hard Data", icon: BarChart3 },
       relationship: { label: "Relationship", icon: Users },
       skills_building: { label: "Skills Building", icon: GraduationCap },
+    };
+    
+    // Journey phase configuration - tells a story instead of dumping data
+    const journeyPhaseConfig: Record<string, { 
+      label: string; 
+      description: string; 
+      color: string; 
+      bgColor: string;
+      icon: typeof Eye;
+      narrative: string;
+    }> = {
+      leading: { 
+        label: "What We Saw Before Results", 
+        description: "Discovery insights, success frame, stakeholder mapping",
+        color: "text-blue-700 dark:text-blue-400",
+        bgColor: "bg-blue-500/10 border-blue-500/30",
+        icon: Eye,
+        narrative: "Before the numbers moved, here's what the team observed through careful discovery..."
+      },
+      mid_loop: { 
+        label: "How Discipline Held Under Pressure", 
+        description: "Assumption revisions, risk articulation, behavior signals",
+        color: "text-amber-700 dark:text-amber-400",
+        bgColor: "bg-amber-500/10 border-amber-500/30",
+        icon: Shield,
+        narrative: "When circumstances changed, here's how the engagement adapted..."
+      },
+      lagging: { 
+        label: "Results with Context", 
+        description: "Outcomes achieved, KPIs delivered, artifacts",
+        color: "text-green-700 dark:text-green-400",
+        bgColor: "bg-green-500/10 border-green-500/30",
+        icon: Trophy,
+        narrative: "The results speak to the journey, not just the destination..."
+      },
     };
     
     // Group by value pillar for Client View
@@ -6147,6 +6191,15 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
       // Discovery evidence
       stakeholder_claim: Users,
       meeting_insight: MessageSquare,
+      stakeholder_trust_signal: Heart,
+      engagement_indicator: Activity,
+      // Journey/trust types
+      success_frame: Eye,
+      assumption_revision: RefreshCw,
+      risk_articulation: Shield,
+      handoff_quality: Handshake,
+      reusability_pattern: Copy,
+      trust_milestone: Trophy,
       // Behavior/adoption
       behavior_condition: GitBranch,
       behavior_signal: Activity,
@@ -6154,6 +6207,12 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
       // Delivery proof
       outcome_signal: CheckCircle2,
       proof_object: FileCheck,
+      // Coaching & relationship
+      coaching_observation: GraduationCap,
+      communication_signal: MessageCircle,
+      leadership_behavior: Crown,
+      skill_growth_metric: TrendingUp,
+      relationship_milestone: Heart,
       // Deal progression
       risk: AlertTriangle,
       decision: ThumbsUp,
@@ -6227,7 +6286,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                     </Badge>
                   </CardTitle>
                   <CardDescription>
-                    {items.length} item{items.length !== 1 ? 's' : ''} · Claims & proof points for stakeholder conversations
+                    {items.length} item{items.length !== 1 ? 's' : ''} · Evidence journey: Discovery to Results
                   </CardDescription>
                 </div>
               </div>
@@ -6397,6 +6456,84 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
           </Card>
         )}
         
+        {/* COACHING VIEW - Trust Velocity Scorecard */}
+        {audienceView === "internal" && items.length > 0 && (
+          <Card className="border-amber-500/20 bg-amber-500/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-amber-500" />
+                Trust Velocity Scorecard
+              </CardTitle>
+              <CardDescription className="text-xs">Behavioral quality signals beyond the numbers</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-2 gap-3">
+                {/* Leading Phase Progress */}
+                <div className="p-3 rounded-md bg-background border border-blue-500/30">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Eye className="w-4 h-4 text-blue-500" />
+                    <span className="text-xs font-medium text-blue-700 dark:text-blue-400">Discovery Signals</span>
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-bold text-blue-600">{(itemsByPhase['leading'] || []).length}</span>
+                    <span className="text-xs text-muted-foreground">leading indicators</span>
+                  </div>
+                  <Progress value={Math.min(100, ((itemsByPhase['leading'] || []).length / 5) * 100)} className="h-1 mt-2" />
+                </div>
+                
+                {/* Mid-Loop Phase Progress */}
+                <div className="p-3 rounded-md bg-background border border-amber-500/30">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Shield className="w-4 h-4 text-amber-500" />
+                    <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Deal Discipline</span>
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-bold text-amber-600">{(itemsByPhase['mid_loop'] || []).length}</span>
+                    <span className="text-xs text-muted-foreground">behavior signals</span>
+                  </div>
+                  <Progress value={Math.min(100, ((itemsByPhase['mid_loop'] || []).length / 3) * 100)} className="h-1 mt-2" />
+                </div>
+                
+                {/* Lagging Phase Progress */}
+                <div className="p-3 rounded-md bg-background border border-green-500/30">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle2 className="w-4 h-4 text-green-500" />
+                    <span className="text-xs font-medium text-green-700 dark:text-green-400">Results Documented</span>
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-bold text-green-600">{(itemsByPhase['lagging'] || []).length}</span>
+                    <span className="text-xs text-muted-foreground">outcomes captured</span>
+                  </div>
+                  <Progress value={Math.min(100, ((itemsByPhase['lagging'] || []).length / 5) * 100)} className="h-1 mt-2" />
+                </div>
+                
+                {/* Story Completeness */}
+                <div className="p-3 rounded-md bg-background border">
+                  <div className="flex items-center gap-2 mb-2">
+                    <BookOpen className="w-4 h-4 text-purple-500" />
+                    <span className="text-xs font-medium">Story Completeness</span>
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-bold">{
+                      Math.round(
+                        (((itemsByPhase['leading'] || []).length > 0 ? 33 : 0) +
+                        ((itemsByPhase['mid_loop'] || []).length > 0 ? 33 : 0) +
+                        ((itemsByPhase['lagging'] || []).length > 0 ? 34 : 0))
+                      )
+                    }%</span>
+                    <span className="text-xs text-muted-foreground">journey coverage</span>
+                  </div>
+                  <Progress value={
+                    ((itemsByPhase['leading'] || []).length > 0 ? 33 : 0) +
+                    ((itemsByPhase['mid_loop'] || []).length > 0 ? 33 : 0) +
+                    ((itemsByPhase['lagging'] || []).length > 0 ? 34 : 0)
+                  } className="h-1 mt-2" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
         {/* COACHING VIEW - Skills Scorecard */}
         {audienceView === "internal" && items.length > 0 && (
           <Card className="border-purple-500/20 bg-purple-500/5">
@@ -6549,6 +6686,12 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                       <SelectItem value="commitment">Commitment</SelectItem>
                       <SelectItem value="deliverable">Deliverable</SelectItem>
                       <SelectItem value="next_action">Next Action</SelectItem>
+                      <SelectItem value="success_frame">Success Frame</SelectItem>
+                      <SelectItem value="assumption_revision">Assumption Revision</SelectItem>
+                      <SelectItem value="risk_articulation">Risk Articulation</SelectItem>
+                      <SelectItem value="handoff_quality">Handoff Quality</SelectItem>
+                      <SelectItem value="reusability_pattern">Reusability Pattern</SelectItem>
+                      <SelectItem value="trust_milestone">Trust Milestone</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -6587,29 +6730,36 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                   </span>
                 </div>
                 
-                {/* Collapsible Sections by Type */}
-                {Object.entries(itemsByType).map(([type, typeItems]: [string, any[]]) => {
-                  const TypeIcon = itemTypeIcons[type] || Target;
-                  const isCollapsed = collapsedSections.has(type);
+                {/* Journey Phase Sections - Storytelling Approach */}
+                {['leading', 'mid_loop', 'lagging'].map((phase) => {
+                  const phaseItems = itemsByPhase[phase] || [];
+                  if (phaseItems.length === 0) return null;
+                  
+                  const phaseConfig = journeyPhaseConfig[phase];
+                  const PhaseIcon = phaseConfig.icon;
+                  const isCollapsed = collapsedSections.has(phase);
                   
                   return (
-                    <div key={type} className="border rounded-lg">
+                    <div key={phase} className={`border rounded-lg ${phaseConfig.bgColor}`}>
                       <button
-                        onClick={() => toggleSection(type)}
-                        className="w-full flex items-center justify-between p-3 hover-elevate rounded-t-lg"
-                        data-testid={`section-toggle-${type}`}
+                        onClick={() => toggleSection(phase)}
+                        className="w-full flex items-start justify-between p-4 hover-elevate rounded-t-lg"
+                        data-testid={`section-toggle-${phase}`}
                       >
-                        <div className="flex items-center gap-2">
-                          <TypeIcon className="w-4 h-4 text-amber-600" />
-                          <span className="text-sm font-medium capitalize">{type.replace(/_/g, ' ')}</span>
-                          <Badge variant="secondary" className="text-xs">{typeItems.length}</Badge>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <PhaseIcon className={`w-5 h-5 ${phaseConfig.color}`} />
+                            <span className={`text-sm font-semibold ${phaseConfig.color}`}>{phaseConfig.label}</span>
+                            <Badge variant="secondary" className="text-xs">{phaseItems.length}</Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground italic pl-7">{phaseConfig.narrative}</p>
                         </div>
-                        {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        {isCollapsed ? <ChevronRight className="w-4 h-4 mt-1" /> : <ChevronDown className="w-4 h-4 mt-1" />}
                       </button>
                       
                       {!isCollapsed && (
                         <div className="p-2 space-y-2 border-t">
-                          {typeItems.map((item: any) => {
+                          {phaseItems.map((item: any) => {
                             const ItemIcon = itemTypeIcons[item.itemType] || Target;
                             const itemStatusCfg = itemStatusConfig[item.itemStatus] || itemStatusConfig.draft;
                             const kfOffering = getKFOffering(item);
@@ -6728,7 +6878,21 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                                         {itemStatusCfg.label}
                                       </Badge>
                                     )}
+                                    
+                                    {/* Evidence Phase Badge */}
+                                    {item.evidencePhase && journeyPhaseConfig[item.evidencePhase] && (
+                                      <Badge variant="outline" className={`text-xs ${journeyPhaseConfig[item.evidencePhase].color}`}>
+                                        {journeyPhaseConfig[item.evidencePhase].label.split(' ')[0]}
+                                      </Badge>
+                                    )}
                                   </div>
+                                  
+                                  {/* What This Proves - Journey Context */}
+                                  {item.content?.whatThisProves && (
+                                    <p className="text-xs text-muted-foreground mt-1.5 pl-0 italic border-l-2 border-amber-500/30 ml-1 pl-2">
+                                      {item.content.whatThisProves}
+                                    </p>
+                                  )}
                                 </div>
                                 
                                 {/* Action Buttons */}
@@ -6865,8 +7029,34 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                     </div>
                   )}
                   
-                  {/* Status */}
-                  <div className="flex items-center gap-4">
+                  {/* Journey Context - Where this fits in the story */}
+                  {previewItem.evidencePhase && journeyPhaseConfig[previewItem.evidencePhase] && (
+                    <div className={`p-3 rounded-lg ${journeyPhaseConfig[previewItem.evidencePhase].bgColor}`}>
+                      <div className="flex items-center gap-2 mb-1">
+                        {(() => {
+                          const PhaseIcon = journeyPhaseConfig[previewItem.evidencePhase].icon;
+                          return <PhaseIcon className={`w-4 h-4 ${journeyPhaseConfig[previewItem.evidencePhase].color}`} />;
+                        })()}
+                        <span className={`text-sm font-medium ${journeyPhaseConfig[previewItem.evidencePhase].color}`}>
+                          {journeyPhaseConfig[previewItem.evidencePhase].label}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground italic">
+                        {journeyPhaseConfig[previewItem.evidencePhase].narrative}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* What This Proves */}
+                  {previewItem.content?.whatThisProves && (
+                    <div className="p-3 border-l-4 border-amber-500 bg-amber-500/5 rounded-r-lg">
+                      <Label className="text-xs text-amber-700 dark:text-amber-400 font-semibold">What This Proves</Label>
+                      <p className="mt-1 text-sm">{previewItem.content.whatThisProves}</p>
+                    </div>
+                  )}
+                  
+                  {/* Status & Pillars */}
+                  <div className="flex items-center gap-4 flex-wrap">
                     <div>
                       <Label className="text-xs text-muted-foreground">Status</Label>
                       <Badge className={`mt-1 ${(itemStatusConfig[previewItem.itemStatus] || itemStatusConfig.draft).color}`}>
@@ -6881,7 +7071,48 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                         </Badge>
                       </div>
                     )}
+                    {previewItem.evidencePhase && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Journey Phase</Label>
+                        <Badge variant="outline" className={`mt-1 ${journeyPhaseConfig[previewItem.evidencePhase]?.color || ''}`}>
+                          {journeyPhaseConfig[previewItem.evidencePhase]?.label.split(' ')[0] || previewItem.evidencePhase}
+                        </Badge>
+                      </div>
+                    )}
                   </div>
+                  
+                  {/* Trust Velocity Indicators */}
+                  {(previewItem.content?.successFrameClarity || previewItem.content?.methodAdherence || previewItem.content?.sponsorAlignment !== undefined) && (
+                    <div className="p-3 bg-muted/30 rounded-lg">
+                      <Label className="text-xs text-muted-foreground mb-2 block">Trust Velocity Indicators</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {previewItem.content?.successFrameClarity && (
+                          <div className="flex items-center gap-2">
+                            <Eye className="w-3 h-3 text-blue-500" />
+                            <span className="text-xs">Success Frame: <span className="font-medium capitalize">{previewItem.content.successFrameClarity}</span></span>
+                          </div>
+                        )}
+                        {previewItem.content?.methodAdherence && (
+                          <div className="flex items-center gap-2">
+                            <Shield className="w-3 h-3 text-amber-500" />
+                            <span className="text-xs">Discipline: <span className="font-medium capitalize">{previewItem.content.methodAdherence}</span></span>
+                          </div>
+                        )}
+                        {previewItem.content?.sponsorAlignment !== undefined && (
+                          <div className="flex items-center gap-2">
+                            {previewItem.content.sponsorAlignment ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <AlertCircle className="w-3 h-3 text-yellow-500" />}
+                            <span className="text-xs">Sponsor Aligned: <span className="font-medium">{previewItem.content.sponsorAlignment ? 'Yes' : 'Pending'}</span></span>
+                          </div>
+                        )}
+                        {previewItem.content?.handoffCompleteness && (
+                          <div className="flex items-center gap-2">
+                            <Handshake className="w-3 h-3 text-purple-500" />
+                            <span className="text-xs">Handoff: <span className="font-medium">{previewItem.content.handoffCompleteness}%</span></span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   
                   {/* Metadata Grid */}
                   <div className="grid grid-cols-2 gap-4 p-3 bg-muted/30 rounded-lg">
