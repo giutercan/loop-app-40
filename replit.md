@@ -27,6 +27,15 @@ The AI strategy focuses on strategic and actionable insights, with data sorted b
 - **Storage**: In-memory storage (MemStorage)
 
 ## Recent Changes (January 2026)
+- **Evidence Pack Dual-Audience System**: Full separation of customer-facing vs internal/leadership content
+  - New schema fields: `audienceScope` (customer/internal/both), `evidenceSensitivity` (public/internal_only/leadership_only/client_shareable)
+  - Skills tracking: `skillDomain` (soft_skill/hard_data/relationship/skills_building), `skillCategory`, `metricType/value/unit`
+  - 7 new evidence item types: coaching_observation, communication_signal, leadership_behavior, skill_growth_metric, stakeholder_trust_signal, relationship_milestone, engagement_indicator
+  - UI audience toggle (All/Customer/Internal) with filtered view
+  - Skills & Relationship Scorecard showing aggregated metrics by domain
+  - Server-side enforcement: shared pack endpoint filters out internal-only and leadership-only items
+  - Auto-populate creates stakeholder trust signals from BlueSheet data with internal-only visibility
+  - Complete item type icon mapping for all 23+ evidence types
 - **Evidence Pack Service Refactoring**: Extracted auto-populate logic from routes.ts (565KB) into dedicated `server/services/evidence-pack.service.ts` service module
   - EvidencePackService class with dependency injection (IStorage interface)
   - 6 modular import methods: KPIs, Insights, Stakeholders, Artifacts, Risks, Decisions
