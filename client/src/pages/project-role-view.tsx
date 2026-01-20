@@ -5854,6 +5854,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
     const [addItemOpen, setAddItemOpen] = useState(false);
     const [newItemClaim, setNewItemClaim] = useState("");
     const [newItemType, setNewItemType] = useState<string>("claim");
+    const [audienceView, setAudienceView] = useState<"customer" | "internal">("customer");
     
     const { data: evidenceData, isLoading: evidenceLoading, refetch: refetchEvidence } = useQuery<any>({
       queryKey: [`/api/projects/${projectId}/evidence-pack`],
@@ -5950,7 +5951,46 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
     });
 
     const pack = evidenceData?.pack;
-    const items = evidenceData?.items || [];
+    const allItems = evidenceData?.items || [];
+    
+    // Filter items by audience scope
+    const items = allItems.filter((item: any) => {
+      const scope = item.audienceScope || "both";
+      if (audienceView === "customer") {
+        return scope === "customer" || scope === "both";
+      }
+      return scope === "internal" || scope === "both";
+    });
+    
+    // Value pillar grouping for Client View
+    const valuePillarConfig: Record<string, { label: string; color: string; bgColor: string; description: string }> = {
+      grow: { label: "Grow", color: "text-green-700 dark:text-green-400", bgColor: "bg-green-500/10 border-green-500/30", description: "Revenue & market expansion" },
+      optimise: { label: "Optimise", color: "text-blue-700 dark:text-blue-400", bgColor: "bg-blue-500/10 border-blue-500/30", description: "Efficiency & productivity" },
+      derisk: { label: "De-risk", color: "text-orange-700 dark:text-orange-400", bgColor: "bg-orange-500/10 border-orange-500/30", description: "Risk mitigation & compliance" },
+      strengthen: { label: "Strengthen", color: "text-purple-700 dark:text-purple-400", bgColor: "bg-purple-500/10 border-purple-500/30", description: "Capability & culture building" },
+    };
+    
+    // Skill domain config for Coaching View scorecard
+    const skillDomainConfig: Record<string, { label: string; icon: typeof Heart }> = {
+      soft_skill: { label: "Soft Skills", icon: Heart },
+      hard_data: { label: "Hard Data", icon: BarChart3 },
+      relationship: { label: "Relationship", icon: Users },
+      skills_building: { label: "Skills Building", icon: GraduationCap },
+    };
+    
+    // Group by value pillar for Client View
+    const itemsByPillar = items.reduce((acc: Record<string, any[]>, item: any) => {
+      const pillar = item.valuePillar || "unassigned";
+      if (!acc[pillar]) acc[pillar] = [];
+      acc[pillar].push(item);
+      return acc;
+    }, {});
+    
+    // Calculate metrics
+    const approvedCount = items.filter((i: any) => i.itemStatus === "approved" || i.itemStatus === "validated").length;
+    const successStories = items.filter((i: any) => i.itemType === "success_story" || i.itemType === "testimonial");
+    const kpiItems = items.filter((i: any) => i.itemType === "kpi" || i.itemType === "outcome");
+    const hiddenInternalCount = allItems.filter((i: any) => (i.audienceScope === "internal") && audienceView === "customer").length;
 
     const statusConfig: Record<string, { label: string; color: string; icon: typeof FileText }> = {
       draft: { label: "Draft", color: "bg-muted text-muted-foreground", icon: FileText },
@@ -6053,7 +6093,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
 
     return (
       <div className="space-y-6" data-testid="evidence-pack-content">
-        {/* Header */}
+        {/* Header with View Toggle */}
         <Card className="bg-gradient-to-r from-amber-500/5 via-orange-500/5 to-red-500/5 border-amber-500/20">
           <CardHeader>
             <div className="flex items-center justify-between flex-wrap gap-4">
@@ -6101,7 +6141,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                     <><Sparkles className="w-4 h-4 mr-1" /> AI Suggest</>
                   )}
                 </Button>
-                {pack.status === "draft" && items.length > 0 && (
+                {pack.status === "draft" && allItems.length > 0 && (
                   <Button
                     size="sm"
                     onClick={() => submitForReviewMutation.mutate()}
@@ -6114,8 +6154,170 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 )}
               </div>
             </div>
+            
+            {/* Client View / Coaching View Toggle */}
+            <div className="mt-4 flex items-center justify-between">
+              <div className="flex items-center gap-2 p-1 bg-muted rounded-lg">
+                <Button
+                  size="sm"
+                  variant={audienceView === "customer" ? "default" : "ghost"}
+                  onClick={() => setAudienceView("customer")}
+                  className="h-9"
+                  data-testid="button-client-view"
+                >
+                  <Building2 className="w-4 h-4 mr-2" />
+                  Client View
+                </Button>
+                <Button
+                  size="sm"
+                  variant={audienceView === "internal" ? "secondary" : "ghost"}
+                  onClick={() => setAudienceView("internal")}
+                  className="h-9"
+                  data-testid="button-coaching-view"
+                >
+                  <GraduationCap className="w-4 h-4 mr-2" />
+                  Coaching View
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {audienceView === "customer" 
+                  ? "What clients will see when you share this pack" 
+                  : `Internal coaching metrics (${hiddenInternalCount} internal-only items)`}
+              </p>
+            </div>
           </CardHeader>
         </Card>
+        
+        {/* CLIENT VIEW - Executive Summary & Value Pillars */}
+        {audienceView === "customer" && items.length > 0 && (
+          <Card className="border-blue-500/20 bg-blue-500/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-blue-500" />
+                Executive Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center p-3 bg-background rounded-lg border">
+                  <div className="text-2xl font-bold text-green-600">{kpiItems.length}</div>
+                  <div className="text-xs text-muted-foreground">Outcomes</div>
+                </div>
+                <div className="text-center p-3 bg-background rounded-lg border">
+                  <div className="text-2xl font-bold text-blue-600">{approvedCount}</div>
+                  <div className="text-xs text-muted-foreground">Validated</div>
+                </div>
+                <div className="text-center p-3 bg-background rounded-lg border">
+                  <div className="text-2xl font-bold text-amber-600">{successStories.length}</div>
+                  <div className="text-xs text-muted-foreground">Success Stories</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
+        {/* CLIENT VIEW - Value Pillar Cards */}
+        {audienceView === "customer" && items.length > 0 && (
+          <div className="grid grid-cols-2 gap-4">
+            {Object.entries(valuePillarConfig).map(([pillarKey, pillarInfo]) => {
+              const pillarItems = itemsByPillar[pillarKey] || [];
+              if (pillarItems.length === 0) return null;
+              
+              return (
+                <Card key={pillarKey} className={`${pillarInfo.bgColor} border`}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className={`text-sm ${pillarInfo.color}`}>
+                      {pillarInfo.label}
+                    </CardTitle>
+                    <CardDescription className="text-xs">{pillarInfo.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-0 space-y-2">
+                    {pillarItems.slice(0, 3).map((item: any) => {
+                      const ItemIcon = itemTypeIcons[item.itemType] || Target;
+                      return (
+                        <div key={item.id} className="flex items-start gap-2 p-2 bg-background rounded border text-sm">
+                          <ItemIcon className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                          <span className="line-clamp-2">{item.claim}</span>
+                        </div>
+                      );
+                    })}
+                    {pillarItems.length > 3 && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        +{pillarItems.length - 3} more items
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+        
+        {/* CLIENT VIEW - Success Stories */}
+        {audienceView === "customer" && successStories.length > 0 && (
+          <Card className="border-amber-500/30 bg-amber-500/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                <Award className="w-4 h-4" />
+                Success Stories & Testimonials
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-3">
+              {successStories.map((story: any) => (
+                <div key={story.id} className="p-4 bg-background rounded-lg border border-amber-500/20">
+                  <div className="flex items-start gap-3">
+                    <MessageSquare className="w-5 h-5 text-amber-500 shrink-0 mt-1" />
+                    <div>
+                      <p className="text-sm italic">"{story.claim}"</p>
+                      {story.sourceType && (
+                        <p className="text-xs text-muted-foreground mt-2">— via {story.sourceType.replace(/_/g, ' ')}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+        
+        {/* COACHING VIEW - Skills Scorecard */}
+        {audienceView === "internal" && items.length > 0 && (
+          <Card className="border-purple-500/20 bg-purple-500/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <GraduationCap className="w-4 h-4 text-purple-500" />
+                Skills & Relationship Metrics
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-2 gap-3">
+                {Object.entries(skillDomainConfig).map(([domain, config]) => {
+                  const domainItems = items.filter((item: any) => item.skillDomain === domain);
+                  const DomainIcon = config.icon;
+                  const validatedCount = domainItems.filter((item: any) => 
+                    item.itemStatus === "approved" || item.itemStatus === "validated"
+                  ).length;
+                  
+                  return (
+                    <div key={domain} className="p-3 rounded-md bg-background border">
+                      <div className="flex items-center gap-2 mb-1">
+                        <DomainIcon className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-xs font-medium">{config.label}</span>
+                      </div>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-lg font-bold">{domainItems.length}</span>
+                        <span className="text-xs text-muted-foreground">items</span>
+                        {validatedCount > 0 && (
+                          <span className="text-xs text-green-600 ml-auto">{validatedCount} validated</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Add Item Section */}
         <Card>
