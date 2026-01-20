@@ -26,6 +26,16 @@ The AI strategy focuses on strategic and actionable insights, with data sorted b
 - **AI**: OpenAI GPT-4o
 - **Storage**: In-memory storage (MemStorage)
 
+## Recent Changes (January 2026)
+- **Evidence Pack Service Refactoring**: Extracted auto-populate logic from routes.ts (565KB) into dedicated `server/services/evidence-pack.service.ts` service module
+  - EvidencePackService class with dependency injection (IStorage interface)
+  - 6 modular import methods: KPIs, Insights, Stakeholders, Artifacts, Risks, Decisions
+  - Enhanced deduplication with `sourceType-sourceId-itemType` composite keys
+  - Standardized provenance tracking (sourceKind, sourceEventId, sourceArtifactId)
+  - Fixed BlueSheet data access patterns (via `.data` property)
+  - Corrected storage method names (getBlueSheet, getInteractionArtifacts)
+  - Reduced routes.ts complexity by ~180 lines
+
 ## Recent Changes (December 2024)
 - **Enhanced Customer Portal**: 
   - Discovery Summary in Overview tab: Shows executive summary, strategic themes, insights (collapsible), conversation notes (collapsible), and strategic implications
