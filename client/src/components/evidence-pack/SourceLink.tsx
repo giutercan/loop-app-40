@@ -104,31 +104,26 @@ export function SourceLink({ item, projectId, onNavigate, onPreview }: SourceLin
     e.stopPropagation();
     onPreview?.(item);
   };
-
-  const handleKeyDown = (e: React.KeyboardEvent, action: () => void) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      action();
-    }
-  };
   
   return (
     <div className="flex items-center gap-1" role="group" aria-label="Source actions">
       {hasPreview && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <Badge 
-              variant="outline" 
-              className="text-xs gap-1 cursor-pointer hover-elevate"
+            <button 
+              type="button"
+              className="inline-flex"
               onClick={handlePreview}
-              onKeyDown={(e) => handleKeyDown(e, () => onPreview?.(item))}
-              tabIndex={0}
-              role="button"
               aria-label="Quick preview source"
               data-testid={`button-preview-${item.id}`}
             >
-              <Eye className="w-3 h-3" aria-hidden="true" />
-            </Badge>
+              <Badge 
+                variant="outline" 
+                className="text-xs gap-1 cursor-pointer hover-elevate"
+              >
+                <Eye className="w-3 h-3" aria-hidden="true" />
+              </Badge>
+            </button>
           </TooltipTrigger>
           <TooltipContent>
             <p>Quick view source</p>
@@ -138,19 +133,21 @@ export function SourceLink({ item, projectId, onNavigate, onPreview }: SourceLin
       {path && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <Badge 
-              variant="outline" 
-              className="text-xs gap-1 cursor-pointer hover-elevate"
+            <button 
+              type="button"
+              className="inline-flex"
               onClick={handleNavigate}
-              onKeyDown={(e) => handleKeyDown(e, handleNavigate)}
-              tabIndex={0}
-              role="link"
               aria-label={`Navigate to ${config.label}`}
               data-testid={`link-source-${item.id}`}
             >
-              <config.icon className="w-3 h-3" aria-hidden="true" />
-              <Link2 className="w-3 h-3" aria-hidden="true" />
-            </Badge>
+              <Badge 
+                variant="outline" 
+                className="text-xs gap-1 cursor-pointer hover-elevate"
+              >
+                <config.icon className="w-3 h-3" aria-hidden="true" />
+                <Link2 className="w-3 h-3" aria-hidden="true" />
+              </Badge>
+            </button>
           </TooltipTrigger>
           <TooltipContent>
             <p>Go to source: {config.label}</p>

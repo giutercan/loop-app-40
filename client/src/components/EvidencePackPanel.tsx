@@ -136,6 +136,12 @@ export function EvidencePackPanel({
       toast({ title: "Evidence Pack created" });
     },
     onError: (error: Error) => {
+      // If pack already exists, just refetch to show it
+      if (error.message.includes("already exists")) {
+        queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/evidence-pack`] });
+        refetch();
+        return;
+      }
       toast({ title: "Failed to create pack", description: error.message, variant: "destructive" });
     },
   });
