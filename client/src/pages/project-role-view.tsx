@@ -1853,6 +1853,7 @@ export default function ProjectRoleView() {
   const isDeliveryRoleParam = roleParam === "delivery" || roleParam === "csm";
   const [activeTab, setActiveTab] = useState(isSalesRoleParam ? "discover" : "health");
   const [activeLifecycleStage, setActiveLifecycleStage] = useState<string>("onboarding");
+  const [evidenceViewMode, setEvidenceViewMode] = useState<"coaching" | "client">("coaching");
   const [isLogKPIOpen, setIsLogKPIOpen] = useState(false);
   const [showHandoffConfirmDialog, setShowHandoffConfirmDialog] = useState(false);
   
@@ -3633,6 +3634,17 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
     queryFn: async () => {
       const response = await fetch(`/api/projects/${projectId}/notes`);
       if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: projectId > 0
+  });
+
+  // Evidence Pack data for Trust Velocity Scorecard
+  const { data: evidenceData } = useQuery<any>({
+    queryKey: ["/api/projects", projectId, "evidence-pack"],
+    queryFn: async () => {
+      const response = await fetch(`/api/projects/${projectId}/evidence-pack`);
+      if (!response.ok) return { items: [] };
       return response.json();
     },
     enabled: projectId > 0
@@ -14538,6 +14550,517 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                   <p className="text-xs text-muted-foreground">With baseline & target</p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Trust Velocity Scorecard */}
+          <Card className="bg-gradient-to-r from-violet-500/5 to-purple-500/5 border-violet-500/20" data-testid="trust-velocity-scorecard">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                  <Shield className="w-6 h-6 text-violet-600" />
+                </div>
+                <div>
+                  <CardTitle>Trust Velocity Scorecard</CardTitle>
+                  <CardDescription>Behavioral quality metrics for engagement health</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const blueSheetData = blueSheet?.data;
+                const deliveryEvidenceItems = evidenceData?.items || [];
+                const hasBlueSheetData = blueSheetData && (
+                  blueSheetData.singleSalesObjective || 
+                  (blueSheetData.buyingInfluences?.length || 0) > 0
+                );
+                
+                const normalizeInfluenceRole = (inf: any): string => {
+                  const roleValue = (inf.role || inf.type || "").toLowerCase().trim();
+                  if (roleValue.includes("economic")) return "economic";
+                  if (roleValue.includes("coach")) return "coach";
+                  if (roleValue.includes("user")) return "user";
+                  if (roleValue.includes("technical")) return "technical";
+                  return roleValue;
+                };
+                
+                const trustMetrics = [
+                  {
+                    id: "success_frame",
+                    label: "Success Frame Clarity",
+                    description: "How well outcomes are defined and understood",
+                    score: kpis.length > 0 
+                      ? Math.round((kpis.filter(k => k.targetValue && k.baselineValue).length / kpis.length) * 100)
+                      : null,
+                    icon: Target,
+                    color: "emerald"
+                  },
+                  {
+                    id: "method_adherence",
+                    label: "Method Adherence",
+                    description: "Following Miller Heiman strategic selling methodology",
+                    score: (() => {
+                      if (!hasBlueSheetData) return null;
+                      let score = 0;
+                      if (blueSheetData?.singleSalesObjective) score += 25;
+                      if ((blueSheetData?.buyingInfluences?.length || 0) > 0) score += 25;
+                      const redFlags = blueSheetData?.redFlags || blueSheetData?.summaryOfPositions?.filter((p: any) => p.type === "RedFlag") || [];
+                      const strengths = blueSheetData?.strengthsLeverage || blueSheetData?.summaryOfPositions?.filter((p: any) => p.type !== "RedFlag") || [];
+                      if (redFlags.length > 0 || (blueSheetData?.summaryOfPositions?.length || 0) > 0) score += 25;
+                      if (strengths.length > 0 || (blueSheetData?.actionPlans?.length || 0) > 0) score += 25;
+                      return score;
+                    })(),
+                    icon: ClipboardCheck,
+                    color: "blue"
+                  },
+                  {
+                    id: "sponsor_alignment",
+                    label: "Sponsor Alignment",
+                    description: "Executive sponsor engagement and buy-in",
+                    score: (() => {
+                      const influences = blueSheetData?.buyingInfluences || [];
+                      if (influences.length === 0 && kpis.length === 0) return null;
+                      const hasEconomicBuyer = influences.some((inf: any) => 
+                        normalizeInfluenceRole(inf) === "economic"
+                      );
+                      const hasCoach = influences.some((inf: any) => 
+                        normalizeInfluenceRole(inf) === "coach"
+                      );
+                      const confirmedOutcomes = kpis.filter(k => k.status === "on-track").length;
+                      let score = 0;
+                      if (hasEconomicBuyer) score += 40;
+                      if (hasCoach) score += 20;
+                      if (confirmedOutcomes > 0) score += 40;
+                      return Math.min(100, score);
+                    })(),
+                    icon: Users,
+                    color: "amber"
+                  },
+                  {
+                    id: "handoff_completeness",
+                    label: "Handoff Completeness",
+                    description: "Quality of sales-to-delivery transition",
+                    score: (() => {
+                      let score = 0;
+                      if (project?.handoffConfirmedAt) score += 40;
+                      if (insights.length > 0) score += 20;
+                      if (kpis.length > 0) score += 20;
+                      if (deliveryEvidenceItems.length > 0) score += 20;
+                      return score;
+                    })(),
+                    icon: Handshake,
+                    color: "indigo"
+                  }
+                ];
+                
+                const validMetrics = trustMetrics.filter(m => m.score !== null);
+                const overallScore = validMetrics.length > 0 
+                  ? Math.round(validMetrics.reduce((sum, m) => sum + (m.score || 0), 0) / validMetrics.length)
+                  : null;
+                
+                return (
+                  <div className="space-y-6">
+                    {/* Overall Score */}
+                    <div className="flex items-center gap-6 p-4 rounded-lg bg-muted/30 border">
+                      <div className="relative w-20 h-20 shrink-0">
+                        <svg className="w-20 h-20 -rotate-90">
+                          <circle cx="40" cy="40" r="32" stroke="currentColor" strokeWidth="6" fill="none" className="text-muted" />
+                          {overallScore !== null && (
+                            <circle 
+                              cx="40" cy="40" r="32" 
+                              stroke="currentColor" 
+                              strokeWidth="6" 
+                              fill="none" 
+                              strokeDasharray={`${(overallScore / 100) * 201} 201`}
+                              className={overallScore >= 70 ? "text-emerald-500" : overallScore >= 40 ? "text-amber-500" : "text-red-500"}
+                              strokeLinecap="round"
+                            />
+                          )}
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-xl font-bold" data-testid="text-trust-velocity-score">
+                            {overallScore !== null ? overallScore : "—"}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-lg">Overall Trust Velocity</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {overallScore === null ? "Awaiting data to calculate score" :
+                           overallScore >= 70 ? "Strong foundation for customer success" : 
+                           overallScore >= 40 ? "Room for improvement in key areas" : 
+                           "Critical gaps need attention"}
+                        </p>
+                        <Badge className={`mt-2 ${
+                          overallScore === null ? "bg-muted text-muted-foreground border-muted" :
+                          overallScore >= 70 ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" :
+                          overallScore >= 40 ? "bg-amber-500/10 text-amber-600 border-amber-500/30" :
+                          "bg-red-500/10 text-red-600 border-red-500/30"
+                        }`}>
+                          {overallScore === null ? "No Data" : overallScore >= 70 ? "Healthy" : overallScore >= 40 ? "At Risk" : "Critical"}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    {/* Individual Metrics */}
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {trustMetrics.map(metric => {
+                        const MetricIcon = metric.icon;
+                        const colorClasses = {
+                          emerald: { bg: "bg-emerald-500/10", text: "text-emerald-600", ring: "text-emerald-500" },
+                          blue: { bg: "bg-blue-500/10", text: "text-blue-600", ring: "text-blue-500" },
+                          amber: { bg: "bg-amber-500/10", text: "text-amber-600", ring: "text-amber-500" },
+                          indigo: { bg: "bg-indigo-500/10", text: "text-indigo-600", ring: "text-indigo-500" }
+                        }[metric.color];
+                        
+                        const scoreValue = metric.score ?? 0;
+                        const isNoData = metric.score === null;
+                        
+                        return (
+                          <div key={metric.id} className="p-4 rounded-lg border bg-background" data-testid={`trust-metric-${metric.id}`}>
+                            <div className="flex items-start gap-4">
+                              <div className="relative w-14 h-14 shrink-0">
+                                <svg className="w-14 h-14 -rotate-90">
+                                  <circle cx="28" cy="28" r="24" stroke="currentColor" strokeWidth="4" fill="none" className="text-muted" />
+                                  {!isNoData && (
+                                    <circle 
+                                      cx="28" cy="28" r="24" 
+                                      stroke="currentColor" 
+                                      strokeWidth="4" 
+                                      fill="none" 
+                                      strokeDasharray={`${(scoreValue / 100) * 150.8} 150.8`}
+                                      className={colorClasses?.ring}
+                                      strokeLinecap="round"
+                                    />
+                                  )}
+                                </svg>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <span className="text-sm font-bold">{isNoData ? "—" : Math.round(scoreValue)}</span>
+                                </div>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <MetricIcon className={`w-4 h-4 ${isNoData ? "text-muted-foreground" : colorClasses?.text}`} />
+                                  <h5 className="font-medium text-sm">{metric.label}</h5>
+                                </div>
+                                <p className="text-xs text-muted-foreground">{metric.description}</p>
+                                {isNoData ? (
+                                  <Badge variant="outline" className="mt-2 text-xs text-muted-foreground">
+                                    No data yet
+                                  </Badge>
+                                ) : scoreValue < 50 && (
+                                  <Badge variant="outline" className="mt-2 text-xs">
+                                    <AlertCircle className="w-3 h-3 mr-1" />
+                                    Needs attention
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+
+          {/* Evidence Pack Management */}
+          <Card data-testid="evidence-pack-management">
+            <CardHeader>
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500/10 via-amber-500/10 to-emerald-500/10 flex items-center justify-center">
+                    <Layers className="w-6 h-6 text-indigo-600" />
+                  </div>
+                  <div>
+                    <CardTitle>Evidence Pack</CardTitle>
+                    <CardDescription>Journey-based evidence organized by customer lifecycle phase</CardDescription>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {/* Dual Audience View Toggle */}
+                  <div className="flex items-center bg-muted rounded-lg p-1">
+                    <button
+                      onClick={() => setEvidenceViewMode("coaching")}
+                      className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                        evidenceViewMode === "coaching" 
+                          ? "bg-background shadow-sm text-foreground" 
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                      data-testid="button-coaching-view"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <GraduationCap className="w-4 h-4" />
+                        <span>Coaching</span>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setEvidenceViewMode("client")}
+                      className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                        evidenceViewMode === "client" 
+                          ? "bg-background shadow-sm text-foreground" 
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                      data-testid="button-client-view"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <Users className="w-4 h-4" />
+                        <span>Client</span>
+                      </div>
+                    </button>
+                  </div>
+                  <Badge variant="outline" className="text-muted-foreground">
+                    {(evidenceData?.items || []).length} items
+                  </Badge>
+                  <Button size="sm" variant="outline" data-testid="button-add-evidence">
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add Evidence
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const allEvidence = evidenceData?.items || [];
+                const leadingEvidence = allEvidence.filter((e: any) => e.journeyPhase === "leading");
+                const midLoopEvidence = allEvidence.filter((e: any) => e.journeyPhase === "mid_loop" || e.journeyPhase === "mid-loop");
+                const laggingEvidence = allEvidence.filter((e: any) => e.journeyPhase === "lagging");
+                
+                const phases = [
+                  {
+                    id: "leading",
+                    label: "Leading",
+                    subtitle: "Discovery Signals",
+                    description: "Insights, stakeholder priorities, risk articulations",
+                    items: leadingEvidence,
+                    color: "blue",
+                    icon: Search,
+                    examples: ["Discovery insight", "Stakeholder priority", "Risk articulation", "Initial assessment"],
+                    clientLabel: "Discovered",
+                    clientDescription: "What we learned about your challenges"
+                  },
+                  {
+                    id: "mid-loop",
+                    label: "Mid-Loop",
+                    subtitle: "Behavior Under Pressure",
+                    description: "Assumption revisions, methodology compliance, sponsor alignment",
+                    items: midLoopEvidence,
+                    color: "amber",
+                    icon: RefreshCw,
+                    examples: ["Assumption revision", "Methodology metric", "Sponsor check-in", "Course correction"],
+                    clientLabel: "Adapted",
+                    clientDescription: "How we refined our approach together"
+                  },
+                  {
+                    id: "lagging",
+                    label: "Lagging",
+                    subtitle: "Results with Context",
+                    description: "KPI outcomes, success stories, reusability patterns",
+                    items: laggingEvidence,
+                    color: "emerald",
+                    icon: Trophy,
+                    examples: ["KPI result", "Success story", "Client testimonial", "ROI calculation"],
+                    clientLabel: "Achieved",
+                    clientDescription: "The results we delivered"
+                  }
+                ];
+                
+                // CLIENT VIEW - "The Value Story"
+                if (evidenceViewMode === "client") {
+                  return (
+                    <div className="space-y-6">
+                      {/* Value Story Header */}
+                      <div className="text-center py-4 px-6 rounded-lg bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-indigo-500/20">
+                        <h3 className="text-xl font-semibold mb-2">The Value Story</h3>
+                        <p className="text-sm text-muted-foreground">Your journey from discovery to results</p>
+                      </div>
+
+                      {/* Visual Journey Timeline */}
+                      <div className="relative">
+                        <div className="flex items-stretch gap-4">
+                          {phases.map((phase, idx) => {
+                            const PhaseIcon = phase.icon;
+                            const hasItems = phase.items.length > 0;
+                            const bgColors = {
+                              blue: hasItems ? "bg-blue-500" : "bg-blue-500/30",
+                              amber: hasItems ? "bg-amber-500" : "bg-amber-500/30",
+                              emerald: hasItems ? "bg-emerald-500" : "bg-emerald-500/30"
+                            };
+                            
+                            return (
+                              <div key={phase.id} className="flex-1 relative">
+                                {/* Connection Arrow */}
+                                {idx < phases.length - 1 && (
+                                  <div className="absolute top-8 -right-2 z-10">
+                                    <ArrowRight className={`w-4 h-4 ${hasItems ? "text-muted-foreground" : "text-muted"}`} />
+                                  </div>
+                                )}
+                                
+                                <div className={`p-5 rounded-xl border-2 ${hasItems ? "border-primary/20 bg-card" : "border-dashed border-muted bg-muted/20"}`}>
+                                  <div className="flex items-center gap-3 mb-3">
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${bgColors[phase.color as keyof typeof bgColors]} text-white`}>
+                                      <PhaseIcon className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                      <h4 className="font-semibold">{phase.clientLabel}</h4>
+                                      <p className="text-xs text-muted-foreground">{phase.clientDescription}</p>
+                                    </div>
+                                  </div>
+                                  
+                                  {phase.items.length > 0 ? (
+                                    <div className="space-y-2">
+                                      {phase.items.slice(0, 2).map((item: any) => (
+                                        <div key={item.id} className="p-3 rounded-lg bg-muted/50">
+                                          <p className="text-sm font-medium">{item.title}</p>
+                                          {item.whatThisProves && (
+                                            <p className="text-xs text-muted-foreground mt-1">{item.whatThisProves}</p>
+                                          )}
+                                        </div>
+                                      ))}
+                                      {phase.items.length > 2 && (
+                                        <p className="text-xs text-center text-muted-foreground">
+                                          +{phase.items.length - 2} more highlights
+                                        </p>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-muted-foreground text-center py-4">
+                                      Evidence to be captured
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Key Metrics Summary */}
+                      <div className="grid gap-4 md:grid-cols-3">
+                        <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/20 text-center">
+                          <p className="text-3xl font-bold text-blue-600">{leadingEvidence.length}</p>
+                          <p className="text-sm text-muted-foreground">Key Insights</p>
+                        </div>
+                        <div className="p-4 rounded-lg bg-amber-500/5 border border-amber-500/20 text-center">
+                          <p className="text-3xl font-bold text-amber-600">{midLoopEvidence.length}</p>
+                          <p className="text-sm text-muted-foreground">Adaptations Made</p>
+                        </div>
+                        <div className="p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/20 text-center">
+                          <p className="text-3xl font-bold text-emerald-600">{laggingEvidence.length}</p>
+                          <p className="text-sm text-muted-foreground">Results Delivered</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // COACHING VIEW - Phase-based with story thread connectors
+                return (
+                  <div className="space-y-4">
+                    {/* Phase Flow Visualization */}
+                    <div className="flex items-center gap-2 p-4 rounded-lg bg-muted/30 border">
+                      {phases.map((phase, idx) => {
+                        const PhaseIcon = phase.icon;
+                        const colorClasses = {
+                          blue: "bg-blue-500/10 text-blue-600 border-blue-500/30",
+                          amber: "bg-amber-500/10 text-amber-600 border-amber-500/30",
+                          emerald: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
+                        }[phase.color];
+                        
+                        return (
+                          <div key={phase.id} className="flex items-center gap-2 flex-1">
+                            <div className={`flex-1 p-3 rounded-lg border ${colorClasses}`}>
+                              <div className="flex items-center gap-2 mb-1">
+                                <PhaseIcon className="w-4 h-4" />
+                                <span className="font-medium text-sm">{phase.label}</span>
+                              </div>
+                              <p className="text-xs opacity-80">{phase.items.length} items</p>
+                            </div>
+                            {idx < phases.length - 1 && (
+                              <div className="flex flex-col items-center">
+                                <span className="text-[10px] text-muted-foreground mb-0.5">Leads to</span>
+                                <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Phase Cards */}
+                    <div className="grid gap-4 lg:grid-cols-3">
+                      {phases.map(phase => {
+                        const PhaseIcon = phase.icon;
+                        const bgColor = {
+                          blue: "from-blue-500/5 to-cyan-500/5 border-blue-500/20",
+                          amber: "from-amber-500/5 to-orange-500/5 border-amber-500/20",
+                          emerald: "from-emerald-500/5 to-teal-500/5 border-emerald-500/20"
+                        }[phase.color];
+                        const iconColor = {
+                          blue: "text-blue-600",
+                          amber: "text-amber-600",
+                          emerald: "text-emerald-600"
+                        }[phase.color];
+                        
+                        return (
+                          <div key={phase.id} className={`p-4 rounded-lg border bg-gradient-to-br ${bgColor}`} data-testid={`evidence-phase-${phase.id}`}>
+                            <div className="flex items-center gap-2 mb-2">
+                              <PhaseIcon className={`w-5 h-5 ${iconColor}`} />
+                              <div>
+                                <h4 className="font-medium">{phase.label}</h4>
+                                <p className="text-xs text-muted-foreground">{phase.subtitle}</p>
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground mb-3">{phase.description}</p>
+                            
+                            {phase.items.length > 0 ? (
+                              <div className="space-y-2">
+                                {phase.items.slice(0, 3).map((item: any) => (
+                                  <div key={item.id} className="p-2 rounded bg-background/50 border text-sm">
+                                    <div className="flex items-center gap-2">
+                                      <Badge variant="outline" className="text-xs shrink-0">
+                                        {item.evidenceType?.replace(/_/g, ' ')}
+                                      </Badge>
+                                      <span className="truncate text-xs">{item.title}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                                {phase.items.length > 3 && (
+                                  <p className="text-xs text-muted-foreground text-center">
+                                    +{phase.items.length - 3} more
+                                  </p>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-center py-4">
+                                <p className="text-xs text-muted-foreground mb-2">No evidence yet</p>
+                                <div className="flex flex-wrap gap-1 justify-center">
+                                  {phase.examples.slice(0, 2).map(ex => (
+                                    <Badge key={ex} variant="outline" className="text-xs opacity-50">
+                                      {ex}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Story Thread Indicator */}
+                    {leadingEvidence.length > 0 && midLoopEvidence.length > 0 && laggingEvidence.length > 0 && (
+                      <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                        <span className="text-sm font-medium text-emerald-700">Complete journey documented</span>
+                        <span className="text-xs text-emerald-600 ml-auto">Ready for storytelling</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
 
