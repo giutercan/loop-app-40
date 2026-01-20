@@ -5872,14 +5872,15 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Sales Journey</p>
           {[
             { id: "discover", label: "Discover", icon: Sparkles, progress: workflowProgress.discover, description: "Research & Interaction" },
-            { id: "strategy", label: "Strategy", icon: FileText, progress: workflowProgress.strategy, description: "Blue Sheet Planning" },
             { id: "align", label: "Outcomes & Alignment", icon: Target, progress: workflowProgress.align, description: "Design & Confirm Value" },
+            { id: "strategy", label: "Strategy Synthesis", icon: FileText, progress: workflowProgress.strategy, description: "Auto-Generated Blue Sheet", isSynthesis: true },
             { id: "handoff", label: "Handoff", icon: ArrowUpRight, progress: workflowProgress.handoff, description: "Transition to Delivery" },
           ].map((stage, idx) => {
             const isActive = activeTab === stage.id;
             const isComplete = stage.progress === 100;
             const StageIcon = stage.icon;
             
+            const isSynthesis = (stage as any).isSynthesis;
             return (
               <button
                 key={stage.id}
@@ -5887,7 +5888,9 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 className={`w-full text-left p-3 rounded-lg border transition-all ${
                   isActive 
                     ? "bg-primary/10 border-primary/30 shadow-sm" 
-                    : "bg-background border-border/50 hover-elevate"
+                    : isSynthesis
+                      ? "bg-gradient-to-r from-purple-500/5 to-blue-500/5 border-purple-500/20 hover-elevate"
+                      : "bg-background border-border/50 hover-elevate"
                 }`}
                 data-testid={`nav-${stage.id}`}
               >
@@ -5897,12 +5900,21 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                       ? "bg-emerald-500 text-white" 
                       : isActive 
                         ? "bg-primary text-primary-foreground" 
-                        : "bg-muted text-muted-foreground"
+                        : isSynthesis
+                          ? "bg-gradient-to-r from-purple-500/20 to-blue-500/20 text-purple-600"
+                          : "bg-muted text-muted-foreground"
                   }`}>
-                    {isComplete ? <Check className="w-4 h-4" /> : <StageIcon className="w-4 h-4" />}
+                    {isComplete ? <Check className="w-4 h-4" /> : isSynthesis ? <Brain className="w-4 h-4" /> : <StageIcon className="w-4 h-4" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium ${isActive ? "text-primary" : ""}`}>{stage.label}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className={`text-sm font-medium ${isActive ? "text-primary" : ""}`}>{stage.label}</p>
+                      {isSynthesis && (
+                        <Badge variant="outline" className="text-[10px] py-0 h-4 border-purple-500/30 text-purple-600 bg-purple-500/5">
+                          AI
+                        </Badge>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground truncate">{stage.description}</p>
                   </div>
                 </div>
@@ -5945,13 +5957,13 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
               <Sparkles className="w-4 h-4 mr-1" />
               <span className="hidden sm:inline">Discover</span>
             </TabsTrigger>
-            <TabsTrigger value="strategy" data-testid="tab-strategy">
-              <FileText className="w-4 h-4 mr-1" />
-              <span className="hidden sm:inline">Strategy</span>
-            </TabsTrigger>
             <TabsTrigger value="align" data-testid="tab-align">
               <Target className="w-4 h-4 mr-1" />
-              <span className="hidden sm:inline">Align</span>
+              <span className="hidden sm:inline">Outcomes</span>
+            </TabsTrigger>
+            <TabsTrigger value="strategy" data-testid="tab-strategy" className="relative">
+              <Brain className="w-4 h-4 mr-1" />
+              <span className="hidden sm:inline">Strategy</span>
             </TabsTrigger>
             <TabsTrigger value="handoff" data-testid="tab-handoff">
               <ArrowUpRight className="w-4 h-4 mr-1" />
@@ -8675,8 +8687,33 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
         )}
       </TabsContent>
 
-          {/* STAGE 1.5: STRATEGY - Miller Heiman Blue Sheet (Modernized) */}
+          {/* STAGE 3: STRATEGY SYNTHESIS - Miller Heiman Blue Sheet (Auto-Generated) */}
           <TabsContent value="strategy" className="space-y-6" data-testid="tab-content-strategy">
+            {/* Synthesis Banner */}
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-purple-500/10 via-blue-500/10 to-indigo-500/10 border border-purple-500/20" data-testid="synthesis-banner">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center flex-shrink-0">
+                <Brain className="w-5 h-5 text-purple-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-purple-700 dark:text-purple-300">Strategy Synthesis</p>
+                <p className="text-xs text-muted-foreground">Auto-generated from your Discovery insights, Summary & Coaching, and Outcomes data</p>
+              </div>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-600 bg-emerald-500/5">
+                  <Sparkles className="w-2.5 h-2.5 mr-1" />
+                  Discovery
+                </Badge>
+                <Badge variant="outline" className="text-[10px] border-blue-500/30 text-blue-600 bg-blue-500/5">
+                  <GraduationCap className="w-2.5 h-2.5 mr-1" />
+                  Coaching
+                </Badge>
+                <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-600 bg-amber-500/5">
+                  <Target className="w-2.5 h-2.5 mr-1" />
+                  Outcomes
+                </Badge>
+              </div>
+            </div>
+
             {/* Header Card */}
             <Card className="bg-gradient-to-r from-blue-500/5 via-indigo-500/5 to-purple-500/5 border-blue-500/20" data-testid="card-bluesheet">
               <CardHeader className="pb-4">
@@ -8701,7 +8738,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                         </Tooltip>
                       </CardTitle>
                       <CardDescription>
-                        AI-powered strategy to understand your deal, map decision makers, and plan your path to win
+                        Your consolidated deal strategy synthesized from Discovery, Coaching, and Outcomes
                       </CardDescription>
                     </div>
                   </div>
