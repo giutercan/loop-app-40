@@ -12643,43 +12643,48 @@ Provide a JSON response with:
       
       const createdItems: any[] = [];
       const existingItems = await storage.getEvidencePackItems(packId);
-      const existingSourceIds = new Set(existingItems.filter(i => i.sourceId).map(i => `${i.sourceType}-${i.sourceId}`));
+      // Include itemType in dedup key so KPI/Baseline/Target are tracked independently
+      const existingSourceIds = new Set(existingItems.filter(i => i.sourceId).map(i => `${i.sourceType}-${i.sourceId}-${i.itemType}`));
       
       // 1. Pull KPI Commitments as KPI/Baseline/Target items
       const commitments = await storage.getKpiCommitments(pack.projectId);
       for (const c of commitments) {
-        const sourceKey = `kpi_commitment-${c.id}`;
-        if (existingSourceIds.has(sourceKey)) continue;
+        // Check each item type independently
+        const kpiKey = `kpi_commitment-${c.id}-kpi`;
+        const baselineKey = `kpi_commitment-${c.id}-baseline`;
+        const targetKey = `kpi_commitment-${c.id}-target`;
         
-        // Create KPI item
-        const kpiItem = await storage.createEvidencePackItem({
-          packId,
-          itemType: "kpi",
-          claim: `${c.commitmentTitle}: ${c.kpiName || 'Key metric tracking'} with target of ${c.targetValue || 'TBD'} ${c.unit || ''}`,
-          sourceType: "kpi_commitment",
-          sourceId: c.id,
-          sourceKind: "system_event",
-          confidenceLevel: "high",
-          itemStatus: "draft",
-          valuePillar: c.valuePillar as any || null,
-          content: {
-            metricName: c.kpiName || undefined,
-            baselineValue: c.baselineValue || undefined,
-            targetValue: c.targetValue || undefined,
-            unit: c.unit || undefined,
-          },
-          links: {
-            projectId: pack.projectId,
-            accountId: pack.accountId || undefined,
-            commitmentIds: [c.id],
-          },
-          displayOrder: createdItems.length,
-          section: "KPI Commitments",
-        });
-        createdItems.push(kpiItem);
+        // Create KPI item if not already exists
+        if (!existingSourceIds.has(kpiKey)) {
+          const kpiItem = await storage.createEvidencePackItem({
+            packId,
+            itemType: "kpi",
+            claim: `${c.commitmentTitle}: ${c.kpiName || 'Key metric tracking'} with target of ${c.targetValue || 'TBD'} ${c.unit || ''}`,
+            sourceType: "kpi_commitment",
+            sourceId: c.id,
+            sourceKind: "system_event",
+            confidenceLevel: "high",
+            itemStatus: "draft",
+            valuePillar: c.valuePillar as any || null,
+            content: {
+              metricName: c.kpiName || undefined,
+              baselineValue: c.baselineValue || undefined,
+              targetValue: c.targetValue || undefined,
+              unit: c.unit || undefined,
+            },
+            links: {
+              projectId: pack.projectId,
+              accountId: pack.accountId || undefined,
+              commitmentIds: [c.id],
+            },
+            displayOrder: createdItems.length,
+            section: "KPI Commitments",
+          });
+          createdItems.push(kpiItem);
+        }
         
-        // Create separate Baseline item if baseline exists
-        if (c.baselineValue) {
+        // Create separate Baseline item if baseline exists and not already created
+        if (c.baselineValue && !existingSourceIds.has(baselineKey)) {
           const baselineItem = await storage.createEvidencePackItem({
             packId,
             itemType: "baseline",
@@ -12705,8 +12710,8 @@ Provide a JSON response with:
           createdItems.push(baselineItem);
         }
         
-        // Create Target item if target exists
-        if (c.targetValue) {
+        // Create Target item if target exists and not already created
+        if (c.targetValue && !existingSourceIds.has(targetKey)) {
           const targetItem = await storage.createEvidencePackItem({
             packId,
             itemType: "target",
@@ -12736,7 +12741,7 @@ Provide a JSON response with:
       // 2. Pull Discovery Insights as meeting_insight items
       const dataPoints = await storage.getCompanyDataPoints(pack.projectId);
       for (const dp of dataPoints) {
-        const sourceKey = `discovery_insight-${dp.id}`;
+        const sourceKey = `discovery_insight-${dp.id}-meeting_insight`;
         if (existingSourceIds.has(sourceKey)) continue;
         
         const insightItem = await storage.createEvidencePackItem({
@@ -12767,11 +12772,17 @@ Provide a JSON response with:
           const influence = influences[i];
           if (!influence.personalWins && !influence.businessResults) continue;
           
+          // Use unique stakeholder identifier from bluesheet for dedup
+          const stakeholderId = influence.id || `${bluesheet.id}-${i}`;
+          const stakeholderKey = `bluesheet-${stakeholderId}-stakeholder_claim`;
+          if (existingSourceIds.has(stakeholderKey)) continue;
+          
           const stakeholderItem = await storage.createEvidencePackItem({
             packId,
             itemType: "stakeholder_claim",
             claim: influence.personalWins || influence.businessResults || `${influence.name} - ${influence.role}`,
-            sourceType: "manual",
+            sourceType: "bluesheet",
+            sourceId: stakeholderId,
             sourceKind: "human",
             confidenceLevel: "medium",
             itemStatus: "needs_stakeholder_validation",

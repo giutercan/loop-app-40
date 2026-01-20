@@ -6159,14 +6159,21 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                       <SelectItem value="kpi">KPI</SelectItem>
                       <SelectItem value="baseline">Baseline</SelectItem>
                       <SelectItem value="target">Target</SelectItem>
+                      <SelectItem value="assumption">Assumption</SelectItem>
                       <SelectItem value="stakeholder_claim">Stakeholder Quote</SelectItem>
                       <SelectItem value="meeting_insight">Meeting Insight</SelectItem>
+                      <SelectItem value="behavior_condition">Behavior Condition</SelectItem>
+                      <SelectItem value="behavior_signal">Behavior Signal</SelectItem>
+                      <SelectItem value="lever_applied">Lever Applied</SelectItem>
+                      <SelectItem value="outcome_signal">Outcome Signal</SelectItem>
+                      <SelectItem value="proof_object">Proof Object</SelectItem>
                       <SelectItem value="success_story">Success Story</SelectItem>
                       <SelectItem value="benchmark">Benchmark</SelectItem>
                       <SelectItem value="testimonial">Testimonial</SelectItem>
                       <SelectItem value="risk">Risk</SelectItem>
                       <SelectItem value="decision">Decision</SelectItem>
                       <SelectItem value="commitment">Commitment</SelectItem>
+                      <SelectItem value="deliverable">Deliverable</SelectItem>
                       <SelectItem value="next_action">Next Action</SelectItem>
                     </SelectContent>
                   </Select>
@@ -6196,6 +6203,25 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
               <div className="space-y-2">
                 {items.map((item: any) => {
                   const ItemIcon = itemTypeIcons[item.itemType] || Target;
+                  const itemStatus = itemStatusConfig[item.itemStatus] || itemStatusConfig.draft;
+                  const sourceLabels: Record<string, string> = {
+                    kpi_commitment: "View KPI",
+                    discovery_insight: "View Discovery",
+                    bluesheet: "View Blue Sheet",
+                    manual: "Manual",
+                    ai_generated: "AI Generated",
+                  };
+                  const sourceTabMap: Record<string, string> = {
+                    kpi_commitment: "align",
+                    discovery_insight: "discover",
+                    bluesheet: "strategy",
+                  };
+                  const handleSourceClick = (sourceType: string) => {
+                    const targetTab = sourceTabMap[sourceType];
+                    if (targetTab) {
+                      setActiveTab(targetTab);
+                    }
+                  };
                   return (
                     <div 
                       key={item.id}
@@ -6207,13 +6233,35 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium">{item.claim}</p>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
                           <Badge variant="outline" className="text-xs capitalize">
-                            {item.itemType?.replace('_', ' ')}
+                            {item.itemType?.replace(/_/g, ' ')}
                           </Badge>
                           {item.valuePillar && (
                             <Badge variant="secondary" className="text-xs capitalize">
                               {item.valuePillar}
+                            </Badge>
+                          )}
+                          {item.sourceType && item.sourceType !== 'manual' && sourceTabMap[item.sourceType] && (
+                            <Badge 
+                              className="text-xs bg-blue-500/10 text-blue-700 border-blue-500/20 cursor-pointer hover:bg-blue-500/20"
+                              onClick={() => handleSourceClick(item.sourceType)}
+                              data-testid={`link-source-${item.id}`}
+                            >
+                              <Link2 className="w-3 h-3 mr-1" />
+                              {sourceLabels[item.sourceType] || item.sourceType}
+                              <ArrowRight className="w-3 h-3 ml-1" />
+                            </Badge>
+                          )}
+                          {item.sourceKind === 'ai' && (
+                            <Badge className="text-xs bg-purple-500/10 text-purple-700 border-purple-500/20">
+                              <Sparkles className="w-3 h-3 mr-1" />
+                              AI
+                            </Badge>
+                          )}
+                          {item.itemStatus && item.itemStatus !== 'draft' && (
+                            <Badge className={`text-xs ${itemStatus.color}`}>
+                              {itemStatus.label}
                             </Badge>
                           )}
                         </div>
