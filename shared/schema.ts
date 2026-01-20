@@ -2485,20 +2485,84 @@ export const evidencePackItems = pgTable("evidence_pack_items", {
   id: serial("id").primaryKey(),
   packId: integer("pack_id").notNull().references(() => evidencePacks.id, { onDelete: "cascade" }),
   
-  // Item type and source reference
+  // Item type - expanded to support full evidence taxonomy
   itemType: text("item_type", { 
-    enum: ["claim", "insight", "outcome", "success_story", "benchmark", "testimonial", "artifact"] 
+    enum: [
+      // Original types
+      "claim", "insight", "outcome", "success_story", "benchmark", "testimonial", "artifact",
+      // Quantitative evidence
+      "kpi", "baseline", "target", "assumption",
+      // Discovery evidence  
+      "stakeholder_claim", "meeting_insight",
+      // Adoption/behavior indicators
+      "behavior_condition", "behavior_signal", "lever_applied",
+      // Delivery proof
+      "outcome_signal", "proof_object",
+      // Deal progression
+      "risk", "decision", "commitment", "deliverable", "next_action"
+    ] 
   }).notNull(),
   
-  // Source references (which entity this item came from)
+  // Confidence level for the evidence
+  confidenceLevel: text("confidence_level", {
+    enum: ["high", "medium", "exploratory"]
+  }).default("medium"),
+  
+  // Source tracking - where this evidence originated
+  sourceKind: text("source_kind", {
+    enum: ["ai_draft", "human", "system_event", "integration"]
+  }),
+  sourceEventId: text("source_event_id"), // External event reference
+  sourceMeetingId: text("source_meeting_id"), // Meeting this came from
+  sourceArtifactId: text("source_artifact_id"), // Document/artifact reference
+  sourceRawExcerpt: text("source_raw_excerpt"), // Original quoted text
+  
+  // Legacy source references (for backwards compatibility)
   sourceType: text("source_type", {
     enum: ["discovery_insight", "outcome", "success_story", "kpi_commitment", "evidence_artefact", "manual", "ai_generated"]
   }),
   sourceId: integer("source_id"), // ID in the source table
   
+  // Links to related entities - creates connected evidence graph
+  links: jsonb("links").$type<{
+    accountId?: number;
+    projectId?: number;
+    opportunityId?: string;
+    engagementId?: string;
+    stakeholderIds?: number[];
+    kpiIds?: number[];
+    commitmentIds?: number[];
+    behaviorConditionIds?: number[];
+    insightIds?: number[];
+    bluesheetId?: number;
+  }>(),
+  
   // The claim/statement
   claim: text("claim").notNull(), // The value proposition/claim being made
   claimContext: text("claim_context"), // Additional context for the claim
+  
+  // Structured content for typed items (KPI, baseline, etc)
+  content: jsonb("content").$type<{
+    metricName?: string;
+    value?: number | string;
+    unit?: string;
+    targetValue?: number | string;
+    baselineValue?: number | string;
+    delta?: number | string;
+    period?: string;
+    formula?: string;
+    assumptions?: string[];
+    stakeholderName?: string;
+    stakeholderRole?: string;
+    behaviorDescription?: string;
+    signalType?: string;
+    riskDescription?: string;
+    riskSeverity?: "high" | "medium" | "low";
+    decisionOutcome?: string;
+    deliverableStatus?: string;
+    dueDate?: string;
+    actionOwner?: string;
+  }>(),
   
   // Supporting evidence
   proofSources: jsonb("proof_sources").$type<Array<{
@@ -2524,10 +2588,10 @@ export const evidencePackItems = pgTable("evidence_pack_items", {
   itemConfidenceScore: integer("item_confidence_score"), // 0-100 how confident in this claim
   provenanceVerified: boolean("provenance_verified").notNull().default(false), // Has source been verified?
   
-  // Review status
+  // Review status - expanded to support validation workflow
   itemStatus: text("item_status", { 
-    enum: ["pending", "approved", "flagged", "rejected", "needs_evidence"] 
-  }).notNull().default("pending"),
+    enum: ["draft", "pending", "validated", "approved", "flagged", "rejected", "needs_evidence", "needs_stakeholder_validation", "needs_input"] 
+  }).notNull().default("draft"),
   reviewerComment: text("reviewer_comment"), // Leader's feedback on this specific item
   reviewedAt: timestamp("reviewed_at"),
   reviewedBy: text("reviewed_by"),
@@ -2541,6 +2605,9 @@ export const evidencePackItems = pgTable("evidence_pack_items", {
   
   // Value pillar alignment
   valuePillar: text("value_pillar", { enum: ["grow", "optimise", "derisk", "strengthen"] }),
+  
+  // Idempotency key for deduplication when syncing
+  idempotencyKey: text("idempotency_key").unique(),
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
