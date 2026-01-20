@@ -35,6 +35,58 @@ const DEFAULT_OPTIONS: AutoPopulateOptions = {
   includeDecisions: true,
 };
 
+// Evidence phase mapping based on item type
+// Leading: Evidence that shows before revenue moves (discovery, success frame, stakeholder mapping)
+// Mid-Loop: Evidence of behavior under pressure (assumption revisions, risk articulation, discipline)
+// Lagging: Results with context (outcomes achieved, delivered value)
+const EVIDENCE_PHASE_MAP: Record<string, "leading" | "mid_loop" | "lagging"> = {
+  // Leading evidence
+  "insight": "leading",
+  "meeting_insight": "leading",
+  "stakeholder_claim": "leading",
+  "stakeholder_trust_signal": "leading",
+  "success_frame": "leading",
+  "engagement_indicator": "leading",
+  "claim": "leading",
+  "assumption": "leading",
+  
+  // Mid-loop evidence  
+  "behavior_condition": "mid_loop",
+  "behavior_signal": "mid_loop",
+  "lever_applied": "mid_loop",
+  "risk": "mid_loop",
+  "risk_articulation": "mid_loop",
+  "assumption_revision": "mid_loop",
+  "decision": "mid_loop",
+  "coaching_observation": "mid_loop",
+  "communication_signal": "mid_loop",
+  "leadership_behavior": "mid_loop",
+  "commitment": "mid_loop",
+  "next_action": "mid_loop",
+  
+  // Lagging evidence
+  "kpi": "lagging",
+  "baseline": "lagging",
+  "target": "lagging",
+  "outcome": "lagging",
+  "outcome_signal": "lagging",
+  "proof_object": "lagging",
+  "success_story": "lagging",
+  "benchmark": "lagging",
+  "testimonial": "lagging",
+  "deliverable": "lagging",
+  "artifact": "lagging",
+  "skill_growth_metric": "lagging",
+  "relationship_milestone": "lagging",
+  "handoff_quality": "lagging",
+  "reusability_pattern": "lagging",
+  "trust_milestone": "lagging",
+};
+
+function getEvidencePhase(itemType: string): "leading" | "mid_loop" | "lagging" {
+  return EVIDENCE_PHASE_MAP[itemType] || "leading";
+}
+
 export class EvidencePackService {
   constructor(private storage: IStorage) {}
 
@@ -128,6 +180,7 @@ export class EvidencePackService {
         const kpiItem = await this.storage.createEvidencePackItem({
           packId: pack.id,
           itemType: "kpi" as any,
+          evidencePhase: getEvidencePhase("kpi") as any,
           claim: `${c.commitmentTitle}: ${commitment.kpiName || "Key metric tracking"} with target of ${commitment.targetValue || "TBD"} ${commitment.unit || ""}`,
           sourceType: "kpi_commitment",
           sourceId: c.id,
@@ -146,6 +199,7 @@ export class EvidencePackService {
             targetValue: commitment.targetValue || undefined,
             unit: commitment.unit || undefined,
             kfOffering: commitment.kornFerrySolution || commitment.kfOffering || undefined,
+            whatThisProves: `Committed outcome with measurable target of ${commitment.targetValue || "TBD"} ${commitment.unit || ""}`,
           },
           links: {
             projectId: pack.projectId,
@@ -154,7 +208,7 @@ export class EvidencePackService {
             kfOffering: commitment.kornFerrySolution || commitment.kfOffering || undefined,
           },
           displayOrder: startOrder + createdItems.length,
-          section: "KPI Commitments",
+          section: "Results with Context",
         } as any);
         createdItems.push(kpiItem);
         existingSourceIds.add(kpiKey);
@@ -164,6 +218,7 @@ export class EvidencePackService {
         const baselineItem = await this.storage.createEvidencePackItem({
           packId: pack.id,
           itemType: "baseline" as any,
+          evidencePhase: getEvidencePhase("baseline") as any,
           claim: `Current baseline for ${commitment.kpiName || c.commitmentTitle}: ${commitment.baselineValue} ${commitment.unit || ""}`,
           sourceType: "kpi_commitment",
           sourceId: c.id,
@@ -180,13 +235,14 @@ export class EvidencePackService {
             metricName: commitment.kpiName || undefined,
             baselineValue: commitment.baselineValue,
             unit: commitment.unit || undefined,
+            whatThisProves: `Starting point measurement before engagement`,
           },
           links: {
             projectId: pack.projectId,
             commitmentIds: [c.id],
           },
           displayOrder: startOrder + createdItems.length,
-          section: "Baselines",
+          section: "Results with Context",
         } as any);
         createdItems.push(baselineItem);
         existingSourceIds.add(baselineKey);
@@ -196,6 +252,7 @@ export class EvidencePackService {
         const targetItem = await this.storage.createEvidencePackItem({
           packId: pack.id,
           itemType: "target" as any,
+          evidencePhase: getEvidencePhase("target") as any,
           claim: `Target for ${commitment.kpiName || c.commitmentTitle}: ${commitment.targetValue} ${commitment.unit || ""}`,
           sourceType: "kpi_commitment",
           sourceId: c.id,
@@ -212,13 +269,14 @@ export class EvidencePackService {
             metricName: commitment.kpiName || undefined,
             targetValue: commitment.targetValue,
             unit: commitment.unit || undefined,
+            whatThisProves: `Agreed target representing success criteria`,
           },
           links: {
             projectId: pack.projectId,
             commitmentIds: [c.id],
           },
           displayOrder: startOrder + createdItems.length,
-          section: "Targets",
+          section: "Results with Context",
         } as any);
         createdItems.push(targetItem);
         existingSourceIds.add(targetKey);
@@ -243,6 +301,7 @@ export class EvidencePackService {
       const insightItem = await this.storage.createEvidencePackItem({
         packId: pack.id,
         itemType: "meeting_insight" as any,
+        evidencePhase: getEvidencePhase("meeting_insight") as any,
         claim: `${dp.label}: ${dp.value}`,
         sourceType: "discovery_insight",
         sourceId: dp.id,
@@ -255,12 +314,15 @@ export class EvidencePackService {
         evidenceSensitivity: "client_shareable" as any,
         skillDomain: "soft_skill" as any,
         skillCategory: "discovery",
+        content: {
+          whatThisProves: `Discovery insight captured during qualification`,
+        },
         links: {
           projectId: pack.projectId,
           insightIds: [dp.id],
         },
         displayOrder: startOrder + createdItems.length,
-        section: "Discovery Insights",
+        section: "What We Saw Before Results",
       } as any);
       createdItems.push(insightItem);
       existingSourceIds.add(sourceKey);
@@ -292,6 +354,7 @@ export class EvidencePackService {
         const stakeholderItem = await this.storage.createEvidencePackItem({
           packId: pack.id,
           itemType: "stakeholder_claim" as any,
+          evidencePhase: getEvidencePhase("stakeholder_claim") as any,
           claim: influence.personalWins || influence.businessResults || `${influence.name} - ${influence.role}`,
           sourceType: "manual",
           sourceId: typeof influence.id === 'number' ? influence.id : null,
@@ -307,6 +370,7 @@ export class EvidencePackService {
           content: {
             stakeholderName: influence.name,
             stakeholderRole: influence.role,
+            whatThisProves: `Stakeholder alignment and personal wins identified`,
           },
           links: {
             projectId: pack.projectId,
@@ -314,7 +378,7 @@ export class EvidencePackService {
             stakeholderIds: influence.id ? [influence.id] : undefined,
           },
           displayOrder: startOrder + createdItems.length,
-          section: "Stakeholder Claims",
+          section: "What We Saw Before Results",
         } as any);
         createdItems.push(stakeholderItem);
         existingSourceIds.add(stakeholderKey);
@@ -325,6 +389,7 @@ export class EvidencePackService {
           const trustItem = await this.storage.createEvidencePackItem({
             packId: pack.id,
             itemType: "stakeholder_trust_signal" as any,
+            evidencePhase: getEvidencePhase("stakeholder_trust_signal") as any,
             claim: `Trust indicator for ${influence.name}: ${influence.rating || 'Unknown'} rating, ${influence.degree || 'Unknown'} degree of influence`,
             sourceType: "manual",
             sourceId: typeof influence.id === 'number' ? influence.id : null,
@@ -343,6 +408,7 @@ export class EvidencePackService {
             content: {
               stakeholderName: influence.name,
               stakeholderRole: influence.role,
+              whatThisProves: `Trust velocity indicator showing relationship quality`,
             },
             links: {
               projectId: pack.projectId,
@@ -350,7 +416,7 @@ export class EvidencePackService {
               stakeholderIds: influence.id ? [influence.id] : undefined,
             },
             displayOrder: startOrder + createdItems.length,
-            section: "Relationship Metrics",
+            section: "What We Saw Before Results",
           } as any);
           createdItems.push(trustItem);
           existingSourceIds.add(trustKey);
@@ -379,6 +445,7 @@ export class EvidencePackService {
       const artifactItem = await this.storage.createEvidencePackItem({
         packId: pack.id,
         itemType: "artifact" as any,
+        evidencePhase: getEvidencePhase("artifact") as any,
         claim: `${art.title || art.fileName || 'Document'}: ${art.description || art.extractedContent?.substring(0, 100) || 'Uploaded artifact'}`,
         sourceType: "evidence_artefact",
         sourceId: artifact.id,
@@ -391,12 +458,14 @@ export class EvidencePackService {
         evidenceSensitivity: "client_shareable" as any,
         skillDomain: "hard_data" as any,
         skillCategory: "documentation",
-        content: {},
+        content: {
+          whatThisProves: `Documented proof supporting value claims`,
+        },
         links: {
           projectId: pack.projectId,
         },
         displayOrder: startOrder + createdItems.length,
-        section: "Artifacts & Documents",
+        section: "Results with Context",
       } as any);
       createdItems.push(artifactItem);
       existingSourceIds.add(sourceKey);
@@ -432,6 +501,7 @@ export class EvidencePackService {
         const riskItem = await this.storage.createEvidencePackItem({
           packId: pack.id,
           itemType: "risk" as any,
+          evidencePhase: getEvidencePhase("risk") as any,
           claim: flag.description,
           sourceType: "manual",
           sourceId: riskId as any,
@@ -448,13 +518,14 @@ export class EvidencePackService {
             riskDescription: flag.description,
             severity: flag.severity,
             mitigationPlan: flag.mitigationPlan,
+            whatThisProves: `Risk identified and articulated - shows deal discipline`,
           },
           links: {
             projectId: pack.projectId,
             bluesheetId: bluesheet.id,
           },
           displayOrder: startOrder + createdItems.length,
-          section: "Risks & Red Flags",
+          section: "How Discipline Held Under Pressure",
         } as any);
         createdItems.push(riskItem);
         existingSourceIds.add(riskKey);
@@ -469,6 +540,7 @@ export class EvidencePackService {
           const decisionItem = await this.storage.createEvidencePackItem({
             packId: pack.id,
             itemType: "decision" as any,
+            evidencePhase: getEvidencePhase("decision") as any,
             claim: `Decision Process: ${icp.decisionProcess}`,
             sourceType: "manual",
             sourceId: bluesheet.id,
@@ -480,13 +552,15 @@ export class EvidencePackService {
             evidenceSensitivity: "internal_only" as any,
             skillDomain: "soft_skill" as any,
             skillCategory: "sales_process",
-            content: {},
+            content: {
+              whatThisProves: `Decision process mapped and understood`,
+            },
             links: {
               projectId: pack.projectId,
               bluesheetId: bluesheet.id,
             },
             displayOrder: startOrder + createdItems.length,
-            section: "Decisions & Process",
+            section: "How Discipline Held Under Pressure",
           } as any);
           createdItems.push(decisionItem);
           existingSourceIds.add(decisionKey);

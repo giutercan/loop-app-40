@@ -2503,9 +2503,16 @@ export const evidencePackItems = pgTable("evidence_pack_items", {
       // Skills & coaching (internal-facing)
       "coaching_observation", "communication_signal", "leadership_behavior", "skill_growth_metric",
       // Relationship building
-      "stakeholder_trust_signal", "relationship_milestone", "engagement_indicator"
+      "stakeholder_trust_signal", "relationship_milestone", "engagement_indicator",
+      // Journey-based trust evidence (new)
+      "success_frame", "assumption_revision", "risk_articulation", "handoff_quality", "reusability_pattern", "trust_milestone"
     ] 
   }).notNull(),
+  
+  // Evidence phase - where in the trust journey this evidence appears
+  evidencePhase: text("evidence_phase", {
+    enum: ["leading", "mid_loop", "lagging"]
+  }),
   
   // Confidence level for the evidence
   confidenceLevel: text("confidence_level", {
@@ -2566,7 +2573,20 @@ export const evidencePackItems = pgTable("evidence_pack_items", {
     deliverableStatus?: string;
     dueDate?: string;
     actionOwner?: string;
+    // Journey/trust evidence fields
+    successFrameClarity?: "high" | "medium" | "low"; // How clear is the success definition
+    sponsorAlignment?: boolean; // Is sponsor aligned on this
+    methodAdherence?: "consistent" | "partial" | "deviated"; // Deal discipline
+    assumptionRevisionReason?: string; // Why was assumption revised
+    handoffCompleteness?: number; // 0-100 score for handoff quality
+    reusabilityScore?: number; // 0-100 how reusable is this pattern
+    whatThisProves?: string; // Narrative summary of what this evidence proves
   }>(),
+  
+  // Story thread - links evidence items that form a narrative chain
+  storyThreadId: text("story_thread_id"), // Groups related evidence into a story
+  precedingItemId: integer("preceding_item_id"), // Previous item in the story chain
+  followingItemId: integer("following_item_id"), // Next item in the story chain
   
   // Supporting evidence
   proofSources: jsonb("proof_sources").$type<Array<{
