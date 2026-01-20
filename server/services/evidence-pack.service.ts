@@ -627,108 +627,87 @@ export class EvidencePackService {
 
     const notesData = notes as any;
     
-    // Import key themes as Leading evidence
-    if (notesData.keyThemes && Array.isArray(notesData.keyThemes)) {
-      for (let i = 0; i < notesData.keyThemes.length; i++) {
-        const theme = notesData.keyThemes[i];
-        if (!theme) continue;
-        
-        const themeKey = `discovery_notes-${notes.id}-theme-${i}`;
-        if (existingSourceIds.has(themeKey)) continue;
+    // Helper to extract adaptations from text (looks for "Adapted:", "Adjustment:", "Revised:")
+    const extractAdaptations = (text: string): string[] => {
+      if (!text) return [];
+      const patterns = [
+        /Adapted:\s*([^.]+\.)/gi,
+        /Adjustment:\s*([^.]+\.)/gi,
+        /Revised:\s*([^.]+\.)/gi,
+        /We revised\s+([^.]+\.)/gi,
+        /Changed approach\s+([^.]+\.)/gi,
+      ];
+      const adaptations: string[] = [];
+      for (const pattern of patterns) {
+        let match;
+        while ((match = pattern.exec(text)) !== null) {
+          if (match[1]) adaptations.push(match[1].trim());
+        }
+      }
+      return adaptations;
+    };
 
-        const themeItem = await this.storage.createEvidencePackItem({
-          packId: pack.id,
-          itemType: "insight" as any,
-          evidencePhase: getEvidencePhase("insight") as any,
-          claim: typeof theme === 'string' ? theme : theme.theme || theme.name || JSON.stringify(theme),
-          sourceType: "discovery_notes",
-          sourceId: notes.id,
-          sourceKind: "human" as any,
-          sourceEventId: `notes-theme-${i}`,
-          confidenceLevel: "medium" as any,
-          itemStatus: "draft" as any,
-          valuePillar: null,
-          audienceScope: "both" as any,
-          evidenceSensitivity: "client_shareable" as any,
-          skillDomain: "soft_skill" as any,
-          skillCategory: "discovery",
-          content: {
-            whatThisProves: `Key theme identified during discovery conversations`,
-          },
-          links: {
-            projectId: pack.projectId,
-            notesId: notes.id,
-          },
-          displayOrder: startOrder + createdItems.length,
-          section: "What We Saw Before Results",
-        } as any);
-        createdItems.push(themeItem);
-        existingSourceIds.add(themeKey);
+    // Import top challenges as Leading evidence
+    if (notesData.topChallenges) {
+      const challengeKey = `discovery_notes-${notes.id}-challenges`;
+      if (!existingSourceIds.has(challengeKey)) {
+        // Extract the main challenges (before any "Adapted:" text)
+        const mainChallenges = notesData.topChallenges.split(/Adapted:|Adjustment:/)[0].trim();
+        if (mainChallenges) {
+          const challengeItem = await this.storage.createEvidencePackItem({
+            packId: pack.id,
+            itemType: "insight" as any,
+            evidencePhase: getEvidencePhase("insight") as any,
+            claim: mainChallenges.substring(0, 300) + (mainChallenges.length > 300 ? '...' : ''),
+            sourceType: "discovery_notes",
+            sourceId: notes.id,
+            sourceKind: "human" as any,
+            sourceEventId: `notes-challenges`,
+            confidenceLevel: "medium" as any,
+            itemStatus: "draft" as any,
+            valuePillar: null,
+            audienceScope: "both" as any,
+            evidenceSensitivity: "client_shareable" as any,
+            skillDomain: "soft_skill" as any,
+            skillCategory: "discovery",
+            content: {
+              whatThisProves: `Key challenges identified during discovery`,
+            },
+            links: {
+              projectId: pack.projectId,
+              notesId: notes.id,
+            },
+            displayOrder: startOrder + createdItems.length,
+            section: "What We Saw Before Results",
+          } as any);
+          createdItems.push(challengeItem);
+          existingSourceIds.add(challengeKey);
+        }
       }
     }
 
-    // Import adaptations/pivots as Mid-Loop evidence
-    if (notesData.adaptations && Array.isArray(notesData.adaptations)) {
-      for (let i = 0; i < notesData.adaptations.length; i++) {
-        const adaptation = notesData.adaptations[i];
-        if (!adaptation) continue;
-        
-        const adaptKey = `discovery_notes-${notes.id}-adapt-${i}`;
-        if (existingSourceIds.has(adaptKey)) continue;
-
-        const adaptItem = await this.storage.createEvidencePackItem({
+    // Import key stakeholders as Leading evidence
+    if (notesData.keyStakeholder) {
+      const stakeholderKey = `discovery_notes-${notes.id}-stakeholders`;
+      if (!existingSourceIds.has(stakeholderKey)) {
+        const stakeholderItem = await this.storage.createEvidencePackItem({
           packId: pack.id,
-          itemType: "assumption_revision" as any,
-          evidencePhase: getEvidencePhase("assumption_revision") as any,
-          claim: typeof adaptation === 'string' ? adaptation : adaptation.description || JSON.stringify(adaptation),
+          itemType: "stakeholder_claim" as any,
+          evidencePhase: getEvidencePhase("stakeholder_claim") as any,
+          claim: `Key stakeholders: ${notesData.keyStakeholder}`,
           sourceType: "discovery_notes",
           sourceId: notes.id,
           sourceKind: "human" as any,
-          sourceEventId: `notes-adapt-${i}`,
+          sourceEventId: `notes-stakeholders`,
           confidenceLevel: "high" as any,
           itemStatus: "draft" as any,
           valuePillar: null,
           audienceScope: "internal" as any,
           evidenceSensitivity: "internal_only" as any,
           skillDomain: "soft_skill" as any,
-          skillCategory: "adaptability",
+          skillCategory: "stakeholder_mapping",
           content: {
-            whatThisProves: `Demonstrated ability to adapt approach based on new information`,
-          },
-          links: {
-            projectId: pack.projectId,
-            notesId: notes.id,
-          },
-          displayOrder: startOrder + createdItems.length,
-          section: "How Discipline Held Under Pressure",
-        } as any);
-        createdItems.push(adaptItem);
-        existingSourceIds.add(adaptKey);
-      }
-    }
-
-    // Import summary as context if available
-    if (notesData.summary) {
-      const summaryKey = `discovery_notes-${notes.id}-summary`;
-      if (!existingSourceIds.has(summaryKey)) {
-        const summaryItem = await this.storage.createEvidencePackItem({
-          packId: pack.id,
-          itemType: "claim" as any,
-          evidencePhase: getEvidencePhase("claim") as any,
-          claim: notesData.summary.substring(0, 300) + (notesData.summary.length > 300 ? '...' : ''),
-          sourceType: "discovery_notes",
-          sourceId: notes.id,
-          sourceKind: "human" as any,
-          sourceEventId: `notes-summary`,
-          confidenceLevel: "high" as any,
-          itemStatus: "draft" as any,
-          valuePillar: null,
-          audienceScope: "both" as any,
-          evidenceSensitivity: "client_shareable" as any,
-          skillDomain: "soft_skill" as any,
-          skillCategory: "synthesis",
-          content: {
-            whatThisProves: `Discovery summary capturing key client needs and context`,
+            whatThisProves: `Stakeholder landscape mapped and engaged`,
           },
           links: {
             projectId: pack.projectId,
@@ -737,8 +716,86 @@ export class EvidencePackService {
           displayOrder: startOrder + createdItems.length,
           section: "What We Saw Before Results",
         } as any);
-        createdItems.push(summaryItem);
-        existingSourceIds.add(summaryKey);
+        createdItems.push(stakeholderItem);
+        existingSourceIds.add(stakeholderKey);
+      }
+    }
+
+    // Extract and import adaptations from all text fields as Mid-Loop evidence
+    const allText = [notesData.freeformNotes, notesData.topChallenges, notesData.timeline].filter(Boolean).join(' ');
+    const adaptations = extractAdaptations(allText);
+    
+    for (let i = 0; i < adaptations.length; i++) {
+      const adaptation = adaptations[i];
+      const adaptKey = `discovery_notes-${notes.id}-adapt-${i}`;
+      if (existingSourceIds.has(adaptKey)) continue;
+
+      const adaptItem = await this.storage.createEvidencePackItem({
+        packId: pack.id,
+        itemType: "assumption_revision" as any,
+        evidencePhase: getEvidencePhase("assumption_revision") as any,
+        claim: adaptation,
+        sourceType: "discovery_notes",
+        sourceId: notes.id,
+        sourceKind: "human" as any,
+        sourceEventId: `notes-adapt-${i}`,
+        confidenceLevel: "high" as any,
+        itemStatus: "draft" as any,
+        valuePillar: null,
+        audienceScope: "internal" as any,
+        evidenceSensitivity: "internal_only" as any,
+        skillDomain: "soft_skill" as any,
+        skillCategory: "adaptability",
+        content: {
+          whatThisProves: `Demonstrated ability to adapt approach based on new information`,
+        },
+        links: {
+          projectId: pack.projectId,
+          notesId: notes.id,
+        },
+        displayOrder: startOrder + createdItems.length,
+        section: "How Discipline Held Under Pressure",
+      } as any);
+      createdItems.push(adaptItem);
+      existingSourceIds.add(adaptKey);
+    }
+
+    // Import freeform notes summary as context if available
+    if (notesData.freeformNotes) {
+      const summaryKey = `discovery_notes-${notes.id}-summary`;
+      if (!existingSourceIds.has(summaryKey)) {
+        // Extract main themes (before adaptation markers)
+        const mainNotes = notesData.freeformNotes.split(/We revised|Adapted:/)[0].trim();
+        if (mainNotes && mainNotes.length > 20) {
+          const summaryItem = await this.storage.createEvidencePackItem({
+            packId: pack.id,
+            itemType: "claim" as any,
+            evidencePhase: getEvidencePhase("claim") as any,
+            claim: mainNotes.substring(0, 300) + (mainNotes.length > 300 ? '...' : ''),
+            sourceType: "discovery_notes",
+            sourceId: notes.id,
+            sourceKind: "human" as any,
+            sourceEventId: `notes-summary`,
+            confidenceLevel: "high" as any,
+            itemStatus: "draft" as any,
+            valuePillar: null,
+            audienceScope: "both" as any,
+            evidenceSensitivity: "client_shareable" as any,
+            skillDomain: "soft_skill" as any,
+            skillCategory: "synthesis",
+            content: {
+              whatThisProves: `Discovery summary capturing key client needs and context`,
+            },
+            links: {
+              projectId: pack.projectId,
+              notesId: notes.id,
+            },
+            displayOrder: startOrder + createdItems.length,
+            section: "What We Saw Before Results",
+          } as any);
+          createdItems.push(summaryItem);
+          existingSourceIds.add(summaryKey);
+        }
       }
     }
 
