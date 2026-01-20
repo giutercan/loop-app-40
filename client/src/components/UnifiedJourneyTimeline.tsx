@@ -533,19 +533,24 @@ export function UnifiedJourneyTimeline({
                     )}
                   </div>
 
-                  {/* Action */}
+                  {/* Action - toggles expanded details panel */}
                   <Button
                     size="sm"
                     variant="ghost"
                     className="shrink-0 text-xs"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onOutcomeClick?.(lane.outcomeId);
+                      // Toggle the expanded panel for this outcome
+                      setSelectedLane(isSelected ? null : lane.outcomeId);
                     }}
                     data-testid={`button-view-outcome-${lane.outcomeId}`}
                   >
                     Details
-                    <ChevronRight className="w-3 h-3 ml-1" />
+                    {isSelected ? (
+                      <ChevronDown className="w-3 h-3 ml-1" />
+                    ) : (
+                      <ChevronRight className="w-3 h-3 ml-1" />
+                    )}
                   </Button>
                 </div>
 
