@@ -16,6 +16,210 @@ export const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
 });
 
+// Perplexity Live Search Types
+export interface PerplexitySearchResult {
+  content: string;
+  citations: string[];
+  retrievedAt: string;
+}
+
+export interface LiveCompanyData {
+  annualReport: {
+    fiscalYear: string;
+    keyHighlights: string[];
+    strategicPriorities: string[];
+    peopleMetrics: string;
+    citations: string[];
+    retrievedAt: string;
+  } | null;
+  earningsCall: {
+    quarter: string;
+    executiveCommentary: string[];
+    workforceDiscussions: string[];
+    futureOutlook: string;
+    citations: string[];
+    retrievedAt: string;
+  } | null;
+  recentNews: Array<{
+    headline: string;
+    date: string;
+    summary: string;
+    source: string;
+    url: string;
+  }>;
+  dataFreshness: {
+    isLive: boolean;
+    lastUpdated: string;
+    sources: string[];
+  };
+}
+
+// Perplexity API client for live web search
+async function searchWithPerplexity(query: string, recencyFilter: "day" | "week" | "month" = "month"): Promise<PerplexitySearchResult | null> {
+  const apiKey = process.env.PERPLEXITY_API_KEY;
+  
+  if (!apiKey) {
+    console.log("[Perplexity] API key not configured, skipping live search");
+    return null;
+  }
+
+  try {
+    const response = await fetch("https://api.perplexity.ai/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "llama-3.1-sonar-large-128k-online",
+        messages: [
+          {
+            role: "system",
+            content: "You are a business research assistant. Provide factual, sourced information about companies. Focus on official sources like SEC filings, earnings calls, and reputable news outlets. Always include specific dates and data points."
+          },
+          {
+            role: "user",
+            content: query
+          }
+        ],
+        temperature: 0.1,
+        top_p: 0.9,
+        search_recency_filter: recencyFilter,
+        return_images: false,
+        return_related_questions: false,
+        stream: false
+      })
+    });
+
+    if (!response.ok) {
+      console.error("[Perplexity] API error:", response.status, await response.text());
+      return null;
+    }
+
+    const data = await response.json();
+    return {
+      content: data.choices?.[0]?.message?.content || "",
+      citations: data.citations || [],
+      retrievedAt: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error("[Perplexity] Search error:", error);
+    return null;
+  }
+}
+
+// Fetch live company data from multiple sources
+export async function fetchLiveCompanyData(companyName: string): Promise<LiveCompanyData> {
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const sources: string[] = [];
+
+  // Run searches in parallel for efficiency
+  const [annualReportSearch, earningsSearch, newsSearch] = await Promise.all([
+    // Search for latest annual report / 10-K
+    searchWithPerplexity(
+      `${companyName} latest annual report 10-K ${currentYear} OR ${currentYear - 1}: CEO letter highlights, strategic priorities, workforce metrics, employee count, revenue, key initiatives. Focus on official SEC filings and investor relations.`,
+      "month"
+    ),
+    // Search for latest earnings call
+    searchWithPerplexity(
+      `${companyName} latest quarterly earnings call ${currentYear}: executive commentary, workforce discussions, hiring plans, organizational changes, forward guidance. Include specific quotes from CEO or CFO.`,
+      "week"
+    ),
+    // Search for recent news
+    searchWithPerplexity(
+      `${companyName} recent news ${currentYear}: leadership changes, executive appointments, restructuring, layoffs, acquisitions, strategic announcements. Focus on people and talent related news.`,
+      "week"
+    )
+  ]);
+
+  let annualReport: LiveCompanyData["annualReport"] = null;
+  let earningsCall: LiveCompanyData["earningsCall"] = null;
+  let recentNews: LiveCompanyData["recentNews"] = [];
+
+  // Parse annual report data
+  if (annualReportSearch) {
+    sources.push(...annualReportSearch.citations);
+    annualReport = {
+      fiscalYear: `FY${currentYear - 1}`,
+      keyHighlights: extractBulletPoints(annualReportSearch.content, "highlights", "priorities", "key"),
+      strategicPriorities: extractBulletPoints(annualReportSearch.content, "strategic", "initiatives", "focus"),
+      peopleMetrics: extractSection(annualReportSearch.content, "employee", "workforce", "headcount"),
+      citations: annualReportSearch.citations,
+      retrievedAt: annualReportSearch.retrievedAt
+    };
+  }
+
+  // Parse earnings call data
+  if (earningsSearch) {
+    sources.push(...earningsSearch.citations);
+    earningsCall = {
+      quarter: `Q${Math.ceil((currentDate.getMonth() + 1) / 3)} ${currentYear}`,
+      executiveCommentary: extractBulletPoints(earningsSearch.content, "said", "noted", "commented", "stated"),
+      workforceDiscussions: extractBulletPoints(earningsSearch.content, "workforce", "employee", "hiring", "talent"),
+      futureOutlook: extractSection(earningsSearch.content, "outlook", "guidance", "expect", "anticipate"),
+      citations: earningsSearch.citations,
+      retrievedAt: earningsSearch.retrievedAt
+    };
+  }
+
+  // Parse news data
+  if (newsSearch) {
+    sources.push(...newsSearch.citations);
+    recentNews = parseNewsItems(newsSearch.content, newsSearch.citations);
+  }
+
+  const isLive = !!(annualReportSearch || earningsSearch || newsSearch);
+
+  return {
+    annualReport,
+    earningsCall,
+    recentNews,
+    dataFreshness: {
+      isLive,
+      lastUpdated: new Date().toISOString(),
+      sources: [...new Set(sources)].slice(0, 10)
+    }
+  };
+}
+
+// Helper functions for parsing Perplexity responses
+function extractBulletPoints(content: string, ...keywords: string[]): string[] {
+  const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 20);
+  const relevant = sentences.filter(s => 
+    keywords.some(k => s.toLowerCase().includes(k.toLowerCase()))
+  );
+  return relevant.slice(0, 5).map(s => s.trim());
+}
+
+function extractSection(content: string, ...keywords: string[]): string {
+  const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 20);
+  const relevant = sentences.filter(s => 
+    keywords.some(k => s.toLowerCase().includes(k.toLowerCase()))
+  );
+  return relevant.slice(0, 2).join(". ").trim() || "No specific data available";
+}
+
+function parseNewsItems(content: string, citations: string[]): LiveCompanyData["recentNews"] {
+  const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 30);
+  const newsItems: LiveCompanyData["recentNews"] = [];
+  
+  for (let i = 0; i < Math.min(sentences.length, 5); i++) {
+    const sentence = sentences[i].trim();
+    if (sentence.length > 30) {
+      newsItems.push({
+        headline: sentence.length > 100 ? sentence.substring(0, 100) + "..." : sentence,
+        date: new Date().toISOString().split('T')[0],
+        summary: sentence,
+        source: citations[i] ? new URL(citations[i]).hostname : "Web Search",
+        url: citations[i] || ""
+      });
+    }
+  }
+  
+  return newsItems;
+}
+
 interface CompanyResearchResult {
   dataPoints: Array<{
     label: string;
@@ -83,7 +287,7 @@ export async function generateLiveIntelligence(
   companyName: string,
   discoveryTheme: string,
   sector?: string
-): Promise<LiveIntelligenceResult> {
+): Promise<LiveIntelligenceResult & { liveDataSource?: LiveCompanyData }> {
   const knowledgeBase = getSolutionSummary();
   
   const themeDescriptions: Record<string, string> = {
@@ -97,15 +301,75 @@ export async function generateLiveIntelligence(
   
   const themeDescription = themeDescriptions[discoveryTheme] || discoveryTheme;
 
+  // First, fetch live data from Perplexity (if API key is available)
+  console.log(`[Live Intelligence] Fetching live data for ${companyName}...`);
+  const liveData = await fetchLiveCompanyData(companyName);
+  
+  // Build live data context if available
+  let liveDataContext = "";
+  if (liveData.dataFreshness.isLive) {
+    console.log(`[Live Intelligence] Live data retrieved from ${liveData.dataFreshness.sources.length} sources`);
+    
+    liveDataContext = `
+=== LIVE DATA (Retrieved: ${new Date().toISOString()}) ===
+This is REAL-TIME data from web search. Prioritize this information over your training data.
+
+`;
+    
+    if (liveData.annualReport) {
+      liveDataContext += `LATEST ANNUAL REPORT (${liveData.annualReport.fiscalYear}):
+Key Highlights:
+${liveData.annualReport.keyHighlights.map(h => `- ${h}`).join('\n')}
+
+Strategic Priorities:
+${liveData.annualReport.strategicPriorities.map(p => `- ${p}`).join('\n')}
+
+People/Workforce Metrics: ${liveData.annualReport.peopleMetrics}
+
+Sources: ${liveData.annualReport.citations.slice(0, 3).join(', ')}
+
+`;
+    }
+    
+    if (liveData.earningsCall) {
+      liveDataContext += `LATEST EARNINGS CALL (${liveData.earningsCall.quarter}):
+Executive Commentary:
+${liveData.earningsCall.executiveCommentary.map(c => `- "${c}"`).join('\n')}
+
+Workforce Discussions:
+${liveData.earningsCall.workforceDiscussions.map(d => `- ${d}`).join('\n')}
+
+Future Outlook: ${liveData.earningsCall.futureOutlook}
+
+Sources: ${liveData.earningsCall.citations.slice(0, 3).join(', ')}
+
+`;
+    }
+    
+    if (liveData.recentNews.length > 0) {
+      liveDataContext += `RECENT NEWS:
+${liveData.recentNews.map(n => `- [${n.date}] ${n.headline} (${n.source})`).join('\n')}
+
+`;
+    }
+    
+    liveDataContext += `=== END LIVE DATA ===
+
+`;
+  } else {
+    console.log(`[Live Intelligence] No live data available, using model knowledge only`);
+  }
+
   const prompt = `You are a Korn Ferry business intelligence analyst researching ${companyName}${sector ? ` (${sector} sector)` : ''} for a sales discovery conversation.
 
 DISCOVERY THEME: ${themeDescription}
-
+${liveDataContext}
 Your research must be:
-1. CURRENT and ACCURATE - use your knowledge of this company up to your training date
+1. CURRENT and ACCURATE - ${liveData.dataFreshness.isLive ? "USE THE LIVE DATA PROVIDED ABOVE as your primary source" : "use your knowledge of this company up to your training date"}
 2. SPECIFIC to ${companyName} - not generic industry information
 3. FOCUSED on the discovery theme: ${themeDescription}
 4. ACTIONABLE for a Korn Ferry consultant preparing for a client meeting
+${liveData.dataFreshness.isLive ? "\nIMPORTANT: The live data above is from real-time web search. Incorporate it directly into your response." : ""}
 
 PRIORITY DATA SOURCES - Always prioritize insights from:
 - Annual Reports and 10-K filings (CEO letters, strategic priorities, risk factors, people/talent metrics)
@@ -216,7 +480,15 @@ IMPORTANT:
     
     return {
       ...result,
-      generatedAt: new Date().toISOString()
+      generatedAt: new Date().toISOString(),
+      liveDataSource: liveData.dataFreshness.isLive ? liveData : undefined,
+      dataFreshness: {
+        isLive: liveData.dataFreshness.isLive,
+        lastUpdated: liveData.dataFreshness.lastUpdated,
+        sources: liveData.dataFreshness.sources,
+        annualReportDate: liveData.annualReport?.retrievedAt,
+        earningsCallDate: liveData.earningsCall?.retrievedAt
+      }
     };
   } catch (error) {
     console.error("[Live Intelligence] Error:", error);
