@@ -71,7 +71,7 @@ async function searchWithPerplexity(query: string, recencyFilter: "day" | "week"
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "llama-3.1-sonar-large-128k-online",
+        model: "sonar",
         messages: [
           {
             role: "system",
@@ -164,15 +164,22 @@ export async function researchMeetingAttendee(
   if (linkedInSearch && linkedInSearch.content) {
     const liContent = linkedInSearch.content;
     console.log(`[Attendee Research] LinkedIn search completed for ${attendeeName}`);
+    console.log(`[Attendee Research] LinkedIn citations:`, linkedInSearch.citations);
     
     // Extract LinkedIn URL from citations - this determines if we truly found LinkedIn data
     for (const citation of linkedInSearch.citations) {
-      if (citation.includes("linkedin.com/in/")) {
+      if (citation.includes("linkedin.com/in/") || citation.includes("linkedin.com")) {
         linkedInProfileUrl = citation;
         linkedInDataFound = true;
         console.log(`[Attendee Research] LinkedIn profile URL found: ${linkedInProfileUrl}`);
         break;
       }
+    }
+    
+    // If no URL but content mentions LinkedIn profile, still mark as LinkedIn data found
+    if (!linkedInDataFound && liContent.toLowerCase().includes("linkedin")) {
+      linkedInDataFound = true;
+      console.log(`[Attendee Research] LinkedIn content found (no direct URL)`);
     }
     
     // Extract headline (usually after name, format: "Name - Headline at Company")
