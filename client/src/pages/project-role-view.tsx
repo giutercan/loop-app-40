@@ -174,10 +174,12 @@ interface KPI {
 
 interface ProjectInsight {
   id: number;
-  content: string;
-  priority: string | null;
+  label: string;
+  value: string;
   confidence: string | null;
-  kornferryPillar: string | null;
+  source: string | null;
+  priorityScore: number | null;
+  kornFerryPillar: string | null;
   solutionArea: string | null;
 }
 
@@ -3577,9 +3579,9 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
   }, [project?.csLifecycleStage]);
 
   const { data: insights = [] } = useQuery<ProjectInsight[]>({
-    queryKey: ["/api/projects", projectId, "insights"],
+    queryKey: ["/api/projects", projectId, "data-points"],
     queryFn: async () => {
-      const response = await fetch(`/api/projects/${projectId}/insights`);
+      const response = await fetch(`/api/projects/${projectId}/data-points`);
       if (!response.ok) return [];
       return response.json();
     },
@@ -11651,9 +11653,9 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
       queryKey: ["/api/projects", projectId, "strategy-selection"],
     });
 
-    // Fetch discovery data
+    // Fetch discovery data (company data points)
     const { data: discoveryInsights = [] } = useQuery<any[]>({
-      queryKey: ["/api/projects", projectId, "insights"],
+      queryKey: ["/api/projects", projectId, "data-points"],
     });
 
     const { data: discoverySynthesis } = useQuery<any>({
@@ -11674,8 +11676,8 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
       queryKey: ["/api/projects", projectId, "artifacts"],
     });
 
-    // Fetch discovery notes for engagement context
-    const { data: discoveryNotes = [] } = useQuery<any[]>({
+    // Fetch discovery notes for engagement context (returns single object, not array)
+    const { data: discoveryNotesData } = useQuery<any>({
       queryKey: ["/api/projects", projectId, "discovery-notes"],
     });
 
@@ -11910,6 +11912,10 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
     const allOutcomes = (commitments as any[]);
     const outcomesWithProvenance = allOutcomes.filter((c: any) => c.provenance?.source || c.sourceAiSuggestion);
     const isHandoffConfirmed = project?.handoffConfirmedAt;
+    
+    // Compute engagement items count (discovery questions + artifacts + notes if present)
+    const hasDiscoveryNotes = discoveryNotesData && (discoveryNotesData.freeformNotes || discoveryNotesData.topChallenges);
+    const engagementItemsCount = discoveryQuestions.length + artifacts.length + (hasDiscoveryNotes ? 1 : 0);
 
     // Extract Blue Sheet strategic fields
     const bluesheetContent = bluesheetData?.data || {};
@@ -12008,7 +12014,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                     <div className="min-w-0">
                       <p className="font-medium text-sm">Engagement</p>
                       <p className="text-xs text-muted-foreground">
-                        {discoveryNotes.length + artifacts.length} items
+                        {engagementItemsCount} items
                       </p>
                     </div>
                   </div>
@@ -12048,7 +12054,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
               </div>
               <div className="p-4 rounded-lg bg-background border">
                 <p className="text-sm text-muted-foreground">Notes & Artifacts</p>
-                <p className="text-2xl font-bold text-amber-600">{discoveryNotes.length + artifacts.length}</p>
+                <p className="text-2xl font-bold text-amber-600">{engagementItemsCount}</p>
               </div>
               <div className="p-4 rounded-lg bg-background border">
                 <p className="text-sm text-muted-foreground">Total Outcomes</p>
@@ -12544,11 +12550,14 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {discoveryNotes.length > 0 && (
-                  <Badge variant="outline">{discoveryNotes.length} notes</Badge>
+                {hasDiscoveryNotes && (
+                  <Badge variant="outline">Notes</Badge>
                 )}
                 {artifacts.length > 0 && (
                   <Badge variant="outline">{artifacts.length} artifacts</Badge>
+                )}
+                {discoveryQuestions.length > 0 && (
+                  <Badge variant="outline">{discoveryQuestions.length} questions</Badge>
                 )}
                 {greenSheetData && (
                   <Badge variant="outline" className="bg-emerald-500/10">Green Sheet</Badge>
@@ -12606,33 +12615,30 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
               )}
 
               {/* Discovery Notes */}
-              {discoveryNotes.length > 0 && (
+              {hasDiscoveryNotes && (
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <MessageSquare className="w-4 h-4 text-blue-600" />
-                    <span className="text-sm font-semibold">Conversation Notes</span>
-                    <Badge variant="outline" className="text-xs">{discoveryNotes.length} notes</Badge>
+                    <span className="text-sm font-semibold">Discovery Notes</span>
                   </div>
                   <div className="space-y-2">
-                    {discoveryNotes.slice(0, 4).map((note: any) => (
-                      <div key={note.id} className="p-3 rounded-lg border bg-blue-500/5 border-blue-500/20">
-                        <p className="text-sm line-clamp-2">{note.content}</p>
-                        <div className="flex items-center gap-2 mt-2">
-                          {note.source && (
-                            <Badge variant="outline" className="text-[10px]">{note.source}</Badge>
-                          )}
-                          {note.createdAt && (
-                            <span className="text-[10px] text-muted-foreground">
-                              {new Date(note.createdAt).toLocaleDateString()}
-                            </span>
-                          )}
-                        </div>
+                    {discoveryNotesData?.topChallenges && (
+                      <div className="p-3 rounded-lg border bg-blue-500/5 border-blue-500/20">
+                        <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Top Challenges</p>
+                        <p className="text-sm">{discoveryNotesData.topChallenges}</p>
                       </div>
-                    ))}
-                    {discoveryNotes.length > 4 && (
-                      <p className="text-xs text-muted-foreground text-center">
-                        + {discoveryNotes.length - 4} more notes
-                      </p>
+                    )}
+                    {discoveryNotesData?.freeformNotes && (
+                      <div className="p-3 rounded-lg border bg-blue-500/5 border-blue-500/20">
+                        <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Notes</p>
+                        <p className="text-sm line-clamp-4">{discoveryNotesData.freeformNotes}</p>
+                      </div>
+                    )}
+                    {discoveryNotesData?.keyStakeholder && (
+                      <div className="p-3 rounded-lg border bg-blue-500/5 border-blue-500/20">
+                        <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Key Stakeholder</p>
+                        <p className="text-sm">{discoveryNotesData.keyStakeholder}</p>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -12697,7 +12703,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 </div>
               )}
 
-              {!greenSheetData && artifacts.length === 0 && discoveryNotes.length === 0 && discoveryQuestions.length === 0 && (
+              {!greenSheetData && artifacts.length === 0 && !hasDiscoveryNotes && discoveryQuestions.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-50" />
                   <p className="text-sm">No engagement context captured yet</p>

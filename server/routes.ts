@@ -10609,7 +10609,7 @@ Respond in JSON format:
         name: "Chanel Leadership Transformation",
         companyName: "Chanel S.A.",
         sector: "Luxury Retail & Fashion",
-        phase: "alignment",
+        currentPhase: "alignment",
         status: "active",
         projectGoal: "Transform Chanel's leadership pipeline and talent development to support global expansion while preserving the maison's unique heritage and culture.",
         stakeholderName: "Philippe Lefort",
@@ -10664,6 +10664,101 @@ Respond in JSON format:
         await storage.createJobTheme({
           projectId: project.id,
           ...theme,
+        });
+      }
+
+      // Create discovery notes (single object per project)
+      await storage.upsertDiscoveryNotes({
+        projectId: project.id,
+        freeformNotes: "Philippe emphasized the urgency of succession planning given the aging leadership cadre. The maison's unique culture must be preserved through any transformation. APAC expansion is a board priority but lacks leadership readiness. Current assessment tools are outdated and not calibrated for luxury retail competencies.",
+        keyStakeholder: "Philippe Lefort (CHRO) - Primary decision maker, reports directly to CEO",
+        topChallenges: "1. Leadership succession gap with 35% of directors retiring in 5 years\n2. Extended onboarding time (14-18 months vs 9 month benchmark)\n3. Cultural alignment variance between regions (22-point gap)\n4. High-potential talent retention at 82% vs 92% target",
+        timeline: "Q1 2025: Assessment framework launch, Q2: First cohort succession reviews, Q4: Director onboarding program rollout",
+      });
+
+      // Create discovery insights (company data points) with correct schema
+      const discoveryInsightsData = [
+        {
+          label: "Strategic Priority",
+          value: "Global APAC expansion requires 40+ new boutique directors over next 3 years",
+          source: "Board presentation Q3",
+          confidence: "high" as const,
+          priorityScore: 5,
+          solutionArea: "ASSESS" as const,
+        },
+        {
+          label: "Pain Point",
+          value: "Current succession planning process is manual and inconsistent across regions",
+          source: "CHRO interview",
+          confidence: "high" as const,
+          priorityScore: 5,
+          solutionArea: "ASSESS" as const,
+        },
+        {
+          label: "Opportunity",
+          value: "Competitor LVMH reduced director onboarding time by 40% with structured development program",
+          source: "Industry research",
+          confidence: "medium" as const,
+          priorityScore: 4,
+          solutionArea: "DEVELOP" as const,
+        },
+        {
+          label: "Risk",
+          value: "APAC regional directors report feeling 'disconnected from Paris culture'",
+          source: "Engagement survey 2024",
+          confidence: "high" as const,
+          priorityScore: 5,
+          solutionArea: "TRANSFORM" as const,
+        },
+        {
+          label: "Financial",
+          value: "Each director role vacancy costs approximately €180K in lost boutique revenue",
+          source: "Finance analysis",
+          confidence: "medium" as const,
+          priorityScore: 4,
+          solutionArea: "ANALYTICS" as const,
+        },
+      ];
+
+      for (const insight of discoveryInsightsData) {
+        await storage.createCompanyDataPoint({
+          projectId: project.id,
+          ...insight,
+        });
+      }
+
+      // Create discovery questions with correct schema
+      const discoveryQuestionsData = [
+        {
+          capabilityName: "Succession Planning",
+          question: "What is your current process for identifying and validating successor candidates?",
+          questionType: "qualitative" as const,
+          purpose: "Understand current succession readiness and gaps",
+          answer: "Currently ad-hoc, relies heavily on regional directors' recommendations with no standardized assessment.",
+          isAsked: true,
+        },
+        {
+          capabilityName: "Leadership Development",
+          question: "How do you measure time-to-productivity for new boutique directors?",
+          questionType: "quantitative" as const,
+          purpose: "Establish baseline for director onboarding effectiveness",
+          answer: "We track boutique revenue performance against target. New directors typically reach 90% of target after 14-18 months.",
+          isAsked: true,
+        },
+        {
+          capabilityName: "Culture & Engagement",
+          question: "What explains the engagement score variance between European and APAC boutiques?",
+          questionType: "qualitative" as const,
+          purpose: "Identify root causes of cultural alignment gaps",
+          answer: "APAC boutiques were rapidly scaled; many directors haven't had Paris immersion. Training was abbreviated during COVID.",
+          isAsked: true,
+        },
+      ];
+
+      for (const q of discoveryQuestionsData) {
+        await storage.createDiscoveryQuestion({
+          projectId: project.id,
+          ...q,
         });
       }
 
