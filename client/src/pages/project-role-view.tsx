@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { SiLinkedin } from "react-icons/si";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useRoute } from "wouter";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -16135,16 +16136,76 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
             </div>
 
             {attendeeResearchResult && attendeeResearchResult.isLive && (
-              <div className="p-3 rounded-lg border border-blue-200 bg-blue-50/50" data-testid="card-attendee-research">
+              <div className="p-3 rounded-lg border border-blue-200 bg-blue-50/50 dark:bg-blue-950/30 dark:border-blue-800" data-testid="card-attendee-research">
                 <div className="flex items-center gap-2 mb-2">
                   <Sparkles className="w-4 h-4 text-blue-600" />
-                  <span className="text-xs font-medium text-blue-700">Research Results</span>
-                  {attendeeResearchResult.retrievedAt && (
+                  <span className="text-xs font-medium text-blue-700 dark:text-blue-400">Research Results</span>
+                  {attendeeResearchResult.linkedInDataFound && (
+                    <Badge variant="outline" className="text-[10px] bg-blue-600 text-white border-blue-600" data-testid="badge-linkedin-found">
+                      LinkedIn Verified
+                    </Badge>
+                  )}
+                  {attendeeResearchResult.retrievedAt && !attendeeResearchResult.linkedInDataFound && (
                     <Badge variant="outline" className="text-[10px]" data-testid="badge-research-live">
-                      Live Data
+                      Web Data
                     </Badge>
                   )}
                 </div>
+                
+                {attendeeResearchResult.linkedInProfileUrl && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    asChild
+                    className="w-full justify-start gap-2 mb-3"
+                    data-testid="link-linkedin-profile"
+                  >
+                    <a 
+                      href={attendeeResearchResult.linkedInProfileUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                    >
+                      <SiLinkedin className="w-4 h-4 text-[#0A66C2]" />
+                      <span className="text-xs font-medium">View LinkedIn Profile</span>
+                      <ExternalLink className="w-3 h-3 ml-auto" />
+                    </a>
+                  </Button>
+                )}
+                
+                {attendeeResearchResult.linkedInHeadline && (
+                  <div className="mb-2 p-2 rounded bg-muted/50">
+                    <p className="text-xs font-medium text-foreground" data-testid="text-linkedin-headline">
+                      {attendeeResearchResult.linkedInHeadline}
+                    </p>
+                  </div>
+                )}
+                
+                {attendeeResearchResult.linkedInEducation?.length > 0 && (
+                  <div className="mb-2">
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase mb-1 flex items-center gap-1">
+                      <GraduationCap className="w-3 h-3" /> Education
+                    </p>
+                    <ul className="text-xs space-y-0.5" data-testid="list-linkedin-education">
+                      {attendeeResearchResult.linkedInEducation.map((edu: string, i: number) => (
+                        <li key={i} className="text-muted-foreground" data-testid={`text-education-${i}`}>• {edu}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {attendeeResearchResult.linkedInSkills?.length > 0 && (
+                  <div className="mb-2">
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase mb-1">Skills & Expertise</p>
+                    <div className="flex flex-wrap gap-1" data-testid="list-linkedin-skills">
+                      {attendeeResearchResult.linkedInSkills.map((skill: string, i: number) => (
+                        <Badge key={i} variant="secondary" className="text-[10px]" data-testid={`badge-skill-${i}`}>
+                          {skill}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
                 {attendeeResearchResult.background && (
                   <p className="text-xs text-muted-foreground mb-2" data-testid="text-attendee-research-background">
                     {attendeeResearchResult.background}
@@ -16165,7 +16226,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                     <p className="text-[10px] font-medium text-muted-foreground uppercase mb-1">Coaching Tips</p>
                     <ul className="text-xs space-y-0.5" data-testid="list-attendee-coaching-tips">
                       {attendeeResearchResult.coachingTips.map((tip: string, i: number) => (
-                        <li key={i} className="text-emerald-700" data-testid={`text-coaching-tip-${i}`}>• {tip}</li>
+                        <li key={i} className="text-emerald-700 dark:text-emerald-400" data-testid={`text-coaching-tip-${i}`}>• {tip}</li>
                       ))}
                     </ul>
                   </div>
@@ -16173,7 +16234,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 {attendeeResearchResult.citations?.length > 0 && (
                   <div className="mt-2 pt-2 border-t">
                     <p className="text-[10px] text-muted-foreground" data-testid="text-attendee-research-sources">
-                      Sources: {attendeeResearchResult.citations.slice(0, 2).map((c: string) => {
+                      Sources: {attendeeResearchResult.citations.slice(0, 3).map((c: string) => {
                         try { return new URL(c).hostname; } catch { return c; }
                       }).join(", ")}
                     </p>

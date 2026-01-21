@@ -119,9 +119,15 @@ export interface AttendeeResearchResult {
   knownConcerns: string;
   coachingTips: string[];
   linkedInSummary: string | null;
+  linkedInProfileUrl: string | null;
+  linkedInHeadline: string | null;
+  linkedInEducation: string[];
+  linkedInSkills: string[];
+  linkedInConnections: string | null;
   citations: string[];
   retrievedAt: string;
   isLive: boolean;
+  linkedInDataFound: boolean;
 }
 
 export async function researchMeetingAttendee(
@@ -131,11 +137,129 @@ export async function researchMeetingAttendee(
 ): Promise<AttendeeResearchResult> {
   console.log(`[Attendee Research] Researching ${attendeeName} at ${companyName}`);
   
-  const searchQuery = `${attendeeName} ${companyName}${knownTitle ? ` ${knownTitle}` : ""}: LinkedIn profile, professional background, career history, recent news, executive role, leadership style, accomplishments. Focus on business context and professional achievements.`;
+  // Run two parallel searches: one LinkedIn-focused, one general professional
+  const [linkedInSearch, generalSearch] = await Promise.all([
+    // LinkedIn-specific search with site filter
+    searchWithPerplexity(
+      `site:linkedin.com/in "${attendeeName}" ${companyName}${knownTitle ? ` ${knownTitle}` : ""} profile experience education skills`,
+      "month"
+    ),
+    // General professional background search
+    searchWithPerplexity(
+      `"${attendeeName}" ${companyName}${knownTitle ? ` ${knownTitle}` : ""}: professional background, career history, executive role, leadership, recent news, accomplishments, speaking engagements`,
+      "month"
+    )
+  ]);
   
-  const searchResult = await searchWithPerplexity(searchQuery, "month");
+  // Track if we found LinkedIn data
+  let linkedInDataFound = false;
+  let linkedInProfileUrl: string | null = null;
+  let linkedInHeadline: string | null = null;
+  let linkedInEducation: string[] = [];
+  let linkedInSkills: string[] = [];
+  let linkedInConnections: string | null = null;
+  let linkedInSummary: string | null = null;
   
-  if (!searchResult || !searchResult.content) {
+  // Process LinkedIn search results
+  if (linkedInSearch && linkedInSearch.content) {
+    const liContent = linkedInSearch.content;
+    console.log(`[Attendee Research] LinkedIn search completed for ${attendeeName}`);
+    
+    // Extract LinkedIn URL from citations - this determines if we truly found LinkedIn data
+    for (const citation of linkedInSearch.citations) {
+      if (citation.includes("linkedin.com/in/")) {
+        linkedInProfileUrl = citation;
+        linkedInDataFound = true;
+        console.log(`[Attendee Research] LinkedIn profile URL found: ${linkedInProfileUrl}`);
+        break;
+      }
+    }
+    
+    // Extract headline (usually after name, format: "Name - Headline at Company")
+    const headlinePatterns = [
+      new RegExp(`${attendeeName.split(' ')[0]}[^-]*-\\s*([^|\\n]+)`, 'i'),
+      /(?:is|serves as|works as|currently)\s+(?:a |the )?([^.]+(?:at|with|for)\s+[^.]+)/i,
+      /(?:^|\n)([A-Z][^.\n]+(?:Officer|President|Director|VP|Vice President|Head|Chief|Manager|Partner|Lead|Consultant|Advisor)[^.\n]*)/i
+    ];
+    for (const pattern of headlinePatterns) {
+      const match = liContent.match(pattern);
+      if (match) {
+        linkedInHeadline = match[1].trim().substring(0, 120);
+        break;
+      }
+    }
+    
+    // Extract education
+    const eduPatterns = [
+      /(?:studied|graduated|degree|MBA|PhD|Bachelor|Master|attended|alumni|education)[^.]*?(?:at|from)?\s+([A-Z][^.,\n]+(?:University|College|School|Institute|Business School)[^.,\n]*)/gi,
+      /(University|College|School|Institute)[^.,\n]*/gi
+    ];
+    for (const pattern of eduPatterns) {
+      const matches = Array.from(liContent.matchAll(pattern));
+      for (const match of matches) {
+        const edu = match[1] ? match[1].trim() : match[0].trim();
+        if (edu.length > 5 && edu.length < 100 && !linkedInEducation.includes(edu)) {
+          linkedInEducation.push(edu);
+          if (linkedInEducation.length >= 3) break;
+        }
+      }
+      if (linkedInEducation.length >= 3) break;
+    }
+    
+    // Extract skills from content
+    const skillKeywords = ["expertise in", "skilled in", "specializes in", "experience with", "proficient in", "skills include", "known for"];
+    const sentences = liContent.split(/[.!?]+/);
+    for (const sentence of sentences) {
+      const lowerSentence = sentence.toLowerCase();
+      for (const keyword of skillKeywords) {
+        if (lowerSentence.includes(keyword)) {
+          // Extract the part after the keyword
+          const idx = lowerSentence.indexOf(keyword);
+          const skillPart = sentence.substring(idx + keyword.length).trim();
+          const skills = skillPart.split(/[,;]/).map(s => s.trim()).filter(s => s.length > 2 && s.length < 50);
+          linkedInSkills.push(...skills.slice(0, 3));
+          if (linkedInSkills.length >= 5) break;
+        }
+      }
+      if (linkedInSkills.length >= 5) break;
+    }
+    linkedInSkills = Array.from(new Set(linkedInSkills)).slice(0, 5);
+    
+    // Extract connections count if mentioned
+    const connectionsMatch = liContent.match(/(\d{1,3}(?:,\d{3})*\+?)\s*(?:connections|followers)/i);
+    if (connectionsMatch) {
+      linkedInConnections = connectionsMatch[1];
+    }
+    
+    // Build LinkedIn summary
+    const liSentences = liContent.split(/[.!?]+/).filter(s => s.trim().length > 20);
+    linkedInSummary = liSentences.slice(0, 2).join(". ").trim();
+    if (linkedInSummary.length > 300) {
+      linkedInSummary = linkedInSummary.substring(0, 297) + "...";
+    }
+  }
+  
+  // Combine citations from both searches
+  const allCitations: string[] = [];
+  if (linkedInSearch?.citations) allCitations.push(...linkedInSearch.citations);
+  if (generalSearch?.citations) allCitations.push(...generalSearch.citations);
+  const uniqueCitations = Array.from(new Set(allCitations));
+  
+  // If no LinkedIn URL found in citations, try to find it in general search
+  if (!linkedInProfileUrl && generalSearch?.citations) {
+    for (const citation of generalSearch.citations) {
+      if (citation.includes("linkedin.com/in/")) {
+        linkedInProfileUrl = citation;
+        linkedInDataFound = true;
+        break;
+      }
+    }
+  }
+  
+  // Use general search for career history and background if LinkedIn is sparse
+  const content = generalSearch?.content || linkedInSearch?.content || "";
+  
+  if (!content) {
     console.log(`[Attendee Research] No live data available for ${attendeeName}`);
     return {
       name: attendeeName,
@@ -147,18 +271,22 @@ export async function researchMeetingAttendee(
       knownConcerns: "",
       coachingTips: ["Build rapport by asking about their current priorities", "Listen actively for pain points related to their role"],
       linkedInSummary: null,
+      linkedInProfileUrl: null,
+      linkedInHeadline: null,
+      linkedInEducation: [],
+      linkedInSkills: [],
+      linkedInConnections: null,
       citations: [],
       retrievedAt: new Date().toISOString(),
-      isLive: false
+      isLive: false,
+      linkedInDataFound: false
     };
   }
 
-  // Parse the research content
-  const content = searchResult.content;
   const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 20);
   
   // Extract career history
-  const careerKeywords = ["previously", "former", "before", "joined", "promoted", "led", "managed", "founded", "started"];
+  const careerKeywords = ["previously", "former", "before", "joined", "promoted", "led", "managed", "founded", "started", "worked at", "served as"];
   const careerHistory = sentences
     .filter(s => careerKeywords.some(k => s.toLowerCase().includes(k)))
     .slice(0, 4)
@@ -171,24 +299,27 @@ export async function researchMeetingAttendee(
     .slice(0, 3)
     .map(s => s.trim());
   
-  // Extract title if mentioned
-  let extractedTitle = knownTitle || null;
-  const titlePatterns = [
-    /(?:serves as|is the|currently|holds|as)\s+(?:the\s+)?([A-Z][^,.\n]+(?:Officer|President|Director|VP|Vice President|Head|Chief|Manager|Partner|Lead))/i,
-    /([A-Z][^,.\n]+(?:Officer|President|Director|VP|Vice President|Head|Chief|Manager|Partner|Lead))\s+(?:at|of|for)/i
-  ];
-  for (const pattern of titlePatterns) {
-    const match = content.match(pattern);
-    if (match) {
-      extractedTitle = match[1].trim();
-      break;
+  // Extract title if mentioned (prefer LinkedIn headline if found)
+  let extractedTitle = linkedInHeadline || knownTitle || null;
+  if (!extractedTitle) {
+    const titlePatterns = [
+      /(?:serves as|is the|currently|holds|as)\s+(?:the\s+)?([A-Z][^,.\n]+(?:Officer|President|Director|VP|Vice President|Head|Chief|Manager|Partner|Lead))/i,
+      /([A-Z][^,.\n]+(?:Officer|President|Director|VP|Vice President|Head|Chief|Manager|Partner|Lead))\s+(?:at|of|for)/i
+    ];
+    for (const pattern of titlePatterns) {
+      const match = content.match(pattern);
+      if (match) {
+        extractedTitle = match[1].trim();
+        break;
+      }
     }
   }
   
   // Generate coaching tips based on role
   const coachingTips: string[] = [];
-  if (extractedTitle) {
-    const titleLower = extractedTitle.toLowerCase();
+  const titleForCoaching = extractedTitle || linkedInHeadline || "";
+  if (titleForCoaching) {
+    const titleLower = titleForCoaching.toLowerCase();
     if (titleLower.includes("ceo") || titleLower.includes("chief executive")) {
       coachingTips.push("Focus on strategic impact and organizational transformation");
       coachingTips.push("Tie recommendations to business outcomes and competitive advantage");
@@ -210,6 +341,14 @@ export async function researchMeetingAttendee(
     coachingTips.push("Listen for pain points that Korn Ferry can address");
   }
   
+  // Add LinkedIn-based coaching tips
+  if (linkedInEducation.length > 0) {
+    coachingTips.push(`Consider their academic background: ${linkedInEducation[0]}`);
+  }
+  if (linkedInSkills.length > 0) {
+    coachingTips.push(`They have expertise in: ${linkedInSkills.slice(0, 3).join(", ")}`);
+  }
+  
   // Build background summary
   const backgroundSentences = sentences.slice(0, 3).join(". ");
   
@@ -217,15 +356,21 @@ export async function researchMeetingAttendee(
     name: attendeeName,
     title: extractedTitle,
     company: companyName,
-    background: backgroundSentences || "Professional background information retrieved from web search.",
+    background: backgroundSentences || linkedInSummary || "Professional background information retrieved from web search.",
     careerHistory,
     recentActivity,
     knownConcerns: recentActivity.length > 0 ? recentActivity[0] : "",
     coachingTips,
-    linkedInSummary: content.toLowerCase().includes("linkedin") ? "LinkedIn profile found - see citations for link" : null,
-    citations: searchResult.citations,
-    retrievedAt: searchResult.retrievedAt,
-    isLive: true
+    linkedInSummary,
+    linkedInProfileUrl,
+    linkedInHeadline,
+    linkedInEducation,
+    linkedInSkills,
+    linkedInConnections,
+    citations: uniqueCitations,
+    retrievedAt: linkedInSearch?.retrievedAt || generalSearch?.retrievedAt || new Date().toISOString(),
+    isLive: true,
+    linkedInDataFound
   };
 }
 
