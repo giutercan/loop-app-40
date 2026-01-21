@@ -10984,6 +10984,135 @@ Respond in JSON format:
     }
   });
 
+  // POST /api/demo/seed-spglobal - Seed S&P Global demo data for project 1
+  app.post("/api/demo/seed-spglobal", async (req, res) => {
+    try {
+      const projectId = 1;
+      const project = await storage.getProject(projectId);
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project 1 not found" });
+      }
+      
+      // Check if data already exists
+      const existingThemes = await storage.getJobThemes(projectId);
+      const existingInsights = await storage.getCompanyDataPoints(projectId);
+      
+      if (existingThemes.length > 0 && existingInsights.length > 0 && req.query.force !== "true") {
+        return res.json({ 
+          success: true, 
+          message: "S&P Global demo data already exists", 
+          projectId,
+          themesCount: existingThemes.length,
+          insightsCount: existingInsights.length
+        });
+      }
+      
+      // Create job themes
+      const jobThemesData = [
+        {
+          jobName: "Leadership Succession & Pipeline",
+          capabilityName: "Succession Planning & Leadership Assessment",
+          aggregationSummary: "Only 32% of critical roles have identified successors ready within 12 months. With aggressive growth targets requiring 15+ new senior leaders annually, S&P Global faces significant succession gaps.",
+          solutionArea: "ASSESS" as const,
+          evidenceCount: 5,
+          compositeScore: 94,
+          priorityRank: 1,
+        },
+        {
+          jobName: "High-Potential Talent Retention",
+          capabilityName: "Talent Development & Career Pathing",
+          aggregationSummary: "18% voluntary turnover among high-potential talent (vs 10% benchmark) costs an estimated $12M annually. Exit interviews cite limited career visibility and development investment.",
+          solutionArea: "DEVELOP" as const,
+          evidenceCount: 4,
+          compositeScore: 91,
+          priorityRank: 2,
+        },
+        {
+          jobName: "Data & Analytics Leadership",
+          capabilityName: "Technical Leadership Development",
+          aggregationSummary: "ESG data analytics division needs 8 senior technical leaders over 18 months to capture $2B market opportunity. Current internal bench has only 3 ready-now candidates.",
+          solutionArea: "ANALYTICS" as const,
+          evidenceCount: 3,
+          compositeScore: 88,
+          priorityRank: 3,
+        },
+        {
+          jobName: "Cultural Integration Post-M&A",
+          capabilityName: "Change Management & Integration",
+          aggregationSummary: "Recent IHS Markit integration showing 15-point engagement gap between legacy organizations. Cultural alignment critical for unified go-to-market strategy.",
+          solutionArea: "TRANSFORM" as const,
+          evidenceCount: 4,
+          compositeScore: 85,
+          priorityRank: 4,
+        },
+      ];
+
+      for (const theme of jobThemesData) {
+        await storage.createJobTheme({
+          projectId,
+          ...theme,
+        });
+      }
+
+      // Create discovery questions
+      const discoveryQuestionsData = [
+        {
+          capabilityName: "Succession Planning",
+          question: "What is your current process for identifying and developing successor candidates for critical roles?",
+          questionType: "qualitative" as const,
+          purpose: "Understand succession planning maturity",
+          answer: "We have annual talent reviews but no standardized assessment criteria. Regional variations are significant.",
+          isAsked: true,
+        },
+        {
+          capabilityName: "Talent Development",
+          question: "How do you measure ROI on leadership development investments?",
+          questionType: "quantitative" as const,
+          purpose: "Assess development program effectiveness tracking",
+          answer: "Currently tracking participation rates but limited outcome metrics. New analytics capability being built.",
+          isAsked: true,
+        },
+        {
+          capabilityName: "Culture & Engagement",
+          question: "What are the key cultural differences impacting the IHS Markit integration?",
+          questionType: "qualitative" as const,
+          purpose: "Identify integration friction points",
+          answer: "Decision-making pace, risk tolerance, and collaboration norms differ significantly. Senior leaders from both orgs struggling to align.",
+          isAsked: true,
+        },
+      ];
+
+      for (const question of discoveryQuestionsData) {
+        await storage.createDiscoveryQuestion({
+          projectId,
+          ...question,
+        });
+      }
+
+      // Create discovery notes
+      await storage.upsertDiscoveryNotes({
+        projectId,
+        freeformNotes: "Key stakeholder emphasized urgency around succession planning given aggressive growth targets. ESG analytics is board priority but leadership pipeline is thin. Cultural integration with IHS Markit remains a significant challenge 18 months post-close.",
+        keyStakeholder: "Sarah Chen (CHRO) - Primary decision maker for talent initiatives",
+        topChallenges: "1. Leadership succession gap with only 32% ready-now successors\n2. High-potential retention at 82% vs 90% target\n3. Technical leadership shortage for ESG analytics growth\n4. Cultural integration gaps with IHS Markit",
+        timeline: "Q1 2025: Assessment framework launch, Q2: Succession calibration, Q3: Development program rollout",
+      });
+
+      res.json({ 
+        success: true, 
+        message: "S&P Global demo data seeded successfully",
+        projectId,
+        themesCount: jobThemesData.length,
+        insightsCount: existingInsights.length + 5,
+        questionsCount: discoveryQuestionsData.length
+      });
+    } catch (error: any) {
+      console.error("Error seeding S&P Global demo data:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ============================================================================
   // COMPETITIVE INTELLIGENCE ROUTES
   // ============================================================================
