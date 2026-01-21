@@ -52,7 +52,8 @@ import {
   Trash2,
   MoreVertical,
   ExternalLink,
-  Settings
+  Settings,
+  ArrowUpRight
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -129,6 +130,8 @@ interface Project {
   salesStage: "discover" | "build_value" | "align" | "handoff" | null;
   deliveryStage: "health_dashboard" | "kpi_tracking" | "business_review" | "success_stories" | null;
   accountId: number | null;
+  updatedAt: string | null;
+  createdAt: string | null;
 }
 
 const tierColors: Record<string, string> = {
@@ -614,16 +617,56 @@ function AccountCard({
                   const currentDeliveryIndex = deliveryStages.findIndex(s => s.id === currentDeliveryStage);
                   const currentDeliveryInfo = deliveryStages.find(s => s.id === currentDeliveryStage);
                   
+                  // Calculate time since last update
+                  const getTimeAgo = (date: Date | string | null | undefined) => {
+                    if (!date) return "No activity";
+                    const now = new Date();
+                    const updated = new Date(date);
+                    if (isNaN(updated.getTime())) return "No activity";
+                    const diffMs = now.getTime() - updated.getTime();
+                    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                    const diffMins = Math.floor(diffMs / (1000 * 60));
+                    
+                    if (diffDays > 30) return `${Math.floor(diffDays / 30)}mo ago`;
+                    if (diffDays > 0) return `${diffDays}d ago`;
+                    if (diffHours > 0) return `${diffHours}h ago`;
+                    if (diffMins > 0) return `${diffMins}m ago`;
+                    return "Just now";
+                  };
+                  
+                  // Determine next milestone based on current stage
+                  const getNextMilestone = () => {
+                    if (isInDelivery) {
+                      const nextIdx = currentDeliveryIndex + 1;
+                      if (nextIdx < deliveryStages.length) {
+                        return { label: deliveryStages[nextIdx].label, type: "next" };
+                      }
+                      return { label: "Value Realized", type: "complete" };
+                    } else {
+                      const nextIdx = currentSalesIndex + 1;
+                      if (nextIdx < salesStages.length) {
+                        return { label: salesStages[nextIdx].label, type: "next" };
+                      }
+                      return { label: "Ready for Handoff", type: "ready" };
+                    }
+                  };
+                  
+                  const nextMilestone = getNextMilestone();
+                  const progressPercent = isInDelivery 
+                    ? Math.round(((currentDeliveryIndex + 1) / deliveryStages.length) * 100)
+                    : Math.round(((currentSalesIndex + 1) / salesStages.length) * 100);
+                  
                   return (
                     <div 
                       key={project.id} 
                       className="rounded-lg border bg-muted/30 p-3 space-y-3"
                       data-testid={`project-row-${project.id}`}
                     >
-                      {/* Initiative Name */}
+                      {/* Header: Initiative Name + Delete */}
                       <div className="flex items-center gap-2 min-w-0">
                         <Layers className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                        <span className="text-sm font-medium truncate flex-1">{project.name}</span>
+                        <span className="text-sm font-medium truncate flex-1" data-testid={`text-initiative-name-${project.id}`}>{project.name}</span>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -638,100 +681,98 @@ function AccountCard({
                         </Button>
                       </div>
                       
-                      {/* Workflow Stage Stepper */}
+                      {/* Current Phase + Progress */}
                       <div className="space-y-2">
-                        {/* Sales Workflow Header */}
-                        <div className="flex items-center gap-2">
-                          <TrendingUp className="w-3.5 h-3.5 text-blue-600" />
-                          <span className="text-xs font-medium text-muted-foreground">Sales</span>
-                          {!isInDelivery && currentStageInfo && (
-                            <Badge variant="secondary" className={`text-xs ml-auto ${currentStageInfo.bgColor} ${currentStageInfo.color}`}>
-                              {currentStageInfo.label}
-                            </Badge>
-                          )}
-                          {isInDelivery && (
-                            <Badge variant="outline" className="text-xs ml-auto text-emerald-600 border-emerald-300">
-                              <CheckCircle2 className="w-3 h-3 mr-1" />
-                              Complete
-                            </Badge>
-                          )}
+                        {/* Phase Display - Prominent */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            {isInDelivery ? (
+                              <div className={`p-1.5 rounded-md ${currentDeliveryInfo?.bgColor || "bg-emerald-100"}`}>
+                                <Users className={`w-3.5 h-3.5 ${currentDeliveryInfo?.color || "text-emerald-600"}`} />
+                              </div>
+                            ) : (
+                              <div className={`p-1.5 rounded-md ${currentStageInfo?.bgColor || "bg-blue-100"}`}>
+                                <TrendingUp className={`w-3.5 h-3.5 ${currentStageInfo?.color || "text-blue-600"}`} />
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className={`text-sm font-semibold ${isInDelivery ? currentDeliveryInfo?.color : currentStageInfo?.color}`} data-testid={`text-current-phase-${project.id}`}>
+                                  {isInDelivery ? currentDeliveryInfo?.label : currentStageInfo?.label}
+                                </span>
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                  {isInDelivery ? "Delivery" : "Sales"}
+                                </Badge>
+                              </div>
+                              <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                <Clock className="w-3 h-3" />
+                                <span data-testid={`text-last-activity-${project.id}`}>{getTimeAgo(project.updatedAt)}</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Progress Ring */}
+                          <div className="relative w-10 h-10 shrink-0" data-testid={`progress-ring-${project.id}`}>
+                            <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                              <path
+                                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="3"
+                                className="text-muted/30"
+                              />
+                              <path
+                                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="3"
+                                strokeDasharray={`${progressPercent}, 100`}
+                                className={isInDelivery ? "text-emerald-500" : "text-blue-500"}
+                              />
+                            </svg>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className="text-[10px] font-bold">{progressPercent}%</span>
+                            </div>
+                          </div>
                         </div>
                         
-                        {/* Stage Progress Dots */}
-                        <div className="flex items-center gap-1">
-                          {salesStages.map((stage, idx) => {
-                            const isCompleted = idx < currentSalesIndex || isInDelivery;
-                            const isCurrent = idx === currentSalesIndex && !isInDelivery;
+                        {/* Compact Step Indicator */}
+                        <div className="flex items-center gap-0.5">
+                          {(isInDelivery ? deliveryStages : salesStages).map((stage, idx) => {
+                            const currentIdx = isInDelivery ? currentDeliveryIndex : currentSalesIndex;
+                            const isCompleted = idx < currentIdx;
+                            const isCurrent = idx === currentIdx;
                             
                             return (
-                              <div key={stage.id} className="flex items-center flex-1">
-                                <div 
-                                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-medium transition-all ${
-                                    isCompleted 
-                                      ? "bg-emerald-500 text-white" 
-                                      : isCurrent 
-                                        ? `${stage.bgColor} ${stage.color} ring-2 ring-offset-1 ring-current`
-                                        : "bg-muted text-muted-foreground"
-                                  }`}
-                                  title={stage.label}
-                                >
-                                  {isCompleted ? <CheckCircle2 className="w-3 h-3" /> : idx + 1}
-                                </div>
-                                {idx < salesStages.length - 1 && (
-                                  <div className={`flex-1 h-0.5 mx-0.5 ${
-                                    idx < currentSalesIndex || isInDelivery ? "bg-emerald-500" : "bg-muted"
-                                  }`} />
-                                )}
-                              </div>
+                              <div 
+                                key={stage.id} 
+                                className={`flex-1 h-1.5 rounded-full transition-all ${
+                                  isCompleted 
+                                    ? "bg-emerald-500" 
+                                    : isCurrent 
+                                      ? (isInDelivery ? "bg-emerald-400" : "bg-blue-400")
+                                      : "bg-muted"
+                                }`}
+                                title={stage.label}
+                              />
                             );
                           })}
                         </div>
                         
-                        {/* Delivery Section (if applicable) */}
-                        {isInDelivery && (
-                          <div className="pt-2 mt-2 border-t space-y-2">
-                            {/* Delivery Workflow Header */}
-                            <div className="flex items-center gap-2">
-                              <Users className="w-3.5 h-3.5 text-emerald-600" />
-                              <span className="text-xs font-medium text-muted-foreground">Delivery</span>
-                              {currentDeliveryInfo && (
-                                <Badge variant="secondary" className={`text-xs ml-auto ${currentDeliveryInfo.bgColor} ${currentDeliveryInfo.color}`}>
-                                  {currentDeliveryInfo.label}
-                                </Badge>
-                              )}
-                            </div>
-                            
-                            {/* Delivery Stage Progress Dots */}
-                            <div className="flex items-center gap-1">
-                              {deliveryStages.map((stage, idx) => {
-                                const isCompleted = idx < currentDeliveryIndex;
-                                const isCurrent = idx === currentDeliveryIndex;
-                                
-                                return (
-                                  <div key={stage.id} className="flex items-center flex-1">
-                                    <div 
-                                      className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-medium transition-all ${
-                                        isCompleted 
-                                          ? "bg-emerald-500 text-white" 
-                                          : isCurrent 
-                                            ? `${stage.bgColor} ${stage.color} ring-2 ring-offset-1 ring-current`
-                                            : "bg-muted text-muted-foreground"
-                                      }`}
-                                      title={stage.label}
-                                    >
-                                      {isCompleted ? <CheckCircle2 className="w-3 h-3" /> : idx + 1}
-                                    </div>
-                                    {idx < deliveryStages.length - 1 && (
-                                      <div className={`flex-1 h-0.5 mx-0.5 ${
-                                        idx < currentDeliveryIndex ? "bg-emerald-500" : "bg-muted"
-                                      }`} />
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
+                        {/* Next Milestone */}
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <ArrowUpRight className="w-3 h-3" />
+                            <span>Next:</span>
+                            <span className="font-medium text-foreground" data-testid={`text-next-milestone-${project.id}`}>{nextMilestone.label}</span>
                           </div>
-                        )}
+                          {isInDelivery && (
+                            <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-300">
+                              <CheckCircle2 className="w-2.5 h-2.5 mr-0.5" />
+                              Handoff Complete
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                       
                       {/* Action Buttons */}
@@ -740,7 +781,7 @@ function AccountCard({
                           <Button 
                             variant={!isInDelivery ? "default" : "outline"}
                             size="sm" 
-                            className="w-full h-7 text-xs gap-1"
+                            className="w-full text-xs gap-1"
                             data-testid={`button-project-sales-${project.id}`}
                           >
                             <TrendingUp className="w-3 h-3" />
@@ -751,7 +792,7 @@ function AccountCard({
                           <Button 
                             variant={isInDelivery ? "default" : "outline"}
                             size="sm" 
-                            className="w-full h-7 text-xs gap-1"
+                            className="w-full text-xs gap-1"
                             data-testid={`button-project-delivery-${project.id}`}
                           >
                             <Users className="w-3 h-3" />
