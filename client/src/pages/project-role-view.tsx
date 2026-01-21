@@ -7520,24 +7520,6 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
             );
           })}
           
-          {/* Quick Stats */}
-          <div className="mt-6 p-3 rounded-lg bg-muted/30 border">
-            <p className="text-xs font-medium text-muted-foreground mb-2">Quick Stats</p>
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">Insights</span>
-                <span className="font-medium">{insights.length}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">Commitments</span>
-                <span className="font-medium">{commitments.length}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">Confirmed</span>
-                <span className="font-medium text-emerald-600">{commitments.filter((c: any) => c.status === "client_confirmed").length}</span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
