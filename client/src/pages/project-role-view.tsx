@@ -141,6 +141,7 @@ import { StrategicAlignmentSelector } from "@/components/StrategicAlignmentSelec
 import { JOURNEY_LOOP_STAGES, UNIFIED_JOURNEY_PHASES, createUnifiedJourney } from "@shared/value-frameworks";
 import { VoiceCommandOverlay, FloatingVoiceButton } from "@/components/VoiceCommandOverlay";
 import { InlineEditableBaseline } from "@/components/InlineEditableField";
+import { ValueWithProvenance } from "@/components/value-calculation-breakdown";
 import { ArtifactUpload } from "@/components/ArtifactUpload";
 import { PostMeetingQuestionAnswers } from "@/components/PostMeetingQuestionAnswers";
 import { ArtifactLibrary } from "@/components/ArtifactLibrary";
@@ -12068,6 +12069,9 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 <p className="text-sm text-muted-foreground">Total Value</p>
                 <p className="text-2xl font-bold text-emerald-600">
                   ${(confirmedValue / 1000000).toFixed(1)}M
+                  {confirmedCommitments.some((c: any) => c.valueCalculationBreakdown) && (
+                    <span className="text-xs font-normal text-muted-foreground ml-1">(click any KPI for details)</span>
+                  )}
                 </p>
               </div>
             </div>
@@ -12848,9 +12852,13 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                           
                           <div className="text-right shrink-0">
                             {c.estimatedAnnualValue && (
-                              <p className="text-lg font-bold text-emerald-600">
-                                ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr
-                              </p>
+                              <div className="text-lg font-bold text-emerald-600">
+                                <ValueWithProvenance
+                                  value={c.estimatedAnnualValue}
+                                  unit="$"
+                                  commitment={c}
+                                />
+                              </div>
                             )}
                           </div>
                         </div>
@@ -13713,7 +13721,11 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                           </div>
                           {c.estimatedAnnualValue && (
                             <span className="text-sm font-medium text-emerald-600">
-                              ${(c.estimatedAnnualValue / 1000).toFixed(0)}K/yr
+                              <ValueWithProvenance
+                                value={c.estimatedAnnualValue}
+                                unit="$"
+                                commitment={c}
+                              />
                             </span>
                           )}
                         </div>

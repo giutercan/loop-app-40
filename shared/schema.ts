@@ -1850,6 +1850,42 @@ export const kpiCommitments = pgTable("kpi_commitments", {
   estimatedAnnualValue: integer("estimated_annual_value"), // $ value per year
   valueCalculationNotes: text("value_calculation_notes"), // How value was calculated
   
+  // Detailed Value Calculation Breakdown (JSONB) - Full provenance for financial justification
+  // Structure: { 
+  //   formula: string,                    // e.g., "baseline_gap × unit_value × scope"
+  //   inputs: [{                           // Each input with source
+  //     name: string,                      // e.g., "Average cost per director vacancy"
+  //     value: string | number,            // e.g., "$180,000"
+  //     source: string,                    // e.g., "CFO presentation Q3 2024"
+  //     sourceType: "client_provided" | "benchmark" | "research" | "assumption" | "ai_calculated",
+  //     confidence: "high" | "medium" | "low",
+  //     notes?: string
+  //   }],
+  //   calculation: string,                 // Step-by-step calculation
+  //   assumptions: string[],               // List of assumptions made
+  //   benchmarkReferences?: [{             // Industry benchmarks used
+  //     name: string,
+  //     value: string,
+  //     source: string,
+  //     year: string
+  //   }],
+  //   sensitivityRange?: {                 // Min/max range
+  //     low: number,
+  //     expected: number,
+  //     high: number,
+  //     methodology: string
+  //   },
+  //   lastUpdated: string,
+  //   calculatedBy: "ai" | "consultant" | "client"
+  // }
+  valueCalculationBreakdown: jsonb("value_calculation_breakdown"),
+  
+  // Baseline Value Provenance
+  baselineProvenance: jsonb("baseline_provenance"), // { source, date, methodology, confidence }
+  
+  // Target Value Provenance
+  targetProvenance: jsonb("target_provenance"), // { source, rationale, benchmarkComparison }
+  
   // Success Narrative - what does success look like?
   successNarrative: text("success_narrative"), // Qualitative description of success
   
