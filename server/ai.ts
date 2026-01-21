@@ -108,6 +108,127 @@ async function searchWithPerplexity(query: string, recencyFilter: "day" | "week"
   }
 }
 
+// Research meeting attendee using Perplexity
+export interface AttendeeResearchResult {
+  name: string;
+  title: string | null;
+  company: string | null;
+  background: string;
+  careerHistory: string[];
+  recentActivity: string[];
+  knownConcerns: string;
+  coachingTips: string[];
+  linkedInSummary: string | null;
+  citations: string[];
+  retrievedAt: string;
+  isLive: boolean;
+}
+
+export async function researchMeetingAttendee(
+  attendeeName: string,
+  companyName: string,
+  knownTitle?: string
+): Promise<AttendeeResearchResult> {
+  console.log(`[Attendee Research] Researching ${attendeeName} at ${companyName}`);
+  
+  const searchQuery = `${attendeeName} ${companyName}${knownTitle ? ` ${knownTitle}` : ""}: LinkedIn profile, professional background, career history, recent news, executive role, leadership style, accomplishments. Focus on business context and professional achievements.`;
+  
+  const searchResult = await searchWithPerplexity(searchQuery, "month");
+  
+  if (!searchResult || !searchResult.content) {
+    console.log(`[Attendee Research] No live data available for ${attendeeName}`);
+    return {
+      name: attendeeName,
+      title: knownTitle || null,
+      company: companyName,
+      background: "No background information available. Please provide additional context manually.",
+      careerHistory: [],
+      recentActivity: [],
+      knownConcerns: "",
+      coachingTips: ["Build rapport by asking about their current priorities", "Listen actively for pain points related to their role"],
+      linkedInSummary: null,
+      citations: [],
+      retrievedAt: new Date().toISOString(),
+      isLive: false
+    };
+  }
+
+  // Parse the research content
+  const content = searchResult.content;
+  const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 20);
+  
+  // Extract career history
+  const careerKeywords = ["previously", "former", "before", "joined", "promoted", "led", "managed", "founded", "started"];
+  const careerHistory = sentences
+    .filter(s => careerKeywords.some(k => s.toLowerCase().includes(k)))
+    .slice(0, 4)
+    .map(s => s.trim());
+  
+  // Extract recent activity
+  const recentKeywords = ["recently", "announced", "current", "latest", "new", "2024", "2025", "this year"];
+  const recentActivity = sentences
+    .filter(s => recentKeywords.some(k => s.toLowerCase().includes(k)))
+    .slice(0, 3)
+    .map(s => s.trim());
+  
+  // Extract title if mentioned
+  let extractedTitle = knownTitle || null;
+  const titlePatterns = [
+    /(?:serves as|is the|currently|holds|as)\s+(?:the\s+)?([A-Z][^,.\n]+(?:Officer|President|Director|VP|Vice President|Head|Chief|Manager|Partner|Lead))/i,
+    /([A-Z][^,.\n]+(?:Officer|President|Director|VP|Vice President|Head|Chief|Manager|Partner|Lead))\s+(?:at|of|for)/i
+  ];
+  for (const pattern of titlePatterns) {
+    const match = content.match(pattern);
+    if (match) {
+      extractedTitle = match[1].trim();
+      break;
+    }
+  }
+  
+  // Generate coaching tips based on role
+  const coachingTips: string[] = [];
+  if (extractedTitle) {
+    const titleLower = extractedTitle.toLowerCase();
+    if (titleLower.includes("ceo") || titleLower.includes("chief executive")) {
+      coachingTips.push("Focus on strategic impact and organizational transformation");
+      coachingTips.push("Tie recommendations to business outcomes and competitive advantage");
+    } else if (titleLower.includes("chro") || titleLower.includes("chief human") || titleLower.includes("people")) {
+      coachingTips.push("Emphasize talent strategy alignment with business goals");
+      coachingTips.push("Discuss measurable HR metrics and employee experience");
+    } else if (titleLower.includes("cfo") || titleLower.includes("chief financial")) {
+      coachingTips.push("Lead with ROI and financial impact data");
+      coachingTips.push("Provide clear cost-benefit analysis and payback periods");
+    } else if (titleLower.includes("coo") || titleLower.includes("operations")) {
+      coachingTips.push("Focus on operational efficiency and execution");
+      coachingTips.push("Discuss implementation timelines and resource requirements");
+    } else {
+      coachingTips.push("Understand their specific function's priorities and challenges");
+      coachingTips.push("Connect your solutions to their measurable KPIs");
+    }
+  } else {
+    coachingTips.push("Build rapport by asking about their current priorities");
+    coachingTips.push("Listen for pain points that Korn Ferry can address");
+  }
+  
+  // Build background summary
+  const backgroundSentences = sentences.slice(0, 3).join(". ");
+  
+  return {
+    name: attendeeName,
+    title: extractedTitle,
+    company: companyName,
+    background: backgroundSentences || "Professional background information retrieved from web search.",
+    careerHistory,
+    recentActivity,
+    knownConcerns: recentActivity.length > 0 ? recentActivity[0] : "",
+    coachingTips,
+    linkedInSummary: content.toLowerCase().includes("linkedin") ? "LinkedIn profile found - see citations for link" : null,
+    citations: searchResult.citations,
+    retrievedAt: searchResult.retrievedAt,
+    isLive: true
+  };
+}
+
 // Fetch live company data from multiple sources
 export async function fetchLiveCompanyData(companyName: string): Promise<LiveCompanyData> {
   const currentDate = new Date();

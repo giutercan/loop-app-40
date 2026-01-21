@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "./storage";
-import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale, generateStrategicPillars, generateStorySuggestion, generateDiscoveryKpiSuggestions, enrichContactWithAI, openai, generateCompetitiveIntelligence, generateKPIValueCaseRecommendations, generateLiveIntelligence, generateEvidencePackRecommendations, generateItemCoaching } from "./ai";
+import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale, generateStrategicPillars, generateStorySuggestion, generateDiscoveryKpiSuggestions, enrichContactWithAI, openai, generateCompetitiveIntelligence, generateKPIValueCaseRecommendations, generateLiveIntelligence, generateEvidencePackRecommendations, generateItemCoaching, researchMeetingAttendee } from "./ai";
 import { EvidencePackService } from "./services/evidence-pack.service";
 import { z } from "zod";
 import crypto from "crypto";
@@ -9341,6 +9341,36 @@ Return JSON:
       res.json(result);
     } catch (error: any) {
       console.error("[Template Merge API] Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/projects/:projectId/ai/research-attendee - Research meeting attendee using Perplexity
+  app.post("/api/projects/:projectId/ai/research-attendee", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const project = await storage.getProject(projectId);
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const { attendeeName, companyName, knownTitle } = req.body;
+      
+      if (!attendeeName) {
+        return res.status(400).json({ error: "attendeeName is required" });
+      }
+      
+      // Use project company name if not provided
+      const company = companyName || project.companyName || "Unknown Company";
+      
+      console.log(`[Attendee Research API] Researching ${attendeeName} at ${company}`);
+      
+      const result = await researchMeetingAttendee(attendeeName, company, knownTitle);
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Attendee Research API] Error:", error);
       res.status(500).json({ error: error.message });
     }
   });

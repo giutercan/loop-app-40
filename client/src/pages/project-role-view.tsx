@@ -2345,6 +2345,8 @@ export default function ProjectRoleView() {
   const [showAddAttendeeDialog, setShowAddAttendeeDialog] = useState(false);
   const [editingAttendee, setEditingAttendee] = useState<MeetingAttendee | null>(null);
   const [expandedAttendeeIds, setExpandedAttendeeIds] = useState<Set<string>>(new Set());
+  const [isResearchingAttendee, setIsResearchingAttendee] = useState(false);
+  const [attendeeResearchResult, setAttendeeResearchResult] = useState<any>(null);
   
   const [isVoiceCommandOpen, setIsVoiceCommandOpen] = useState(false);
   const [voiceTargetField, setVoiceTargetField] = useState<string | undefined>();
@@ -15957,6 +15959,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
       <Dialog open={showAddAttendeeDialog} onOpenChange={(open) => {
         if (!open) {
           setEditingAttendee(null);
+          setAttendeeResearchResult(null);
         }
         setShowAddAttendeeDialog(open);
       }}>
@@ -15975,13 +15978,55 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground">Name *</Label>
-                <Input
-                  placeholder="e.g., Sarah Chen"
-                  value={editingAttendee?.name || ""}
-                  onChange={(e) => setEditingAttendee(prev => prev ? { ...prev, name: e.target.value } : { id: `temp-${Date.now()}`, name: e.target.value, title: "", affiliation: "client", role: undefined, influence: undefined, knownConcerns: "", personalRapport: "" })}
-                  className="h-9"
-                  data-testid="input-attendee-name"
-                />
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="e.g., Sarah Chen"
+                    value={editingAttendee?.name || ""}
+                    onChange={(e) => setEditingAttendee(prev => prev ? { ...prev, name: e.target.value } : { id: `temp-${Date.now()}`, name: e.target.value, title: "", affiliation: "client", role: undefined, influence: undefined, knownConcerns: "", personalRapport: "" })}
+                    className="h-9 flex-1"
+                    data-testid="input-attendee-name"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1"
+                    disabled={!editingAttendee?.name || isResearchingAttendee}
+                    onClick={async () => {
+                      if (!editingAttendee?.name || !project?.id) return;
+                      setIsResearchingAttendee(true);
+                      setAttendeeResearchResult(null);
+                      try {
+                        const response = await apiRequest(`/api/projects/${project.id}/ai/research-attendee`, {
+                          method: "POST",
+                          body: JSON.stringify({
+                            attendeeName: editingAttendee.name,
+                            companyName: project.companyName,
+                            knownTitle: editingAttendee.title
+                          })
+                        });
+                        setAttendeeResearchResult(response);
+                        if (response.title && !editingAttendee.title) {
+                          setEditingAttendee(prev => prev ? { ...prev, title: response.title } : null);
+                        }
+                        if (response.knownConcerns && !editingAttendee.knownConcerns) {
+                          setEditingAttendee(prev => prev ? { ...prev, knownConcerns: response.knownConcerns } : null);
+                        }
+                      } catch (error) {
+                        console.error("Attendee research failed:", error);
+                      } finally {
+                        setIsResearchingAttendee(false);
+                      }
+                    }}
+                    data-testid="button-research-attendee"
+                  >
+                    {isResearchingAttendee ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Search className="w-3.5 h-3.5" />
+                    )}
+                    <span className="hidden sm:inline">Research</span>
+                  </Button>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground">Affiliation *</Label>
@@ -16088,11 +16133,60 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 data-testid="input-attendee-concerns"
               />
             </div>
+
+            {attendeeResearchResult && attendeeResearchResult.isLive && (
+              <div className="p-3 rounded-lg border border-blue-200 bg-blue-50/50" data-testid="card-attendee-research">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="w-4 h-4 text-blue-600" />
+                  <span className="text-xs font-medium text-blue-700">Research Results</span>
+                  {attendeeResearchResult.retrievedAt && (
+                    <Badge variant="outline" className="text-[10px]" data-testid="badge-research-live">
+                      Live Data
+                    </Badge>
+                  )}
+                </div>
+                {attendeeResearchResult.background && (
+                  <p className="text-xs text-muted-foreground mb-2" data-testid="text-attendee-research-background">
+                    {attendeeResearchResult.background}
+                  </p>
+                )}
+                {attendeeResearchResult.careerHistory?.length > 0 && (
+                  <div className="mb-2">
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase mb-1">Career History</p>
+                    <ul className="text-xs space-y-0.5" data-testid="list-attendee-career-history">
+                      {attendeeResearchResult.careerHistory.slice(0, 3).map((item: string, i: number) => (
+                        <li key={i} className="text-muted-foreground" data-testid={`text-career-item-${i}`}>• {item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {attendeeResearchResult.coachingTips?.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase mb-1">Coaching Tips</p>
+                    <ul className="text-xs space-y-0.5" data-testid="list-attendee-coaching-tips">
+                      {attendeeResearchResult.coachingTips.map((tip: string, i: number) => (
+                        <li key={i} className="text-emerald-700" data-testid={`text-coaching-tip-${i}`}>• {tip}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {attendeeResearchResult.citations?.length > 0 && (
+                  <div className="mt-2 pt-2 border-t">
+                    <p className="text-[10px] text-muted-foreground" data-testid="text-attendee-research-sources">
+                      Sources: {attendeeResearchResult.citations.slice(0, 2).map((c: string) => {
+                        try { return new URL(c).hostname; } catch { return c; }
+                      }).join(", ")}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <DialogFooter className="gap-2 mt-4">
             <Button variant="outline" onClick={() => {
               setEditingAttendee(null);
+              setAttendeeResearchResult(null);
               setShowAddAttendeeDialog(false);
             }}>
               Cancel
