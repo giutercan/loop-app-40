@@ -25,7 +25,10 @@ import {
   Activity,
   MessageSquare,
   Layers,
-  Workflow
+  Workflow,
+  ArrowDown,
+  Repeat2,
+  Database
 } from "lucide-react";
 
 import executiveImage from "@assets/GettyImages-551703701_1765967640588.jpg";
@@ -677,13 +680,121 @@ export default function PresentationPage() {
           </div>
         </div>
       )
+    },
+
+    // Slide 10: Where Customer Journeys Break
+    {
+      id: "handoff",
+      content: (
+        <div className="h-full flex flex-col items-center justify-center px-8 bg-[#00173B]">
+          <div className="max-w-5xl w-full">
+            <div className="text-center mb-8">
+              <p className="text-[#A3238E] text-sm uppercase tracking-widest mb-4">
+                The Handoff Problem
+              </p>
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight mb-4">
+                Where most customer journeys break
+              </h2>
+              <p className="text-xl text-[#929192]">
+                The handoff from sales to delivery is where context, intent, and trust are usually lost.
+              </p>
+            </div>
+
+            {/* Loop Flow Visual */}
+            <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 mb-8 border border-white/10">
+              <div className="flex flex-col items-center">
+                {/* The circular flow */}
+                <div className="flex items-center justify-center gap-2 md:gap-4 flex-wrap mb-6">
+                  <div className="flex items-center gap-2 bg-[#009B77] text-white px-5 py-3 rounded-full text-sm font-medium shadow-lg">
+                    <Users className="w-5 h-5" />
+                    <span>Customer</span>
+                  </div>
+                  
+                  <div className="flex flex-col items-center">
+                    <ArrowRight className="w-6 h-6 text-[#929192]" />
+                    <span className="text-xs text-[#929192]/70 mt-1">Engages</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 bg-[#00ADBB] text-white px-5 py-3 rounded-full text-sm font-medium shadow-lg">
+                    <Target className="w-5 h-5" />
+                    <span>Sales</span>
+                  </div>
+                  
+                  <div className="flex flex-col items-center">
+                    <ArrowRight className="w-6 h-6 text-[#A3238E]" />
+                    <span className="text-xs text-[#A3238E] mt-1 font-medium">Handoff</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 bg-[#8DC63F] text-white px-5 py-3 rounded-full text-sm font-medium shadow-lg">
+                    <Handshake className="w-5 h-5" />
+                    <span>Delivery / CS</span>
+                  </div>
+                  
+                  <div className="flex flex-col items-center">
+                    <ArrowRight className="w-6 h-6 text-[#929192]" />
+                    <span className="text-xs text-[#929192]/70 mt-1">Serves</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 bg-[#009B77] text-white px-5 py-3 rounded-full text-sm font-medium shadow-lg">
+                    <Users className="w-5 h-5" />
+                    <span>Customer</span>
+                  </div>
+                </div>
+
+                {/* Breakpoint indicators - phrases by the arrows */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-3xl">
+                  <div className="flex items-center gap-3 bg-[#A3238E]/20 border border-[#A3238E]/40 rounded-lg px-4 py-3">
+                    <AlertTriangle className="w-5 h-5 text-[#A3238E] flex-shrink-0" />
+                    <span className="text-white text-sm">Customer repeats themselves</span>
+                  </div>
+                  <div className="flex items-center gap-3 bg-[#A3238E]/20 border border-[#A3238E]/40 rounded-lg px-4 py-3">
+                    <AlertTriangle className="w-5 h-5 text-[#A3238E] flex-shrink-0" />
+                    <span className="text-white text-sm">Delivery doesn't know why we sold this</span>
+                  </div>
+                  <div className="flex items-center gap-3 bg-[#A3238E]/20 border border-[#A3238E]/40 rounded-lg px-4 py-3">
+                    <AlertTriangle className="w-5 h-5 text-[#A3238E] flex-shrink-0" />
+                    <span className="text-white text-sm">Success becomes reactive instead of intentional</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* The Loop Reframing */}
+            <div className="bg-gradient-to-r from-[#00634F]/30 to-[#009B77]/30 border border-[#05C690]/50 rounded-xl p-6 text-center mb-6">
+              <div className="flex items-center justify-center gap-3 mb-3">
+                <Database className="w-6 h-6 text-[#05C690]" />
+                <h3 className="text-xl font-bold text-white">The Loop Reframing</h3>
+              </div>
+              <p className="text-lg text-white mb-4">
+                The Loop creates a <span className="text-[#05C690] font-bold">single, shared source of truth</span> — from first conversation to value realization.
+              </p>
+            </div>
+
+            {/* Closing statement */}
+            <div className="flex justify-center gap-4">
+              <div className="flex items-center gap-2 bg-[#009B77] px-5 py-3 rounded-full">
+                <CheckCircle2 className="w-5 h-5 text-white" />
+                <span className="text-white font-medium">Same context</span>
+              </div>
+              <div className="flex items-center gap-2 bg-[#00ADBB] px-5 py-3 rounded-full">
+                <Target className="w-5 h-5 text-white" />
+                <span className="text-white font-medium">Same outcomes</span>
+              </div>
+              <div className="flex items-center gap-2 bg-[#8DC63F] px-5 py-3 rounded-full">
+                <Repeat2 className="w-5 h-5 text-white" />
+                <span className="text-white font-medium">No rework</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
     }
   ];
 
   const currentSlideData = slides[currentSlide];
   
   // Determine if current slide has light or dark background for navigation styling
-  const darkBgSlides = ["buying", "paradox", "cro", "proof", "why", "close"];
+  const darkBgSlides = ["buying", "paradox", "cro", "proof", "why", "close", "handoff"];
   const isDarkBg = darkBgSlides.includes(currentSlideData.id);
 
   const goToSlide = useCallback((index: number) => {
