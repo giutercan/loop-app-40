@@ -42,7 +42,16 @@ import {
   Rocket,
   RefreshCw,
   GraduationCap,
-  Filter
+  Filter,
+  Eye,
+  MessageSquare,
+  Calendar,
+  ArrowUpRight,
+  Sparkles,
+  Shield,
+  Flag,
+  Trophy,
+  Bell
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -97,6 +106,18 @@ interface TeamRole {
   role: "sales" | "consultant" | "delivery" | "csm" | "client_sponsor";
   isPrimary: boolean;
 }
+
+interface ActivityItem {
+  id: string;
+  type: "insight" | "kpi_update" | "meeting" | "deliverable" | "milestone" | "risk" | "win";
+  title: string;
+  description: string;
+  timestamp: Date;
+  user?: string;
+  metadata?: Record<string, any>;
+}
+
+type ViewMode = "executive" | "manager" | "detailed";
 
 interface AccountHubData {
   account: {
@@ -237,6 +258,95 @@ function getPhaseIndex(phase: string | null): number {
   return lifecyclePhases.findIndex(p => p.id === phase);
 }
 
+// Generate mock activity data based on real account data
+function generateActivityFeed(hubData: AccountHubData): ActivityItem[] {
+  const activities: ActivityItem[] = [];
+  const now = new Date();
+  
+  // Generate activities based on real data patterns
+  if (hubData.kpis.length > 0) {
+    const recentKpi = hubData.kpis[0];
+    activities.push({
+      id: `kpi-${recentKpi.id}`,
+      type: "kpi_update",
+      title: `KPI Updated: ${recentKpi.name}`,
+      description: `Current value: ${recentKpi.current || 'Pending'} | Target: ${recentKpi.target || 'TBD'}`,
+      timestamp: new Date(now.getTime() - 2 * 60 * 60 * 1000),
+      user: "System"
+    });
+  }
+  
+  if (hubData.initiatives.length > 0) {
+    const initiative = hubData.initiatives[0];
+    activities.push({
+      id: `init-${initiative.id}`,
+      type: "milestone",
+      title: `Initiative Progress: ${initiative.name}`,
+      description: `${initiative.kpisOnTrack} of ${initiative.kpiCount} KPIs on track`,
+      timestamp: new Date(now.getTime() - 4 * 60 * 60 * 1000),
+    });
+  }
+  
+  if (hubData.issues.length > 0) {
+    const issue = hubData.issues[0];
+    activities.push({
+      id: `issue-${issue.id}`,
+      type: issue.type === "opportunity" ? "win" : "risk",
+      title: issue.title,
+      description: `${issue.severity} priority | ${issue.status}`,
+      timestamp: new Date(now.getTime() - 6 * 60 * 60 * 1000),
+    });
+  }
+  
+  // Add some contextual activities
+  activities.push({
+    id: "insight-1",
+    type: "insight",
+    title: "New Discovery Insight",
+    description: "AI identified potential value driver in sales operations",
+    timestamp: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+    user: "AI Research"
+  });
+  
+  if (hubData.account.nextQbrDate) {
+    activities.push({
+      id: "meeting-qbr",
+      type: "meeting",
+      title: "Upcoming QBR Scheduled",
+      description: `Business review on ${new Date(hubData.account.nextQbrDate).toLocaleDateString()}`,
+      timestamp: new Date(now.getTime() - 48 * 60 * 60 * 1000),
+    });
+  }
+  
+  return activities.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+}
+
+function getActivityIcon(type: ActivityItem["type"]) {
+  switch (type) {
+    case "insight": return { icon: Lightbulb, color: "text-amber-500", bg: "bg-amber-100 dark:bg-amber-900/30" };
+    case "kpi_update": return { icon: TrendingUp, color: "text-emerald-500", bg: "bg-emerald-100 dark:bg-emerald-900/30" };
+    case "meeting": return { icon: Calendar, color: "text-blue-500", bg: "bg-blue-100 dark:bg-blue-900/30" };
+    case "deliverable": return { icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-100 dark:bg-emerald-900/30" };
+    case "milestone": return { icon: Flag, color: "text-purple-500", bg: "bg-purple-100 dark:bg-purple-900/30" };
+    case "risk": return { icon: AlertTriangle, color: "text-orange-500", bg: "bg-orange-100 dark:bg-orange-900/30" };
+    case "win": return { icon: Trophy, color: "text-yellow-500", bg: "bg-yellow-100 dark:bg-yellow-900/30" };
+    default: return { icon: Activity, color: "text-muted-foreground", bg: "bg-muted" };
+  }
+}
+
+function formatTimeAgo(date: Date): string {
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const days = Math.floor(hours / 24);
+  
+  if (hours < 1) return "Just now";
+  if (hours < 24) return `${hours}h ago`;
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days}d ago`;
+  return date.toLocaleDateString();
+}
+
 export default function AccountHub() {
   const [, params] = useRoute("/accounts/:id/hub");
   const accountId = parseInt(params?.id || "0");
@@ -244,6 +354,7 @@ export default function AccountHub() {
   const { toast } = useToast();
   const [phaseFilter, setPhaseFilter] = useState<string>("all");
   const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("executive");
 
   const { data: hubData, isLoading, error } = useQuery<AccountHubData>({
     queryKey: ["/api/accounts", accountId, "hub"],
@@ -288,6 +399,7 @@ export default function AccountHub() {
   }
 
   const { account, initiatives, kpis, issues, teamRoles, headlineValue } = hubData;
+  const activityFeed = generateActivityFeed(hubData);
 
   // Filter initiatives by lifecycle phase
   const filteredInitiatives = phaseFilter === "all" 
@@ -306,16 +418,28 @@ export default function AccountHub() {
     0
   );
 
+  // Calculate days until next QBR
+  const daysUntilQbr = account.nextQbrDate 
+    ? Math.ceil((new Date(account.nextQbrDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+    : null;
+
+  // Get critical issues count
+  const criticalIssues = issues.filter(i => 
+    (i.status === "open" || i.status === "in_progress") && 
+    (i.severity === "critical" || i.severity === "high")
+  ).length;
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-6 space-y-6">
-        <div className="flex items-center justify-between">
+        {/* Enhanced Header with Back Navigation and Actions */}
+        <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => setLocation("/accounts")} data-testid="button-back-accounts">
               <ArrowLeft className="w-4 h-4" />
             </Button>
             <div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-2xl font-bold" data-testid="text-account-name">{account.name}</h1>
                 {account.tier && (
                   <Badge className={tierColors[account.tier]} data-testid="badge-account-tier">
@@ -326,11 +450,41 @@ export default function AccountHub() {
               </div>
               <p className="text-muted-foreground">
                 {account.industry || "No industry specified"} 
-                {account.accountOwner && <span className="ml-2"> Owned by {account.accountOwner}</span>}
+                {account.accountOwner && <span className="ml-2"> | Owned by {account.accountOwner}</span>}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* View Mode Toggle */}
+            <div className="flex items-center gap-1 border rounded-md p-1 bg-muted/50" data-testid="container-view-mode">
+              <Button 
+                variant={viewMode === "executive" ? "default" : "ghost"} 
+                size="sm"
+                onClick={() => setViewMode("executive")}
+                data-testid="button-view-executive"
+              >
+                <Eye className="w-3 h-3 mr-1" />
+                Executive
+              </Button>
+              <Button 
+                variant={viewMode === "manager" ? "default" : "ghost"} 
+                size="sm"
+                onClick={() => setViewMode("manager")}
+                data-testid="button-view-manager"
+              >
+                <Users className="w-3 h-3 mr-1" />
+                Manager
+              </Button>
+              <Button 
+                variant={viewMode === "detailed" ? "default" : "ghost"} 
+                size="sm"
+                onClick={() => setViewMode("detailed")}
+                data-testid="button-view-detailed"
+              >
+                <BarChart3 className="w-3 h-3 mr-1" />
+                Detailed
+              </Button>
+            </div>
             <AppTour context="accountHub" />
             <Link href={`/accounts/${accountId}`}>
               <Button variant="outline" size="sm" data-testid="button-value-spine">
@@ -345,6 +499,315 @@ export default function AccountHub() {
               </Button>
             </Link>
           </div>
+        </div>
+
+        {/* Hero Command Center Section */}
+        <div className="grid gap-4 lg:grid-cols-12">
+          {/* Health Score Gauge - Prominent */}
+          <Card className="lg:col-span-3 bg-gradient-to-br from-card to-muted/20">
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center text-center">
+                <p className="text-sm text-muted-foreground mb-3">Account Health</p>
+                <div className="relative w-28 h-28 mb-3">
+                  <svg className="w-28 h-28 -rotate-90" viewBox="0 0 100 100">
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="42"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="8"
+                      className="text-muted"
+                    />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="42"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="8"
+                      strokeLinecap="round"
+                      strokeDasharray={`${(account.healthScore || 0) * 2.64} 264`}
+                      className={getHealthStatus(account.healthScore).color}
+                    />
+                  </svg>
+                  <span className="absolute inset-0 flex items-center justify-center text-3xl font-bold" data-testid="text-health-score-hero">
+                    {account.healthScore ?? "-"}
+                  </span>
+                </div>
+                <Badge 
+                  className={`${getHealthStatus(account.healthScore).color === "text-emerald-600" 
+                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300" 
+                    : getHealthStatus(account.healthScore).color === "text-amber-600"
+                    ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
+                    : getHealthStatus(account.healthScore).color === "text-red-600"
+                    ? "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300"
+                    : "bg-muted"}`}
+                  data-testid="badge-health-status"
+                >
+                  {getHealthStatus(account.healthScore).label}
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Value Realization Progress */}
+          <Card className="lg:col-span-5">
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm text-muted-foreground">Value Realization</p>
+                  <Badge variant="outline" className="text-xs">
+                    {headlineValue.realizationRate.toFixed(0)}% realized
+                  </Badge>
+                </div>
+                
+                {/* Value Bar Visualization */}
+                <div className="relative h-8 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-emerald-500 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(headlineValue.realizationRate, 100)}%` }}
+                  />
+                  <div className="absolute inset-0 flex items-center justify-between px-4">
+                    <span className="text-xs font-medium text-white drop-shadow-sm z-10">
+                      {formatCurrency(headlineValue.totalRealized)}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Promised</p>
+                    <p className="text-lg font-bold" data-testid="text-promised-hero">{formatCurrency(headlineValue.totalPromised)}</p>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">Realized</p>
+                    <p className="text-lg font-bold text-emerald-600" data-testid="text-realized-hero">{formatCurrency(headlineValue.totalRealized)}</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Quick Stats Grid */}
+          <div className="lg:col-span-4 grid grid-cols-2 gap-3">
+            <Card className="hover-elevate">
+              <CardContent className="pt-4 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                    <Briefcase className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold" data-testid="text-initiatives-hero">{headlineValue.initiativesActive}</p>
+                    <p className="text-xs text-muted-foreground">Active Initiatives</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="hover-elevate">
+              <CardContent className="pt-4 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    headlineValue.kpisAtRisk > 0 
+                      ? "bg-amber-100 dark:bg-amber-900/30" 
+                      : "bg-emerald-100 dark:bg-emerald-900/30"
+                  }`}>
+                    <Target className={`w-5 h-5 ${
+                      headlineValue.kpisAtRisk > 0 ? "text-amber-600" : "text-emerald-600"
+                    }`} />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold" data-testid="text-kpis-hero">
+                      {headlineValue.kpisOnTrack}/{headlineValue.kpisTotal}
+                    </p>
+                    <p className="text-xs text-muted-foreground">KPIs On Track</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="hover-elevate">
+              <CardContent className="pt-4 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    criticalIssues > 0 
+                      ? "bg-red-100 dark:bg-red-900/30" 
+                      : "bg-muted"
+                  }`}>
+                    <AlertTriangle className={`w-5 h-5 ${
+                      criticalIssues > 0 ? "text-red-600" : "text-muted-foreground"
+                    }`} />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold" data-testid="text-alerts-hero">{criticalIssues}</p>
+                    <p className="text-xs text-muted-foreground">Needs Attention</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="hover-elevate">
+              <CardContent className="pt-4 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
+                    <Calendar className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold" data-testid="text-qbr-hero">
+                      {daysUntilQbr !== null ? (daysUntilQbr > 0 ? daysUntilQbr : "Now") : "-"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Days to QBR</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Activity Feed & Quick Context Section */}
+        <div className="grid gap-4 lg:grid-cols-3">
+          {/* Activity Feed */}
+          <Card className="lg:col-span-1">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Bell className="w-4 h-4" />
+                  Recent Activity
+                </CardTitle>
+                <Badge variant="outline" className="text-xs">Live</Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 max-h-[300px] overflow-y-auto">
+                {activityFeed.map((activity) => {
+                  const { icon: ActivityIcon, color, bg } = getActivityIcon(activity.type);
+                  return (
+                    <button 
+                      key={activity.id}
+                      className="flex items-start gap-3 p-2 rounded-md hover-elevate w-full text-left"
+                      data-testid={`button-activity-${activity.id}`}
+                    >
+                      <div className={`w-8 h-8 rounded-full ${bg} flex items-center justify-center flex-shrink-0`}>
+                        <ActivityIcon className={`w-4 h-4 ${color}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{activity.title}</p>
+                        <p className="text-xs text-muted-foreground truncate">{activity.description}</p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">
+                          {formatTimeAgo(activity.timestamp)}
+                          {activity.user && ` | ${activity.user}`}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+                {activityFeed.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Activity className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No recent activity</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Quick Context Cards */}
+          <Card className="lg:col-span-2">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                Account Snapshot
+              </CardTitle>
+              <CardDescription>What you need to know right now</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* What We Promised */}
+                <div className="p-4 rounded-lg bg-primary/5 border border-primary/20" data-testid="card-promised-snapshot">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Target className="w-4 h-4 text-primary" />
+                    <p className="font-medium text-sm">What We Promised</p>
+                  </div>
+                  <p className="text-2xl font-bold mb-1" data-testid="text-promised-snapshot">{formatCurrency(headlineValue.totalPromised)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Across {headlineValue.initiativesCount} initiative{headlineValue.initiativesCount !== 1 ? "s" : ""} with {headlineValue.kpisTotal} KPIs
+                  </p>
+                </div>
+
+                {/* What We've Delivered */}
+                <div className="p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/20" data-testid="card-delivered-snapshot">
+                  <div className="flex items-center gap-2 mb-3">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <p className="font-medium text-sm">What We've Delivered</p>
+                  </div>
+                  <p className="text-2xl font-bold text-emerald-600 mb-1" data-testid="text-delivered-snapshot">{formatCurrency(headlineValue.totalRealized)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {headlineValue.kpisOnTrack} KPIs on track, {headlineValue.realizationRate.toFixed(0)}% realized
+                  </p>
+                </div>
+
+                {/* Needs Attention */}
+                <div 
+                  className={`p-4 rounded-lg ${
+                    headlineValue.kpisAtRisk > 0 || criticalIssues > 0
+                      ? "bg-amber-500/5 border border-amber-500/20"
+                      : "bg-muted/50 border border-muted"
+                  }`}
+                  data-testid="card-attention-snapshot"
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <AlertTriangle className={`w-4 h-4 ${
+                      headlineValue.kpisAtRisk > 0 || criticalIssues > 0 ? "text-amber-600" : "text-muted-foreground"
+                    }`} />
+                    <p className="font-medium text-sm">Needs Attention</p>
+                  </div>
+                  {headlineValue.kpisAtRisk > 0 || criticalIssues > 0 ? (
+                    <div className="space-y-1">
+                      {headlineValue.kpisAtRisk > 0 && (
+                        <p className="text-sm text-amber-700 dark:text-amber-400" data-testid="text-kpis-at-risk">
+                          {headlineValue.kpisAtRisk} KPI{headlineValue.kpisAtRisk !== 1 ? "s" : ""} at risk
+                        </p>
+                      )}
+                      {criticalIssues > 0 && (
+                        <p className="text-sm text-amber-700 dark:text-amber-400" data-testid="text-critical-issues">
+                          {criticalIssues} critical issue{criticalIssues !== 1 ? "s" : ""} open
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-emerald-600" data-testid="text-all-clear">All clear - no urgent items</p>
+                  )}
+                </div>
+
+                {/* Coming Up */}
+                <div className="p-4 rounded-lg bg-purple-500/5 border border-purple-500/20" data-testid="card-upcoming-snapshot">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Calendar className="w-4 h-4 text-purple-600" />
+                    <p className="font-medium text-sm">Coming Up</p>
+                  </div>
+                  {account.nextQbrDate ? (
+                    <div>
+                      <p className="text-sm font-medium" data-testid="text-next-qbr-label">Next QBR</p>
+                      <p className="text-xs text-muted-foreground" data-testid="text-next-qbr-date">
+                        {new Date(account.nextQbrDate).toLocaleDateString('en-US', { 
+                          weekday: 'short', 
+                          month: 'short', 
+                          day: 'numeric' 
+                        })}
+                        {daysUntilQbr !== null && daysUntilQbr > 0 && (
+                          <span className="ml-1">({daysUntilQbr} days)</span>
+                        )}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground" data-testid="text-no-upcoming">No upcoming events scheduled</p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <Card>
@@ -407,14 +870,14 @@ export default function AccountHub() {
         <div className="grid gap-4 md:grid-cols-4">
           <Card className="hover-elevate">
             <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm text-muted-foreground">Promised Value</p>
                   <p className="text-2xl font-bold" data-testid="text-promised-value">
                     {formatCurrency(headlineValue.totalPromised)}
                   </p>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                   <Target className="w-5 h-5 text-primary" />
                 </div>
               </div>
@@ -423,14 +886,14 @@ export default function AccountHub() {
           
           <Card className="hover-elevate">
             <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm text-muted-foreground">Realized Value</p>
                   <p className="text-2xl font-bold" data-testid="text-realized-value">
                     {formatCurrency(headlineValue.totalRealized)}
                   </p>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
                   <TrendingUp className="w-5 h-5 text-emerald-600" />
                 </div>
               </div>
@@ -445,14 +908,14 @@ export default function AccountHub() {
           
           <Card className="hover-elevate">
             <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm text-muted-foreground">Initiatives</p>
                   <p className="text-2xl font-bold" data-testid="text-initiatives-count">
                     {headlineValue.initiativesActive}/{headlineValue.initiativesCount}
                   </p>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
                   <Briefcase className="w-5 h-5 text-blue-600" />
                 </div>
               </div>
@@ -464,14 +927,14 @@ export default function AccountHub() {
           
           <Card className="hover-elevate">
             <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm text-muted-foreground">Outcomes On Track</p>
                   <p className="text-2xl font-bold" data-testid="text-kpis-ontrack">
                     {headlineValue.kpisOnTrack}/{headlineValue.kpisTotal}
                   </p>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
                   <Activity className="w-5 h-5 text-amber-600" />
                 </div>
               </div>
@@ -485,7 +948,7 @@ export default function AccountHub() {
           </Card>
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
           <h2 className="text-lg font-semibold">
             {phaseFilter === "all" 
               ? `All Initiatives (${filteredInitiatives.length})` 
@@ -570,9 +1033,9 @@ export default function AccountHub() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center justify-between gap-3 text-sm">
                         <span className="text-muted-foreground">KPIs</span>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className={statusColors["on-track"]}>
                             {initiative.kpisOnTrack} on track
                           </span>
@@ -585,7 +1048,7 @@ export default function AccountHub() {
                       </div>
                       <Progress value={progressPercent} className="h-1.5" />
                       
-                      <div className="flex items-center justify-between text-sm pt-2 border-t">
+                      <div className="flex items-center justify-between gap-4 text-sm pt-2 border-t">
                         <div>
                           <p className="text-muted-foreground">Promised</p>
                           <p className="font-medium">{formatCurrency(initiative.promisedValue)}</p>
