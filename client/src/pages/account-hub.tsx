@@ -666,7 +666,8 @@ export default function AccountHub() {
           </div>
         </div>
 
-        {/* Activity Feed & Quick Context Section */}
+        {/* Activity Feed & Quick Context Section - Hidden in Executive view */}
+        {viewMode !== "executive" && (
         <div className="grid gap-4 lg:grid-cols-3">
           {/* Activity Feed */}
           <Card className="lg:col-span-1">
@@ -809,7 +810,10 @@ export default function AccountHub() {
             </CardContent>
           </Card>
         </div>
+        )}
 
+        {/* Customer Value Journey - Manager and Detailed views only */}
+        {viewMode !== "executive" && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">Customer Value Journey</CardTitle>
@@ -866,7 +870,10 @@ export default function AccountHub() {
             </div>
           </CardContent>
         </Card>
+        )}
 
+        {/* Value Metrics Grid - Manager and Detailed views only */}
+        {viewMode !== "executive" && (
         <div className="grid gap-4 md:grid-cols-4">
           <Card className="hover-elevate">
             <CardContent className="pt-6">
@@ -947,7 +954,11 @@ export default function AccountHub() {
             </CardContent>
           </Card>
         </div>
+        )}
 
+        {/* Initiative List - Detailed view only */}
+        {viewMode === "detailed" && (
+        <>
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <h2 className="text-lg font-semibold">
             {phaseFilter === "all" 
@@ -1104,7 +1115,12 @@ export default function AccountHub() {
             })
           )}
         </div>
+        </>
+        )}
 
+        {/* Detailed sections - Issues, Team, Account Health - Detailed view only */}
+        {viewMode === "detailed" && (
+        <>
         <div className="grid gap-6 lg:grid-cols-3">
           <Card className="lg:col-span-2">
             <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
@@ -1280,6 +1296,8 @@ export default function AccountHub() {
             </div>
           </CardContent>
         </Card>
+        </>
+        )}
       </div>
     </div>
   );
