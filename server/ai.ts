@@ -300,7 +300,8 @@ export async function researchMeetingAttendee(
     .map(s => s.trim());
   
   // Extract recent activity
-  const recentKeywords = ["recently", "announced", "current", "latest", "new", "2024", "2025", "this year"];
+  const currentYear = new Date().getFullYear();
+  const recentKeywords = ["recently", "announced", "current", "latest", "new", String(currentYear), String(currentYear - 1), "this year"];
   const recentActivity = sentences
     .filter(s => recentKeywords.some(k => s.toLowerCase().includes(k)))
     .slice(0, 3)
@@ -633,7 +634,13 @@ ${liveData.recentNews.map(n => `- [${n.date}] ${n.headline} (${n.source})`).join
     console.log(`[Live Intelligence] No live data available, using model knowledge only`);
   }
 
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentDateStr = currentDate.toISOString().split('T')[0];
+  
   const prompt = `You are a Korn Ferry business intelligence analyst researching ${companyName}${sector ? ` (${sector} sector)` : ''} for a sales discovery conversation.
+
+IMPORTANT: Today's date is ${currentDateStr}. The current year is ${currentYear}. All information you provide must be as recent as possible - prioritize data from ${currentYear} and ${currentYear - 1}. Do NOT provide outdated information from 2023 or earlier unless explicitly discussing historical context.
 
 DISCOVERY THEME: ${themeDescription}
 ${liveDataContext}
@@ -884,6 +891,11 @@ IMPORTANT:
 export async function researchCompany(companyName: string, sector?: string, discoveryTheme?: string): Promise<CompanyResearchResult> {
   const knowledgeBase = getSolutionSummary();
   
+  // Add current date context for GPT-4o
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentDateStr = currentDate.toISOString().split('T')[0];
+  
   const themeContext = discoveryTheme 
     ? `\n\nDISCOVERY THEME FOCUS: "${discoveryTheme}"
 ALL insights MUST be directly relevant to this theme. Filter out insights that don't connect to ${discoveryTheme}. 
@@ -891,6 +903,8 @@ Prioritize research angles that will help the consultant have meaningful convers
     : '';
   
   const prompt = `You are helping a Korn Ferry consultant prepare for a customer engagement with ${companyName}${sector ? ` (${sector} sector)` : ''}.${themeContext}
+
+IMPORTANT: Today's date is ${currentDateStr}. The current year is ${currentYear}. All information you provide must be as recent as possible - prioritize data from ${currentYear} and ${currentYear - 1}. Do NOT provide outdated information from 2023 or earlier unless explicitly discussing historical context.
 
 KORN FERRY SOLUTIONS & CAPABILITIES:
 ${knowledgeBase}
@@ -2450,6 +2464,9 @@ export async function generateDiscoveryKpiSuggestions(
 ): Promise<DiscoveryKpiSuggestion[]> {
   const { companyName, industry, discoveryTheme, insights, consultantNotes } = params;
   
+  // Current year for benchmark citations
+  const currentYear = new Date().getFullYear();
+  
   const knowledgeBase = getSolutionSummary();
   
   const insightsSummary = insights.map((i, idx) => 
@@ -2512,7 +2529,7 @@ Return JSON format:
         "low": "35%",
         "median": "52%",
         "high": "75%",
-        "source": "2024 ${industry || 'Industry'} Benchmark Report"
+        "source": "${currentYear} ${industry || 'Industry'} Benchmark Report"
       },
       "kornFerryBenchmark": {
         "topQuartile": "70-80%",
@@ -2578,6 +2595,9 @@ export async function generateKPIRecommendations(
   params: GenerateKPIRecommendationsParams
 ): Promise<KPIRecommendation[]> {
   const { jobName, capabilityName, solutionArea, aggregationSummary, companyName, industry } = params;
+  
+  // Current year for benchmark citations
+  const currentYear = new Date().getFullYear();
   
   const knowledgeBase = getSolutionSummary();
 
@@ -2651,7 +2671,7 @@ Provide your recommendations in JSON format:
         "low": "42%",
         "median": "58%",
         "high": "75%",
-        "source": "2024 ${industry || 'Industry'} Talent Metrics Report, Korn Ferry Research"
+        "source": "${currentYear} ${industry || 'Industry'} Talent Metrics Report, Korn Ferry Research"
       },
       "targetRecommendation": {
         "suggestedTarget": "68%",
@@ -4470,6 +4490,9 @@ const outcomeRecommendationsResultSchema = z.object({
 export async function generateOutcomeRecommendations(input: OutcomeRecommendationInput): Promise<OutcomeRecommendationsResult> {
   const { companyName, industry, discoverySynthesis, existingCommitments } = input;
   
+  // Current year for benchmark citations
+  const currentYear = new Date().getFullYear();
+  
   const existingContext = existingCommitments?.length 
     ? `\nEXISTING COMMITMENTS (avoid duplicates):\n${existingCommitments.map(c => `- ${c.title}${c.kpiName ? ` (${c.kpiName})` : ''}`).join('\n')}`
     : "";
@@ -4532,7 +4555,7 @@ KORN FERRY SOLUTIONS:
 - Rewards & Performance: Compensation, recognition programs
 
 INDUSTRY BENCHMARKS:
-Provide realistic benchmarks based on the industry. Use ranges (low/median/high) and cite "Korn Ferry Industry Benchmarks 2024" or "Industry Best Practice Research".
+Provide realistic benchmarks based on the industry. Use ranges (low/median/high) and cite "Korn Ferry Industry Benchmarks ${currentYear}" or "Industry Best Practice Research".
 
 Return your recommendations in this JSON format:
 {
@@ -4557,7 +4580,7 @@ Return your recommendations in this JSON format:
         "industryMedian": "18%",
         "industryHigh": "8%",
         "topPerformerTarget": "10%",
-        "source": "Korn Ferry Industry Benchmarks 2024"
+        "source": "Korn Ferry Industry Benchmarks ${currentYear}"
       },
       "kpiDetails": {
         "metricName": "Leadership Turnover Rate",
