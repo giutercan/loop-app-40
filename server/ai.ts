@@ -711,7 +711,7 @@ Return your response in this exact JSON structure:
     "keyQuestions": ["Discovery question #1", "Discovery question #2", "Discovery question #3"]
   },
   "annualReportSummary": {
-    "fiscalYear": "Most recent fiscal year (e.g., 'FY2024')",
+    "fiscalYear": "Most recent fiscal year (e.g., 'FY' followed by current year)",
     "ceoLetterHighlights": ["Key point from CEO letter #1", "Key point #2", "Key point #3"],
     "strategicPriorities": ["Priority #1", "Priority #2", "Priority #3"],
     "peopleMetrics": {
@@ -724,7 +724,7 @@ Return your response in this exact JSON structure:
     "source": "10-K or Annual Report, Year"
   },
   "earningsCallHighlights": {
-    "quarter": "Most recent quarter (e.g., 'Q3 FY2024')",
+    "quarter": "Most recent quarter (e.g., 'Q3' followed by current fiscal year)",
     "executiveCommentary": ["Key quote or theme from CEO/CFO #1", "Key quote #2"],
     "workforceDiscussions": ["Workforce-related discussion point #1", "Point #2"],
     "futureOutlook": "Forward-looking statements about talent, hiring, or organizational changes",
@@ -783,6 +783,12 @@ export async function followUpResearch(
   sector?: string
 ): Promise<CompanyResearchResult> {
   const knowledgeBase = getSolutionSummary();
+  
+  // Current date context for GPT-4o
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentDateStr = currentDate.toISOString().split('T')[0];
+  
   const existingContext = `
 Existing Research Summary:
 ${existingResearch.dataPoints.map(dp => `- [Priority ${dp.priorityScore}] [${dp.solutionArea}] ${dp.label}: ${dp.value}`).join('\n')}
@@ -792,6 +798,8 @@ ${existingResearch.headlines.map(h => `- ${h.title} (${h.date})`).join('\n')}
 `;
 
   const prompt = `You are helping a Korn Ferry consultant who needs additional information about ${companyName}${sector ? ` (${sector} sector)` : ''}.
+
+IMPORTANT: Today's date is ${currentDateStr}. The current year is ${currentYear}. All information you provide must be as recent as possible - prioritize data from ${currentYear} and ${currentYear - 1}. Do NOT provide outdated information from 2023 or earlier unless explicitly discussing historical context.
 
 ${existingContext}
 
@@ -2844,7 +2852,7 @@ Return your response in JSON format:
           "keyResults": [
             {"result": "Key result description", "target": "Quantified target"}
           ],
-          "timeline": "Q2 2025" or "FY 2025",
+          "timeline": "Q2 or FY followed by current year",
           "objectiveType": "company|hr|talent"
         }
       ]
