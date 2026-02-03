@@ -28,6 +28,13 @@ The Evidence Pack transforms from a data dump into journey-based storytelling, o
 
 An Interactive Green Sheet offers role-based coaching and editable call objective fields. The Interactive Story Builder provides a three-phase storytelling framework with coaching tips and a story test functionality. A Tension Questions System offers AI-powered question recommendations. An Executive Demo Mode provides a guided tour showcasing the Sales to Delivery journey using seeded demo data.
 
+#### Growth Accelerator (Working Backwards Toolkit)
+The Growth Accelerator is a strategic sales enablement tool in the Sales Workspace that creates buyer-centric sales plays using the "Working Backwards" methodology. It follows a 4 W's framework: **What to Know** (Buyer Persona 4-quadrant model, Hypotheses, Buyer Journey 5-phase, Predictions 2x2 matrix, Interview Questions), **What to Say** (Tenets, Press Release), **What to Show** (Battle Cards), **What to Do** (Actions). Key features include:
+- **Data Flow**: Discovery → GA → Evidence Pack. Discovery data auto-populates Persona Facts, Goals/Pains, Journey context. GA outputs push to Evidence Pack as "Leading Evidence."
+- **AI Generation**: Endpoints for generate-persona, generate-hypotheses, generate-journey, generate-predictions, push-to-evidence-pack.
+- **Database Tables**: `growth_accelerator_canvases`, `ga_buyer_personas`, `ga_hypotheses`, `ga_buyer_journeys`, `ga_predictions`, `ga_tenets`, `ga_press_releases`, `ga_competitor_battle_cards`, `ga_interview_questions`, `ga_sales_play_actions`.
+- **Handoff Integration**: GA context (buyer persona summary, hypotheses, risky predictions, competitive highlights, press release elements) automatically included in handoff packages via `growthAcceleratorContext` field.
+
 ### System Design Choices
 The AI strategy focuses on strategic and actionable insights, with data sorted by priority then confidence. The storage architecture is interface-based for future migration flexibility. Robust serialization handles date handling between frontend and backend. Cache management uses consistent string-first query keys and `invalidateQueries` for TanStack Query. Security includes server-side XSS protection via `sanitizeInput()` and React's default JSX escaping. Wouter is used for routing and URL-driven state. Discovery finalization locks structural changes while allowing KPI value refinement. The system employs an account-first hierarchy, with projects linked under accounts. Role detection for role-based workspaces is managed via URL parameters with validation.
 

@@ -150,6 +150,7 @@ import { ExportOptionsDialog } from "@/components/ExportOptionsDialog";
 import { ExportButton } from "@/components/ExportButton";
 import { InteractiveTimeline } from "@/components/InteractiveTimeline";
 import { StoryCoach } from "@/components/StoryCoach";
+import { GrowthAcceleratorCanvas } from "@/components/GrowthAcceleratorCanvas";
 import { 
   generateIntelligencePPT, 
   generateIntelligencePDF,
@@ -7437,6 +7438,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
     
     return {
       discover: hasDiscoveryInsights || hasAskedQuestions ? 100 : (selectedDiscoveryTheme ? 50 : 0),
+      growth_accelerator: 0, // Growth Accelerator progress - will be calculated from canvas completion
       strategy: 0, // Blue Sheet completion - will be calculated from blueSheet data
       align: hasConfirmedCommitments ? 100 : (hasCommitments ? 50 : 0),
       handoff: hasHandoffs ? 100 : (hasConfirmedCommitments ? 50 : 0),
@@ -7455,6 +7457,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
           {[
             { id: "discover", label: "Discover", icon: Sparkles, progress: workflowProgress.discover, description: "Research & Interaction" },
             { id: "align", label: "Outcomes & Alignment", icon: Target, progress: workflowProgress.align, description: "Design & Confirm Value" },
+            { id: "growth_accelerator", label: "Growth Accelerator", icon: Rocket, progress: workflowProgress.growth_accelerator || 0, description: "Sales Play Builder", isGrowthAccelerator: true },
             { id: "strategy", label: "Strategy Synthesis", icon: FileText, progress: workflowProgress.strategy, description: "Auto-Generated Blue Sheet", isSynthesis: true },
             { id: "handoff", label: "Handoff", icon: ArrowUpRight, progress: workflowProgress.handoff, description: "Transition to Delivery" },
             { id: "evidence", label: "Evidence Pack", icon: Briefcase, progress: workflowProgress.evidence, description: "Claims & Proof Points", isEvidence: true },
@@ -7465,6 +7468,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
             
             const isSynthesis = (stage as any).isSynthesis;
             const isEvidence = (stage as any).isEvidence;
+            const isGrowthAccelerator = (stage as any).isGrowthAccelerator;
             return (
               <button
                 key={stage.id}
@@ -7472,11 +7476,13 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                 className={`w-full text-left p-3 rounded-lg border transition-all ${
                   isActive 
                     ? "bg-primary/10 border-primary/30 shadow-sm" 
-                    : isSynthesis
-                      ? "bg-gradient-to-r from-purple-500/5 to-blue-500/5 border-purple-500/20 hover-elevate"
-                      : isEvidence
-                        ? "bg-gradient-to-r from-amber-500/5 to-orange-500/5 border-amber-500/20 hover-elevate"
-                        : "bg-background border-border/50 hover-elevate"
+                    : isGrowthAccelerator
+                      ? "bg-gradient-to-r from-emerald-500/5 to-teal-500/5 border-emerald-500/20 hover-elevate"
+                      : isSynthesis
+                        ? "bg-gradient-to-r from-purple-500/5 to-blue-500/5 border-purple-500/20 hover-elevate"
+                        : isEvidence
+                          ? "bg-gradient-to-r from-amber-500/5 to-orange-500/5 border-amber-500/20 hover-elevate"
+                          : "bg-background border-border/50 hover-elevate"
                 }`}
                 data-testid={`nav-${stage.id}`}
               >
@@ -7486,17 +7492,24 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                       ? "bg-emerald-500 text-white" 
                       : isActive 
                         ? "bg-primary text-primary-foreground" 
-                        : isSynthesis
-                          ? "bg-gradient-to-r from-purple-500/20 to-blue-500/20 text-purple-600"
-                          : isEvidence
-                            ? "bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-600"
-                            : "bg-muted text-muted-foreground"
+                        : isGrowthAccelerator
+                          ? "bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-600"
+                          : isSynthesis
+                            ? "bg-gradient-to-r from-purple-500/20 to-blue-500/20 text-purple-600"
+                            : isEvidence
+                              ? "bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-600"
+                              : "bg-muted text-muted-foreground"
                   }`}>
-                    {isComplete ? <Check className="w-4 h-4" /> : isSynthesis ? <Brain className="w-4 h-4" /> : <StageIcon className="w-4 h-4" />}
+                    {isComplete ? <Check className="w-4 h-4" /> : isGrowthAccelerator ? <Rocket className="w-4 h-4" /> : isSynthesis ? <Brain className="w-4 h-4" /> : <StageIcon className="w-4 h-4" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <p className={`text-sm font-medium ${isActive ? "text-primary" : ""}`}>{stage.label}</p>
+                      {isGrowthAccelerator && (
+                        <Badge variant="outline" className="text-[10px] py-0 h-4 border-emerald-500/30 text-emerald-600 bg-emerald-500/5">
+                          Play
+                        </Badge>
+                      )}
                       {isSynthesis && (
                         <Badge variant="outline" className="text-[10px] py-0 h-4 border-purple-500/30 text-purple-600 bg-purple-500/5">
                           AI
@@ -7527,7 +7540,7 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
       <div className="flex-1 min-w-0">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           {/* Mobile Tab Navigation */}
-          <TabsList className="grid grid-cols-5 w-full lg:hidden">
+          <TabsList className="grid grid-cols-6 w-full lg:hidden">
             <TabsTrigger value="discover" data-testid="tab-discover">
               <Sparkles className="w-4 h-4 mr-1" />
               <span className="hidden sm:inline">Discover</span>
@@ -7535,6 +7548,10 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
             <TabsTrigger value="align" data-testid="tab-align">
               <Target className="w-4 h-4 mr-1" />
               <span className="hidden sm:inline">Outcomes</span>
+            </TabsTrigger>
+            <TabsTrigger value="growth_accelerator" data-testid="tab-growth-accelerator" className="relative">
+              <Rocket className="w-4 h-4 mr-1" />
+              <span className="hidden sm:inline">Sales Play</span>
             </TabsTrigger>
             <TabsTrigger value="strategy" data-testid="tab-strategy" className="relative">
               <Brain className="w-4 h-4 mr-1" />
@@ -10265,6 +10282,15 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
           />
         )}
       </TabsContent>
+
+          {/* GROWTH ACCELERATOR - Sales Play Builder */}
+          <TabsContent value="growth_accelerator" className="space-y-6" data-testid="tab-content-growth-accelerator">
+            <GrowthAcceleratorCanvas 
+              projectId={projectId} 
+              accountId={project?.accountId || undefined}
+              companyName={project?.name || "Company"}
+            />
+          </TabsContent>
 
           {/* STAGE 3: STRATEGY SYNTHESIS - Miller Heiman Blue Sheet (Auto-Generated) */}
           <TabsContent value="strategy" className="space-y-6" data-testid="tab-content-strategy">

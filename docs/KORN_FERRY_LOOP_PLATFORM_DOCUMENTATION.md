@@ -46,6 +46,172 @@ scovery" | "alignment" | "realisation";
 
 ---
 
+# 4.5 GROWTH ACCELERATOR (Working Backwards Toolkit)
+
+## Purpose & Value
+The Growth Accelerator is a strategic sales enablement tool integrated into the Sales Workspace that helps consultants create buyer-centric sales plays. It synthesizes Discovery data into structured frameworks using the "Working Backwards" methodology popularized by Amazon.
+
+**Strategic Distinction:**
+- **Growth Accelerator = "The Promise"** - Forward-looking strategic planning for sales engagements
+- **Evidence Pack = "The Proof"** - Backward-looking value realization documentation
+
+---
+
+## 4.5.1 CANVAS STRUCTURE (4 W's Framework)
+
+### What to Know
+Understanding the buyer deeply before engaging.
+
+| Component | Description | AI Support |
+|-----------|-------------|------------|
+| **Buyer Persona** | 4-quadrant model (Facts, Goals, Pains, Behaviours) | Auto-populated from Discovery, AI-generated insights |
+| **Hypotheses** | Buyer/Problem/Solution hypothesis framework | AI generates linked hypotheses from persona |
+| **Buyer Journey** | 5-phase mapping (Trigger → Research → Evaluate → Decide → Adopt) | AI identifies touchpoints and objections |
+| **Predictions** | 2x2 confidence/impact matrix with risky predictions | AI generates testable predictions |
+| **Interview Questions** | Structured validation questions | AI suggests methodology-tagged questions |
+
+### What to Say
+Crafting compelling messaging.
+
+| Component | Description | AI Support |
+|-----------|-------------|------------|
+| **Tenets** | Core principles guiding the engagement | Manual definition with AI suggestions |
+| **Press Release** | Future-state announcement (Working Backwards format) | AI drafts headline, subheadline, customer quote |
+
+### What to Show
+Competitive positioning and proof points.
+
+| Component | Description | AI Support |
+|-----------|-------------|------------|
+| **Battle Cards** | Competitor analysis with win strategies | AI generates from Discovery intelligence |
+
+### What to Do
+Actionable next steps.
+
+| Component | Description | AI Support |
+|-----------|-------------|------------|
+| **Actions** | Immediate, discovery, and negotiation tasks | Manual with AI recommendations |
+
+---
+
+## 4.5.2 DATA FLOW ARCHITECTURE
+
+```
+Discovery Data → Growth Accelerator → Evidence Pack
+       ↓                  ↓                    ↓
+  Raw Intelligence    Strategic Plan    Leading Evidence
+```
+
+**Input Sources (Discovery → GA):**
+- `companyDataPoints` → Persona Facts
+- `discoveryNotes` → Goals/Pains identification
+- `projectIntelligence` → Journey context
+- `stakeholders` → Buyer behavior patterns
+
+**Output Destinations (GA → Evidence Pack):**
+- Buyer Personas → `stakeholder_claim` (evidencePhase: "leading")
+- Hypotheses → `success_frame` (evidencePhase: "leading")
+- Risky Predictions → `risk_articulation` (evidencePhase: "leading")
+- Battle Cards → `claim` (evidencePhase: "leading")
+
+---
+
+## 4.5.3 AI GENERATION ENDPOINTS
+
+### Generate Buyer Persona
+```typescript
+POST /api/growth-accelerator/canvases/:id/generate-persona
+Body: { projectId: number }
+Returns: BuyerPersona with 4-quadrant data
+```
+
+### Generate Hypotheses
+```typescript
+POST /api/growth-accelerator/canvases/:id/generate-hypotheses
+Body: { personaId?: number, projectId: number }
+Returns: GaHypothesis (buyer/problem/solution linked)
+```
+
+### Generate Buyer Journey
+```typescript
+POST /api/growth-accelerator/canvases/:id/generate-journey
+Body: { personaId?: number }
+Returns: BuyerJourney with 5 phases
+```
+
+### Generate Predictions
+```typescript
+POST /api/growth-accelerator/canvases/:id/generate-predictions
+Body: { hypothesisId?: number }
+Returns: GaPrediction[] with 2x2 matrix placement
+```
+
+### Push to Evidence Pack
+```typescript
+POST /api/growth-accelerator/canvases/:id/push-to-evidence-pack
+Body: { projectId: number, packId?: number }
+Returns: { packId, itemsCreated, items[] }
+```
+
+---
+
+## 4.5.4 DATABASE SCHEMA
+
+**Core Tables:**
+- `growth_accelerator_canvases` - Main canvas entity linked to project
+- `ga_buyer_personas` - 4-quadrant persona profiles
+- `ga_hypotheses` - Buyer/problem/solution hypothesis sets
+- `ga_buyer_journeys` - 5-phase journey maps
+- `ga_predictions` - Confidence/impact matrix predictions
+- `ga_tenets` - Core engagement principles
+- `ga_press_releases` - Working Backwards press releases
+- `ga_competitor_battle_cards` - Competitive positioning
+- `ga_interview_questions` - Validation question bank
+- `ga_sales_play_actions` - Actionable next steps
+
+---
+
+## 4.5.5 HANDOFF INTEGRATION
+
+Growth Accelerator context is automatically included in handoff packages:
+
+```typescript
+interface GrowthAcceleratorContext {
+  canvasId: number;
+  canvasTitle: string;
+  buyerPersona?: {
+    name: string;
+    title: string;
+    company: string;
+    topGoals: string[];
+    topPains: string[];
+    keyBehaviors: string[];
+  };
+  hypotheses?: {
+    buyerHypothesis: string;
+    problemHypothesis: string;
+    solutionHypothesis: string;
+  };
+  riskyPredictions?: Array<{
+    prediction: string;
+    confidence: string;
+    impactIfWrong: string;
+  }>;
+  competitiveHighlights?: Array<{
+    competitor: string;
+    ourAdvantage: string;
+    winStrategy: string;
+  }>;
+  pressRelease?: {
+    headline: string;
+    subheadline: string;
+    customerQuote: string;
+  };
+}
+```
+
+---
+
 # 5. HANDOFF SEGMENT
 
 ## Purpose & Value

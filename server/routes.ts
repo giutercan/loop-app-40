@@ -10337,11 +10337,68 @@ Respond in JSON format:
         };
       }
       
+      // Extract Growth Accelerator context from project for handoff
+      let growthAcceleratorContext = null;
+      try {
+        const canvases = await storage.getGrowthAcceleratorCanvasByProject(projectId);
+        if (canvases.length > 0) {
+          const canvas = canvases[0];
+          const personas = await storage.getBuyerPersonas(canvas.id);
+          const hypotheses = await storage.getGaHypotheses(canvas.id);
+          const predictions = await storage.getGaPredictions(canvas.id);
+          const battleCards = await storage.getGaCompetitorBattleCards(canvas.id);
+          const pressReleases = await storage.getGaPressReleases(canvas.id);
+          
+          const persona = personas[0];
+          const hypothesis = hypotheses[0];
+          const pressRelease = pressReleases[0];
+          const riskyPredictions = predictions.filter((p: any) => p.isRiskyPrediction);
+          
+          growthAcceleratorContext = {
+            canvasId: canvas.id,
+            canvasTitle: canvas.title,
+            buyerPersona: persona ? {
+              name: persona.personaName,
+              title: persona.personaTitle,
+              company: persona.personaCompany,
+              topGoals: (persona.goals || []).slice(0, 3).map((g: any) => g.text || g),
+              topPains: (persona.pains || []).slice(0, 3).map((p: any) => p.text || p),
+              keyBehaviors: (persona.behaviours || []).slice(0, 3).map((b: any) => b.text || b),
+            } : undefined,
+            hypotheses: hypothesis ? {
+              buyerHypothesis: hypothesis.buyerHypothesis,
+              problemHypothesis: hypothesis.problemHypothesis,
+              solutionHypothesis: hypothesis.solutionHypothesis,
+            } : undefined,
+            riskyPredictions: riskyPredictions.slice(0, 3).map((p: any) => ({
+              prediction: p.prediction,
+              confidence: p.confidence,
+              impactIfWrong: p.impactIfWrong,
+              experimentStatus: p.experimentStatus,
+            })),
+            competitiveHighlights: battleCards.slice(0, 3).map((c: any) => ({
+              competitor: c.competitorName,
+              ourAdvantage: c.competitiveResponse,
+              winStrategy: (c.winStrategies || [])[0] || "",
+            })),
+            pressRelease: pressRelease ? {
+              headline: pressRelease.headline,
+              subheadline: pressRelease.subheadline,
+              customerQuote: pressRelease.customerQuote,
+            } : undefined,
+            lastUpdated: new Date().toISOString(),
+          };
+        }
+      } catch (e) {
+        console.log("No Growth Accelerator data found for handoff");
+      }
+      
       const validated = insertHandoffPacketSchema.parse({
         ...req.body,
         projectId,
         totalCommittedValue: totalValue,
         storyCoachContext,
+        growthAcceleratorContext,
       });
       
       const packet = await storage.createHandoffPacket(validated);
@@ -14992,6 +15049,160 @@ ${context.intelligenceData ? JSON.stringify(context.intelligenceData, null, 2).s
     }
   });
 
+  // AI Generation Endpoints for Growth Accelerator
+  app.post("/api/growth-accelerator/canvases/:id/generate-persona", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const { projectId, companyName } = req.body;
+
+      // Gather discovery data
+      const insights = await storage.getProjectInsights(projectId);
+      const notes = await storage.getDiscoveryNotes(projectId);
+      const project = await storage.getProject(projectId);
+      const companyData = await storage.getCompanyDataPoints(projectId);
+
+      // Build context for AI
+      const discoveryContext = {
+        companyName: companyName || project?.name || "Target Company",
+        insights: insights.map((i: any) => ({ label: i.label, value: i.value, confidence: i.confidence })),
+        notes: notes.map((n: any) => ({ content: n.content, category: n.category })),
+        companyData: companyData.map((d: any) => ({ category: d.category, dataPoint: d.dataPoint, value: d.value })),
+      };
+
+      // Generate persona using AI
+      const prompt = `You are an expert sales strategist helping to create a detailed buyer persona based on discovery data.
+
+Company: ${discoveryContext.companyName}
+
+Discovery Insights:
+${discoveryContext.insights.map((i: any) => `- ${i.label}: ${i.value} (confidence: ${i.confidence})`).join('\n')}
+
+Discovery Notes:
+${discoveryContext.notes.map((n: any) => `- [${n.category}] ${n.content}`).join('\n')}
+
+Company Data:
+${discoveryContext.companyData.map((d: any) => `- ${d.category}: ${d.dataPoint} = ${d.value}`).join('\n')}
+
+Create a detailed buyer persona with the following 4-quadrant structure:
+1. Facts (4-6 items): Demographic and firmographic facts about this buyer type
+2. Goals (3-5 items): What business outcomes they're trying to achieve
+3. Pains (3-5 items): Obstacles, frustrations, and challenges they face
+4. Behaviours (3-5 items): How they make decisions, who they consult, what information they seek
+
+Return JSON in this exact format:
+{
+  "personaName": "The [Role/Title] Persona",
+  "personaTitle": "VP of [Function]",
+  "facts": [{"id": "f1", "text": "Fact description"}],
+  "goals": [{"id": "g1", "text": "Goal description"}],
+  "pains": [{"id": "p1", "text": "Pain description"}],
+  "behaviours": [{"id": "b1", "text": "Behaviour description"}]
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+      });
+
+      const aiResult = JSON.parse(response.choices[0].message.content || "{}");
+      
+      // Create the persona in storage
+      const persona = await storage.createBuyerPersona({
+        canvasId,
+        personaName: aiResult.personaName || "Buyer Persona",
+        personaTitle: aiResult.personaTitle || "",
+        personaCompany: companyName || project?.name || "",
+        facts: aiResult.facts || [],
+        goals: aiResult.goals || [],
+        pains: aiResult.pains || [],
+        behaviours: aiResult.behaviours || [],
+        aiGenerated: true,
+        aiProvenance: { model: "gpt-4o", generatedAt: new Date().toISOString(), sourceData: discoveryContext },
+      });
+
+      res.status(201).json(persona);
+    } catch (error: any) {
+      console.error("Error generating persona:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/growth-accelerator/canvases/:id/generate-journey", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const { projectId, personaId } = req.body;
+
+      // Get persona if available
+      let persona = null;
+      if (personaId) {
+        persona = await storage.getBuyerPersona(personaId);
+      }
+      
+      const project = await storage.getProject(projectId);
+      const insights = await storage.getProjectInsights(projectId);
+
+      const prompt = `You are an expert in customer journey mapping. Create a 5-phase buyer journey map.
+
+Company: ${project?.name || "Target Company"}
+${persona ? `Persona: ${persona.personaName} - ${persona.personaTitle}
+Goals: ${JSON.stringify(persona.goals)}
+Pains: ${JSON.stringify(persona.pains)}` : ""}
+
+Discovery Insights:
+${insights.slice(0, 10).map((i: any) => `- ${i.label}: ${i.value}`).join('\n')}
+
+Create a buyer journey with these 5 phases: Awareness, Consideration, Decision, Implementation, Value Realization
+
+For each phase, provide:
+- tasks: What the buyer is doing in this phase (2-3 items)
+- emotions: How the buyer feels (1-2 items)
+- painPoints: Frustrations they experience (1-2 items)
+- decisionFactors: What influences their decisions (1-2 items)
+
+Return JSON in this format:
+{
+  "phases": [
+    {
+      "phaseId": "awareness",
+      "phaseName": "Awareness", 
+      "tasks": ["task1", "task2"],
+      "emotions": ["emotion1"],
+      "painPoints": ["pain1"],
+      "decisionFactors": ["factor1"]
+    }
+  ],
+  "solutionUnblocks": [
+    { "phaseId": "awareness", "howUnblocks": "How our solution helps in this phase" }
+  ]
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+      });
+
+      const aiResult = JSON.parse(response.choices[0].message.content || "{}");
+      
+      const journey = await storage.createBuyerJourney({
+        canvasId,
+        personaId: personaId || null,
+        journeyContext: "pre_solution",
+        phases: aiResult.phases || [],
+        solutionUnblocks: aiResult.solutionUnblocks || [],
+        aiGenerated: true,
+      });
+
+      res.status(201).json(journey);
+    } catch (error: any) {
+      console.error("Error generating journey:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Hypotheses
   app.get("/api/growth-accelerator/canvases/:id/hypotheses", async (req, res) => {
     try {
@@ -15022,6 +15233,154 @@ ${context.intelligenceData ? JSON.stringify(context.intelligenceData, null, 2).s
       }
       res.json(updated);
     } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Generate Hypotheses from Persona
+  app.post("/api/growth-accelerator/canvases/:id/generate-hypotheses", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const { personaId, projectId } = req.body;
+
+      const persona = personaId ? await storage.getBuyerPersona(personaId) : null;
+      const project = await storage.getProject(projectId);
+
+      const prompt = `You are an expert in sales hypothesis creation. Generate three interconnected hypotheses based on this buyer persona.
+
+${persona ? `
+Persona: ${persona.personaName} - ${persona.personaTitle}
+Company: ${persona.personaCompany}
+Facts: ${JSON.stringify(persona.facts)}
+Goals: ${JSON.stringify(persona.goals)}
+Pains: ${JSON.stringify(persona.pains)}
+Behaviours: ${JSON.stringify(persona.behaviours)}
+` : `Company: ${project?.name || "Target Company"}`}
+
+Create three hypotheses:
+1. Buyer Hypothesis - Who we believe is the ideal buyer and why
+2. Problem Hypothesis - What specific problem they struggle with
+3. Solution Hypothesis - How our solution uniquely addresses their needs
+
+Return JSON in this format:
+{
+  "buyerHypothesis": "We believe [buyer type] at [company type] is our ideal buyer because...",
+  "buyerHypothesisRationale": "Based on [specific facts and behaviors]...",
+  "buyerHypothesisFactIds": ["f1", "f2"],
+  "buyerHypothesisBehaviourIds": ["b1"],
+  "problemHypothesis": "These buyers struggle with [specific problem] which causes [business impact]...",
+  "problemHypothesisRationale": "The pain points and goals suggest...",
+  "problemHypothesisPainIds": ["p1", "p2"],
+  "problemHypothesisGoalIds": ["g1"],
+  "solutionHypothesis": "Our solution uniquely solves this by [key differentiators]...",
+  "solutionFeatures": ["feature1", "feature2", "feature3"]
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+      });
+
+      const aiResult = JSON.parse(response.choices[0].message.content || "{}");
+      
+      const hypothesis = await storage.createGaHypothesis({
+        canvasId,
+        personaId: personaId || null,
+        buyerHypothesis: aiResult.buyerHypothesis || "",
+        buyerHypothesisRationale: aiResult.buyerHypothesisRationale || "",
+        buyerHypothesisFactIds: aiResult.buyerHypothesisFactIds || [],
+        buyerHypothesisBehaviourIds: aiResult.buyerHypothesisBehaviourIds || [],
+        problemHypothesis: aiResult.problemHypothesis || "",
+        problemHypothesisRationale: aiResult.problemHypothesisRationale || "",
+        problemHypothesisPainIds: aiResult.problemHypothesisPainIds || [],
+        problemHypothesisGoalIds: aiResult.problemHypothesisGoalIds || [],
+        solutionHypothesis: aiResult.solutionHypothesis || "",
+        solutionUrl: "",
+        solutionFeatures: aiResult.solutionFeatures || [],
+        version: 1,
+        aiGenerated: true,
+      });
+
+      res.status(201).json(hypothesis);
+    } catch (error: any) {
+      console.error("Error generating hypotheses:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Generate Predictions from Hypotheses
+  app.post("/api/growth-accelerator/canvases/:id/generate-predictions", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const { hypothesisId } = req.body;
+
+      const hypotheses = await storage.getGaHypotheses(canvasId);
+      const hypothesis = hypothesisId 
+        ? hypotheses.find((h: any) => h.id === hypothesisId) 
+        : hypotheses[0];
+
+      if (!hypothesis) {
+        return res.status(400).json({ error: "No hypotheses found. Generate hypotheses first." });
+      }
+
+      const prompt = `You are an expert in sales validation. Generate testable predictions based on these hypotheses.
+
+Buyer Hypothesis: ${hypothesis.buyerHypothesis}
+Problem Hypothesis: ${hypothesis.problemHypothesis}
+Solution Hypothesis: ${hypothesis.solutionHypothesis}
+
+Generate 6-8 predictions across a 2x2 matrix of confidence (high/low) and impact (high/low).
+For each prediction, specify:
+- The prediction itself
+- Which hypothesis it tests (buyer, problem, or solution)
+- Impact if wrong
+- Your confidence level
+
+Focus on predictions that would invalidate your hypotheses if wrong.
+
+Return JSON in this format:
+{
+  "predictions": [
+    {
+      "prediction": "We predict that [testable statement]...",
+      "sourceHypothesis": "buyer|problem|solution",
+      "impactIfWrong": "If wrong, we would need to [pivot/change]...",
+      "confidence": "high|medium|low",
+      "isRiskyPrediction": true/false
+    }
+  ]
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+      });
+
+      const aiResult = JSON.parse(response.choices[0].message.content || "{}");
+      
+      const createdPredictions = [];
+      for (const pred of (aiResult.predictions || [])) {
+        const prediction = await storage.createGaPrediction({
+          canvasId,
+          hypothesisId: hypothesis.id,
+          prediction: pred.prediction || "",
+          sourceHypothesis: pred.sourceHypothesis || "buyer",
+          impactIfWrong: pred.impactIfWrong || "",
+          confidence: pred.confidence || "medium",
+          isRiskyPrediction: pred.isRiskyPrediction || false,
+          experimentStatus: "not_tested",
+          aiGenerated: true,
+        });
+        createdPredictions.push(prediction);
+      }
+
+      res.status(201).json(createdPredictions);
+    } catch (error: any) {
+      console.error("Error generating predictions:", error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -15305,6 +15664,144 @@ ${context.intelligenceData ? JSON.stringify(context.intelligenceData, null, 2).s
       }
       res.json(updated);
     } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Push GA Canvas to Evidence Pack as Leading Evidence
+  app.post("/api/growth-accelerator/canvases/:id/push-to-evidence-pack", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const { projectId, packId } = req.body;
+
+      // Get all GA data
+      const canvas = await storage.getGrowthAcceleratorCanvas(canvasId);
+      if (!canvas) {
+        return res.status(404).json({ error: "Canvas not found" });
+      }
+
+      const personas = await storage.getBuyerPersonas(canvasId);
+      const hypotheses = await storage.getGaHypotheses(canvasId);
+      const journeys = await storage.getBuyerJourneys(canvasId);
+      const predictions = await storage.getGaPredictions(canvasId);
+      const battleCards = await storage.getGaCompetitorBattleCards(canvasId);
+
+      // Get or create evidence pack
+      let evidencePack;
+      if (packId) {
+        evidencePack = await storage.getEvidencePack(packId);
+      } else {
+        const packs = await storage.getEvidencePacksByProject(projectId);
+        evidencePack = packs[0];
+        if (!evidencePack) {
+          evidencePack = await storage.createEvidencePack({
+            projectId,
+            title: `${canvas.title} Evidence Pack`,
+            status: "draft",
+          });
+        }
+      }
+
+      const createdItems = [];
+
+      // Push Personas as Leading Evidence
+      for (const persona of personas) {
+        const item = await storage.createEvidencePackItem({
+          packId: evidencePack.id,
+          itemType: "stakeholder_claim",
+          evidencePhase: "leading",
+          confidenceLevel: "medium",
+          sourceType: "ai_generated",
+          sourceKind: "ai_draft",
+          claim: `Buyer Persona: ${persona.personaName} - ${persona.personaTitle}`,
+          claimContext: `4-Quadrant buyer profile identifying key facts, goals, pains, and behaviours`,
+          content: {
+            stakeholderName: persona.personaName,
+            stakeholderRole: persona.personaTitle,
+            whatThisProves: "Identifies the ideal buyer profile based on discovery data"
+          },
+          links: { projectId },
+          idempotencyKey: `ga-persona-${persona.id}`,
+          status: "draft",
+        });
+        createdItems.push(item);
+      }
+
+      // Push Hypotheses as Leading Evidence
+      for (const hypothesis of hypotheses) {
+        const item = await storage.createEvidencePackItem({
+          packId: evidencePack.id,
+          itemType: "success_frame",
+          evidencePhase: "leading",
+          confidenceLevel: "exploratory",
+          sourceType: "ai_generated",
+          sourceKind: "ai_draft",
+          claim: `Buyer Hypothesis: ${hypothesis.buyerHypothesis}`,
+          claimContext: `Problem: ${hypothesis.problemHypothesis}. Solution: ${hypothesis.solutionHypothesis}`,
+          content: {
+            successFrameClarity: "medium",
+            whatThisProves: "Defines the hypothesis framework for validating buyer-problem-solution fit"
+          },
+          links: { projectId },
+          idempotencyKey: `ga-hypothesis-${hypothesis.id}`,
+          status: "draft",
+        });
+        createdItems.push(item);
+      }
+
+      // Push Risky Predictions as Leading Evidence
+      const riskyPredictions = predictions.filter((p: any) => p.isRiskyPrediction);
+      for (const prediction of riskyPredictions) {
+        const item = await storage.createEvidencePackItem({
+          packId: evidencePack.id,
+          itemType: "risk_articulation",
+          evidencePhase: "leading",
+          confidenceLevel: prediction.confidence === "high" ? "high" : prediction.confidence === "low" ? "exploratory" : "medium",
+          sourceType: "ai_generated",
+          sourceKind: "ai_draft",
+          claim: prediction.prediction,
+          claimContext: `Impact if wrong: ${prediction.impactIfWrong}`,
+          content: {
+            riskDescription: prediction.impactIfWrong,
+            riskSeverity: prediction.isRiskyPrediction ? "high" : "medium",
+            whatThisProves: "Identifies critical assumptions that need validation"
+          },
+          links: { projectId },
+          idempotencyKey: `ga-prediction-${prediction.id}`,
+          status: "draft",
+        });
+        createdItems.push(item);
+      }
+
+      // Push Battle Cards as Leading Evidence
+      for (const card of battleCards) {
+        const item = await storage.createEvidencePackItem({
+          packId: evidencePack.id,
+          itemType: "claim",
+          evidencePhase: "leading",
+          confidenceLevel: "medium",
+          sourceType: "ai_generated",
+          sourceKind: "ai_draft",
+          claim: `Competitive Position vs ${card.competitorName}: ${card.competitiveResponse}`,
+          claimContext: `Win strategies: ${(card.winStrategies || []).join(", ")}`,
+          content: {
+            whatThisProves: "Establishes competitive positioning and differentiation"
+          },
+          links: { projectId },
+          idempotencyKey: `ga-battlecard-${card.id}`,
+          status: "draft",
+        });
+        createdItems.push(item);
+      }
+
+      res.status(201).json({
+        success: true,
+        packId: evidencePack.id,
+        itemsCreated: createdItems.length,
+        items: createdItems,
+      });
+    } catch (error: any) {
+      console.error("Error pushing GA to Evidence Pack:", error);
       res.status(500).json({ error: error.message });
     }
   });

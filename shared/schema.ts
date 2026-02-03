@@ -2062,6 +2062,53 @@ export const handoffPackets = pgTable("handoff_packets", {
     lastUpdated?: string;
   }>(),
   
+  // Growth Accelerator Context (from Sales preparation)
+  growthAcceleratorContext: jsonb("growth_accelerator_context").$type<{
+    canvasId?: number;
+    canvasTitle?: string;
+    
+    // Buyer Persona Summary
+    buyerPersona?: {
+      name: string;
+      title: string;
+      company: string;
+      topGoals: string[];
+      topPains: string[];
+      keyBehaviors: string[];
+    };
+    
+    // Hypotheses Summary  
+    hypotheses?: {
+      buyerHypothesis: string;
+      problemHypothesis: string;
+      solutionHypothesis: string;
+    };
+    
+    // Key Predictions
+    riskyPredictions?: Array<{
+      prediction: string;
+      confidence: string;
+      impactIfWrong: string;
+      experimentStatus: string;
+    }>;
+    
+    // Battle Card Highlights
+    competitiveHighlights?: Array<{
+      competitor: string;
+      ourAdvantage: string;
+      winStrategy: string;
+    }>;
+    
+    // Press Release Elements
+    pressRelease?: {
+      headline: string;
+      subheadline: string;
+      customerQuote: string;
+    };
+    
+    lastUpdated?: string;
+  }>(),
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
