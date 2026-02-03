@@ -336,6 +336,99 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
     },
   });
 
+  // Additional queries for GA data
+  const { data: interviewScripts, refetch: refetchInterviewScripts } = useQuery<any[]>({
+    queryKey: ["/api/growth-accelerator/canvases", canvas?.id, "interview-scripts"],
+    queryFn: () => canvas?.id ? fetch(`/api/growth-accelerator/canvases/${canvas.id}/interview-scripts`).then(r => r.json()) : Promise.resolve([]),
+    enabled: !!canvas?.id,
+  });
+
+  const { data: battleCards, refetch: refetchBattleCards } = useQuery<any[]>({
+    queryKey: ["/api/growth-accelerator/canvases", canvas?.id, "battle-cards"],
+    queryFn: () => canvas?.id ? fetch(`/api/growth-accelerator/canvases/${canvas.id}/battle-cards`).then(r => r.json()) : Promise.resolve([]),
+    enabled: !!canvas?.id,
+  });
+
+  const { data: tenets, refetch: refetchTenets } = useQuery<any>({
+    queryKey: ["/api/growth-accelerator/canvases", canvas?.id, "solution-tenets"],
+    queryFn: () => canvas?.id ? fetch(`/api/growth-accelerator/canvases/${canvas.id}/solution-tenets`).then(r => r.json()) : Promise.resolve(null),
+    enabled: !!canvas?.id,
+  });
+
+  const { data: pressRelease, refetch: refetchPressRelease } = useQuery<any>({
+    queryKey: ["/api/growth-accelerator/canvases", canvas?.id, "press-release"],
+    queryFn: () => canvas?.id ? fetch(`/api/growth-accelerator/canvases/${canvas.id}/press-release`).then(r => r.json()) : Promise.resolve(null),
+    enabled: !!canvas?.id,
+  });
+
+  const { data: salesActions, refetch: refetchSalesActions } = useQuery<any>({
+    queryKey: ["/api/growth-accelerator/canvases", canvas?.id, "actions"],
+    queryFn: () => canvas?.id ? fetch(`/api/growth-accelerator/canvases/${canvas.id}/actions`).then(r => r.json()) : Promise.resolve(null),
+    enabled: !!canvas?.id,
+  });
+
+  // New AI generation mutations
+  const generateInterviewScriptMutation = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/growth-accelerator/canvases/${canvas?.id}/generate-interview-script`, {
+      projectId,
+      personaId: persona?.id,
+    }),
+    onSuccess: () => {
+      refetchInterviewScripts();
+      toast({ title: "Interview Script Generated", description: "AI has created a discovery interview script." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to generate interview script.", variant: "destructive" });
+    },
+  });
+
+  const generateBattleCardMutation = useMutation({
+    mutationFn: (competitorName: string) => apiRequest("POST", `/api/growth-accelerator/canvases/${canvas?.id}/generate-battle-cards`, {
+      projectId,
+      competitorName,
+    }),
+    onSuccess: () => {
+      refetchBattleCards();
+      toast({ title: "Battle Card Generated", description: "AI has created competitive battle cards with live market intelligence." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to generate battle cards.", variant: "destructive" });
+    },
+  });
+
+  const generateTenetsMutation = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/growth-accelerator/canvases/${canvas?.id}/generate-tenets`, { projectId }),
+    onSuccess: () => {
+      refetchTenets();
+      toast({ title: "Solution Tenets Generated", description: "AI has created customer-centric design principles." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to generate tenets.", variant: "destructive" });
+    },
+  });
+
+  const generatePressReleaseMutation = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/growth-accelerator/canvases/${canvas?.id}/generate-press-release`, { projectId }),
+    onSuccess: () => {
+      refetchPressRelease();
+      toast({ title: "Press Release Generated", description: "AI has created a Working Backwards press release." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to generate press release.", variant: "destructive" });
+    },
+  });
+
+  const generateSalesActionsMutation = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/growth-accelerator/canvases/${canvas?.id}/generate-sales-actions`, { projectId }),
+    onSuccess: () => {
+      refetchSalesActions();
+      toast({ title: "Sales Actions Generated", description: "AI has created a prioritized action plan." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to generate sales actions.", variant: "destructive" });
+    },
+  });
+
   const getSectionCompletion = (sectionId: string): number => {
     if (!canvas?.sectionCompletion) return 0;
     return canvas.sectionCompletion[sectionId] || 0;
@@ -808,6 +901,434 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
     );
   };
 
+  const renderInterviewScript = () => {
+    const script = interviewScripts?.[0];
+    
+    if (!script) {
+      return (
+        <Card className="border-dashed border-2 border-teal-500/20">
+          <CardContent className="py-12 flex flex-col items-center text-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-teal-500/10 flex items-center justify-center">
+              <MessageSquare className="w-6 h-6 text-teal-600" />
+            </div>
+            <div>
+              <h3 className="font-bold mb-2">Interview Script</h3>
+              <p className="text-sm text-muted-foreground max-w-sm">
+                Generate a structured discovery interview script based on your buyer persona and hypotheses.
+              </p>
+            </div>
+            <Button 
+              onClick={() => generateInterviewScriptMutation.mutate()}
+              disabled={generateInterviewScriptMutation.isPending || !persona}
+              className="gap-2"
+              data-testid="button-generate-interview-script"
+            >
+              {generateInterviewScriptMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Brain className="w-4 h-4" />
+              )}
+              Generate Interview Script
+            </Button>
+            {!persona && (
+              <p className="text-xs text-muted-foreground">Complete buyer persona first</p>
+            )}
+          </CardContent>
+        </Card>
+      );
+    }
+
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center">
+              <MessageSquare className="w-5 h-5 text-teal-600" />
+            </div>
+            <div>
+              <CardTitle>{script.scriptName}</CardTitle>
+              <CardDescription>Target: {script.targetRole}</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {script.sections?.map((section: any, idx: number) => (
+            <div key={idx} className="p-4 rounded-lg border bg-muted/30">
+              <h4 className="font-semibold mb-3">{section.sectionName}</h4>
+              <div className="space-y-3">
+                {section.questions?.map((q: any, qIdx: number) => (
+                  <div key={qIdx} className="pl-4 border-l-2 border-teal-500/30">
+                    <p className="font-medium text-sm">{q.question}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Validates: {q.validates}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderBattleCards = () => {
+    const [competitorInput, setCompetitorInput] = useState("");
+    const card = battleCards?.[0];
+    
+    if (!card) {
+      return (
+        <Card className="border-dashed border-2 border-red-500/20">
+          <CardContent className="py-12 flex flex-col items-center text-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center">
+              <Swords className="w-6 h-6 text-red-600" />
+            </div>
+            <div>
+              <h3 className="font-bold mb-2">Competitive Battle Cards</h3>
+              <p className="text-sm text-muted-foreground max-w-sm">
+                Generate competitive intelligence with live market data using Perplexity AI.
+              </p>
+            </div>
+            <div className="flex gap-2 items-center">
+              <Input 
+                placeholder="Competitor name (e.g., Accenture)" 
+                value={competitorInput}
+                onChange={(e) => setCompetitorInput(e.target.value)}
+                className="w-48"
+              />
+              <Button 
+                onClick={() => generateBattleCardMutation.mutate(competitorInput || "Generic Competitor")}
+                disabled={generateBattleCardMutation.isPending}
+                className="gap-2"
+                data-testid="button-generate-battle-card"
+              >
+                {generateBattleCardMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Brain className="w-4 h-4" />
+                )}
+                Generate Battle Card
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
+              <Swords className="w-5 h-5 text-red-600" />
+            </div>
+            <div>
+              <CardTitle>vs {card.competitorName}</CardTitle>
+              <CardDescription>Competitive Battle Card</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 rounded-lg bg-red-500/5 border border-red-500/20">
+              <h4 className="font-semibold text-red-600 mb-2">Their Strengths</h4>
+              <ul className="space-y-1 text-sm">
+                {card.competitorStrengths?.map((s: string, i: number) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1.5" />
+                    {s}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+              <h4 className="font-semibold text-emerald-600 mb-2">Their Weaknesses</h4>
+              <ul className="space-y-1 text-sm">
+                {card.competitorWeaknesses?.map((w: string, i: number) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <CheckCircle className="w-3 h-3 text-emerald-500 mt-1" />
+                    {w}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          {card.winThemes?.length > 0 && (
+            <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/20">
+              <h4 className="font-semibold text-blue-600 mb-2">Win Themes</h4>
+              {card.winThemes.map((theme: any, i: number) => (
+                <div key={i} className="mb-2">
+                  <p className="font-medium text-sm">{theme.theme}</p>
+                  <ul className="text-xs text-muted-foreground mt-1">
+                    {theme.talkingPoints?.map((tp: string, j: number) => (
+                      <li key={j}>• {tp}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderTenets = () => {
+    const tenetData = tenets;
+    
+    if (!tenetData?.tenets?.length) {
+      return (
+        <Card className="border-dashed border-2 border-purple-500/20">
+          <CardContent className="py-12 flex flex-col items-center text-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center">
+              <Compass className="w-6 h-6 text-purple-600" />
+            </div>
+            <div>
+              <h3 className="font-bold mb-2">Solution Tenets</h3>
+              <p className="text-sm text-muted-foreground max-w-sm">
+                Generate customer-centric design principles that guide your solution delivery.
+              </p>
+            </div>
+            <Button 
+              onClick={() => generateTenetsMutation.mutate()}
+              disabled={generateTenetsMutation.isPending || !hypotheses?.length}
+              className="gap-2"
+              data-testid="button-generate-tenets"
+            >
+              {generateTenetsMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Brain className="w-4 h-4" />
+              )}
+              Generate Tenets
+            </Button>
+            {!hypotheses?.length && (
+              <p className="text-xs text-muted-foreground">Complete hypotheses first</p>
+            )}
+          </CardContent>
+        </Card>
+      );
+    }
+
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
+              <Compass className="w-5 h-5 text-purple-600" />
+            </div>
+            <div>
+              <CardTitle>Solution Tenets</CardTitle>
+              <CardDescription>Customer-centric design principles</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {tenetData.tenets.map((tenet: any) => (
+            <div key={tenet.tenetNumber} className="p-4 rounded-lg border bg-purple-500/5 border-purple-500/20">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-600 font-bold text-sm">
+                  {tenet.tenetNumber}
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium">{tenet.tenet}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{tenet.rationale}</p>
+                  {tenet.tradeoffs && (
+                    <p className="text-xs text-amber-600 mt-2">Trade-off: {tenet.tradeoffs}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderPressRelease = () => {
+    const pr = pressRelease;
+    
+    if (!pr) {
+      return (
+        <Card className="border-dashed border-2 border-amber-500/20">
+          <CardContent className="py-12 flex flex-col items-center text-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center">
+              <Newspaper className="w-6 h-6 text-amber-600" />
+            </div>
+            <div>
+              <h3 className="font-bold mb-2">Press Release</h3>
+              <p className="text-sm text-muted-foreground max-w-sm">
+                Generate a Working Backwards style press release announcing your future success.
+              </p>
+            </div>
+            <Button 
+              onClick={() => generatePressReleaseMutation.mutate()}
+              disabled={generatePressReleaseMutation.isPending || !hypotheses?.length}
+              className="gap-2"
+              data-testid="button-generate-press-release"
+            >
+              {generatePressReleaseMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Brain className="w-4 h-4" />
+              )}
+              Generate Press Release
+            </Button>
+            {!hypotheses?.length && (
+              <p className="text-xs text-muted-foreground">Complete hypotheses first</p>
+            )}
+          </CardContent>
+        </Card>
+      );
+    }
+
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+              <Newspaper className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">{pr.headline}</CardTitle>
+              {pr.subheadline && <CardDescription>{pr.subheadline}</CardDescription>}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="prose prose-sm max-w-none">
+          <p className="text-xs text-muted-foreground mb-4">{pr.dateline}</p>
+          <p className="font-medium">{pr.openingParagraph}</p>
+          {pr.clientQuote && (
+            <blockquote className="border-l-4 border-primary pl-4 my-4 italic">
+              "{pr.clientQuote.quote}"
+              <footer className="text-sm text-muted-foreground not-italic">— {pr.clientQuote.attribution}</footer>
+            </blockquote>
+          )}
+          {pr.bodyParagraphs?.map((p: string, i: number) => (
+            <p key={i}>{p}</p>
+          ))}
+          {pr.partnerQuote && (
+            <blockquote className="border-l-4 border-purple-500 pl-4 my-4 italic">
+              "{pr.partnerQuote.quote}"
+              <footer className="text-sm text-muted-foreground not-italic">— {pr.partnerQuote.attribution}</footer>
+            </blockquote>
+          )}
+          <p>{pr.closingParagraph}</p>
+          {pr.keyMetrics?.length > 0 && (
+            <div className="grid grid-cols-3 gap-4 mt-6 not-prose">
+              {pr.keyMetrics.map((m: any, i: number) => (
+                <div key={i} className="text-center p-4 rounded-lg bg-amber-500/5 border border-amber-500/20">
+                  <div className="text-2xl font-bold text-amber-600">{m.value}</div>
+                  <div className="text-xs text-muted-foreground">{m.metric}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderSalesActions = () => {
+    const actions = salesActions;
+    
+    if (!actions) {
+      return (
+        <Card className="border-dashed border-2 border-emerald-500/20">
+          <CardContent className="py-12 flex flex-col items-center text-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+              <PlayCircle className="w-6 h-6 text-emerald-600" />
+            </div>
+            <div>
+              <h3 className="font-bold mb-2">Sales Action Plan</h3>
+              <p className="text-sm text-muted-foreground max-w-sm">
+                Generate a prioritized action plan based on your complete Growth Accelerator analysis.
+              </p>
+            </div>
+            <Button 
+              onClick={() => generateSalesActionsMutation.mutate()}
+              disabled={generateSalesActionsMutation.isPending || !hypotheses?.length}
+              className="gap-2"
+              data-testid="button-generate-sales-actions"
+            >
+              {generateSalesActionsMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Brain className="w-4 h-4" />
+              )}
+              Generate Action Plan
+            </Button>
+            {!hypotheses?.length && (
+              <p className="text-xs text-muted-foreground">Complete previous steps first</p>
+            )}
+          </CardContent>
+        </Card>
+      );
+    }
+
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+              <PlayCircle className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div>
+              <CardTitle>{actions.salesPlayName}</CardTitle>
+              <CardDescription>Prioritized Sales Action Plan</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div>
+            <h4 className="font-semibold text-red-600 mb-3 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" />
+              Immediate (Next 7 Days)
+            </h4>
+            <div className="space-y-2">
+              {actions.immediateActions?.map((a: any, i: number) => (
+                <div key={i} className="p-3 rounded-lg bg-red-500/5 border border-red-500/20">
+                  <p className="font-medium text-sm">{a.action}</p>
+                  <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
+                    <span>Owner: {a.owner}</span>
+                    <span>Validates: {a.validates}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <h4 className="font-semibold text-amber-600 mb-3 flex items-center gap-2">
+              <Target className="w-4 h-4" />
+              Short-term (Next 30 Days)
+            </h4>
+            <div className="space-y-2">
+              {actions.shortTermActions?.map((a: any, i: number) => (
+                <div key={i} className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
+                  <p className="font-medium text-sm">{a.action}</p>
+                  <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
+                    <span>Owner: {a.owner}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <h4 className="font-semibold text-emerald-600 mb-3 flex items-center gap-2">
+              <CheckCircle className="w-4 h-4" />
+              Medium-term (Next 90 Days)
+            </h4>
+            <div className="space-y-2">
+              {actions.mediumTermActions?.map((a: any, i: number) => (
+                <div key={i} className="p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+                  <p className="font-medium text-sm">{a.action}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   const renderStepContent = () => {
     switch (activeStep) {
       case "buyer_persona":
@@ -819,22 +1340,15 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
       case "predictions":
         return renderPredictionsGrid();
       case "interview_script":
+        return renderInterviewScript();
       case "solution_tenets":
+        return renderTenets();
       case "press_release":
+        return renderPressRelease();
       case "battle_cards":
+        return renderBattleCards();
       case "sales_actions":
-        return (
-          <Card className="border-dashed">
-            <CardContent className="py-12 text-center">
-              <div className="w-12 h-12 rounded-xl bg-muted mx-auto mb-4 flex items-center justify-center">
-                <HelpCircle className="w-6 h-6 text-muted-foreground" />
-              </div>
-              <p className="text-sm text-muted-foreground">
-                This step will be available soon. Complete the previous steps first.
-              </p>
-            </CardContent>
-          </Card>
-        );
+        return renderSalesActions();
       default:
         return null;
     }
