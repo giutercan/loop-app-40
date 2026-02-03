@@ -14856,4 +14856,456 @@ ${context.intelligenceData ? JSON.stringify(context.intelligenceData, null, 2).s
       res.status(500).json({ error: error.message });
     }
   });
+
+  // ===========================================================================
+  // GROWTH ACCELERATOR - Working Backwards Toolkit (WBT) Sales Play Builder
+  // ===========================================================================
+
+  // GET /api/projects/:id/growth-accelerator/canvases - Get all GA canvases for project
+  app.get("/api/projects/:id/growth-accelerator/canvases", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const canvases = await storage.getGrowthAcceleratorCanvases(projectId);
+      res.json(canvases);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/projects/:id/growth-accelerator/canvases - Create new GA canvas
+  app.post("/api/projects/:id/growth-accelerator/canvases", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const schema = z.object({
+        title: z.string(),
+        targetMarket: z.string().optional(),
+        targetSolution: z.string().optional(),
+        accountId: z.number().optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid request", details: parsed.error.errors });
+      }
+      const canvas = await storage.createGrowthAcceleratorCanvas({
+        projectId,
+        ...parsed.data,
+      });
+      res.status(201).json(canvas);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/growth-accelerator/canvases/:id - Get single canvas
+  app.get("/api/growth-accelerator/canvases/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const canvas = await storage.getGrowthAcceleratorCanvasById(id);
+      if (!canvas) {
+        return res.status(404).json({ error: "Canvas not found" });
+      }
+      res.json(canvas);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PATCH /api/growth-accelerator/canvases/:id - Update canvas
+  app.patch("/api/growth-accelerator/canvases/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updated = await storage.updateGrowthAcceleratorCanvas(id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Canvas not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/growth-accelerator/canvases/:id - Delete canvas
+  app.delete("/api/growth-accelerator/canvases/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteGrowthAcceleratorCanvas(id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Buyer Personas
+  app.get("/api/growth-accelerator/canvases/:id/personas", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const personas = await storage.getBuyerPersonas(canvasId);
+      res.json(personas);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/growth-accelerator/canvases/:id/personas", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const persona = await storage.createBuyerPersona({ canvasId, ...req.body });
+      res.status(201).json(persona);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/growth-accelerator/personas/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const persona = await storage.getBuyerPersonaById(id);
+      if (!persona) {
+        return res.status(404).json({ error: "Persona not found" });
+      }
+      res.json(persona);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/growth-accelerator/personas/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updated = await storage.updateBuyerPersona(id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Persona not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/growth-accelerator/personas/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteBuyerPersona(id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Hypotheses
+  app.get("/api/growth-accelerator/canvases/:id/hypotheses", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const hypotheses = await storage.getGaHypotheses(canvasId);
+      res.json(hypotheses);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/growth-accelerator/canvases/:id/hypotheses", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const hypothesis = await storage.createGaHypothesis({ canvasId, ...req.body });
+      res.status(201).json(hypothesis);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/growth-accelerator/hypotheses/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updated = await storage.updateGaHypothesis(id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Hypothesis not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Buyer Journeys
+  app.get("/api/growth-accelerator/canvases/:id/journeys", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const journeys = await storage.getBuyerJourneys(canvasId);
+      res.json(journeys);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/growth-accelerator/canvases/:id/journeys", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const journey = await storage.createBuyerJourney({ canvasId, ...req.body });
+      res.status(201).json(journey);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/growth-accelerator/journeys/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updated = await storage.updateBuyerJourney(id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Journey not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Predictions
+  app.get("/api/growth-accelerator/canvases/:id/predictions", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const predictions = await storage.getGaPredictions(canvasId);
+      res.json(predictions);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/growth-accelerator/canvases/:id/predictions", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const predictionSchema = z.object({
+        prediction: z.string(),
+        sourceHypothesis: z.enum(["buyer", "problem"]),
+        impactIfWrong: z.enum(["high", "medium", "low"]),
+        confidence: z.enum(["high", "medium", "low"]),
+        hypothesisId: z.number().optional(),
+      });
+      const parsed = predictionSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid prediction data", details: parsed.error.errors });
+      }
+      const isRiskyPrediction = parsed.data.impactIfWrong === "high" && parsed.data.confidence === "low";
+      const prediction = await storage.createGaPrediction({ 
+        canvasId, 
+        ...parsed.data, 
+        isRiskyPrediction 
+      });
+      res.status(201).json(prediction);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/growth-accelerator/predictions/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updated = await storage.updateGaPrediction(id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Prediction not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/growth-accelerator/predictions/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteGaPrediction(id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Interview Scripts
+  app.get("/api/growth-accelerator/canvases/:id/interview-scripts", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const scripts = await storage.getGaInterviewScripts(canvasId);
+      res.json(scripts);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/growth-accelerator/canvases/:id/interview-scripts", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const script = await storage.createGaInterviewScript({ canvasId, ...req.body });
+      res.status(201).json(script);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/growth-accelerator/interview-scripts/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updated = await storage.updateGaInterviewScript(id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Script not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Solution Tenets
+  app.get("/api/growth-accelerator/canvases/:id/solution-tenets", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const tenets = await storage.getGaSolutionTenets(canvasId);
+      res.json(tenets || null);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/growth-accelerator/canvases/:id/solution-tenets", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const tenets = await storage.createGaSolutionTenets({ canvasId, ...req.body });
+      res.status(201).json(tenets);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/growth-accelerator/solution-tenets/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updated = await storage.updateGaSolutionTenets(id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Tenets not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Press Release
+  app.get("/api/growth-accelerator/canvases/:id/press-release", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const release = await storage.getGaPressRelease(canvasId);
+      res.json(release || null);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/growth-accelerator/canvases/:id/press-release", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const release = await storage.createGaPressRelease({ canvasId, ...req.body });
+      res.status(201).json(release);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/growth-accelerator/press-release/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updated = await storage.updateGaPressRelease(id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Press release not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Battle Cards
+  app.get("/api/growth-accelerator/canvases/:id/battle-cards", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const cards = await storage.getGaCompetitorBattleCards(canvasId);
+      res.json(cards);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/growth-accelerator/canvases/:id/battle-cards", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const cardSchema = z.object({
+        competitorName: z.string(),
+        competitorWebsite: z.string().optional(),
+        companyOverview: z.string().optional(),
+      });
+      const parsed = cardSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid battle card data", details: parsed.error.errors });
+      }
+      const card = await storage.createGaCompetitorBattleCard({ canvasId, ...parsed.data });
+      res.status(201).json(card);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/growth-accelerator/battle-cards/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updated = await storage.updateGaCompetitorBattleCard(id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Battle card not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/growth-accelerator/battle-cards/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteGaCompetitorBattleCard(id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Sales Play Actions
+  app.get("/api/growth-accelerator/canvases/:id/actions", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const actions = await storage.getGaSalesPlayActions(canvasId);
+      res.json(actions || null);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/growth-accelerator/canvases/:id/actions", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const actions = await storage.createGaSalesPlayActions({ canvasId, ...req.body });
+      res.status(201).json(actions);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/growth-accelerator/actions/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updated = await storage.updateGaSalesPlayActions(id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Actions not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 }

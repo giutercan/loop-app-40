@@ -36,6 +36,13 @@
       "when": 1768937200000,
       "tag": "0004_evidence_pack_journey_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1770129349039,
+      "tag": "0005_flaky_firestar",
+      "breakpoints": true
     }
   ]
 }

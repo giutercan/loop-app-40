@@ -72,7 +72,17 @@ import type {
   SponsorNarrativeSpine, InsertSponsorNarrativeSpine,
   AIGuidanceEvent, InsertAIGuidanceEvent,
   EvidencePackLifecycleEvent, InsertEvidencePackLifecycleEvent,
-  BlueSheet, InsertBlueSheet
+  BlueSheet, InsertBlueSheet,
+  GrowthAcceleratorCanvas, InsertGrowthAcceleratorCanvas,
+  BuyerPersona, InsertBuyerPersona,
+  GaHypothesis, InsertGaHypothesis,
+  BuyerJourney, InsertBuyerJourney,
+  GaPrediction, InsertGaPrediction,
+  GaInterviewScript, InsertGaInterviewScript,
+  GaSolutionTenets, InsertGaSolutionTenets,
+  GaPressRelease, InsertGaPressRelease,
+  GaCompetitorBattleCard, InsertGaCompetitorBattleCard,
+  GaSalesPlayActions, InsertGaSalesPlayActions
 } from "@shared/schema";
 
 export interface IStorage {
@@ -518,6 +528,66 @@ export interface IStorage {
   createBlueSheet(blueSheet: InsertBlueSheet): Promise<BlueSheet>;
   updateBlueSheet(id: number, blueSheet: Partial<InsertBlueSheet>): Promise<BlueSheet | undefined>;
   deleteBlueSheet(id: number): Promise<void>;
+  
+  // Growth Accelerator - Canvases
+  getGrowthAcceleratorCanvases(projectId: number): Promise<GrowthAcceleratorCanvas[]>;
+  getGrowthAcceleratorCanvasById(id: number): Promise<GrowthAcceleratorCanvas | undefined>;
+  createGrowthAcceleratorCanvas(canvas: InsertGrowthAcceleratorCanvas): Promise<GrowthAcceleratorCanvas>;
+  updateGrowthAcceleratorCanvas(id: number, canvas: Partial<InsertGrowthAcceleratorCanvas>): Promise<GrowthAcceleratorCanvas | undefined>;
+  deleteGrowthAcceleratorCanvas(id: number): Promise<void>;
+  
+  // Growth Accelerator - Buyer Personas
+  getBuyerPersonas(canvasId: number): Promise<BuyerPersona[]>;
+  getBuyerPersonaById(id: number): Promise<BuyerPersona | undefined>;
+  createBuyerPersona(persona: InsertBuyerPersona): Promise<BuyerPersona>;
+  updateBuyerPersona(id: number, persona: Partial<InsertBuyerPersona>): Promise<BuyerPersona | undefined>;
+  deleteBuyerPersona(id: number): Promise<void>;
+  
+  // Growth Accelerator - Hypotheses
+  getGaHypotheses(canvasId: number): Promise<GaHypothesis[]>;
+  getGaHypothesisById(id: number): Promise<GaHypothesis | undefined>;
+  createGaHypothesis(hypothesis: InsertGaHypothesis): Promise<GaHypothesis>;
+  updateGaHypothesis(id: number, hypothesis: Partial<InsertGaHypothesis>): Promise<GaHypothesis | undefined>;
+  
+  // Growth Accelerator - Buyer Journey
+  getBuyerJourneys(canvasId: number): Promise<BuyerJourney[]>;
+  getBuyerJourneyById(id: number): Promise<BuyerJourney | undefined>;
+  createBuyerJourney(journey: InsertBuyerJourney): Promise<BuyerJourney>;
+  updateBuyerJourney(id: number, journey: Partial<InsertBuyerJourney>): Promise<BuyerJourney | undefined>;
+  
+  // Growth Accelerator - Predictions
+  getGaPredictions(canvasId: number): Promise<GaPrediction[]>;
+  createGaPrediction(prediction: InsertGaPrediction): Promise<GaPrediction>;
+  updateGaPrediction(id: number, prediction: Partial<InsertGaPrediction>): Promise<GaPrediction | undefined>;
+  deleteGaPrediction(id: number): Promise<void>;
+  
+  // Growth Accelerator - Interview Scripts
+  getGaInterviewScripts(canvasId: number): Promise<GaInterviewScript[]>;
+  getGaInterviewScriptById(id: number): Promise<GaInterviewScript | undefined>;
+  createGaInterviewScript(script: InsertGaInterviewScript): Promise<GaInterviewScript>;
+  updateGaInterviewScript(id: number, script: Partial<InsertGaInterviewScript>): Promise<GaInterviewScript | undefined>;
+  
+  // Growth Accelerator - Solution Tenets
+  getGaSolutionTenets(canvasId: number): Promise<GaSolutionTenets | undefined>;
+  createGaSolutionTenets(tenets: InsertGaSolutionTenets): Promise<GaSolutionTenets>;
+  updateGaSolutionTenets(id: number, tenets: Partial<InsertGaSolutionTenets>): Promise<GaSolutionTenets | undefined>;
+  
+  // Growth Accelerator - Press Release
+  getGaPressRelease(canvasId: number): Promise<GaPressRelease | undefined>;
+  createGaPressRelease(release: InsertGaPressRelease): Promise<GaPressRelease>;
+  updateGaPressRelease(id: number, release: Partial<InsertGaPressRelease>): Promise<GaPressRelease | undefined>;
+  
+  // Growth Accelerator - Battle Cards
+  getGaCompetitorBattleCards(canvasId: number): Promise<GaCompetitorBattleCard[]>;
+  getGaCompetitorBattleCardById(id: number): Promise<GaCompetitorBattleCard | undefined>;
+  createGaCompetitorBattleCard(card: InsertGaCompetitorBattleCard): Promise<GaCompetitorBattleCard>;
+  updateGaCompetitorBattleCard(id: number, card: Partial<InsertGaCompetitorBattleCard>): Promise<GaCompetitorBattleCard | undefined>;
+  deleteGaCompetitorBattleCard(id: number): Promise<void>;
+  
+  // Growth Accelerator - Sales Play Actions
+  getGaSalesPlayActions(canvasId: number): Promise<GaSalesPlayActions | undefined>;
+  createGaSalesPlayActions(actions: InsertGaSalesPlayActions): Promise<GaSalesPlayActions>;
+  updateGaSalesPlayActions(id: number, actions: Partial<InsertGaSalesPlayActions>): Promise<GaSalesPlayActions | undefined>;
 }
 
 export class DbStorage implements IStorage {
@@ -2818,6 +2888,252 @@ export class DbStorage implements IStorage {
   
   async deleteBlueSheet(id: number): Promise<void> {
     await db.delete(schema.blueSheets).where(eq(schema.blueSheets.id, id));
+  }
+  
+  // Growth Accelerator - Canvases
+  async getGrowthAcceleratorCanvases(projectId: number): Promise<GrowthAcceleratorCanvas[]> {
+    return await db.select().from(schema.growthAcceleratorCanvases)
+      .where(eq(schema.growthAcceleratorCanvases.projectId, projectId))
+      .orderBy(desc(schema.growthAcceleratorCanvases.updatedAt));
+  }
+  
+  async getGrowthAcceleratorCanvasById(id: number): Promise<GrowthAcceleratorCanvas | undefined> {
+    const results = await db.select().from(schema.growthAcceleratorCanvases)
+      .where(eq(schema.growthAcceleratorCanvases.id, id));
+    return results[0];
+  }
+  
+  async createGrowthAcceleratorCanvas(canvas: InsertGrowthAcceleratorCanvas): Promise<GrowthAcceleratorCanvas> {
+    const results = await db.insert(schema.growthAcceleratorCanvases).values(canvas as any).returning();
+    return results[0];
+  }
+  
+  async updateGrowthAcceleratorCanvas(id: number, canvas: Partial<InsertGrowthAcceleratorCanvas>): Promise<GrowthAcceleratorCanvas | undefined> {
+    const results = await db.update(schema.growthAcceleratorCanvases)
+      .set({ ...canvas as any, updatedAt: new Date() })
+      .where(eq(schema.growthAcceleratorCanvases.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deleteGrowthAcceleratorCanvas(id: number): Promise<void> {
+    await db.delete(schema.growthAcceleratorCanvases).where(eq(schema.growthAcceleratorCanvases.id, id));
+  }
+  
+  // Growth Accelerator - Buyer Personas
+  async getBuyerPersonas(canvasId: number): Promise<BuyerPersona[]> {
+    return await db.select().from(schema.buyerPersonas)
+      .where(eq(schema.buyerPersonas.canvasId, canvasId));
+  }
+  
+  async getBuyerPersonaById(id: number): Promise<BuyerPersona | undefined> {
+    const results = await db.select().from(schema.buyerPersonas)
+      .where(eq(schema.buyerPersonas.id, id));
+    return results[0];
+  }
+  
+  async createBuyerPersona(persona: InsertBuyerPersona): Promise<BuyerPersona> {
+    const results = await db.insert(schema.buyerPersonas).values(persona as any).returning();
+    return results[0];
+  }
+  
+  async updateBuyerPersona(id: number, persona: Partial<InsertBuyerPersona>): Promise<BuyerPersona | undefined> {
+    const results = await db.update(schema.buyerPersonas)
+      .set({ ...persona as any, updatedAt: new Date() })
+      .where(eq(schema.buyerPersonas.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deleteBuyerPersona(id: number): Promise<void> {
+    await db.delete(schema.buyerPersonas).where(eq(schema.buyerPersonas.id, id));
+  }
+  
+  // Growth Accelerator - Hypotheses
+  async getGaHypotheses(canvasId: number): Promise<GaHypothesis[]> {
+    return await db.select().from(schema.gaHypotheses)
+      .where(eq(schema.gaHypotheses.canvasId, canvasId));
+  }
+  
+  async getGaHypothesisById(id: number): Promise<GaHypothesis | undefined> {
+    const results = await db.select().from(schema.gaHypotheses)
+      .where(eq(schema.gaHypotheses.id, id));
+    return results[0];
+  }
+  
+  async createGaHypothesis(hypothesis: InsertGaHypothesis): Promise<GaHypothesis> {
+    const results = await db.insert(schema.gaHypotheses).values(hypothesis as any).returning();
+    return results[0];
+  }
+  
+  async updateGaHypothesis(id: number, hypothesis: Partial<InsertGaHypothesis>): Promise<GaHypothesis | undefined> {
+    const results = await db.update(schema.gaHypotheses)
+      .set({ ...hypothesis as any, updatedAt: new Date() })
+      .where(eq(schema.gaHypotheses.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  // Growth Accelerator - Buyer Journey
+  async getBuyerJourneys(canvasId: number): Promise<BuyerJourney[]> {
+    return await db.select().from(schema.buyerJourneys)
+      .where(eq(schema.buyerJourneys.canvasId, canvasId));
+  }
+  
+  async getBuyerJourneyById(id: number): Promise<BuyerJourney | undefined> {
+    const results = await db.select().from(schema.buyerJourneys)
+      .where(eq(schema.buyerJourneys.id, id));
+    return results[0];
+  }
+  
+  async createBuyerJourney(journey: InsertBuyerJourney): Promise<BuyerJourney> {
+    const results = await db.insert(schema.buyerJourneys).values(journey as any).returning();
+    return results[0];
+  }
+  
+  async updateBuyerJourney(id: number, journey: Partial<InsertBuyerJourney>): Promise<BuyerJourney | undefined> {
+    const results = await db.update(schema.buyerJourneys)
+      .set({ ...journey as any, updatedAt: new Date() })
+      .where(eq(schema.buyerJourneys.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  // Growth Accelerator - Predictions
+  async getGaPredictions(canvasId: number): Promise<GaPrediction[]> {
+    return await db.select().from(schema.gaPredictions)
+      .where(eq(schema.gaPredictions.canvasId, canvasId));
+  }
+  
+  async createGaPrediction(prediction: InsertGaPrediction): Promise<GaPrediction> {
+    const results = await db.insert(schema.gaPredictions).values(prediction as any).returning();
+    return results[0];
+  }
+  
+  async updateGaPrediction(id: number, prediction: Partial<InsertGaPrediction>): Promise<GaPrediction | undefined> {
+    const results = await db.update(schema.gaPredictions)
+      .set({ ...prediction as any, updatedAt: new Date() })
+      .where(eq(schema.gaPredictions.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deleteGaPrediction(id: number): Promise<void> {
+    await db.delete(schema.gaPredictions).where(eq(schema.gaPredictions.id, id));
+  }
+  
+  // Growth Accelerator - Interview Scripts
+  async getGaInterviewScripts(canvasId: number): Promise<GaInterviewScript[]> {
+    return await db.select().from(schema.gaInterviewScripts)
+      .where(eq(schema.gaInterviewScripts.canvasId, canvasId));
+  }
+  
+  async getGaInterviewScriptById(id: number): Promise<GaInterviewScript | undefined> {
+    const results = await db.select().from(schema.gaInterviewScripts)
+      .where(eq(schema.gaInterviewScripts.id, id));
+    return results[0];
+  }
+  
+  async createGaInterviewScript(script: InsertGaInterviewScript): Promise<GaInterviewScript> {
+    const results = await db.insert(schema.gaInterviewScripts).values(script as any).returning();
+    return results[0];
+  }
+  
+  async updateGaInterviewScript(id: number, script: Partial<InsertGaInterviewScript>): Promise<GaInterviewScript | undefined> {
+    const results = await db.update(schema.gaInterviewScripts)
+      .set({ ...script as any, updatedAt: new Date() })
+      .where(eq(schema.gaInterviewScripts.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  // Growth Accelerator - Solution Tenets
+  async getGaSolutionTenets(canvasId: number): Promise<GaSolutionTenets | undefined> {
+    const results = await db.select().from(schema.gaSolutionTenets)
+      .where(eq(schema.gaSolutionTenets.canvasId, canvasId));
+    return results[0];
+  }
+  
+  async createGaSolutionTenets(tenets: InsertGaSolutionTenets): Promise<GaSolutionTenets> {
+    const results = await db.insert(schema.gaSolutionTenets).values(tenets as any).returning();
+    return results[0];
+  }
+  
+  async updateGaSolutionTenets(id: number, tenets: Partial<InsertGaSolutionTenets>): Promise<GaSolutionTenets | undefined> {
+    const results = await db.update(schema.gaSolutionTenets)
+      .set({ ...tenets as any, updatedAt: new Date() })
+      .where(eq(schema.gaSolutionTenets.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  // Growth Accelerator - Press Release
+  async getGaPressRelease(canvasId: number): Promise<GaPressRelease | undefined> {
+    const results = await db.select().from(schema.gaPressReleases)
+      .where(eq(schema.gaPressReleases.canvasId, canvasId));
+    return results[0];
+  }
+  
+  async createGaPressRelease(release: InsertGaPressRelease): Promise<GaPressRelease> {
+    const results = await db.insert(schema.gaPressReleases).values(release as any).returning();
+    return results[0];
+  }
+  
+  async updateGaPressRelease(id: number, release: Partial<InsertGaPressRelease>): Promise<GaPressRelease | undefined> {
+    const results = await db.update(schema.gaPressReleases)
+      .set({ ...release as any, updatedAt: new Date() })
+      .where(eq(schema.gaPressReleases.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  // Growth Accelerator - Battle Cards
+  async getGaCompetitorBattleCards(canvasId: number): Promise<GaCompetitorBattleCard[]> {
+    return await db.select().from(schema.gaCompetitorBattleCards)
+      .where(eq(schema.gaCompetitorBattleCards.canvasId, canvasId));
+  }
+  
+  async getGaCompetitorBattleCardById(id: number): Promise<GaCompetitorBattleCard | undefined> {
+    const results = await db.select().from(schema.gaCompetitorBattleCards)
+      .where(eq(schema.gaCompetitorBattleCards.id, id));
+    return results[0];
+  }
+  
+  async createGaCompetitorBattleCard(card: InsertGaCompetitorBattleCard): Promise<GaCompetitorBattleCard> {
+    const results = await db.insert(schema.gaCompetitorBattleCards).values(card as any).returning();
+    return results[0];
+  }
+  
+  async updateGaCompetitorBattleCard(id: number, card: Partial<InsertGaCompetitorBattleCard>): Promise<GaCompetitorBattleCard | undefined> {
+    const results = await db.update(schema.gaCompetitorBattleCards)
+      .set({ ...card as any, updatedAt: new Date() })
+      .where(eq(schema.gaCompetitorBattleCards.id, id))
+      .returning();
+    return results[0];
+  }
+  
+  async deleteGaCompetitorBattleCard(id: number): Promise<void> {
+    await db.delete(schema.gaCompetitorBattleCards).where(eq(schema.gaCompetitorBattleCards.id, id));
+  }
+  
+  // Growth Accelerator - Sales Play Actions
+  async getGaSalesPlayActions(canvasId: number): Promise<GaSalesPlayActions | undefined> {
+    const results = await db.select().from(schema.gaSalesPlayActions)
+      .where(eq(schema.gaSalesPlayActions.canvasId, canvasId));
+    return results[0];
+  }
+  
+  async createGaSalesPlayActions(actions: InsertGaSalesPlayActions): Promise<GaSalesPlayActions> {
+    const results = await db.insert(schema.gaSalesPlayActions).values(actions as any).returning();
+    return results[0];
+  }
+  
+  async updateGaSalesPlayActions(id: number, actions: Partial<InsertGaSalesPlayActions>): Promise<GaSalesPlayActions | undefined> {
+    const results = await db.update(schema.gaSalesPlayActions)
+      .set({ ...actions as any, updatedAt: new Date() })
+      .where(eq(schema.gaSalesPlayActions.id, id))
+      .returning();
+    return results[0];
   }
 }
 
