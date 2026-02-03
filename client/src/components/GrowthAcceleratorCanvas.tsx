@@ -62,6 +62,7 @@ import {
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { jsPDF } from "jspdf";
 
 interface GrowthAcceleratorCanvasProps {
   projectId: number;
@@ -448,6 +449,241 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
       sectionCompletion: {},
       status: "draft",
     });
+  };
+
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportPDF = async () => {
+    if (!canvas) return;
+    setIsExporting(true);
+    
+    try {
+      const doc = new jsPDF();
+      let yPos = 20;
+      const leftMargin = 20;
+      const pageWidth = 170;
+      const lineHeight = 6;
+
+      const addTitle = (text: string, size: number = 16) => {
+        doc.setFontSize(size);
+        doc.setFont("helvetica", "bold");
+        doc.text(text, leftMargin, yPos);
+        yPos += lineHeight + 2;
+      };
+
+      const addSubtitle = (text: string) => {
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.text(text, leftMargin, yPos);
+        yPos += lineHeight;
+      };
+
+      const addText = (text: string, indent: number = 0) => {
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        const lines = doc.splitTextToSize(text, pageWidth - indent);
+        if (yPos + (lines.length * lineHeight) > 280) {
+          doc.addPage();
+          yPos = 20;
+        }
+        doc.text(lines, leftMargin + indent, yPos);
+        yPos += lines.length * lineHeight + 2;
+      };
+
+      const checkPageBreak = (neededSpace: number = 30) => {
+        if (yPos + neededSpace > 280) {
+          doc.addPage();
+          yPos = 20;
+        }
+      };
+
+      addTitle(`${canvas.title} - Sales Play`, 18);
+      addText(`Company: ${companyName}`);
+      addText(`Created: ${new Date().toLocaleDateString()}`);
+      yPos += 10;
+
+      if (persona) {
+        checkPageBreak(60);
+        addTitle("1. BUYER PERSONA", 14);
+        if (persona.personaName) addText(`Name: ${persona.personaName}`);
+        if (persona.personaTitle) addText(`Title: ${persona.personaTitle}`);
+        if (persona.personaCompany) addText(`Company: ${persona.personaCompany}`);
+        
+        const facts = persona.facts || [];
+        const goals = persona.goals || [];
+        const pains = persona.pains || [];
+        const behaviours = persona.behaviours || [];
+        
+        if (facts.length) {
+          addSubtitle("Facts (What They Know)");
+          facts.forEach((item: any) => addText(`- ${typeof item === 'string' ? item : (item.text || '')}`, 5));
+        }
+        if (goals.length) {
+          addSubtitle("Goals (What They Want)");
+          goals.forEach((item: any) => addText(`- ${typeof item === 'string' ? item : (item.text || '')}`, 5));
+        }
+        if (pains.length) {
+          addSubtitle("Pains (Challenges)");
+          pains.forEach((item: any) => addText(`- ${typeof item === 'string' ? item : (item.text || '')}`, 5));
+        }
+        if (behaviours.length) {
+          addSubtitle("Behaviours (What They Do)");
+          behaviours.forEach((item: any) => addText(`- ${typeof item === 'string' ? item : (item.text || '')}`, 5));
+        }
+        yPos += 8;
+      }
+
+      if (hypotheses?.length) {
+        checkPageBreak(60);
+        addTitle("2. HYPOTHESES", 14);
+        hypotheses.forEach((h: any, idx: number) => {
+          addSubtitle(`Hypothesis ${idx + 1}`);
+          if (h.buyerHypothesis) {
+            addText(`Buyer Hypothesis: ${h.buyerHypothesis}`);
+            if (h.buyerHypothesisRationale) addText(`  Rationale: ${h.buyerHypothesisRationale}`, 5);
+          }
+          if (h.problemHypothesis) {
+            addText(`Problem Hypothesis: ${h.problemHypothesis}`);
+            if (h.problemHypothesisRationale) addText(`  Rationale: ${h.problemHypothesisRationale}`, 5);
+          }
+          if (h.solutionHypothesis) {
+            addText(`Solution Hypothesis: ${h.solutionHypothesis}`);
+          }
+        });
+        yPos += 8;
+      }
+
+      if (journey && journey.phases?.length) {
+        checkPageBreak(60);
+        addTitle("3. BUYER JOURNEY", 14);
+        if (journey.journeyContext) addText(`Context: ${journey.journeyContext}`);
+        journey.phases.forEach((phase: any) => {
+          addSubtitle(phase.phaseName || 'Phase');
+          if (phase.tasks?.length) {
+            addText("Tasks:");
+            phase.tasks.forEach((t: string) => addText(`- ${t}`, 5));
+          }
+          if (phase.emotions?.length) {
+            addText(`Emotions: ${phase.emotions.join(", ")}`);
+          }
+          if (phase.painPoints?.length) {
+            addText(`Pain Points: ${phase.painPoints.join(", ")}`);
+          }
+          if (phase.decisionFactors?.length) {
+            addText(`Decision Factors: ${phase.decisionFactors.join(", ")}`);
+          }
+        });
+        yPos += 8;
+      }
+
+      if (predictions?.length) {
+        checkPageBreak(40);
+        addTitle("4. PREDICTIONS MATRIX", 14);
+        predictions.forEach((p: any) => {
+          const predText = p.prediction || '';
+          if (predText) {
+            addText(`- ${predText}`);
+            if (p.impactIfWrong) addText(`  Impact if Wrong: ${p.impactIfWrong}`, 5);
+            if (p.confidence) addText(`  Confidence: ${p.confidence}`, 5);
+            if (p.isRiskyPrediction) addText(`  [RISKY PREDICTION]`, 5);
+          }
+        });
+        yPos += 8;
+      }
+
+      if (interviewScripts?.length) {
+        checkPageBreak(40);
+        addTitle("5. INTERVIEW QUESTIONS", 14);
+        interviewScripts.forEach((script: any) => {
+          if (script.questions?.length) {
+            script.questions.forEach((q: any, idx: number) => {
+              addText(`${idx + 1}. ${q.question || q}`);
+            });
+          }
+        });
+        yPos += 8;
+      }
+
+      if (tenets) {
+        checkPageBreak(40);
+        addTitle("6. SOLUTION TENETS", 14);
+        const tenetsData = tenets.tenets || [];
+        tenetsData.forEach((t: any, idx: number) => {
+          addText(`${idx + 1}. ${t.title || t.tenet || t}`);
+          if (t.description) addText(`   ${t.description}`, 5);
+        });
+        yPos += 8;
+      }
+
+      if (pressRelease) {
+        checkPageBreak(60);
+        addTitle("7. PRESS RELEASE", 14);
+        if (pressRelease.headline) addSubtitle(pressRelease.headline);
+        if (pressRelease.subHeadline) addText(pressRelease.subHeadline);
+        if (pressRelease.body) addText(pressRelease.body);
+        if (pressRelease.customerQuote) {
+          addSubtitle("Customer Quote:");
+          addText(pressRelease.customerQuote);
+        }
+        yPos += 8;
+      }
+
+      if (battleCards?.length) {
+        checkPageBreak(60);
+        addTitle("8. COMPETITIVE BATTLE CARDS", 14);
+        battleCards.forEach((card: any) => {
+          const compName = card.competitorName || 'Competitor';
+          addSubtitle(`vs. ${compName}`);
+          if (card.companyOverview) addText(card.companyOverview);
+          const strengths = card.strengths || [];
+          if (strengths.length) {
+            addText("Strengths:");
+            strengths.forEach((s: any) => addText(`- ${typeof s === 'string' ? s : (s.text || '')}`, 5));
+          }
+          const weaknesses = card.weaknesses || [];
+          if (weaknesses.length) {
+            addText("Weaknesses:");
+            weaknesses.forEach((w: any) => addText(`- ${typeof w === 'string' ? w : (w.text || '')}`, 5));
+          }
+          const diffs = card.differentiators || card.ourDifferentiators || [];
+          if (diffs.length) {
+            addText("Our Differentiators:");
+            diffs.forEach((d: any) => addText(`- ${typeof d === 'string' ? d : (d.text || '')}`, 5));
+          }
+        });
+        yPos += 8;
+      }
+
+      if (salesActions) {
+        checkPageBreak(60);
+        addTitle("9. SALES ACTIONS", 14);
+        const actions = salesActions.actions || salesActions;
+        const immediate = actions.immediateActions || actions.immediate || [];
+        const shortTerm = actions.shortTermActions || actions.shortTerm || [];
+        const mediumTerm = actions.mediumTermActions || actions.mediumTerm || [];
+        
+        if (immediate.length) {
+          addSubtitle("Immediate Actions (This Week)");
+          immediate.forEach((a: any) => addText(`- ${typeof a === 'string' ? a : (a.action || a.text || '')}`, 5));
+        }
+        if (shortTerm.length) {
+          addSubtitle("Short-Term Actions (This Month)");
+          shortTerm.forEach((a: any) => addText(`- ${typeof a === 'string' ? a : (a.action || a.text || '')}`, 5));
+        }
+        if (mediumTerm.length) {
+          addSubtitle("Medium-Term Actions (This Quarter)");
+          mediumTerm.forEach((a: any) => addText(`- ${typeof a === 'string' ? a : (a.action || a.text || '')}`, 5));
+        }
+      }
+
+      const fileName = `${companyName.replace(/\s+/g, '_')}_Sales_Play_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+      toast({ title: "PDF Exported", description: `Sales play document saved as ${fileName}` });
+    } catch (error) {
+      toast({ title: "Export Failed", description: "Could not generate PDF", variant: "destructive" });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   if (canvasLoading) {
@@ -1369,6 +1605,20 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={handleExportPDF}
+                disabled={isExporting}
+                data-testid="button-export-pdf"
+              >
+                {isExporting ? (
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4 mr-1" />
+                )}
+                Export PDF
+              </Button>
               <Badge variant="outline" className="text-purple-600 border-purple-500/30 bg-purple-500/5">
                 <Brain className="w-3 h-3 mr-1" />
                 AI-Powered

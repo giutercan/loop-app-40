@@ -31,9 +31,21 @@ An Interactive Green Sheet offers role-based coaching and editable call objectiv
 #### Growth Accelerator (Working Backwards Toolkit)
 The Growth Accelerator is a strategic sales enablement tool in the Sales Workspace that creates buyer-centric sales plays using the "Working Backwards" methodology. It follows a 4 W's framework: **What to Know** (Buyer Persona 4-quadrant model, Hypotheses, Buyer Journey 5-phase, Predictions 2x2 matrix, Interview Questions), **What to Say** (Tenets, Press Release), **What to Show** (Battle Cards), **What to Do** (Actions). Key features include:
 - **Data Flow**: Discovery → GA → Evidence Pack. Discovery data auto-populates Persona Facts, Goals/Pains, Journey context. GA outputs push to Evidence Pack as "Leading Evidence."
-- **AI Generation**: Endpoints for generate-persona, generate-hypotheses, generate-journey, generate-predictions, push-to-evidence-pack.
+- **AI Generation Endpoints**: 
+  - `generate-persona`: Creates 4-quadrant buyer persona from Discovery job themes, value cases, and questions
+  - `generate-hypotheses`: Generates testable buyer hypotheses from persona insights
+  - `generate-journey`: Maps 5-phase buyer journey with activities and touchpoints
+  - `generate-predictions`: Creates 2x2 impact/confidence prediction matrix
+  - `generate-interview-script`: Produces discovery questions that validate hypotheses
+  - `generate-battle-cards`: Competitive analysis with live Perplexity API integration for market intelligence
+  - `generate-tenets`: Customer-centric solution design principles
+  - `generate-press-release`: Working Backwards style future announcement
+  - `generate-sales-actions`: Prioritized immediate/short/medium-term action plans
+  - `push-to-evidence-pack`: Exports GA data as Leading Evidence
+- **PDF Export**: Client-ready sales play document export with jsPDF, including all GA sections (persona, hypotheses, journey, predictions, interview questions, tenets, press release, battle cards, and sales actions)
 - **Database Tables**: `growth_accelerator_canvases`, `ga_buyer_personas`, `ga_hypotheses`, `ga_buyer_journeys`, `ga_predictions`, `ga_tenets`, `ga_press_releases`, `ga_competitor_battle_cards`, `ga_interview_questions`, `ga_sales_play_actions`.
 - **Handoff Integration**: GA context (buyer persona summary, hypotheses, risky predictions, competitive highlights, press release elements) automatically included in handoff packages via `growthAcceleratorContext` field.
+- **External API Integration**: Perplexity API (llama-3.1-sonar-small-128k-online model) provides real-time competitive intelligence for battle card generation when PERPLEXITY_API_KEY is configured.
 
 ### System Design Choices
 The AI strategy focuses on strategic and actionable insights, with data sorted by priority then confidence. The storage architecture is interface-based for future migration flexibility. Robust serialization handles date handling between frontend and backend. Cache management uses consistent string-first query keys and `invalidateQueries` for TanStack Query. Security includes server-side XSS protection via `sanitizeInput()` and React's default JSX escaping. Wouter is used for routing and URL-driven state. Discovery finalization locks structural changes while allowing KPI value refinement. The system employs an account-first hierarchy, with projects linked under accounts. Role detection for role-based workspaces is managed via URL parameters with validation.
