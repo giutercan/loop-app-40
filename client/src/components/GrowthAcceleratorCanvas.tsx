@@ -188,6 +188,18 @@ const JOURNEY_PHASES = [
   { id: "value_realization", name: "Value Realization", description: "Achieving promised outcomes" },
 ];
 
+interface PersonaRecommendation {
+  title: string;
+  reasoning: string;
+  priority: "primary" | "secondary" | "tertiary";
+}
+
+interface PersonaRecommendations {
+  recommendations: PersonaRecommendation[];
+  dataConfidence: "high" | "medium" | "low";
+  confidenceReason: string;
+}
+
 export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: GrowthAcceleratorCanvasProps) {
   const { toast } = useToast();
   const [activeSection, setActiveSection] = useState("what_to_know");
@@ -195,6 +207,9 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
   const [isGenerating, setIsGenerating] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [canvasTitle, setCanvasTitle] = useState(`${companyName} Sales Play`);
+  const [selectedPersonaTitle, setSelectedPersonaTitle] = useState<string | null>(null);
+  const [customPersonaTitle, setCustomPersonaTitle] = useState("");
+  const [showPersonaSelector, setShowPersonaSelector] = useState(false);
   
   const { data: canvas, isLoading: canvasLoading, refetch: refetchCanvas } = useQuery<GrowthAcceleratorCanvas>({
     queryKey: ["/api/projects", projectId, "growth-accelerator/canvases"],
@@ -289,16 +304,44 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
     },
   });
 
-  const generatePersonaMutation = useMutation({
+  const recommendPersonasMutation = useMutation({
     mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/growth-accelerator/canvases/${canvas!.id}/recommend-personas`, {
+        projectId,
+        companyName,
+      });
+      return res.json() as Promise<PersonaRecommendations>;
+    },
+    onSuccess: (data) => {
+      setShowPersonaSelector(true);
+      if (data.recommendations?.length > 0) {
+        setSelectedPersonaTitle(data.recommendations[0].title);
+      }
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to get persona recommendations.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const generatePersonaMutation = useMutation({
+    mutationFn: async (params?: { selectedTitle?: string; customTitle?: string }) => {
       const res = await apiRequest("POST", `/api/growth-accelerator/canvases/${canvas!.id}/generate-persona`, {
         projectId,
         companyName,
+        selectedTitle: params?.selectedTitle || selectedPersonaTitle,
+        customTitle: params?.customTitle || customPersonaTitle || undefined,
       });
       return res.json();
     },
     onSuccess: () => {
       refetchPersona();
+      setShowPersonaSelector(false);
+      setSelectedPersonaTitle(null);
+      setCustomPersonaTitle("");
       toast({
         title: "Persona Generated",
         description: "AI has created a buyer persona based on your discovery data.",
@@ -332,6 +375,56 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
       toast({
         title: "Error",
         description: "Failed to generate journey.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Hypotheses generation mutation
+  const generateHypothesesMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/growth-accelerator/canvases/${canvas!.id}/generate-hypotheses`, {
+        projectId,
+        personaId: persona?.id,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchHypotheses();
+      toast({
+        title: "Hypotheses Generated",
+        description: "AI has created buyer, problem, and solution hypotheses.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to generate hypotheses.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Predictions generation mutation  
+  const generatePredictionsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/growth-accelerator/canvases/${canvas!.id}/generate-predictions`, {
+        projectId,
+        hypothesisId: hypotheses?.[0]?.id,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchPredictions();
+      toast({
+        title: "Predictions Generated",
+        description: "AI has created a predictions matrix based on your hypotheses.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to generate predictions.",
         variant: "destructive",
       });
     },
@@ -788,6 +881,10 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
     }
 
     if (!persona) {
+      const recommendations = recommendPersonasMutation.data?.recommendations || [];
+      const dataConfidence = recommendPersonasMutation.data?.dataConfidence;
+      const confidenceReason = recommendPersonasMutation.data?.confidenceReason;
+
       return (
         <Card className="border-dashed">
           <CardContent className="py-8 flex flex-col items-center text-center gap-4">
@@ -797,8 +894,8 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
             <div>
               <h4 className="font-semibold mb-1">Generate Buyer Persona</h4>
               <p className="text-sm text-muted-foreground max-w-sm">
-                AI will create a 4-quadrant buyer persona using your discovery insights, 
-                company data points, and notes.
+                AI will analyze your discovery data and recommend buyer personas, 
+                or you can specify a custom target buyer.
               </p>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -811,19 +908,126 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
                 {discoveryNotes?.length || 0} notes available
               </Badge>
             </div>
-            <Button 
-              onClick={() => generatePersonaMutation.mutate()}
-              disabled={generatePersonaMutation.isPending}
-              className="gap-2"
-              data-testid="button-generate-persona"
-            >
-              {generatePersonaMutation.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Brain className="w-4 h-4" />
-              )}
-              Generate with AI
-            </Button>
+
+            {showPersonaSelector ? (
+              <div className="w-full max-w-md space-y-4 text-left">
+                {dataConfidence && (
+                  <div className={`text-xs p-2 rounded-lg ${
+                    dataConfidence === 'high' ? 'bg-emerald-500/10 text-emerald-600' :
+                    dataConfidence === 'medium' ? 'bg-amber-500/10 text-amber-600' :
+                    'bg-red-500/10 text-red-600'
+                  }`}>
+                    <span className="font-medium capitalize">{dataConfidence} confidence:</span> {confidenceReason}
+                  </div>
+                )}
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Select a recommended persona:</label>
+                  {recommendations.map((rec, idx) => (
+                    <div 
+                      key={idx}
+                      onClick={() => {
+                        setSelectedPersonaTitle(rec.title);
+                        setCustomPersonaTitle("");
+                      }}
+                      className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                        selectedPersonaTitle === rec.title && !customPersonaTitle
+                          ? 'border-blue-500 bg-blue-500/5' 
+                          : 'border-border hover:border-blue-500/50'
+                      }`}
+                      data-testid={`persona-option-${idx}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Users className="w-4 h-4 text-blue-600" />
+                          <span className="font-medium">{rec.title}</span>
+                        </div>
+                        <Badge variant="outline" className={`text-xs ${
+                          rec.priority === 'primary' ? 'text-blue-600 border-blue-500/30' :
+                          rec.priority === 'secondary' ? 'text-purple-600 border-purple-500/30' :
+                          'text-muted-foreground'
+                        }`}>
+                          {rec.priority}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">{rec.reasoning}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Or enter a custom buyer title:</label>
+                  <input
+                    type="text"
+                    value={customPersonaTitle}
+                    onChange={(e) => {
+                      setCustomPersonaTitle(e.target.value);
+                      if (e.target.value) setSelectedPersonaTitle(null);
+                    }}
+                    placeholder="e.g., Chief Financial Officer"
+                    className="w-full p-2 text-sm border rounded-lg bg-background"
+                    data-testid="input-custom-persona-title"
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      setShowPersonaSelector(false);
+                      setSelectedPersonaTitle(null);
+                      setCustomPersonaTitle("");
+                    }}
+                    data-testid="button-cancel-persona"
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={() => generatePersonaMutation.mutate({
+                      selectedTitle: selectedPersonaTitle || undefined,
+                      customTitle: customPersonaTitle || undefined,
+                    })}
+                    disabled={generatePersonaMutation.isPending || (!selectedPersonaTitle && !customPersonaTitle)}
+                    className="gap-2 flex-1"
+                    data-testid="button-confirm-generate-persona"
+                  >
+                    {generatePersonaMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Brain className="w-4 h-4" />
+                    )}
+                    Generate Persona
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <Button 
+                  onClick={() => recommendPersonasMutation.mutate()}
+                  disabled={recommendPersonasMutation.isPending}
+                  className="gap-2"
+                  data-testid="button-recommend-personas"
+                >
+                  {recommendPersonasMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4" />
+                  )}
+                  Get AI Recommendations
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    setShowPersonaSelector(true);
+                  }}
+                  className="gap-2"
+                  data-testid="button-manual-persona"
+                >
+                  <Users className="w-4 h-4" />
+                  Enter Custom Persona
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       );
@@ -1028,110 +1232,183 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
   const renderHypotheses = () => {
     const currentHypothesis = hypotheses?.[0];
 
+    if (!currentHypothesis) {
+      return (
+        <Card className="border-dashed">
+          <CardContent className="py-8 flex flex-col items-center text-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center">
+              <Lightbulb className="w-6 h-6 text-purple-600" />
+            </div>
+            <div>
+              <h4 className="font-semibold mb-1">Generate Hypotheses</h4>
+              <p className="text-sm text-muted-foreground max-w-sm">
+                AI will create Buyer, Problem, and Solution hypotheses based on your persona.
+              </p>
+            </div>
+            <Button 
+              onClick={() => generateHypothesesMutation.mutate()}
+              disabled={generateHypothesesMutation.isPending || !persona}
+              className="gap-2"
+              data-testid="button-generate-hypotheses"
+            >
+              {generateHypothesesMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Brain className="w-4 h-4" />
+              )}
+              Generate Hypotheses
+            </Button>
+            {!persona && (
+              <p className="text-xs text-muted-foreground">Complete buyer persona first</p>
+            )}
+          </CardContent>
+        </Card>
+      );
+    }
+
     return (
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
-              <Lightbulb className="w-5 h-5 text-purple-600" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                <Lightbulb className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <CardTitle>Hypotheses</CardTitle>
+                <CardDescription>Buyer, Problem, and Solution hypotheses to validate</CardDescription>
+              </div>
             </div>
-            <div>
-              <CardTitle>Hypotheses</CardTitle>
-              <CardDescription>Buyer, Problem, and Solution hypotheses to validate</CardDescription>
-            </div>
+            <Badge variant="outline" className="gap-1 text-purple-600 border-purple-500/30 bg-purple-500/5">
+              <Sparkles className="w-3 h-3" />
+              AI Generated
+            </Badge>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {currentHypothesis ? (
-            <div className="space-y-4">
-              <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/20">
-                <h4 className="font-semibold text-blue-600 mb-2 flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  Buyer Hypothesis
-                </h4>
-                <p className="text-sm">{currentHypothesis.buyerHypothesis}</p>
-                {currentHypothesis.buyerHypothesisRationale && (
-                  <p className="text-xs text-muted-foreground mt-2 italic">
-                    Rationale: {currentHypothesis.buyerHypothesisRationale}
-                  </p>
-                )}
-              </div>
-              <div className="p-4 rounded-lg bg-red-500/5 border border-red-500/20">
-                <h4 className="font-semibold text-red-600 mb-2 flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4" />
-                  Problem Hypothesis
-                </h4>
-                <p className="text-sm">{currentHypothesis.problemHypothesis}</p>
-              </div>
-              <div className="p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
-                <h4 className="font-semibold text-emerald-600 mb-2 flex items-center gap-2">
-                  <Lightbulb className="w-4 h-4" />
-                  Solution Hypothesis
-                </h4>
-                <p className="text-sm">{currentHypothesis.solutionHypothesis}</p>
-              </div>
+          <div className="space-y-4">
+            <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/20">
+              <h4 className="font-semibold text-blue-600 mb-2 flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                Buyer Hypothesis
+              </h4>
+              <p className="text-sm">{currentHypothesis.buyerHypothesis}</p>
+              {currentHypothesis.buyerHypothesisRationale && (
+                <p className="text-xs text-muted-foreground mt-2 italic">
+                  Rationale: {currentHypothesis.buyerHypothesisRationale}
+                </p>
+              )}
             </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <p className="text-sm">Complete the buyer persona to generate hypotheses</p>
+            <div className="p-4 rounded-lg bg-red-500/5 border border-red-500/20">
+              <h4 className="font-semibold text-red-600 mb-2 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                Problem Hypothesis
+              </h4>
+              <p className="text-sm">{currentHypothesis.problemHypothesis}</p>
+              {currentHypothesis.problemHypothesisRationale && (
+                <p className="text-xs text-muted-foreground mt-2 italic">
+                  Rationale: {currentHypothesis.problemHypothesisRationale}
+                </p>
+              )}
             </div>
-          )}
+            <div className="p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+              <h4 className="font-semibold text-emerald-600 mb-2 flex items-center gap-2">
+                <Lightbulb className="w-4 h-4" />
+                Solution Hypothesis
+              </h4>
+              <p className="text-sm">{currentHypothesis.solutionHypothesis}</p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     );
   };
 
   const renderPredictionsGrid = () => {
+    if (!predictions || predictions.length === 0) {
+      return (
+        <Card className="border-dashed">
+          <CardContent className="py-8 flex flex-col items-center text-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center">
+              <Grid3x3 className="w-6 h-6 text-orange-600" />
+            </div>
+            <div>
+              <h4 className="font-semibold mb-1">Generate Predictions</h4>
+              <p className="text-sm text-muted-foreground max-w-sm">
+                AI will create a 2x2 predictions matrix based on your hypotheses.
+              </p>
+            </div>
+            <Button 
+              onClick={() => generatePredictionsMutation.mutate()}
+              disabled={generatePredictionsMutation.isPending || !hypotheses?.length}
+              className="gap-2"
+              data-testid="button-generate-predictions"
+            >
+              {generatePredictionsMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Brain className="w-4 h-4" />
+              )}
+              Generate Predictions
+            </Button>
+            {!hypotheses?.length && (
+              <p className="text-xs text-muted-foreground">Complete hypotheses first</p>
+            )}
+          </CardContent>
+        </Card>
+      );
+    }
+
     return (
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
-              <Grid3x3 className="w-5 h-5 text-orange-600" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
+                <Grid3x3 className="w-5 h-5 text-orange-600" />
+              </div>
+              <div>
+                <CardTitle>Predictions Grid</CardTitle>
+                <CardDescription>2x2 matrix of confidence vs impact predictions</CardDescription>
+              </div>
             </div>
-            <div>
-              <CardTitle>Predictions Grid</CardTitle>
-              <CardDescription>2x2 matrix of confidence vs impact predictions</CardDescription>
-            </div>
+            <Badge variant="outline" className="gap-1 text-purple-600 border-purple-500/30 bg-purple-500/5">
+              <Sparkles className="w-3 h-3" />
+              AI Generated
+            </Badge>
           </div>
         </CardHeader>
         <CardContent>
-          {predictions && predictions.length > 0 ? (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 rounded-lg bg-red-500/5 border border-red-500/20">
-                <h4 className="font-semibold text-red-600 text-xs uppercase mb-2">High Impact, Low Confidence</h4>
-                <ul className="space-y-2">
-                  {predictions
-                    .filter(p => p.isRiskyPrediction)
-                    .slice(0, 3)
-                    .map((pred, i) => (
-                      <li key={i} className="text-sm flex items-start gap-2">
-                        <AlertTriangle className="w-3 h-3 mt-1 text-red-500" />
-                        {pred.prediction}
-                      </li>
-                    ))}
-                </ul>
-              </div>
-              <div className="p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
-                <h4 className="font-semibold text-emerald-600 text-xs uppercase mb-2">High Impact, High Confidence</h4>
-                <ul className="space-y-2">
-                  {predictions
-                    .filter(p => !p.isRiskyPrediction && p.confidence === "high")
-                    .slice(0, 3)
-                    .map((pred, i) => (
-                      <li key={i} className="text-sm flex items-start gap-2">
-                        <CheckCircle className="w-3 h-3 mt-1 text-emerald-500" />
-                        {pred.prediction}
-                      </li>
-                    ))}
-                </ul>
-              </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 rounded-lg bg-red-500/5 border border-red-500/20">
+              <h4 className="font-semibold text-red-600 text-xs uppercase mb-2">High Impact, Low Confidence</h4>
+              <ul className="space-y-2">
+                {predictions
+                  .filter(p => p.isRiskyPrediction)
+                  .slice(0, 3)
+                  .map((pred, i) => (
+                    <li key={i} className="text-sm flex items-start gap-2">
+                      <AlertTriangle className="w-3 h-3 mt-1 text-red-500" />
+                      {pred.prediction}
+                    </li>
+                  ))}
+              </ul>
             </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <p className="text-sm">Complete hypotheses to generate predictions</p>
+            <div className="p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+              <h4 className="font-semibold text-emerald-600 text-xs uppercase mb-2">High Impact, High Confidence</h4>
+              <ul className="space-y-2">
+                {predictions
+                  .filter(p => !p.isRiskyPrediction && p.confidence === "high")
+                  .slice(0, 3)
+                  .map((pred, i) => (
+                    <li key={i} className="text-sm flex items-start gap-2">
+                      <CheckCircle className="w-3 h-3 mt-1 text-emerald-500" />
+                      {pred.prediction}
+                    </li>
+                  ))}
+              </ul>
             </div>
-          )}
+          </div>
         </CardContent>
       </Card>
     );

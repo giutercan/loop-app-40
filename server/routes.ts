@@ -15050,10 +15050,86 @@ ${context.intelligenceData ? JSON.stringify(context.intelligenceData, null, 2).s
   });
 
   // AI Generation Endpoints for Growth Accelerator
-  app.post("/api/growth-accelerator/canvases/:id/generate-persona", async (req, res) => {
+  
+  // Recommend potential buyer personas based on Discovery data
+  app.post("/api/growth-accelerator/canvases/:id/recommend-personas", async (req, res) => {
     try {
       const canvasId = parseInt(req.params.id);
       const { projectId, companyName } = req.body;
+
+      // Gather discovery data
+      const notes = await storage.getDiscoveryNotes(projectId);
+      const project = await storage.getProject(projectId);
+      const companyData = await storage.getCompanyDataPoints(projectId);
+      const jobThemes = await storage.getJobThemes(projectId);
+      const valueCases = await storage.getValueCases(projectId);
+      const discoveryQuestions = await storage.getDiscoveryQuestions(projectId);
+
+      const discoveryContext = {
+        companyName: companyName || project?.name || "Target Company",
+        notes: notes ? [{ content: notes.content, category: notes.category || 'general' }] : [],
+        companyData: companyData.map((d: any) => ({ category: d.category, dataPoint: d.dataPoint, value: d.value })),
+        jobThemes: jobThemes.map((j: any) => ({ jobName: j.jobName, description: j.description, priorities: j.priorities })),
+        valueCases: valueCases.map((v: any) => ({ challenge: v.challenge, solution: v.solution, outcome: v.outcome })),
+        discoveryQuestions: discoveryQuestions.filter((q: any) => q.response).map((q: any) => ({ question: q.questionText, answer: q.response })),
+      };
+
+      const prompt = `You are an expert sales strategist. Based on the discovery data below, identify 2-3 potential buyer personas that would be most relevant for this engagement.
+
+Company: ${discoveryContext.companyName}
+
+Discovery Notes:
+${discoveryContext.notes.map((n: any) => `- [${n.category}] ${n.content}`).join('\n') || 'No notes available'}
+
+Company Data:
+${discoveryContext.companyData.map((d: any) => `- ${d.category}: ${d.dataPoint} = ${d.value}`).join('\n') || 'No company data available'}
+
+Job Themes & Priorities:
+${discoveryContext.jobThemes.map((j: any) => `- ${j.jobName}: ${j.description || ''}`).join('\n') || 'No job themes available'}
+
+Value Cases:
+${discoveryContext.valueCases.map((v: any) => `- Challenge: ${v.challenge}, Outcome: ${v.outcome}`).join('\n') || 'No value cases available'}
+
+Discovery Q&A:
+${discoveryContext.discoveryQuestions.map((q: any) => `- Q: ${q.question} A: ${q.answer}`).join('\n') || 'No discovery answers available'}
+
+Analyze this data and recommend 2-3 buyer personas. For each persona, provide:
+- title: The job title (e.g., "VP of Human Resources", "Chief Operating Officer")
+- reasoning: Why this persona is relevant based on the discovery data (1-2 sentences)
+- priority: "primary", "secondary", or "tertiary"
+
+Return JSON in this exact format:
+{
+  "recommendations": [
+    {"title": "VP of Human Resources", "reasoning": "Discovery data mentions workforce transformation initiatives", "priority": "primary"},
+    {"title": "Chief Operating Officer", "reasoning": "Value cases focus on operational efficiency", "priority": "secondary"}
+  ],
+  "dataConfidence": "high" | "medium" | "low",
+  "confidenceReason": "Explanation of why confidence is at this level"
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+      });
+
+      const aiResult = JSON.parse(response.choices[0].message.content || "{}");
+      res.json(aiResult);
+    } catch (error: any) {
+      console.error("Error recommending personas:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/growth-accelerator/canvases/:id/generate-persona", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const { projectId, companyName, selectedTitle, customTitle } = req.body;
+      
+      // Determine the target persona title (user-selected, custom, or AI will decide)
+      const targetTitle = customTitle || selectedTitle || null;
 
       // Gather discovery data from available sources
       const notes = await storage.getDiscoveryNotes(projectId);
@@ -15074,7 +15150,13 @@ ${context.intelligenceData ? JSON.stringify(context.intelligenceData, null, 2).s
       };
 
       // Generate persona using AI
+      const titleInstruction = targetTitle 
+        ? `Create a buyer persona specifically for a "${targetTitle}" at this company.`
+        : `Based on the discovery data, identify the most relevant buyer persona.`;
+      
       const prompt = `You are an expert sales strategist helping to create a detailed buyer persona based on discovery data.
+
+${titleInstruction}
 
 Company: ${discoveryContext.companyName}
 
