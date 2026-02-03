@@ -538,6 +538,7 @@ export interface IStorage {
   
   // Growth Accelerator - Buyer Personas
   getBuyerPersonas(canvasId: number): Promise<BuyerPersona[]>;
+  getGaBuyerPersonas(canvasId: number): Promise<BuyerPersona[]>;
   getBuyerPersonaById(id: number): Promise<BuyerPersona | undefined>;
   createBuyerPersona(persona: InsertBuyerPersona): Promise<BuyerPersona>;
   updateBuyerPersona(id: number, persona: Partial<InsertBuyerPersona>): Promise<BuyerPersona | undefined>;
@@ -548,12 +549,15 @@ export interface IStorage {
   getGaHypothesisById(id: number): Promise<GaHypothesis | undefined>;
   createGaHypothesis(hypothesis: InsertGaHypothesis): Promise<GaHypothesis>;
   updateGaHypothesis(id: number, hypothesis: Partial<InsertGaHypothesis>): Promise<GaHypothesis | undefined>;
+  deleteGaHypothesis(id: number): Promise<void>;
   
   // Growth Accelerator - Buyer Journey
   getBuyerJourneys(canvasId: number): Promise<BuyerJourney[]>;
+  getGaBuyerJourneys(canvasId: number): Promise<BuyerJourney[]>;
   getBuyerJourneyById(id: number): Promise<BuyerJourney | undefined>;
   createBuyerJourney(journey: InsertBuyerJourney): Promise<BuyerJourney>;
   updateBuyerJourney(id: number, journey: Partial<InsertBuyerJourney>): Promise<BuyerJourney | undefined>;
+  deleteGaBuyerJourney(id: number): Promise<void>;
   
   // Growth Accelerator - Predictions
   getGaPredictions(canvasId: number): Promise<GaPrediction[]>;
@@ -2926,6 +2930,10 @@ export class DbStorage implements IStorage {
       .where(eq(schema.buyerPersonas.canvasId, canvasId));
   }
   
+  async getGaBuyerPersonas(canvasId: number): Promise<BuyerPersona[]> {
+    return this.getBuyerPersonas(canvasId);
+  }
+  
   async getBuyerPersonaById(id: number): Promise<BuyerPersona | undefined> {
     const results = await db.select().from(schema.buyerPersonas)
       .where(eq(schema.buyerPersonas.id, id));
@@ -2974,10 +2982,18 @@ export class DbStorage implements IStorage {
     return results[0];
   }
   
+  async deleteGaHypothesis(id: number): Promise<void> {
+    await db.delete(schema.gaHypotheses).where(eq(schema.gaHypotheses.id, id));
+  }
+  
   // Growth Accelerator - Buyer Journey
   async getBuyerJourneys(canvasId: number): Promise<BuyerJourney[]> {
     return await db.select().from(schema.buyerJourneys)
       .where(eq(schema.buyerJourneys.canvasId, canvasId));
+  }
+  
+  async getGaBuyerJourneys(canvasId: number): Promise<BuyerJourney[]> {
+    return this.getBuyerJourneys(canvasId);
   }
   
   async getBuyerJourneyById(id: number): Promise<BuyerJourney | undefined> {
@@ -2997,6 +3013,10 @@ export class DbStorage implements IStorage {
       .where(eq(schema.buyerJourneys.id, id))
       .returning();
     return results[0];
+  }
+  
+  async deleteGaBuyerJourney(id: number): Promise<void> {
+    await db.delete(schema.buyerJourneys).where(eq(schema.buyerJourneys.id, id));
   }
   
   // Growth Accelerator - Predictions

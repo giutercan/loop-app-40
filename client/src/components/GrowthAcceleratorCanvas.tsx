@@ -356,6 +356,34 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
     },
   });
 
+  const resetPersonaMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", `/api/growth-accelerator/canvases/${canvas!.id}/personas`);
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchPersona();
+      refetchHypotheses();
+      refetchJourney();
+      refetchPredictions();
+      setShowPersonaSelector(false);
+      setSelectedPersonaTitle(null);
+      setCustomPersonaTitle("");
+      setPersonaRecommendations(null);
+      toast({
+        title: "Persona Reset",
+        description: "Persona and related data have been cleared. You can now generate a new persona.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to reset persona.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const generateJourneyMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", `/api/growth-accelerator/canvases/${canvas!.id}/generate-journey`, {
@@ -1054,12 +1082,29 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
               </p>
             </div>
           </div>
-          {persona.aiGenerated && (
-            <Badge variant="outline" className="gap-1 text-purple-600 border-purple-500/30 bg-purple-500/5">
-              <Sparkles className="w-3 h-3" />
-              AI Generated
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {persona.aiGenerated && (
+              <Badge variant="outline" className="gap-1 text-purple-600 border-purple-500/30 bg-purple-500/5">
+                <Sparkles className="w-3 h-3" />
+                AI Generated
+              </Badge>
+            )}
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => resetPersonaMutation.mutate()}
+              disabled={resetPersonaMutation.isPending}
+              className="gap-1 text-red-600 border-red-500/30 hover:bg-red-500/10"
+              data-testid="button-reset-persona"
+            >
+              {resetPersonaMutation.isPending ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <RefreshCw className="w-3 h-3" />
+              )}
+              Reset
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">

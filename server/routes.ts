@@ -15013,6 +15013,34 @@ ${context.intelligenceData ? JSON.stringify(context.intelligenceData, null, 2).s
     }
   });
 
+  // Reset/clear all personas for a canvas
+  app.delete("/api/growth-accelerator/canvases/:id/personas", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      // Delete all personas for this canvas
+      const personas = await storage.getBuyerPersonas(canvasId);
+      for (const persona of personas) {
+        await storage.deleteBuyerPersona(persona.id);
+      }
+      // Also clear related data (hypotheses, journeys, predictions)
+      const hypotheses = await storage.getGaHypotheses(canvasId);
+      for (const h of hypotheses) {
+        await storage.deleteGaHypothesis(h.id);
+      }
+      const journeys = await storage.getGaBuyerJourneys(canvasId);
+      for (const j of journeys) {
+        await storage.deleteGaBuyerJourney(j.id);
+      }
+      const predictions = await storage.getGaPredictions(canvasId);
+      for (const p of predictions) {
+        await storage.deleteGaPrediction(p.id);
+      }
+      res.json({ success: true, message: "Persona and related data cleared" });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/growth-accelerator/personas/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -15339,7 +15367,9 @@ Return JSON in this format:
       const canvasId = parseInt(req.params.id);
       const { personaId, projectId } = req.body;
 
-      const persona = personaId ? await storage.getBuyerPersona(personaId) : null;
+      // Get personas for this canvas and find the matching one
+      const personas = await storage.getGaBuyerPersonas(canvasId);
+      const persona = personaId ? personas.find(p => p.id === personaId) : personas[0];
       const project = await storage.getProject(projectId);
 
       const prompt = `You are an expert in sales hypothesis creation. Generate three interconnected hypotheses based on this buyer persona.
