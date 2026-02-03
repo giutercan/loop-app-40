@@ -15085,29 +15085,77 @@ ${context.intelligenceData ? JSON.stringify(context.intelligenceData, null, 2).s
       const canvasId = parseInt(req.params.id);
       const { projectId, companyName } = req.body;
 
-      // Gather discovery data
-      const notes = await storage.getDiscoveryNotes(projectId);
-      const project = await storage.getProject(projectId);
-      const companyData = await storage.getCompanyDataPoints(projectId);
-      const jobThemes = await storage.getJobThemes(projectId);
-      const valueCases = await storage.getValueCases(projectId);
-      const discoveryQuestions = await storage.getDiscoveryQuestions(projectId);
+      // Gather discovery data from all sources
+      const [notes, project, companyData, jobThemes, valueCases, discoveryQuestions, attachments, enrichedContext] = await Promise.all([
+        storage.getDiscoveryNotes(projectId),
+        storage.getProject(projectId),
+        storage.getCompanyDataPoints(projectId),
+        storage.getJobThemes(projectId),
+        storage.getValueCases(projectId),
+        storage.getDiscoveryQuestions(projectId),
+        storage.getAttachments(projectId),
+        getEnrichedDiscoveryContext(projectId, storage)
+      ]);
+
+      // Build structured discovery notes from all fields
+      const discoveryNotesContent: string[] = [];
+      if (notes?.freeformNotes) discoveryNotesContent.push(`Freeform Notes: ${notes.freeformNotes}`);
+      if (notes?.keyStakeholder) discoveryNotesContent.push(`Key Stakeholder: ${notes.keyStakeholder}`);
+      if (notes?.topChallenges) discoveryNotesContent.push(`Top Challenges: ${notes.topChallenges}`);
+      if (notes?.timeline) discoveryNotesContent.push(`Timeline: ${notes.timeline}`);
+
+      // Extract content from attachments (voice transcriptions and text files)
+      const attachmentContent: string[] = [];
+      for (const att of attachments) {
+        if (att.type === 'voice' && att.content) {
+          attachmentContent.push(`[Voice Note Transcription] ${att.content}`);
+        } else if (att.type === 'file' && att.mimeType?.startsWith('text/') && att.content) {
+          // For text files, decode base64 content
+          try {
+            const decoded = Buffer.from(att.content, 'base64').toString('utf-8');
+            attachmentContent.push(`[File: ${att.fileName}] ${decoded.substring(0, 2000)}`);
+          } catch (e) {
+            // Skip if decoding fails
+          }
+        }
+      }
 
       const discoveryContext = {
         companyName: companyName || project?.name || "Target Company",
-        notes: notes ? [{ content: notes.content, category: notes.category || 'general' }] : [],
         companyData: companyData.map((d: any) => ({ category: d.category, dataPoint: d.dataPoint, value: d.value })),
         jobThemes: jobThemes.map((j: any) => ({ jobName: j.jobName, description: j.description, priorities: j.priorities })),
         valueCases: valueCases.map((v: any) => ({ challenge: v.challenge, solution: v.solution, outcome: v.outcome })),
         discoveryQuestions: discoveryQuestions.filter((q: any) => q.response).map((q: any) => ({ question: q.questionText, answer: q.response })),
       };
 
+      // Build discovery insights from enriched context
+      const discoveryInsights: string[] = [];
+      if (enrichedContext.artifactInsights.keyInsights.length > 0) {
+        discoveryInsights.push(`Key Insights: ${enrichedContext.artifactInsights.keyInsights.slice(0, 5).join('; ')}`);
+      }
+      if (enrichedContext.artifactInsights.summary) {
+        discoveryInsights.push(`Meeting Summaries: ${enrichedContext.artifactInsights.summary.substring(0, 500)}`);
+      }
+      if (enrichedContext.artifactInsights.stakeholderMentions.length > 0) {
+        discoveryInsights.push(`Stakeholders Mentioned: ${enrichedContext.artifactInsights.stakeholderMentions.slice(0, 5).join(', ')}`);
+      }
+      if (enrichedContext.artifactInsights.risks.length > 0) {
+        discoveryInsights.push(`Identified Risks: ${enrichedContext.artifactInsights.risks.slice(0, 3).join('; ')}`);
+      }
+
       const prompt = `You are an expert sales strategist. Based on the discovery data below, identify 2-3 potential buyer personas that would be most relevant for this engagement.
 
 Company: ${discoveryContext.companyName}
 
 Discovery Notes:
-${discoveryContext.notes.map((n: any) => `- [${n.category}] ${n.content}`).join('\n') || 'No notes available'}
+${discoveryNotesContent.length > 0 ? discoveryNotesContent.join('\n') : 'No notes available'}
+
+Discovery Insights (AI-analyzed from meetings and artifacts):
+${discoveryInsights.length > 0 ? discoveryInsights.join('\n') : 'No AI insights available'}
+${enrichedContext.combinedContext ? `\nAdditional Context: ${enrichedContext.combinedContext}` : ''}
+
+Attachments & Voice Notes:
+${attachmentContent.length > 0 ? attachmentContent.join('\n') : 'No attachments available'}
 
 Company Data:
 ${discoveryContext.companyData.map((d: any) => `- ${d.category}: ${d.dataPoint} = ${d.value}`).join('\n') || 'No company data available'}
@@ -15159,18 +15207,58 @@ Return JSON in this exact format:
       // Determine the target persona title (user-selected, custom, or AI will decide)
       const targetTitle = customTitle || selectedTitle || null;
 
-      // Gather discovery data from available sources
-      const notes = await storage.getDiscoveryNotes(projectId);
-      const project = await storage.getProject(projectId);
-      const companyData = await storage.getCompanyDataPoints(projectId);
-      const jobThemes = await storage.getJobThemes(projectId);
-      const valueCases = await storage.getValueCases(projectId);
-      const discoveryQuestions = await storage.getDiscoveryQuestions(projectId);
+      // Gather discovery data from all available sources
+      const [notes, project, companyData, jobThemes, valueCases, discoveryQuestions, attachments, enrichedContext] = await Promise.all([
+        storage.getDiscoveryNotes(projectId),
+        storage.getProject(projectId),
+        storage.getCompanyDataPoints(projectId),
+        storage.getJobThemes(projectId),
+        storage.getValueCases(projectId),
+        storage.getDiscoveryQuestions(projectId),
+        storage.getAttachments(projectId),
+        getEnrichedDiscoveryContext(projectId, storage)
+      ]);
+
+      // Build structured discovery notes from all fields
+      const discoveryNotesContent: string[] = [];
+      if (notes?.freeformNotes) discoveryNotesContent.push(`Freeform Notes: ${notes.freeformNotes}`);
+      if (notes?.keyStakeholder) discoveryNotesContent.push(`Key Stakeholder: ${notes.keyStakeholder}`);
+      if (notes?.topChallenges) discoveryNotesContent.push(`Top Challenges: ${notes.topChallenges}`);
+      if (notes?.timeline) discoveryNotesContent.push(`Timeline: ${notes.timeline}`);
+
+      // Extract content from attachments (voice transcriptions and text files)
+      const attachmentContent: string[] = [];
+      for (const att of attachments) {
+        if (att.type === 'voice' && att.content) {
+          attachmentContent.push(`[Voice Note Transcription] ${att.content}`);
+        } else if (att.type === 'file' && att.mimeType?.startsWith('text/') && att.content) {
+          try {
+            const decoded = Buffer.from(att.content, 'base64').toString('utf-8');
+            attachmentContent.push(`[File: ${att.fileName}] ${decoded.substring(0, 2000)}`);
+          } catch (e) {
+            // Skip if decoding fails
+          }
+        }
+      }
+
+      // Build discovery insights from enriched context
+      const discoveryInsights: string[] = [];
+      if (enrichedContext.artifactInsights.keyInsights.length > 0) {
+        discoveryInsights.push(`Key Insights: ${enrichedContext.artifactInsights.keyInsights.slice(0, 5).join('; ')}`);
+      }
+      if (enrichedContext.artifactInsights.summary) {
+        discoveryInsights.push(`Meeting Summaries: ${enrichedContext.artifactInsights.summary.substring(0, 500)}`);
+      }
+      if (enrichedContext.artifactInsights.stakeholderMentions.length > 0) {
+        discoveryInsights.push(`Stakeholders Mentioned: ${enrichedContext.artifactInsights.stakeholderMentions.slice(0, 5).join(', ')}`);
+      }
+      if (enrichedContext.artifactInsights.risks.length > 0) {
+        discoveryInsights.push(`Identified Risks: ${enrichedContext.artifactInsights.risks.slice(0, 3).join('; ')}`);
+      }
 
       // Build context for AI from all available discovery data
       const discoveryContext = {
         companyName: companyName || project?.name || "Target Company",
-        notes: notes ? [{ content: notes.content, category: notes.category || 'general' }] : [],
         companyData: companyData.map((d: any) => ({ category: d.category, dataPoint: d.dataPoint, value: d.value })),
         jobThemes: jobThemes.map((j: any) => ({ jobName: j.jobName, description: j.description, priorities: j.priorities })),
         valueCases: valueCases.map((v: any) => ({ challenge: v.challenge, solution: v.solution, outcome: v.outcome })),
@@ -15189,7 +15277,14 @@ ${titleInstruction}
 Company: ${discoveryContext.companyName}
 
 Discovery Notes:
-${discoveryContext.notes.map((n: any) => `- [${n.category}] ${n.content}`).join('\n') || 'No notes available'}
+${discoveryNotesContent.length > 0 ? discoveryNotesContent.join('\n') : 'No notes available'}
+
+Discovery Insights (AI-analyzed from meetings and artifacts):
+${discoveryInsights.length > 0 ? discoveryInsights.join('\n') : 'No AI insights available'}
+${enrichedContext.combinedContext ? `\nAdditional Context: ${enrichedContext.combinedContext}` : ''}
+
+Attachments & Voice Notes:
+${attachmentContent.length > 0 ? attachmentContent.join('\n') : 'No attachments available'}
 
 Company Data:
 ${discoveryContext.companyData.map((d: any) => `- ${d.category}: ${d.dataPoint} = ${d.value}`).join('\n') || 'No company data available'}
