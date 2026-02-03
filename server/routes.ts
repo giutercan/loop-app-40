@@ -15055,18 +15055,22 @@ ${context.intelligenceData ? JSON.stringify(context.intelligenceData, null, 2).s
       const canvasId = parseInt(req.params.id);
       const { projectId, companyName } = req.body;
 
-      // Gather discovery data
-      const insights = await storage.getProjectInsights(projectId);
+      // Gather discovery data from available sources
       const notes = await storage.getDiscoveryNotes(projectId);
       const project = await storage.getProject(projectId);
       const companyData = await storage.getCompanyDataPoints(projectId);
+      const jobThemes = await storage.getJobThemes(projectId);
+      const valueCases = await storage.getValueCases(projectId);
+      const discoveryQuestions = await storage.getDiscoveryQuestions(projectId);
 
-      // Build context for AI
+      // Build context for AI from all available discovery data
       const discoveryContext = {
         companyName: companyName || project?.name || "Target Company",
-        insights: insights.map((i: any) => ({ label: i.label, value: i.value, confidence: i.confidence })),
-        notes: notes.map((n: any) => ({ content: n.content, category: n.category })),
+        notes: notes ? [{ content: notes.content, category: notes.category || 'general' }] : [],
         companyData: companyData.map((d: any) => ({ category: d.category, dataPoint: d.dataPoint, value: d.value })),
+        jobThemes: jobThemes.map((j: any) => ({ jobName: j.jobName, description: j.description, priorities: j.priorities })),
+        valueCases: valueCases.map((v: any) => ({ challenge: v.challenge, solution: v.solution, outcome: v.outcome })),
+        discoveryQuestions: discoveryQuestions.filter((q: any) => q.response).map((q: any) => ({ question: q.questionText, answer: q.response })),
       };
 
       // Generate persona using AI
@@ -15074,14 +15078,20 @@ ${context.intelligenceData ? JSON.stringify(context.intelligenceData, null, 2).s
 
 Company: ${discoveryContext.companyName}
 
-Discovery Insights:
-${discoveryContext.insights.map((i: any) => `- ${i.label}: ${i.value} (confidence: ${i.confidence})`).join('\n')}
-
 Discovery Notes:
-${discoveryContext.notes.map((n: any) => `- [${n.category}] ${n.content}`).join('\n')}
+${discoveryContext.notes.map((n: any) => `- [${n.category}] ${n.content}`).join('\n') || 'No notes available'}
 
 Company Data:
-${discoveryContext.companyData.map((d: any) => `- ${d.category}: ${d.dataPoint} = ${d.value}`).join('\n')}
+${discoveryContext.companyData.map((d: any) => `- ${d.category}: ${d.dataPoint} = ${d.value}`).join('\n') || 'No company data available'}
+
+Job Themes & Priorities:
+${discoveryContext.jobThemes.map((j: any) => `- ${j.jobName}: ${j.description || ''} ${j.priorities ? JSON.stringify(j.priorities) : ''}`).join('\n') || 'No job themes available'}
+
+Value Cases:
+${discoveryContext.valueCases.map((v: any) => `- Challenge: ${v.challenge}, Solution: ${v.solution}, Outcome: ${v.outcome}`).join('\n') || 'No value cases available'}
+
+Discovery Q&A:
+${discoveryContext.discoveryQuestions.map((q: any) => `- Q: ${q.question} A: ${q.answer}`).join('\n') || 'No discovery answers available'}
 
 Create a detailed buyer persona with the following 4-quadrant structure:
 1. Facts (4-6 items): Demographic and firmographic facts about this buyer type
@@ -15141,7 +15151,8 @@ Return JSON in this exact format:
       }
       
       const project = await storage.getProject(projectId);
-      const insights = await storage.getProjectInsights(projectId);
+      const jobThemes = await storage.getJobThemes(projectId);
+      const valueCases = await storage.getValueCases(projectId);
 
       const prompt = `You are an expert in customer journey mapping. Create a 5-phase buyer journey map.
 
@@ -15150,8 +15161,11 @@ ${persona ? `Persona: ${persona.personaName} - ${persona.personaTitle}
 Goals: ${JSON.stringify(persona.goals)}
 Pains: ${JSON.stringify(persona.pains)}` : ""}
 
-Discovery Insights:
-${insights.slice(0, 10).map((i: any) => `- ${i.label}: ${i.value}`).join('\n')}
+Job Themes & Priorities:
+${jobThemes.slice(0, 5).map((j: any) => `- ${j.jobName}: ${j.description || ''}`).join('\n') || 'No job themes available'}
+
+Value Cases:
+${valueCases.slice(0, 5).map((v: any) => `- ${v.challenge}: ${v.outcome}`).join('\n') || 'No value cases available'}
 
 Create a buyer journey with these 5 phases: Awareness, Consideration, Decision, Implementation, Value Realization
 
@@ -15381,6 +15395,439 @@ Return JSON in this format:
       res.status(201).json(createdPredictions);
     } catch (error: any) {
       console.error("Error generating predictions:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Generate Interview Script based on persona and hypotheses
+  app.post("/api/growth-accelerator/canvases/:id/generate-interview-script", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const { projectId, personaId } = req.body;
+
+      const personas = await storage.getBuyerPersonas(canvasId);
+      const persona = personaId ? personas.find((p: any) => p.id === personaId) : personas[0];
+      const hypotheses = await storage.getGaHypotheses(canvasId);
+      const predictions = await storage.getGaPredictions(canvasId);
+      const project = await storage.getProject(projectId);
+
+      const prompt = `You are an expert sales discovery interviewer. Create a structured interview script to validate buyer hypotheses.
+
+Company: ${project?.name || "Target Company"}
+${persona ? `Persona: ${persona.personaName} - ${persona.personaTitle}
+Goals: ${JSON.stringify(persona.goals)}
+Pains: ${JSON.stringify(persona.pains)}` : "No persona defined"}
+
+Hypotheses to Validate:
+${hypotheses.map((h: any) => `- Buyer: ${h.buyerHypothesis}\n  Problem: ${h.problemHypothesis}\n  Solution: ${h.solutionHypothesis}`).join('\n') || 'No hypotheses defined'}
+
+Key Predictions to Test:
+${predictions.filter((p: any) => p.isRiskyPrediction).map((p: any) => `- ${p.prediction}`).join('\n') || 'No predictions defined'}
+
+Create an interview script with:
+1. Opening questions to build rapport and understand context (2-3 questions)
+2. Discovery questions to validate buyer hypotheses (3-4 questions)
+3. Problem validation questions to confirm pain points (3-4 questions)
+4. Solution fit questions to test solution hypotheses (2-3 questions)
+5. Closing questions to understand decision process (2 questions)
+
+For each question, include:
+- The question itself
+- What hypothesis/prediction it validates
+- Key things to listen for
+- Follow-up probes
+
+Return JSON:
+{
+  "scriptName": "Discovery Interview Script",
+  "targetRole": "${persona?.personaTitle || 'Executive'}",
+  "sections": [
+    {
+      "sectionName": "Opening",
+      "questions": [
+        {
+          "question": "Question text",
+          "validates": "Which hypothesis this validates",
+          "listenFor": ["Key signals to note"],
+          "followUps": ["Probe 1", "Probe 2"]
+        }
+      ]
+    }
+  ],
+  "interviewTips": ["Tip 1", "Tip 2"]
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+      });
+
+      const aiResult = JSON.parse(response.choices[0].message.content || "{}");
+      
+      const script = await storage.createGaInterviewScript({
+        canvasId,
+        personaId: personaId || persona?.id || null,
+        scriptName: aiResult.scriptName || "Discovery Interview Script",
+        targetRole: aiResult.targetRole || persona?.personaTitle || "",
+        sections: aiResult.sections || [],
+        interviewTips: aiResult.interviewTips || [],
+        aiGenerated: true,
+      });
+
+      res.status(201).json(script);
+    } catch (error: any) {
+      console.error("Error generating interview script:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Generate Battle Cards with competitive analysis
+  app.post("/api/growth-accelerator/canvases/:id/generate-battle-cards", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const { projectId, competitorName } = req.body;
+
+      const personas = await storage.getBuyerPersonas(canvasId);
+      const persona = personas[0];
+      const hypotheses = await storage.getGaHypotheses(canvasId);
+      const project = await storage.getProject(projectId);
+      const valueCases = await storage.getValueCases(projectId);
+
+      // Use Perplexity for live competitive intelligence if available
+      let competitiveIntel = "";
+      if (process.env.PERPLEXITY_API_KEY && competitorName) {
+        try {
+          const perplexityResponse = await fetch("https://api.perplexity.ai/chat/completions", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${process.env.PERPLEXITY_API_KEY}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              model: "llama-3.1-sonar-small-128k-online",
+              messages: [
+                { role: "user", content: `What are ${competitorName}'s main products, recent news, strengths and weaknesses in the ${project?.name || 'enterprise'} market? Focus on competitive positioning.` }
+              ]
+            })
+          });
+          const perplexityData = await perplexityResponse.json();
+          competitiveIntel = perplexityData.choices?.[0]?.message?.content || "";
+        } catch (e) {
+          console.log("Perplexity unavailable, using GPT-4o for competitive analysis");
+        }
+      }
+
+      const prompt = `You are an expert competitive intelligence analyst. Create a battle card for sales teams.
+
+Our Company: Korn Ferry
+Target Account: ${project?.name || "Target Company"}
+Competitor: ${competitorName || "Generic Competitor"}
+${persona ? `Buyer Persona: ${persona.personaName} - ${persona.personaTitle}
+Buyer Pains: ${JSON.stringify(persona.pains)}` : ""}
+
+Our Value Proposition:
+${valueCases.map((v: any) => `- ${v.challenge}: ${v.outcome}`).join('\n') || 'Consulting and advisory services'}
+
+${competitiveIntel ? `Live Competitive Intelligence:\n${competitiveIntel}` : ""}
+
+Create a comprehensive battle card with:
+1. Competitor Overview (strengths, weaknesses, market position)
+2. Win Themes (why we win against this competitor)
+3. Land Mines (traps competitor sets for us)
+4. Counter Tactics (how to respond to competitor claims)
+5. Proof Points (evidence to use against competitor)
+
+Return JSON:
+{
+  "competitorName": "${competitorName || 'Competitor'}",
+  "competitorStrengths": ["strength1", "strength2"],
+  "competitorWeaknesses": ["weakness1", "weakness2"],
+  "winThemes": [
+    { "theme": "Why we win", "talkingPoints": ["point1", "point2"] }
+  ],
+  "landMines": [
+    { "trap": "What competitor might say", "response": "How to counter" }
+  ],
+  "counterTactics": [
+    { "claim": "Competitor claim", "counter": "Our response", "proofPoints": ["evidence"] }
+  ],
+  "keyDifferentiators": ["diff1", "diff2"]
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+      });
+
+      const aiResult = JSON.parse(response.choices[0].message.content || "{}");
+      
+      const battleCard = await storage.createGaCompetitorBattleCard({
+        canvasId,
+        competitorName: aiResult.competitorName || competitorName || "Competitor",
+        competitorStrengths: aiResult.competitorStrengths || [],
+        competitorWeaknesses: aiResult.competitorWeaknesses || [],
+        winThemes: aiResult.winThemes || [],
+        landMines: aiResult.landMines || [],
+        counterTactics: aiResult.counterTactics || [],
+        keyDifferentiators: aiResult.keyDifferentiators || [],
+        aiGenerated: true,
+      });
+
+      res.status(201).json(battleCard);
+    } catch (error: any) {
+      console.error("Error generating battle card:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Generate Solution Tenets
+  app.post("/api/growth-accelerator/canvases/:id/generate-tenets", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const { projectId } = req.body;
+
+      const personas = await storage.getBuyerPersonas(canvasId);
+      const persona = personas[0];
+      const hypotheses = await storage.getGaHypotheses(canvasId);
+      const valueCases = await storage.getValueCases(projectId);
+      const project = await storage.getProject(projectId);
+
+      const prompt = `You are an expert in customer-centric product strategy using Amazon's Working Backwards methodology.
+
+Company: Korn Ferry working with ${project?.name || "Target Company"}
+${persona ? `Buyer Persona: ${persona.personaName} - ${persona.personaTitle}
+Goals: ${JSON.stringify(persona.goals)}
+Pains: ${JSON.stringify(persona.pains)}` : ""}
+
+Hypotheses:
+${hypotheses.map((h: any) => `- Problem: ${h.problemHypothesis}\n  Solution: ${h.solutionHypothesis}`).join('\n') || 'No hypotheses defined'}
+
+Value Cases:
+${valueCases.map((v: any) => `- ${v.challenge}: ${v.outcome}`).join('\n') || 'No value cases defined'}
+
+Create 5-7 Solution Tenets - these are customer-centric design principles that guide how we build and deliver value. Each tenet should:
+- Start with "We believe..." or "We will..."
+- Focus on customer outcomes, not features
+- Be memorable and actionable
+- Guide trade-off decisions
+
+Return JSON:
+{
+  "tenets": [
+    {
+      "tenetNumber": 1,
+      "tenet": "We believe [principle]...",
+      "rationale": "Why this matters to the customer",
+      "tradeoffs": "What we choose NOT to do because of this"
+    }
+  ]
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+      });
+
+      const aiResult = JSON.parse(response.choices[0].message.content || "{}");
+      
+      const tenets = await storage.createGaSolutionTenets({
+        canvasId,
+        tenets: aiResult.tenets || [],
+        aiGenerated: true,
+      });
+
+      res.status(201).json(tenets);
+    } catch (error: any) {
+      console.error("Error generating tenets:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Generate Press Release (Working Backwards style)
+  app.post("/api/growth-accelerator/canvases/:id/generate-press-release", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const { projectId } = req.body;
+
+      const personas = await storage.getBuyerPersonas(canvasId);
+      const persona = personas[0];
+      const hypotheses = await storage.getGaHypotheses(canvasId);
+      const tenets = await storage.getGaSolutionTenets(canvasId);
+      const valueCases = await storage.getValueCases(projectId);
+      const project = await storage.getProject(projectId);
+
+      const prompt = `You are an expert PR writer using Amazon's Working Backwards methodology. Create a future-dated press release announcing the successful outcome of this engagement.
+
+Company: Korn Ferry partnering with ${project?.name || "Target Company"}
+${persona ? `Key Stakeholder: ${persona.personaName} - ${persona.personaTitle}` : ""}
+
+Problem Being Solved:
+${hypotheses.map((h: any) => `- ${h.problemHypothesis}`).join('\n') || 'Transform business outcomes'}
+
+Solution Approach:
+${hypotheses.map((h: any) => `- ${h.solutionHypothesis}`).join('\n') || 'Strategic consulting partnership'}
+
+Expected Outcomes:
+${valueCases.map((v: any) => `- ${v.outcome}`).join('\n') || 'Measurable business impact'}
+
+${tenets ? `Guiding Principles:\n${JSON.stringify(tenets.tenets)}` : ""}
+
+Write a press release dated 12 months from now announcing the successful transformation. Include:
+1. Compelling headline
+2. Opening paragraph with key outcome
+3. Quote from ${persona?.personaTitle || 'client executive'}
+4. Details of what was achieved
+5. Quote from Korn Ferry partner
+6. Forward-looking statement
+
+Return JSON:
+{
+  "headline": "Compelling headline",
+  "subheadline": "Secondary headline",
+  "dateline": "City, Date",
+  "openingParagraph": "The hook paragraph",
+  "clientQuote": {
+    "quote": "What the client says",
+    "attribution": "Name, Title, Company"
+  },
+  "bodyParagraphs": ["Paragraph 1", "Paragraph 2"],
+  "partnerQuote": {
+    "quote": "What Korn Ferry says",
+    "attribution": "Name, Title, Korn Ferry"
+  },
+  "closingParagraph": "Forward-looking statement",
+  "keyMetrics": [
+    { "metric": "Metric name", "value": "XX%", "context": "improvement in..." }
+  ]
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.8,
+      });
+
+      const aiResult = JSON.parse(response.choices[0].message.content || "{}");
+      
+      const pressRelease = await storage.createGaPressRelease({
+        canvasId,
+        headline: aiResult.headline || "",
+        subheadline: aiResult.subheadline || "",
+        dateline: aiResult.dateline || "",
+        openingParagraph: aiResult.openingParagraph || "",
+        clientQuote: aiResult.clientQuote || null,
+        bodyParagraphs: aiResult.bodyParagraphs || [],
+        partnerQuote: aiResult.partnerQuote || null,
+        closingParagraph: aiResult.closingParagraph || "",
+        keyMetrics: aiResult.keyMetrics || [],
+        aiGenerated: true,
+      });
+
+      res.status(201).json(pressRelease);
+    } catch (error: any) {
+      console.error("Error generating press release:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Generate Sales Play Actions
+  app.post("/api/growth-accelerator/canvases/:id/generate-sales-actions", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const { projectId } = req.body;
+
+      // Gather all GA data for comprehensive action plan
+      const canvas = await storage.getGrowthAcceleratorCanvas(canvasId);
+      const personas = await storage.getBuyerPersonas(canvasId);
+      const hypotheses = await storage.getGaHypotheses(canvasId);
+      const journeys = await storage.getBuyerJourneys(canvasId);
+      const predictions = await storage.getGaPredictions(canvasId);
+      const battleCards = await storage.getGaCompetitorBattleCards(canvasId);
+      const project = await storage.getProject(projectId);
+
+      const persona = personas[0];
+      const journey = journeys[0];
+      const riskyPredictions = predictions.filter((p: any) => p.isRiskyPrediction);
+
+      const prompt = `You are an expert sales strategist. Based on the complete Growth Accelerator analysis, create a prioritized sales action plan.
+
+Account: ${project?.name || "Target Company"}
+Canvas: ${canvas?.title || "Sales Play"}
+
+Buyer Persona: ${persona ? `${persona.personaName} - ${persona.personaTitle}` : "Not defined"}
+
+Key Hypotheses:
+${hypotheses.map((h: any) => `- Buyer: ${h.buyerHypothesis}\n  Problem: ${h.problemHypothesis}`).join('\n') || 'Not defined'}
+
+Buyer Journey Phases:
+${journey?.phases?.map((p: any) => `- ${p.phaseName}: ${p.tasks?.join(', ') || ''}`).join('\n') || 'Not defined'}
+
+Risky Predictions to Validate:
+${riskyPredictions.map((p: any) => `- ${p.prediction}`).join('\n') || 'Not defined'}
+
+Competitive Landscape:
+${battleCards.map((b: any) => `- vs ${b.competitorName}: Win themes - ${b.winThemes?.map((w: any) => w.theme).join(', ')}`).join('\n') || 'Not defined'}
+
+Create a comprehensive sales action plan with:
+1. Immediate Actions (Next 7 days) - 3-5 high-priority actions
+2. Short-term Actions (Next 30 days) - 4-6 actions
+3. Medium-term Actions (Next 90 days) - 3-5 actions
+
+For each action, specify:
+- The specific action to take
+- Owner/responsibility (e.g., "Account Executive", "Solution Architect")
+- Which hypothesis or prediction it validates
+- Expected outcome
+- Dependencies
+
+Return JSON:
+{
+  "salesPlayName": "Action Plan for ${project?.name}",
+  "immediateActions": [
+    {
+      "action": "Specific action",
+      "owner": "Role responsible",
+      "validates": "Which hypothesis",
+      "expectedOutcome": "What success looks like",
+      "dependencies": ["Any prerequisites"]
+    }
+  ],
+  "shortTermActions": [...],
+  "mediumTermActions": [...],
+  "successMetrics": [
+    { "metric": "Metric name", "target": "Target value", "timeframe": "30 days" }
+  ]
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+      });
+
+      const aiResult = JSON.parse(response.choices[0].message.content || "{}");
+      
+      const actions = await storage.createGaSalesPlayActions({
+        canvasId,
+        salesPlayName: aiResult.salesPlayName || `Action Plan for ${project?.name}`,
+        immediateActions: aiResult.immediateActions || [],
+        shortTermActions: aiResult.shortTermActions || [],
+        mediumTermActions: aiResult.mediumTermActions || [],
+        successMetrics: aiResult.successMetrics || [],
+        aiGenerated: true,
+      });
+
+      res.status(201).json(actions);
+    } catch (error: any) {
+      console.error("Error generating sales actions:", error);
       res.status(500).json({ error: error.message });
     }
   });
