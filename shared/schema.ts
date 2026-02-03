@@ -3546,3 +3546,558 @@ export const insertBlueSheetSchema = createInsertSchema(blueSheets).omit({
 });
 export type InsertBlueSheet = z.infer<typeof insertBlueSheetSchema>;
 export type BlueSheet = typeof blueSheets.$inferSelect;
+
+// ============================================================================
+// GROWTH ACCELERATOR - Working Backwards Toolkit (WBT) Sales Play Builder
+// ============================================================================
+// A structured framework for building buyer-centric sales plays using the
+// Working Backwards methodology. Integrates with Discovery data and feeds
+// into Evidence Pack for complete sales enablement.
+
+// Growth Accelerator Canvas - Main container for a Sales Play
+export const growthAcceleratorCanvases = pgTable("growth_accelerator_canvases", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  accountId: integer("account_id").references(() => accounts.id, { onDelete: "set null" }),
+  
+  // Canvas metadata
+  title: text("title").notNull(), // e.g., "APAC Enterprise Sales Play - Leadership Development"
+  targetMarket: text("target_market"), // e.g., "Singapore", "APAC", "Global"
+  targetSolution: text("target_solution"), // e.g., "Leadership Masterclass", "Executive Assessment"
+  
+  // Workflow progress (4 W's: What to Know, What to Say, What to Show, What to Do)
+  currentSection: text("current_section", {
+    enum: ["what_to_know", "what_to_say", "what_to_show", "what_to_do"]
+  }).default("what_to_know"),
+  currentStep: text("current_step", {
+    enum: [
+      // What to Know steps
+      "buyer_persona", "buyer_hypothesis", "buyer_journey", "predictions", "discovery_interview",
+      // What to Say steps  
+      "solution_brainstorm", "solution_tenets", "solution_hypothesis", "buyer_journey_revisit", "press_release",
+      // What to Show steps
+      "competitor_analysis", "battle_cards", "sales_kit",
+      // What to Do steps
+      "seller_actions", "org_enablement"
+    ]
+  }).default("buyer_persona"),
+  
+  // Section completion tracking (0-100%)
+  sectionCompletion: jsonb("section_completion").$type<{
+    what_to_know: number;
+    what_to_say: number;
+    what_to_show: number;
+    what_to_do: number;
+  }>(),
+  
+  // AI generation tracking
+  aiGeneratedAt: timestamp("ai_generated_at"),
+  aiModelUsed: text("ai_model_used"),
+  
+  // Status
+  status: text("status", {
+    enum: ["draft", "in_progress", "ready_for_review", "approved", "shared"]
+  }).default("draft"),
+  
+  // Owner
+  ownerId: text("owner_id"),
+  ownerName: text("owner_name"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertGrowthAcceleratorCanvasSchema = createInsertSchema(growthAcceleratorCanvases).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertGrowthAcceleratorCanvas = z.infer<typeof insertGrowthAcceleratorCanvasSchema>;
+export type GrowthAcceleratorCanvas = typeof growthAcceleratorCanvases.$inferSelect;
+
+// Buyer Persona - WBT 4-quadrant persona tool
+export const buyerPersonas = pgTable("buyer_personas", {
+  id: serial("id").primaryKey(),
+  canvasId: integer("canvas_id").notNull().references(() => growthAcceleratorCanvases.id, { onDelete: "cascade" }),
+  
+  // Persona identity (this is ONE specific buyer, not a stereotype)
+  personaName: text("persona_name"), // e.g., "Jennifer Chen" - a specific individual
+  personaTitle: text("persona_title"), // e.g., "VP of Human Resources"
+  personaCompany: text("persona_company"), // e.g., "ABC Corp"
+  
+  // QUADRANT 1: Facts (20-25 items recommended)
+  // Demographic, psychographic, or other descriptors of ONE sample buyer
+  facts: jsonb("facts").$type<Array<{
+    id: string;
+    fact: string;
+    category: "demographic" | "psychographic" | "professional" | "behavioral" | "situational";
+    source?: "discovery" | "research" | "hypothesis";
+    sourceInsightId?: number; // Link to companyDataPoints if from Discovery
+    validated?: boolean;
+  }>>(),
+  
+  // QUADRANT 2: Goals (5-8 items recommended)
+  // Buyer's aspirations that are current and actionable
+  goals: jsonb("goals").$type<Array<{
+    id: string;
+    goal: string;
+    origin: "social" | "emotional" | "functional";
+    measureOfSuccess: string; // What buyer says "in their own words" if achieved
+    priority: "high" | "medium" | "low";
+    linkedToDiscovery?: number[]; // Link to discoveryInsight IDs
+    validated?: boolean;
+  }>>(),
+  
+  // QUADRANT 3: Pains (4-6 items recommended)
+  // Blockers preventing goal achievement - MUST link to at least 1 Goal
+  pains: jsonb("pains").$type<Array<{
+    id: string;
+    pain: string;
+    linkedGoalIds: string[]; // Must link to at least 1 Goal
+    urgency: "high" | "medium" | "low";
+    intensity: "high" | "medium" | "low";
+    journeyPhasesMostFelt: Array<"awareness" | "search_selection" | "purchasing" | "usage" | "repurchasing">;
+    discoveryEvidence?: string; // Supporting evidence from Discovery
+    validated?: boolean;
+  }>>(),
+  
+  // QUADRANT 4: Behaviours (3-5 items recommended)
+  // Current actions buyer is taking - MUST link to at least 1 Pain
+  behaviours: jsonb("behaviours").$type<Array<{
+    id: string;
+    behaviour: string;
+    linkedPainIds: string[]; // Must link to at least 1 Pain
+    effortLevel: "seeking_solutions" | "taking_explicit_actions" | "investing_time_money";
+    efficacy: "not_working" | "partially_working" | "working_well";
+    competitorSolution?: string; // If using a competitor's solution
+    validated?: boolean;
+  }>>(),
+  
+  // AI provenance
+  aiGenerated: boolean("ai_generated").default(false),
+  aiProvenance: jsonb("ai_provenance").$type<{
+    model: string;
+    generatedAt: string;
+    discoveryDataUsed: boolean;
+    promptContext?: string;
+  }>(),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertBuyerPersonaSchema = createInsertSchema(buyerPersonas).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertBuyerPersona = z.infer<typeof insertBuyerPersonaSchema>;
+export type BuyerPersona = typeof buyerPersonas.$inferSelect;
+
+// Hypotheses - Buyer and Problem hypotheses derived from Persona
+export const gaHypotheses = pgTable("ga_hypotheses", {
+  id: serial("id").primaryKey(),
+  canvasId: integer("canvas_id").notNull().references(() => growthAcceleratorCanvases.id, { onDelete: "cascade" }),
+  personaId: integer("persona_id").references(() => buyerPersonas.id, { onDelete: "set null" }),
+  
+  // Buyer Hypothesis - combines Facts + Behaviours (who is buying)
+  buyerHypothesis: text("buyer_hypothesis"),
+  buyerHypothesisRationale: text("buyer_hypothesis_rationale"),
+  buyerHypothesisFactIds: text("buyer_hypothesis_fact_ids").array(), // Which Facts used
+  buyerHypothesisBehaviourIds: text("buyer_hypothesis_behaviour_ids").array(), // Which Behaviours used
+  
+  // Problem Hypothesis - combines Pains + Goals (what problem to solve)
+  problemHypothesis: text("problem_hypothesis"),
+  problemHypothesisRationale: text("problem_hypothesis_rationale"),
+  problemHypothesisPainIds: text("problem_hypothesis_pain_ids").array(), // Which Pains used
+  problemHypothesisGoalIds: text("problem_hypothesis_goal_ids").array(), // Which Goals used
+  
+  // Solution Hypothesis - what we propose to sell (NO solution in Buyer/Problem hypotheses)
+  solutionHypothesis: text("solution_hypothesis"),
+  solutionUrl: text("solution_url"), // Link to solution details
+  solutionFeatures: text("solution_features").array(),
+  
+  // Version tracking (hypotheses evolve through experimentation)
+  version: integer("version").default(1),
+  previousVersionId: integer("previous_version_id"),
+  
+  aiGenerated: boolean("ai_generated").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertGaHypothesisSchema = createInsertSchema(gaHypotheses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertGaHypothesis = z.infer<typeof insertGaHypothesisSchema>;
+export type GaHypothesis = typeof gaHypotheses.$inferSelect;
+
+// Buyer Journey - 5-phase journey with blockers
+export const buyerJourneys = pgTable("buyer_journeys", {
+  id: serial("id").primaryKey(),
+  canvasId: integer("canvas_id").notNull().references(() => growthAcceleratorCanvases.id, { onDelete: "cascade" }),
+  personaId: integer("persona_id").references(() => buyerPersonas.id, { onDelete: "set null" }),
+  
+  // Journey context
+  journeyContext: text("journey_context", {
+    enum: ["pre_solution", "post_solution"] // Before or after solution hypothesis is defined
+  }).default("pre_solution"),
+  
+  // 5 phases of the buyer journey
+  phases: jsonb("phases").$type<{
+    awareness: {
+      description: string;
+      touchpoints: string[];
+      blockers: Array<{ blocker: string; severity: "high" | "medium" | "low"; linkedPainId?: string }>;
+      salesPlayOpportunities: string[];
+    };
+    search_selection: {
+      description: string;
+      touchpoints: string[];
+      blockers: Array<{ blocker: string; severity: "high" | "medium" | "low"; linkedPainId?: string }>;
+      evaluationCriteria: string[];
+      salesPlayOpportunities: string[];
+    };
+    purchasing: {
+      description: string;
+      touchpoints: string[];
+      blockers: Array<{ blocker: string; severity: "high" | "medium" | "low"; linkedPainId?: string }>;
+      decisionMakers: string[];
+      salesPlayOpportunities: string[];
+    };
+    usage: {
+      description: string;
+      touchpoints: string[];
+      blockers: Array<{ blocker: string; severity: "high" | "medium" | "low"; linkedPainId?: string }>;
+      successMetrics: string[];
+      salesPlayOpportunities: string[];
+    };
+    repurchasing: {
+      description: string;
+      touchpoints: string[];
+      blockers: Array<{ blocker: string; severity: "high" | "medium" | "low"; linkedPainId?: string }>;
+      loyaltyDrivers: string[];
+      salesPlayOpportunities: string[];
+    };
+  }>(),
+  
+  // Solution-specific unblocking (populated in post_solution context)
+  solutionUnblocks: jsonb("solution_unblocks").$type<Array<{
+    phase: "awareness" | "search_selection" | "purchasing" | "usage" | "repurchasing";
+    blockerAddressed: string;
+    howSolutionHelps: string;
+    remainingGaps: string[];
+  }>>(),
+  
+  aiGenerated: boolean("ai_generated").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertBuyerJourneySchema = createInsertSchema(buyerJourneys).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertBuyerJourney = z.infer<typeof insertBuyerJourneySchema>;
+export type BuyerJourney = typeof buyerJourneys.$inferSelect;
+
+// Predictions Grid - 2x2 prioritization for experimentation
+export const gaPredictions = pgTable("ga_predictions", {
+  id: serial("id").primaryKey(),
+  canvasId: integer("canvas_id").notNull().references(() => growthAcceleratorCanvases.id, { onDelete: "cascade" }),
+  hypothesisId: integer("hypothesis_id").references(() => gaHypotheses.id, { onDelete: "set null" }),
+  
+  // The prediction statement
+  prediction: text("prediction").notNull(),
+  
+  // Source - which hypothesis it came from
+  sourceHypothesis: text("source_hypothesis", { enum: ["buyer", "problem"] }).notNull(),
+  
+  // 2x2 Grid positioning
+  // X-axis: Impact - if wrong, how much would we rethink the Persona?
+  impactIfWrong: text("impact_if_wrong", { enum: ["high", "medium", "low"] }).notNull(),
+  // Y-axis: Confidence - how confident are we this is true?
+  confidence: text("confidence", { enum: ["high", "medium", "low"] }).notNull(),
+  
+  // Derived: Is this a "Risky Prediction"? (high impact + low confidence)
+  isRiskyPrediction: boolean("is_risky_prediction").default(false),
+  
+  // Experiment tracking
+  experimentStatus: text("experiment_status", {
+    enum: ["not_tested", "testing", "validated", "invalidated", "pivot_needed"]
+  }).default("not_tested"),
+  experimentNotes: text("experiment_notes"),
+  validatedAt: timestamp("validated_at"),
+  
+  // Link to interview questions that test this prediction
+  linkedQuestionIds: integer("linked_question_ids").array(),
+  
+  aiGenerated: boolean("ai_generated").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertGaPredictionSchema = createInsertSchema(gaPredictions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertGaPrediction = z.infer<typeof insertGaPredictionSchema>;
+export type GaPrediction = typeof gaPredictions.$inferSelect;
+
+// Discovery Interview Script - "Mom Test" style questions
+export const gaInterviewScripts = pgTable("ga_interview_scripts", {
+  id: serial("id").primaryKey(),
+  canvasId: integer("canvas_id").notNull().references(() => growthAcceleratorCanvases.id, { onDelete: "cascade" }),
+  
+  // Script metadata
+  scriptTitle: text("script_title"),
+  targetPredictionIds: integer("target_prediction_ids").array(), // Which risky predictions this tests
+  
+  // Interview questions (10 recommended, "Mom Test" style - past behavior focused)
+  questions: jsonb("questions").$type<Array<{
+    id: string;
+    question: string;
+    targetPredictionId?: number;
+    questionType: "past_behavior" | "specific_example" | "quantitative" | "follow_up";
+    bestPracticeNotes?: string; // Tips for asking this question
+    anticipatedResponse?: string;
+    actualResponse?: string;
+    responseNotes?: string;
+    askedAt?: string;
+  }>>(),
+  
+  // Simulated interview transcript (for preparation)
+  simulatedTranscript: text("simulated_transcript"),
+  
+  // Actual interview tracking
+  interviewsConducted: integer("interviews_conducted").default(0),
+  interviewSummaries: jsonb("interview_summaries").$type<Array<{
+    interviewDate: string;
+    intervieweeName?: string;
+    intervieweeTitle?: string;
+    keyInsights: string[];
+    predictionsValidated: string[];
+    predictionsInvalidated: string[];
+    personaRefinements: string[];
+  }>>(),
+  
+  aiGenerated: boolean("ai_generated").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertGaInterviewScriptSchema = createInsertSchema(gaInterviewScripts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertGaInterviewScript = z.infer<typeof insertGaInterviewScriptSchema>;
+export type GaInterviewScript = typeof gaInterviewScripts.$inferSelect;
+
+// Solution Tenets - Buyer-obsessed requirements (4-6 recommended)
+export const gaSolutionTenets = pgTable("ga_solution_tenets", {
+  id: serial("id").primaryKey(),
+  canvasId: integer("canvas_id").notNull().references(() => growthAcceleratorCanvases.id, { onDelete: "cascade" }),
+  
+  // Tenets (not feature-oriented - summarize critical Goals and Pains)
+  tenets: jsonb("tenets").$type<Array<{
+    id: string;
+    tenet: string; // The requirement statement
+    linkedGoalIds: string[];
+    linkedPainIds: string[];
+    priority: "must_have" | "should_have" | "nice_to_have";
+    rationale: string;
+  }>>(),
+  
+  // Strategic preferences (company's skill and will to produce)
+  strategicPreferences: jsonb("strategic_preferences").$type<{
+    coreCompetencies: string[];
+    revenueTargetFit: string;
+    resourceAvailability: string;
+    marketPositioning: string;
+  }>(),
+  
+  // Solution options considered
+  solutionOptions: jsonb("solution_options").$type<Array<{
+    id: string;
+    solutionName: string;
+    description: string;
+    painToFeatureMapping: Array<{ painId: string; feature: string; howItSolves: string }>;
+    tenetAlignment: number; // 0-100 how well it aligns with tenets
+    strategicFit: number; // 0-100 how well it fits strategic preferences
+    selected: boolean;
+  }>>(),
+  
+  aiGenerated: boolean("ai_generated").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertGaSolutionTenetsSchema = createInsertSchema(gaSolutionTenets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertGaSolutionTenets = z.infer<typeof insertGaSolutionTenetsSchema>;
+export type GaSolutionTenets = typeof gaSolutionTenets.$inferSelect;
+
+// Press Release - Future-looking validation document
+export const gaPressReleases = pgTable("ga_press_releases", {
+  id: serial("id").primaryKey(),
+  canvasId: integer("canvas_id").notNull().references(() => growthAcceleratorCanvases.id, { onDelete: "cascade" }),
+  
+  // Press release content (6 paragraphs)
+  headline: text("headline"), // Who + what problem
+  
+  paragraph1: text("paragraph1"), // Buyer focus + pains + empathy
+  paragraph2: text("paragraph2"), // Deep dive into pains + quantified impact
+  paragraph3: text("paragraph3"), // Market sizing (TAM/SAM/SOM without jargon) - GREED
+  paragraph4: text("paragraph4"), // Solution mechanics + feature-to-pain mapping - BELIEF
+  paragraph5: text("paragraph5"), // Buyer quote (first-person validation)
+  paragraph6: text("paragraph6"), // Stakeholder quote (financial/risk validation)
+  
+  // Full combined document
+  fullDocument: text("full_document"),
+  
+  // Validation tracking
+  validationStatus: text("validation_status", {
+    enum: ["draft", "testing", "positive_response", "needs_revision", "validated"]
+  }).default("draft"),
+  validationFeedback: jsonb("validation_feedback").$type<Array<{
+    respondentType: string;
+    sentiment: "positive" | "neutral" | "negative";
+    feedback: string;
+    suggestedChanges?: string[];
+    respondedAt: string;
+  }>>(),
+  
+  aiGenerated: boolean("ai_generated").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertGaPressReleaseSchema = createInsertSchema(gaPressReleases).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertGaPressRelease = z.infer<typeof insertGaPressReleaseSchema>;
+export type GaPressRelease = typeof gaPressReleases.$inferSelect;
+
+// Competitor Battle Cards
+export const gaCompetitorBattleCards = pgTable("ga_competitor_battle_cards", {
+  id: serial("id").primaryKey(),
+  canvasId: integer("canvas_id").notNull().references(() => growthAcceleratorCanvases.id, { onDelete: "cascade" }),
+  
+  // Competitor identity
+  competitorName: text("competitor_name").notNull(),
+  competitorWebsite: text("competitor_website"),
+  competitorLogoUrl: text("competitor_logo_url"),
+  
+  // Company overview
+  companyOverview: text("company_overview"),
+  marketPosition: text("market_position"),
+  targetCustomers: text("target_customers"),
+  
+  // Products/services
+  productsServices: jsonb("products_services").$type<Array<{
+    name: string;
+    description: string;
+    pricing?: string;
+    differentiators: string[];
+  }>>(),
+  
+  // Pain-to-feature comparison (our solution vs competitor)
+  painComparison: jsonb("pain_comparison").$type<Array<{
+    painId: string;
+    painDescription: string;
+    ourFeature: string;
+    ourStrength: string;
+    competitorFeature: string;
+    competitorWeakness?: string;
+    quantitativeComparison?: string;
+  }>>(),
+  
+  // Competitive intelligence
+  strengths: text("strengths").array(),
+  weaknesses: text("weaknesses").array(),
+  competitiveResponse: text("competitive_response"), // How they'll respond to us
+  
+  // Barriers to entry
+  theirBarriers: text("their_barriers").array(), // What protects them
+  ourBarriers: text("our_barriers").array(), // What we can erect
+  
+  // Win/loss insights
+  winStrategies: text("win_strategies").array(),
+  lossRisks: text("loss_risks").array(),
+  
+  // Maturity assessment
+  marketMaturity: text("market_maturity", { enum: ["emerging", "growing", "mature", "declining"] }),
+  threatLevel: text("threat_level", { enum: ["high", "medium", "low"] }),
+  
+  aiGenerated: boolean("ai_generated").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertGaCompetitorBattleCardSchema = createInsertSchema(gaCompetitorBattleCards).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertGaCompetitorBattleCard = z.infer<typeof insertGaCompetitorBattleCardSchema>;
+export type GaCompetitorBattleCard = typeof gaCompetitorBattleCards.$inferSelect;
+
+// Sales Play Actions - "What to Do" section
+export const gaSalesPlayActions = pgTable("ga_sales_play_actions", {
+  id: serial("id").primaryKey(),
+  canvasId: integer("canvas_id").notNull().references(() => growthAcceleratorCanvases.id, { onDelete: "cascade" }),
+  
+  // Seller actions (practical to-do list)
+  sellerActions: jsonb("seller_actions").$type<Array<{
+    id: string;
+    action: string;
+    priority: "immediate" | "short_term" | "ongoing";
+    owner?: string;
+    dueDate?: string;
+    status: "not_started" | "in_progress" | "completed";
+    category: "outreach" | "preparation" | "follow_up" | "collateral" | "other";
+  }>>(),
+  
+  // Organizational enablement actions
+  orgActions: jsonb("org_actions").$type<Array<{
+    id: string;
+    action: string;
+    owner?: string;
+    department?: string;
+    dueDate?: string;
+    status: "not_started" | "in_progress" | "completed";
+    category: "training" | "tools" | "process" | "content" | "hiring" | "other";
+  }>>(),
+  
+  // Sales kit checklist
+  salesKitItems: jsonb("sales_kit_items").$type<Array<{
+    id: string;
+    itemName: string;
+    itemType: "deck" | "demo" | "case_study" | "one_pager" | "video" | "template" | "other";
+    status: "needed" | "in_progress" | "ready";
+    owner?: string;
+    url?: string;
+  }>>(),
+  
+  aiGenerated: boolean("ai_generated").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertGaSalesPlayActionsSchema = createInsertSchema(gaSalesPlayActions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertGaSalesPlayActions = z.infer<typeof insertGaSalesPlayActionsSchema>;
+export type GaSalesPlayActions = typeof gaSalesPlayActions.$inferSelect;
