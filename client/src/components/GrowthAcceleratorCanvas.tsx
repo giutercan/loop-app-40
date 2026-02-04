@@ -2283,27 +2283,45 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
       );
     }
 
-    // Categorize predictions into 4 quadrants based on WBT methodology
-    // X-axis: Impact if wrong (how much it causes Persona rethink) - Low left, High right
-    // Y-axis: Confidence level - High top, Low bottom
-    // Bottom-right = "Riskiest Predictions" (high impact, low confidence) - these need experimentation
-    // Note: Schema uses impactIfWrong field, but we treat any non-null impactIfWrong as "high impact"
+    // WBT 2x2 Predictions Grid methodology:
+    // X-axis: "If wrong, how much would it cause us to rethink the Persona" (Low → High impact)
+    // Y-axis: "How confident are we that the prediction is true" (Low → High confidence)
+    // Bottom-right = "Riskiest Predictions" (high impact, low confidence) - focus of experiments
+    
     const getImpact = (p: any): "high" | "low" => {
-      // If explicitly marked as risky, it's high impact
       if (p.isRiskyPrediction) return "high";
-      // If impactIfWrong field has content, it's high impact
       if (p.impactIfWrong && p.impactIfWrong.length > 0) return "high";
-      // Check direct impact field if present
       if (p.impact === "high") return "high";
       if (p.impact === "low") return "low";
-      // Default based on confidence - low confidence suggests high risk/impact
       return p.confidence === "high" ? "low" : "high";
     };
     
+    const getSourceBadge = (source: string | undefined) => {
+      if (source === "buyer") return { label: "Buyer", color: "bg-blue-500/10 text-blue-600 border-blue-500/20" };
+      if (source === "problem") return { label: "Problem", color: "bg-purple-500/10 text-purple-600 border-purple-500/20" };
+      if (source === "solution") return { label: "Solution", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" };
+      return null;
+    };
+    
+    // Categorize into 4 quadrants per WBT methodology
     const highConfHighImpact = predictions.filter(p => p.confidence === "high" && getImpact(p) === "high" && !p.isRiskyPrediction);
     const highConfLowImpact = predictions.filter(p => p.confidence === "high" && getImpact(p) === "low" && !p.isRiskyPrediction);
     const lowConfLowImpact = predictions.filter(p => (p.confidence === "low" || p.confidence === "medium") && getImpact(p) === "low" && !p.isRiskyPrediction);
     const riskyPredictions = predictions.filter(p => p.isRiskyPrediction === true);
+
+    const PredictionItem = ({ pred, colorClass }: { pred: any, colorClass: string }) => {
+      const sourceBadge = getSourceBadge(pred.sourceHypothesis);
+      return (
+        <li className="flex items-start gap-2 text-xs">
+          <span className={`${colorClass} flex-1`}>• {pred.prediction}</span>
+          {sourceBadge && (
+            <Badge variant="outline" className={`text-[9px] px-1 py-0 h-4 ${sourceBadge.color}`}>
+              {sourceBadge.label}
+            </Badge>
+          )}
+        </li>
+      );
+    };
 
     return (
       <div className="space-y-4">
@@ -2314,8 +2332,8 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
               <Grid3x3 className="w-5 h-5 text-orange-600" />
             </div>
             <div>
-              <h3 className="font-bold">Predictions Grid</h3>
-              <p className="text-sm text-muted-foreground">Impact vs Confidence analysis</p>
+              <h3 className="font-bold">Predictions 2x2 Grid</h3>
+              <p className="text-sm text-muted-foreground">WBT methodology: prioritize experiments by impact & confidence</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -2341,107 +2359,145 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
           </div>
         </div>
 
-        {/* Simplified 2x2 Grid */}
-        <div className="grid grid-cols-2 gap-3">
-          {/* Top-left: Safe Zone */}
-          <Card className="border-slate-500/20 bg-slate-500/5">
-            <CardHeader className="py-3 px-4">
-              <CardTitle className="text-xs uppercase text-slate-600 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-slate-400" />
-                Safe Zone
-              </CardTitle>
-              <CardDescription className="text-[10px]">Low impact, high confidence</CardDescription>
-            </CardHeader>
-            <CardContent className="px-4 pb-4 pt-0">
-              {highConfLowImpact.length > 0 ? (
-                <ul className="space-y-1">
-                  {highConfLowImpact.slice(0, 2).map((pred, i) => (
-                    <li key={i} className="text-xs text-muted-foreground line-clamp-1">• {pred.prediction}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-xs text-muted-foreground italic">None</p>
-              )}
-            </CardContent>
-          </Card>
+        {/* Axis Labels */}
+        <div className="relative">
+          {/* Y-axis label */}
+          <div className="absolute -left-2 top-1/2 -translate-y-1/2 -rotate-90 text-[10px] text-muted-foreground font-medium whitespace-nowrap origin-center">
+            ← Low Confidence — High Confidence →
+          </div>
           
-          {/* Top-right: Foundation */}
-          <Card className="border-emerald-500/20 bg-emerald-500/5">
-            <CardHeader className="py-3 px-4">
-              <CardTitle className="text-xs uppercase text-emerald-600 flex items-center gap-2">
-                <CheckCircle className="w-3 h-3" />
-                Foundation
-              </CardTitle>
-              <CardDescription className="text-[10px]">High impact, high confidence</CardDescription>
-            </CardHeader>
-            <CardContent className="px-4 pb-4 pt-0">
-              {highConfHighImpact.length > 0 ? (
-                <ul className="space-y-1">
-                  {highConfHighImpact.slice(0, 2).map((pred, i) => (
-                    <li key={i} className="text-xs text-emerald-700 line-clamp-1">• {pred.prediction}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-xs text-muted-foreground italic">None</p>
-              )}
-            </CardContent>
-          </Card>
+          {/* X-axis label */}
+          <div className="text-center text-[10px] text-muted-foreground font-medium mb-2 ml-6">
+            Low Impact if Wrong ← → High Impact if Wrong
+          </div>
           
-          {/* Bottom-left: Monitor */}
-          <Card className="border-amber-500/20 bg-amber-500/5">
-            <CardHeader className="py-3 px-4">
-              <CardTitle className="text-xs uppercase text-amber-600 flex items-center gap-2">
-                <Eye className="w-3 h-3" />
-                Monitor
-              </CardTitle>
-              <CardDescription className="text-[10px]">Low impact, low confidence</CardDescription>
-            </CardHeader>
-            <CardContent className="px-4 pb-4 pt-0">
-              {lowConfLowImpact.length > 0 ? (
-                <ul className="space-y-1">
-                  {lowConfLowImpact.slice(0, 2).map((pred, i) => (
-                    <li key={i} className="text-xs text-amber-700 line-clamp-1">• {pred.prediction}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-xs text-muted-foreground italic">None</p>
-              )}
-            </CardContent>
-          </Card>
-          
-          {/* Bottom-right: Test First! */}
-          <Card className="border-red-500/30 bg-red-500/5 relative">
-            <Badge className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px]">TEST FIRST</Badge>
-            <CardHeader className="py-3 px-4">
-              <CardTitle className="text-xs uppercase text-red-600 flex items-center gap-2">
-                <AlertTriangle className="w-3 h-3" />
-                Risky Assumptions
-              </CardTitle>
-              <CardDescription className="text-[10px]">High impact, low confidence</CardDescription>
-            </CardHeader>
-            <CardContent className="px-4 pb-4 pt-0">
-              {riskyPredictions.length > 0 ? (
-                <ul className="space-y-1">
-                  {riskyPredictions.slice(0, 3).map((pred, i) => (
-                    <li key={i} className="text-xs text-red-700 line-clamp-1">• {pred.prediction}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-xs text-muted-foreground italic">None identified</p>
-              )}
-            </CardContent>
-          </Card>
+          {/* 2x2 Grid with WBT-standard layout */}
+          <div className="grid grid-cols-2 gap-3 ml-6">
+            {/* Top-left: Low Impact, High Confidence - "Proven Facts" */}
+            <Card className="border-slate-500/20 bg-slate-500/5">
+              <CardHeader className="py-2 px-3">
+                <CardTitle className="text-xs uppercase text-slate-600 flex items-center gap-2">
+                  <CheckCircle className="w-3 h-3" />
+                  Proven Facts
+                </CardTitle>
+                <CardDescription className="text-[10px]">High confidence, low impact — validated assumptions</CardDescription>
+              </CardHeader>
+              <CardContent className="px-3 pb-3 pt-0">
+                {highConfLowImpact.length > 0 ? (
+                  <ul className="space-y-1.5">
+                    {highConfLowImpact.slice(0, 3).map((pred, i) => (
+                      <PredictionItem key={i} pred={pred} colorClass="text-muted-foreground" />
+                    ))}
+                    {highConfLowImpact.length > 3 && (
+                      <li className="text-[10px] text-muted-foreground italic">+{highConfLowImpact.length - 3} more</li>
+                    )}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">None</p>
+                )}
+              </CardContent>
+            </Card>
+            
+            {/* Top-right: High Impact, High Confidence - "Foundation" */}
+            <Card className="border-emerald-500/20 bg-emerald-500/5">
+              <CardHeader className="py-2 px-3">
+                <CardTitle className="text-xs uppercase text-emerald-600 flex items-center gap-2">
+                  <CheckCircle className="w-3 h-3" />
+                  Foundation
+                </CardTitle>
+                <CardDescription className="text-[10px]">High confidence, high impact — core beliefs</CardDescription>
+              </CardHeader>
+              <CardContent className="px-3 pb-3 pt-0">
+                {highConfHighImpact.length > 0 ? (
+                  <ul className="space-y-1.5">
+                    {highConfHighImpact.slice(0, 3).map((pred, i) => (
+                      <PredictionItem key={i} pred={pred} colorClass="text-emerald-700" />
+                    ))}
+                    {highConfHighImpact.length > 3 && (
+                      <li className="text-[10px] text-muted-foreground italic">+{highConfHighImpact.length - 3} more</li>
+                    )}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">None</p>
+                )}
+              </CardContent>
+            </Card>
+            
+            {/* Bottom-left: Low Impact, Low Confidence - "Monitor" */}
+            <Card className="border-amber-500/20 bg-amber-500/5">
+              <CardHeader className="py-2 px-3">
+                <CardTitle className="text-xs uppercase text-amber-600 flex items-center gap-2">
+                  <Eye className="w-3 h-3" />
+                  Monitor
+                </CardTitle>
+                <CardDescription className="text-[10px]">Low confidence, low impact — watch but don't prioritize</CardDescription>
+              </CardHeader>
+              <CardContent className="px-3 pb-3 pt-0">
+                {lowConfLowImpact.length > 0 ? (
+                  <ul className="space-y-1.5">
+                    {lowConfLowImpact.slice(0, 3).map((pred, i) => (
+                      <PredictionItem key={i} pred={pred} colorClass="text-amber-700" />
+                    ))}
+                    {lowConfLowImpact.length > 3 && (
+                      <li className="text-[10px] text-muted-foreground italic">+{lowConfLowImpact.length - 3} more</li>
+                    )}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">None</p>
+                )}
+              </CardContent>
+            </Card>
+            
+            {/* Bottom-right: High Impact, Low Confidence - "RISKIEST PREDICTIONS" */}
+            <Card className="border-red-500/40 bg-gradient-to-br from-red-500/10 to-red-500/5 relative ring-2 ring-red-500/30">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <Badge className="bg-red-500 text-white text-[10px] shadow-lg">
+                  <AlertTriangle className="w-3 h-3 mr-1" />
+                  RISKIEST — TEST FIRST
+                </Badge>
+              </div>
+              <CardHeader className="py-2 px-3 pt-4">
+                <CardTitle className="text-xs uppercase text-red-600 flex items-center gap-2">
+                  <Target className="w-3 h-3" />
+                  Experiment Focus
+                </CardTitle>
+                <CardDescription className="text-[10px]">Low confidence, high impact — validate in Customer Discovery</CardDescription>
+              </CardHeader>
+              <CardContent className="px-3 pb-3 pt-0">
+                {riskyPredictions.length > 0 ? (
+                  <ul className="space-y-1.5">
+                    {riskyPredictions.slice(0, 4).map((pred, i) => (
+                      <PredictionItem key={i} pred={pred} colorClass="text-red-700 font-medium" />
+                    ))}
+                    {riskyPredictions.length > 4 && (
+                      <li className="text-[10px] text-muted-foreground italic">+{riskyPredictions.length - 4} more</li>
+                    )}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">None identified</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
-              
-        {/* Summary */}
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-          <span>Total: <strong>{predictions.length}</strong> predictions</span>
-          {riskyPredictions.length > 0 && (
-            <span className="text-red-600">
-              <AlertTriangle className="w-3 h-3 inline mr-1" />
-              <strong>{riskyPredictions.length}</strong> risky
-            </span>
-          )}
+
+        {/* Legend & Summary */}
+        <div className="flex flex-wrap items-center justify-between gap-4 text-xs text-muted-foreground border-t pt-3">
+          <div className="flex items-center gap-4">
+            <span>Total: <strong className="text-foreground">{predictions.length}</strong> predictions</span>
+            {riskyPredictions.length > 0 && (
+              <span className="text-red-600 font-medium">
+                <Target className="w-3 h-3 inline mr-1" />
+                <strong>{riskyPredictions.length}</strong> to experiment on
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px]">Source:</span>
+            <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-blue-500/10 text-blue-600 border-blue-500/20">Buyer</Badge>
+            <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-purple-500/10 text-purple-600 border-purple-500/20">Problem</Badge>
+            <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-emerald-500/10 text-emerald-600 border-emerald-500/20">Solution</Badge>
+          </div>
         </div>
       </div>
     );
