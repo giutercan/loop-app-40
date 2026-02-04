@@ -3672,6 +3672,21 @@ export const buyerPersonas = pgTable("buyer_personas", {
   personaTitle: text("persona_title"), // e.g., "VP of Human Resources"
   personaCompany: text("persona_company"), // e.g., "ABC Corp"
   
+  // Enhanced Profile Fields (like Seller Playbook personas)
+  ageRange: text("age_range"), // e.g., "40-55", "mid-late 30's"
+  careerStage: text("career_stage"), // e.g., "10-15 years experience", "Final 5-7 years before retirement"
+  familyStatus: text("family_status"), // e.g., "Young family", "Adult children"
+  financialSituation: text("financial_situation"), // e.g., "High debt", "Well established financially"
+  
+  // Behavioral traits and lifestyle
+  behavioralTraits: jsonb("behavioral_traits").$type<string[]>(), // e.g., ["Work-life balance focused", "Willing to travel"]
+  
+  // How they prefer to be engaged
+  engagementPreferences: jsonb("engagement_preferences").$type<string[]>(), // e.g., ["Email", "In-person meetings", "LinkedIn"]
+  
+  // Common challenges/obstacles this persona faces
+  challenges: jsonb("challenges").$type<string[]>(), // e.g., ["Budget constraints", "Organizational resistance"]
+  
   // QUADRANT 1: Facts (20-25 items recommended)
   // Demographic, psychographic, or other descriptors of ONE sample buyer
   facts: jsonb("facts").$type<Array<{
@@ -3792,41 +3807,67 @@ export const buyerJourneys = pgTable("buyer_journeys", {
     enum: ["pre_solution", "post_solution"] // Before or after solution hypothesis is defined
   }).default("pre_solution"),
   
-  // 5 phases of the buyer journey
+  // 5 phases of the buyer journey (aligned to sales process)
   phases: jsonb("phases").$type<{
-    awareness: {
+    prospecting: {
       description: string;
+      keyConsiderations: string[]; // What to think about at this stage
+      keyActivities: string[]; // Specific actions to take
       touchpoints: string[];
+      questionsToAsk: string[]; // Suggested questions to ask
+      whatGoodLooksLike: string[]; // Success criteria
+      mustCompleteBeforeNext: string[]; // Gates to next stage
       blockers: Array<{ blocker: string; severity: "high" | "medium" | "low"; linkedPainId?: string }>;
-      salesPlayOpportunities: string[];
     };
-    search_selection: {
+    qualifying: {
       description: string;
+      keyConsiderations: string[];
+      keyActivities: string[];
       touchpoints: string[];
+      questionsToAsk: string[];
+      whatGoodLooksLike: string[];
+      mustCompleteBeforeNext: string[];
       blockers: Array<{ blocker: string; severity: "high" | "medium" | "low"; linkedPainId?: string }>;
-      evaluationCriteria: string[];
-      salesPlayOpportunities: string[];
     };
-    purchasing: {
+    discovery: {
       description: string;
+      keyConsiderations: string[];
+      keyActivities: string[];
       touchpoints: string[];
+      questionsToAsk: string[];
+      whatGoodLooksLike: string[];
+      mustCompleteBeforeNext: string[];
       blockers: Array<{ blocker: string; severity: "high" | "medium" | "low"; linkedPainId?: string }>;
-      decisionMakers: string[];
-      salesPlayOpportunities: string[];
     };
-    usage: {
+    proposing: {
       description: string;
+      keyConsiderations: string[];
+      keyActivities: string[];
       touchpoints: string[];
+      questionsToAsk: string[];
+      whatGoodLooksLike: string[];
+      mustCompleteBeforeNext: string[];
       blockers: Array<{ blocker: string; severity: "high" | "medium" | "low"; linkedPainId?: string }>;
-      successMetrics: string[];
-      salesPlayOpportunities: string[];
     };
-    repurchasing: {
+    negotiating: {
       description: string;
+      keyConsiderations: string[];
+      keyActivities: string[];
       touchpoints: string[];
+      questionsToAsk: string[];
+      whatGoodLooksLike: string[];
+      mustCompleteBeforeNext: string[];
       blockers: Array<{ blocker: string; severity: "high" | "medium" | "low"; linkedPainId?: string }>;
-      loyaltyDrivers: string[];
-      salesPlayOpportunities: string[];
+    };
+    closing: {
+      description: string;
+      keyConsiderations: string[];
+      keyActivities: string[];
+      touchpoints: string[];
+      questionsToAsk: string[];
+      whatGoodLooksLike: string[];
+      mustCompleteBeforeNext: string[];
+      blockers: Array<{ blocker: string; severity: "high" | "medium" | "low"; linkedPainId?: string }>;
     };
   }>(),
   

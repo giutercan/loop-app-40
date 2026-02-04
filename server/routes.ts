@@ -15298,20 +15298,38 @@ ${discoveryContext.valueCases.map((v: any) => `- Challenge: ${v.challenge}, Solu
 Discovery Q&A:
 ${discoveryContext.discoveryQuestions.map((q: any) => `- Q: ${q.question} A: ${q.answer}`).join('\n') || 'No discovery answers available'}
 
-Create a detailed buyer persona with the following 4-quadrant structure:
-1. Facts (4-6 items): Demographic and firmographic facts about this buyer type
-2. Goals (3-5 items): What business outcomes they're trying to achieve
-3. Pains (3-5 items): Obstacles, frustrations, and challenges they face
+Create a detailed buyer persona with the following structure (like a professional seller playbook):
+
+**Profile Information:**
+- Age Range (e.g., "40-55", "mid-late 30's")
+- Career Stage (e.g., "10-15 years experience", "Senior executive nearing retirement")
+- Family Status (e.g., "Young family", "Adult children", "Single professional")
+- Financial Situation (e.g., "High growth focus", "Cost-conscious", "Value-driven")
+- Behavioral Traits (3-5): How they work, what they value in relationships
+- Engagement Preferences (3-5): How they prefer to be contacted and engaged
+- Key Challenges (3-5): Major obstacles they face in their role
+
+**4-Quadrant Structure:**
+1. Facts (4-6 items): Demographic, psychographic, and professional facts about this buyer
+2. Goals (3-5 items): What business outcomes they're trying to achieve with clear measures of success
+3. Pains (3-5 items): Obstacles, frustrations, and challenges blocking their goals
 4. Behaviours (3-5 items): How they make decisions, who they consult, what information they seek
 
 Return JSON in this exact format:
 {
   "personaName": "The [Role/Title] Persona",
   "personaTitle": "VP of [Function]",
-  "facts": [{"id": "f1", "text": "Fact description"}],
-  "goals": [{"id": "g1", "text": "Goal description"}],
-  "pains": [{"id": "p1", "text": "Pain description"}],
-  "behaviours": [{"id": "b1", "text": "Behaviour description"}]
+  "ageRange": "40-55",
+  "careerStage": "10-15 years in leadership roles",
+  "familyStatus": "Established family with college-age children",
+  "financialSituation": "Budget owner focused on ROI justification",
+  "behavioralTraits": ["Data-driven decision maker", "Prefers collaborative approach", "Risk-conscious"],
+  "engagementPreferences": ["Email for initial contact", "In-person for key meetings", "LinkedIn for thought leadership"],
+  "challenges": ["Proving ROI to board", "Aligning stakeholders", "Managing change resistance"],
+  "facts": [{"id": "f1", "text": "Fact description", "category": "professional"}],
+  "goals": [{"id": "g1", "text": "Goal description", "priority": "high", "measureOfSuccess": "How they measure achievement"}],
+  "pains": [{"id": "p1", "text": "Pain description", "urgency": "high"}],
+  "behaviours": [{"id": "b1", "text": "Behaviour description", "effortLevel": "seeking_solutions"}]
 }`;
 
       const response = await openai.chat.completions.create({
@@ -15323,12 +15341,21 @@ Return JSON in this exact format:
 
       const aiResult = JSON.parse(response.choices[0].message.content || "{}");
       
-      // Create the persona in storage
+      // Create the persona in storage with enhanced profile fields
       const persona = await storage.createBuyerPersona({
         canvasId,
         personaName: aiResult.personaName || "Buyer Persona",
         personaTitle: aiResult.personaTitle || "",
         personaCompany: companyName || project?.name || "",
+        // Enhanced profile fields
+        ageRange: aiResult.ageRange || null,
+        careerStage: aiResult.careerStage || null,
+        familyStatus: aiResult.familyStatus || null,
+        financialSituation: aiResult.financialSituation || null,
+        behavioralTraits: aiResult.behavioralTraits || [],
+        engagementPreferences: aiResult.engagementPreferences || [],
+        challenges: aiResult.challenges || [],
+        // 4-quadrant structure
         facts: aiResult.facts || [],
         goals: aiResult.goals || [],
         pains: aiResult.pains || [],
@@ -15359,12 +15386,14 @@ Return JSON in this exact format:
       const jobThemes = await storage.getJobThemes(projectId);
       const valueCases = await storage.getValueCases(projectId);
 
-      const prompt = `You are an expert in customer journey mapping. Create a 5-phase buyer journey map.
+      const prompt = `You are an expert sales strategist creating a professional seller playbook. Create a 6-phase buyer journey aligned to the sales process.
 
 Company: ${project?.name || "Target Company"}
 ${persona ? `Persona: ${persona.personaName} - ${persona.personaTitle}
 Goals: ${JSON.stringify(persona.goals)}
-Pains: ${JSON.stringify(persona.pains)}` : ""}
+Pains: ${JSON.stringify(persona.pains)}
+Challenges: ${JSON.stringify(persona.challenges || [])}
+Engagement Preferences: ${JSON.stringify(persona.engagementPreferences || [])}` : ""}
 
 Job Themes & Priorities:
 ${jobThemes.slice(0, 5).map((j: any) => `- ${j.jobName}: ${j.description || ''}`).join('\n') || 'No job themes available'}
@@ -15372,29 +15401,37 @@ ${jobThemes.slice(0, 5).map((j: any) => `- ${j.jobName}: ${j.description || ''}`
 Value Cases:
 ${valueCases.slice(0, 5).map((v: any) => `- ${v.challenge}: ${v.outcome}`).join('\n') || 'No value cases available'}
 
-Create a buyer journey with these 5 phases: Awareness, Consideration, Decision, Implementation, Value Realization
+Create a buyer journey with 6 sales-aligned phases: Prospecting, Qualifying, Discovery, Proposing, Negotiating, Closing
 
-For each phase, provide:
-- tasks: What the buyer is doing in this phase (2-3 items)
-- emotions: How the buyer feels (1-2 items)
-- painPoints: Frustrations they experience (1-2 items)
-- decisionFactors: What influences their decisions (1-2 items)
+For each phase, provide (like a professional seller playbook):
+- description: What this phase is about (2-3 sentences)
+- keyConsiderations: What the seller should think about (3-4 items)
+- keyActivities: Specific actions to take (4-5 items with bullet points)
+- touchpoints: How to engage the buyer (2-3 items)
+- questionsToAsk: Specific questions sellers should ask (3-4 items)
+- whatGoodLooksLike: Success criteria for this phase (3-4 items)
+- mustCompleteBeforeNext: Gates/checklist items before moving to next stage (3-4 items)
+- blockers: Common obstacles at this stage (2-3 items with severity: high/medium/low)
 
-Return JSON in this format:
+Return JSON in this exact format:
 {
-  "phases": [
-    {
-      "phaseId": "awareness",
-      "phaseName": "Awareness", 
-      "tasks": ["task1", "task2"],
-      "emotions": ["emotion1"],
-      "painPoints": ["pain1"],
-      "decisionFactors": ["factor1"]
-    }
-  ],
-  "solutionUnblocks": [
-    { "phaseId": "awareness", "howUnblocks": "How our solution helps in this phase" }
-  ]
+  "phases": {
+    "prospecting": {
+      "description": "The strategic identification and outreach to buyers who may be suitable for current opportunities.",
+      "keyConsiderations": ["Match solution to buyer profile", "Customize outreach to buyer motivations"],
+      "keyActivities": ["Research buyer background and motivation", "Make contact via preferred channel", "Focus on relationship-first language"],
+      "touchpoints": ["Email", "LinkedIn", "Phone"],
+      "questionsToAsk": ["What's driving your interest in this area?", "What would need to change for you to consider a solution?"],
+      "whatGoodLooksLike": ["Targeted and timely outreach", "Personalized value proposition", "CRM updated after each touchpoint"],
+      "mustCompleteBeforeNext": ["Enter new lead into CRM", "Complete initial profile", "Assign correct stage and owner"],
+      "blockers": [{"blocker": "No response to outreach", "severity": "medium"}]
+    },
+    "qualifying": { ... },
+    "discovery": { ... },
+    "proposing": { ... },
+    "negotiating": { ... },
+    "closing": { ... }
+  }
 }`;
 
       const response = await openai.chat.completions.create({
@@ -15406,12 +15443,15 @@ Return JSON in this format:
 
       const aiResult = JSON.parse(response.choices[0].message.content || "{}");
       
+      // Transform phases to match new schema structure
+      const phases = aiResult.phases || {};
+      
       const journey = await storage.createBuyerJourney({
         canvasId,
         personaId: personaId || null,
         journeyContext: "pre_solution",
-        phases: aiResult.phases || [],
-        solutionUnblocks: aiResult.solutionUnblocks || [],
+        phases: phases,
+        solutionUnblocks: [],
         aiGenerated: true,
       });
 

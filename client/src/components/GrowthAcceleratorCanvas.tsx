@@ -58,7 +58,11 @@ import {
   Download,
   Eye,
   Loader2,
-  HelpCircle
+  HelpCircle,
+  MessageCircle,
+  Star,
+  User,
+  Heart
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -83,6 +87,15 @@ interface BuyerPersona {
   personaName: string;
   personaTitle: string;
   personaCompany: string;
+  // Enhanced profile fields
+  ageRange?: string;
+  careerStage?: string;
+  familyStatus?: string;
+  financialSituation?: string;
+  behavioralTraits?: string[];
+  engagementPreferences?: string[];
+  challenges?: string[];
+  // 4-quadrant structure
   facts: QuadrantItem[];
   goals: QuadrantItem[];
   pains: QuadrantItem[];
@@ -90,13 +103,40 @@ interface BuyerPersona {
   aiGenerated?: boolean;
 }
 
-interface JourneyPhase {
+// Sales-aligned journey phase structure (like a professional playbook)
+interface JourneyPhaseData {
+  description: string;
+  keyConsiderations: string[];
+  keyActivities: string[];
+  touchpoints: string[];
+  questionsToAsk: string[];
+  whatGoodLooksLike: string[];
+  mustCompleteBeforeNext: string[];
+  blockers: { blocker: string; severity: "high" | "medium" | "low" }[];
+  // Legacy fields preserved during conversion
+  emotions?: string[];
+  legacyFormat?: boolean;
+}
+
+interface BuyerJourneyPhases {
+  prospecting?: JourneyPhaseData;
+  qualifying?: JourneyPhaseData;
+  discovery?: JourneyPhaseData;
+  proposing?: JourneyPhaseData;
+  negotiating?: JourneyPhaseData;
+  closing?: JourneyPhaseData;
+}
+
+// Legacy format for backward compatibility
+interface LegacyJourneyPhase {
   phaseId: string;
   phaseName: string;
-  tasks: string[];
-  emotions: string[];
-  painPoints: string[];
-  decisionFactors: string[];
+  description?: string;
+  tasks?: string[];
+  emotions?: string[];
+  painPoints?: string[];
+  decisionFactors?: string[];
+  touchpoints?: string[];
 }
 
 interface BuyerJourney {
@@ -104,7 +144,7 @@ interface BuyerJourney {
   canvasId: number;
   personaId?: number;
   journeyContext: string;
-  phases: JourneyPhase[];
+  phases: BuyerJourneyPhases | LegacyJourneyPhase[];
   solutionUnblocks: { phaseId: string; howUnblocks: string }[];
   aiGenerated?: boolean;
 }
@@ -180,12 +220,14 @@ const GA_STEPS = {
   ],
 };
 
+// Sales-aligned journey phases (like a professional seller playbook)
 const JOURNEY_PHASES = [
-  { id: "awareness", name: "Awareness", description: "Prospect realizes they have a problem" },
-  { id: "consideration", name: "Consideration", description: "Evaluating possible solutions" },
-  { id: "decision", name: "Decision", description: "Selecting a vendor/solution" },
-  { id: "implementation", name: "Implementation", description: "Rolling out the solution" },
-  { id: "value_realization", name: "Value Realization", description: "Achieving promised outcomes" },
+  { id: "prospecting", name: "Prospecting", description: "Strategic identification and outreach" },
+  { id: "qualifying", name: "Qualifying", description: "Validating lead fit and readiness" },
+  { id: "discovery", name: "Discovery", description: "Understanding needs and motivations" },
+  { id: "proposing", name: "Proposing", description: "Presenting tailored solutions" },
+  { id: "negotiating", name: "Negotiating", description: "Finalizing terms and agreements" },
+  { id: "closing", name: "Closing", description: "Securing sign-off and handover" },
 ];
 
 interface PersonaRecommendation {
@@ -369,7 +411,6 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
       setShowPersonaSelector(false);
       setSelectedPersonaTitle(null);
       setCustomPersonaTitle("");
-      setPersonaRecommendations(null);
       toast({
         title: "Persona Reset",
         description: "Persona and related data have been cleared. You can now generate a new persona.",
@@ -674,21 +715,51 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
         yPos += 8;
       }
 
-      if (journey && journey.phases?.length) {
+      if (journey && journey.phases) {
         checkPageBreak(60);
         addTitle("3. BUYER JOURNEY", 14);
         if (journey.journeyContext) addText(`Context: ${journey.journeyContext}`);
-        journey.phases.forEach((phase: any) => {
+        
+        // Handle both new object format and legacy array format
+        let phasesToProcess: Array<{ phaseName: string; [key: string]: any }> = [];
+        
+        if (Array.isArray(journey.phases)) {
+          // Legacy array format
+          phasesToProcess = journey.phases.map((p: LegacyJourneyPhase) => ({ ...p, phaseName: p.phaseName }));
+        } else {
+          // New object format - only include phases that exist
+          phasesToProcess = JOURNEY_PHASES
+            .map(p => {
+              const phaseObj = (journey.phases as BuyerJourneyPhases)[p.id as keyof BuyerJourneyPhases];
+              return phaseObj ? { ...phaseObj, phaseName: p.name } : null;
+            })
+            .filter((p): p is { phaseName: string; [key: string]: any } => p !== null);
+        }
+        
+        phasesToProcess.forEach((phase) => {
           addSubtitle(phase.phaseName || 'Phase');
+          // New format fields
+          if (phase.keyActivities?.length) {
+            addText("Key Activities:");
+            phase.keyActivities.forEach((t: string) => addText(`- ${t}`, 5));
+          }
+          if (phase.questionsToAsk?.length) {
+            addText("Questions to Ask:");
+            phase.questionsToAsk.forEach((q: string) => addText(`- "${q}"`, 5));
+          }
+          if (phase.whatGoodLooksLike?.length) {
+            addText(`What Good Looks Like: ${phase.whatGoodLooksLike.join(", ")}`);
+          }
+          // Legacy format fields (for backward compatibility)
           if (phase.tasks?.length) {
             addText("Tasks:");
             phase.tasks.forEach((t: string) => addText(`- ${t}`, 5));
           }
-          if (phase.emotions?.length) {
-            addText(`Emotions: ${phase.emotions.join(", ")}`);
-          }
           if (phase.painPoints?.length) {
             addText(`Pain Points: ${phase.painPoints.join(", ")}`);
+          }
+          if (phase.emotions?.length) {
+            addText(`Emotions: ${phase.emotions.join(", ")}`);
           }
           if (phase.decisionFactors?.length) {
             addText(`Decision Factors: ${phase.decisionFactors.join(", ")}`);
@@ -1107,6 +1178,79 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
           </div>
         </div>
 
+        {/* Enhanced Profile Section */}
+        {(persona.ageRange || persona.careerStage || persona.behavioralTraits?.length) && (
+          <Card className="border-slate-500/20 bg-slate-500/5 mb-4">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <User className="w-4 h-4 text-slate-600" />
+                Profile Overview
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                {persona.ageRange && (
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium">Age Range</p>
+                    <p className="text-sm">{persona.ageRange}</p>
+                  </div>
+                )}
+                {persona.careerStage && (
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium">Career Stage</p>
+                    <p className="text-sm">{persona.careerStage}</p>
+                  </div>
+                )}
+                {persona.familyStatus && (
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium">Family Status</p>
+                    <p className="text-sm">{persona.familyStatus}</p>
+                  </div>
+                )}
+                {persona.financialSituation && (
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium">Financial Focus</p>
+                    <p className="text-sm">{persona.financialSituation}</p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {persona.behavioralTraits && persona.behavioralTraits.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium mb-1">Behavioral Traits</p>
+                    <div className="flex flex-wrap gap-1">
+                      {persona.behavioralTraits.slice(0, 3).map((trait, idx) => (
+                        <Badge key={idx} variant="secondary" className="text-xs">{trait}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {persona.engagementPreferences && persona.engagementPreferences.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium mb-1">Engagement Preferences</p>
+                    <div className="flex flex-wrap gap-1">
+                      {persona.engagementPreferences.slice(0, 3).map((pref, idx) => (
+                        <Badge key={idx} variant="outline" className="text-xs">{pref}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {persona.challenges && persona.challenges.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium mb-1">Key Challenges</p>
+                    <div className="flex flex-wrap gap-1">
+                      {persona.challenges.slice(0, 3).map((challenge, idx) => (
+                        <Badge key={idx} variant="outline" className="text-xs border-amber-500/30 text-amber-700 bg-amber-500/5">{challenge}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid grid-cols-2 gap-4">
           {quadrants.map((quadrant) => {
             const QuadrantIcon = quadrant.icon;
@@ -1223,47 +1367,145 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
           )}
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {JOURNEY_PHASES.map((phase, idx) => {
-            const journeyPhase = (journey.phases || []).find((p: JourneyPhase) => p.phaseId === phase.id);
+            // Handle both new object format and legacy array format
+            let journeyPhase: JourneyPhaseData | undefined;
+            if (journey.phases) {
+              if (Array.isArray(journey.phases)) {
+                // Legacy format: array of phases with phaseId
+                const legacyPhase = (journey.phases as LegacyJourneyPhase[]).find((p) => p.phaseId === phase.id);
+                if (legacyPhase) {
+                  // Convert legacy format to new format, preserving legacy-specific fields
+                  journeyPhase = {
+                    description: legacyPhase.description || "",
+                    keyConsiderations: [],
+                    keyActivities: legacyPhase.tasks || [],
+                    touchpoints: legacyPhase.touchpoints || [],
+                    questionsToAsk: [],
+                    whatGoodLooksLike: legacyPhase.decisionFactors || [],
+                    mustCompleteBeforeNext: [],
+                    blockers: (legacyPhase.painPoints || []).map((p: string) => ({ blocker: p, severity: "medium" as const })),
+                    emotions: legacyPhase.emotions || [],
+                    legacyFormat: true
+                  };
+                }
+              } else {
+                // New format: object keyed by phase id
+                journeyPhase = (journey.phases as BuyerJourneyPhases)[phase.id as keyof BuyerJourneyPhases];
+              }
+            }
             return (
-              <Card key={phase.id} className="min-w-[200px] flex-1 border-amber-500/20">
+              <Card key={phase.id} className="border-amber-500/20 bg-amber-500/5">
                 <CardHeader className="pb-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-amber-500/10 flex items-center justify-center text-xs font-bold text-amber-600">
+                    <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center text-sm font-bold text-amber-700">
                       {idx + 1}
                     </div>
-                    <CardTitle className="text-sm">{phase.name}</CardTitle>
+                    <div>
+                      <CardTitle className="text-sm">{phase.name}</CardTitle>
+                      <CardDescription className="text-xs">{phase.description}</CardDescription>
+                    </div>
                   </div>
                 </CardHeader>
-                <CardContent className="text-xs space-y-2">
+                <CardContent className="text-xs space-y-3">
                   {journeyPhase ? (
                     <>
-                      <div>
-                        <p className="font-medium text-muted-foreground mb-1">Tasks</p>
-                        <ul className="space-y-1">
-                          {journeyPhase.tasks?.slice(0, 2).map((task: string, i: number) => (
-                            <li key={i} className="flex items-start gap-1">
-                              <span className="w-1 h-1 rounded-full bg-foreground/40 mt-1.5" />
-                              {task}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div>
-                        <p className="font-medium text-muted-foreground mb-1">Pain Points</p>
-                        <ul className="space-y-1">
-                          {journeyPhase.painPoints?.slice(0, 2).map((pain: string, i: number) => (
-                            <li key={i} className="text-red-600/80 flex items-start gap-1">
-                              <AlertTriangle className="w-3 h-3 mt-0.5" />
-                              {pain}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                      {journeyPhase.description && (
+                        <p className="text-sm text-muted-foreground">{journeyPhase.description}</p>
+                      )}
+                      
+                      {journeyPhase.keyActivities?.length > 0 && (
+                        <div>
+                          <p className="font-semibold text-emerald-700 mb-1 flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" />
+                            Key Activities
+                          </p>
+                          <ul className="space-y-1">
+                            {journeyPhase.keyActivities.slice(0, 3).map((activity: string, i: number) => (
+                              <li key={i} className="flex items-start gap-1">
+                                <span className="w-1 h-1 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />
+                                <span>{activity}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {journeyPhase.questionsToAsk?.length > 0 && (
+                        <div>
+                          <p className="font-semibold text-blue-700 mb-1 flex items-center gap-1">
+                            <MessageCircle className="w-3 h-3" />
+                            Questions to Ask
+                          </p>
+                          <ul className="space-y-1">
+                            {journeyPhase.questionsToAsk.slice(0, 2).map((q: string, i: number) => (
+                              <li key={i} className="flex items-start gap-1 italic text-blue-600/80">
+                                <span className="not-italic">"</span>{q}<span className="not-italic">"</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {journeyPhase.whatGoodLooksLike?.length > 0 && (
+                        <div>
+                          <p className="font-semibold text-purple-700 mb-1 flex items-center gap-1">
+                            <Star className="w-3 h-3" />
+                            What Good Looks Like
+                          </p>
+                          <ul className="space-y-1">
+                            {journeyPhase.whatGoodLooksLike.slice(0, 2).map((item: string, i: number) => (
+                              <li key={i} className="flex items-start gap-1">
+                                <span className="w-1 h-1 rounded-full bg-purple-500 mt-1.5 flex-shrink-0" />
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {journeyPhase.blockers?.length > 0 && (
+                        <div>
+                          <p className="font-semibold text-red-700 mb-1 flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" />
+                            Blockers
+                          </p>
+                          <ul className="space-y-1">
+                            {journeyPhase.blockers.slice(0, 2).map((blocker, i: number) => (
+                              <li key={i} className="flex items-start gap-1">
+                                <Badge variant="outline" className={`text-[10px] px-1 py-0 ${
+                                  blocker.severity === 'high' ? 'border-red-500/50 text-red-600' :
+                                  blocker.severity === 'medium' ? 'border-amber-500/50 text-amber-600' :
+                                  'border-slate-500/50 text-slate-600'
+                                }`}>
+                                  {blocker.severity}
+                                </Badge>
+                                <span>{blocker.blocker}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {journeyPhase.emotions && journeyPhase.emotions.length > 0 && (
+                        <div>
+                          <p className="font-semibold text-pink-700 mb-1 flex items-center gap-1">
+                            <Heart className="w-3 h-3" />
+                            Buyer Emotions
+                          </p>
+                          <div className="flex flex-wrap gap-1">
+                            {journeyPhase.emotions.slice(0, 4).map((emotion: string, i: number) => (
+                              <Badge key={i} variant="outline" className="text-[10px] border-pink-500/30 text-pink-600 bg-pink-500/5">
+                                {emotion}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </>
                   ) : (
-                    <p className="text-muted-foreground italic">Not mapped</p>
+                    <p className="text-muted-foreground italic">Not mapped yet</p>
                   )}
                 </CardContent>
               </Card>
