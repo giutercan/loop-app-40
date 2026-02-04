@@ -15385,8 +15385,30 @@ Return JSON in this exact format:
       const project = await storage.getProject(projectId);
       const jobThemes = await storage.getJobThemes(projectId);
       const valueCases = await storage.getValueCases(projectId);
+      
+      // Fetch alignment data - KPI commitments and strategy selections
+      const kpiCommitments = await storage.getKpiCommitments(projectId);
+      const strategySelection = await storage.getStrategySelection(projectId);
+      
+      // Format KPI commitments as target outcomes
+      const targetOutcomes = kpiCommitments.slice(0, 6).map((kpi: any) => ({
+        id: kpi.id,
+        title: kpi.commitmentTitle,
+        baseline: kpi.baselineValue,
+        target: kpi.targetValue,
+        unit: kpi.metricUnit,
+        valuePillar: kpi.valuePillar,
+        estimatedValue: kpi.estimatedAnnualValue
+      }));
+      
+      // Format generated outcomes from strategy selection
+      const generatedOutcomes = strategySelection?.generatedOutcomes as any[] || [];
+      const selectedOutcomeIds = strategySelection?.selectedOutcomeIds || [];
+      const confirmedOutcomes = generatedOutcomes.filter((o: any) => 
+        selectedOutcomeIds.includes(o.id || o.outcomeId)
+      );
 
-      const prompt = `You are an expert sales strategist creating a professional seller playbook. Create a 6-phase buyer journey aligned to the sales process.
+      const prompt = `You are an expert sales strategist creating a professional seller playbook. Create a 6-phase buyer journey aligned to the sales process that is specifically designed to ACHIEVE the target outcomes defined below.
 
 Company: ${project?.name || "Target Company"}
 ${persona ? `Persona: ${persona.personaName} - ${persona.personaTitle}
@@ -15401,7 +15423,25 @@ ${jobThemes.slice(0, 5).map((j: any) => `- ${j.jobName}: ${j.description || ''}`
 Value Cases:
 ${valueCases.slice(0, 5).map((v: any) => `- ${v.challenge}: ${v.outcome}`).join('\n') || 'No value cases available'}
 
+=== TARGET OUTCOMES (from Alignment) ===
+These are the committed KPIs and outcomes that this journey must help achieve:
+
+KPI Commitments:
+${targetOutcomes.length > 0 ? targetOutcomes.map((kpi: any) => 
+  `- ${kpi.title} (${kpi.baseline || 'N/A'} → ${kpi.target || 'N/A'} ${kpi.unit || ''}) [Value: $${kpi.estimatedValue?.toLocaleString() || 'TBD'}]`
+).join('\n') : 'No KPI commitments yet - generate general journey'}
+
+Confirmed Strategic Outcomes:
+${confirmedOutcomes.length > 0 ? confirmedOutcomes.map((o: any) => 
+  `- ${o.outcome || o.title || o.description || 'Outcome'}`
+).join('\n') : 'No confirmed outcomes yet'}
+
+=== JOURNEY REQUIREMENTS ===
 Create a buyer journey with 6 sales-aligned phases: Prospecting, Qualifying, Discovery, Proposing, Negotiating, Closing
+
+IMPORTANT: Each phase must include an "outcomeMapping" field that specifies:
+- Which target outcomes/KPIs are relevant to address or validate at this stage
+- How this phase contributes to achieving those outcomes
 
 For each phase, provide (like a professional seller playbook):
 - description: What this phase is about (2-3 sentences)
@@ -15412,6 +15452,7 @@ For each phase, provide (like a professional seller playbook):
 - whatGoodLooksLike: Success criteria for this phase (3-4 items)
 - mustCompleteBeforeNext: Gates/checklist items before moving to next stage (3-4 items)
 - blockers: Common obstacles at this stage (2-3 items with severity: high/medium/low)
+- outcomeMapping: Array of objects linking to target outcomes - [{outcomeId: number | string, relevance: "primary" | "supporting", howAddressed: "Description of how this phase addresses the outcome"}]
 
 Return JSON in this exact format:
 {
@@ -15424,7 +15465,8 @@ Return JSON in this exact format:
       "questionsToAsk": ["What's driving your interest in this area?", "What would need to change for you to consider a solution?"],
       "whatGoodLooksLike": ["Targeted and timely outreach", "Personalized value proposition", "CRM updated after each touchpoint"],
       "mustCompleteBeforeNext": ["Enter new lead into CRM", "Complete initial profile", "Assign correct stage and owner"],
-      "blockers": [{"blocker": "No response to outreach", "severity": "medium"}]
+      "blockers": [{"blocker": "No response to outreach", "severity": "medium"}],
+      "outcomeMapping": [{"outcomeId": "kpi-1", "relevance": "supporting", "howAddressed": "Identify buyers with pain points aligned to our value proposition"}]
     },
     "qualifying": { ... },
     "discovery": { ... },

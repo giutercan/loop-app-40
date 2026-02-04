@@ -103,6 +103,13 @@ interface BuyerPersona {
   aiGenerated?: boolean;
 }
 
+// Outcome mapping for linking journey phases to target outcomes
+interface OutcomeMapping {
+  outcomeId: string | number;
+  relevance: "primary" | "supporting";
+  howAddressed: string;
+}
+
 // Sales-aligned journey phase structure (like a professional playbook)
 interface JourneyPhaseData {
   description: string;
@@ -113,6 +120,7 @@ interface JourneyPhaseData {
   whatGoodLooksLike: string[];
   mustCompleteBeforeNext: string[];
   blockers: { blocker: string; severity: "high" | "medium" | "low" }[];
+  outcomeMapping?: OutcomeMapping[];
   // Legacy fields preserved during conversion
   emotions?: string[];
   legacyFormat?: boolean;
@@ -721,19 +729,20 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
         if (journey.journeyContext) addText(`Context: ${journey.journeyContext}`);
         
         // Handle both new object format and legacy array format
-        let phasesToProcess: Array<{ phaseName: string; [key: string]: any }> = [];
+        type ProcessedPhase = { phaseName: string } & Partial<JourneyPhaseData> & { [key: string]: any };
+        let phasesToProcess: ProcessedPhase[] = [];
         
         if (Array.isArray(journey.phases)) {
           // Legacy array format
           phasesToProcess = journey.phases.map((p: LegacyJourneyPhase) => ({ ...p, phaseName: p.phaseName }));
         } else {
           // New object format - only include phases that exist
-          phasesToProcess = JOURNEY_PHASES
-            .map(p => {
-              const phaseObj = (journey.phases as BuyerJourneyPhases)[p.id as keyof BuyerJourneyPhases];
-              return phaseObj ? { ...phaseObj, phaseName: p.name } : null;
-            })
-            .filter((p): p is { phaseName: string; [key: string]: any } => p !== null);
+          JOURNEY_PHASES.forEach(p => {
+            const phaseObj = (journey.phases as BuyerJourneyPhases)[p.id as keyof BuyerJourneyPhases];
+            if (phaseObj) {
+              phasesToProcess.push({ ...phaseObj, phaseName: p.name });
+            }
+          });
         }
         
         phasesToProcess.forEach((phase) => {
@@ -763,6 +772,13 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
           }
           if (phase.decisionFactors?.length) {
             addText(`Decision Factors: ${phase.decisionFactors.join(", ")}`);
+          }
+          // Add outcome mapping to PDF
+          if (phase.outcomeMapping?.length) {
+            addText("Target Outcomes:");
+            phase.outcomeMapping.forEach((mapping: OutcomeMapping) => {
+              addText(`- [${mapping.relevance.toUpperCase()}] ${mapping.howAddressed}`, 5);
+            });
           }
         });
         yPos += 8;
@@ -1501,6 +1517,34 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
                               </Badge>
                             ))}
                           </div>
+                        </div>
+                      )}
+                      
+                      {journeyPhase.outcomeMapping && journeyPhase.outcomeMapping.length > 0 && (
+                        <div className="pt-2 border-t border-amber-500/20">
+                          <p className="font-semibold text-orange-700 mb-1 flex items-center gap-1">
+                            <Target className="w-3 h-3" />
+                            Target Outcomes
+                          </p>
+                          <ul className="space-y-1.5">
+                            {journeyPhase.outcomeMapping.slice(0, 2).map((mapping: OutcomeMapping, i: number) => (
+                              <li key={i} className="flex items-start gap-1.5">
+                                <Badge 
+                                  variant="outline" 
+                                  className={`text-[9px] px-1 py-0 flex-shrink-0 ${
+                                    mapping.relevance === 'primary' 
+                                      ? 'border-orange-500/50 text-orange-600 bg-orange-500/10' 
+                                      : 'border-slate-500/50 text-slate-600'
+                                  }`}
+                                >
+                                  {mapping.relevance}
+                                </Badge>
+                                <span className="text-[10px] text-muted-foreground leading-tight">
+                                  {mapping.howAddressed}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
                         </div>
                       )}
                     </>
