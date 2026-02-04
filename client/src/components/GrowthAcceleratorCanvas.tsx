@@ -1552,34 +1552,161 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
               red: "text-red-600 bg-red-500/10",
               purple: "text-purple-600 bg-purple-500/10",
             };
+            
+            // WBT recommended counts
+            const recommendedCounts: Record<string, string> = {
+              facts: "20-25 recommended",
+              goals: "5-8 recommended",
+              pains: "4-6 recommended",
+              behaviours: "3-5 recommended",
+            };
+            
+            // Helper to render origin badge for Goals
+            const renderOriginBadge = (origin?: string) => {
+              if (!origin) return null;
+              const colors: Record<string, string> = {
+                social: "bg-pink-500/10 text-pink-600 border-pink-500/30",
+                emotional: "bg-amber-500/10 text-amber-600 border-amber-500/30",
+                functional: "bg-blue-500/10 text-blue-600 border-blue-500/30",
+              };
+              return (
+                <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${colors[origin] || ''}`}>
+                  {origin.charAt(0).toUpperCase() + origin.slice(1)}
+                </Badge>
+              );
+            };
+            
+            // Helper to render urgency/intensity badges for Pains
+            const renderUrgencyIntensity = (urgency?: string, intensity?: string) => {
+              const levelColors: Record<string, string> = {
+                high: "bg-red-500/10 text-red-600",
+                medium: "bg-amber-500/10 text-amber-600",
+                low: "bg-slate-500/10 text-slate-600",
+              };
+              return (
+                <div className="flex gap-1 mt-1">
+                  {urgency && (
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded ${levelColors[urgency] || ''}`}>
+                      Urgency: {urgency}
+                    </span>
+                  )}
+                  {intensity && (
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded ${levelColors[intensity] || ''}`}>
+                      Intensity: {intensity}
+                    </span>
+                  )}
+                </div>
+              );
+            };
+            
+            // Helper to render effort/efficacy badges for Behaviours
+            const renderEffortEfficacy = (effortLevel?: string, efficacy?: string) => {
+              const effortLabels: Record<string, string> = {
+                seeking_solutions: "Researching",
+                taking_explicit_actions: "Acting",
+                investing_time_money: "Investing",
+              };
+              const efficacyColors: Record<string, string> = {
+                not_working: "bg-red-500/10 text-red-600",
+                partially_working: "bg-amber-500/10 text-amber-600",
+                working_well: "bg-green-500/10 text-green-600",
+              };
+              return (
+                <div className="flex gap-1 mt-1 flex-wrap">
+                  {effortLevel && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600">
+                      {effortLabels[effortLevel] || effortLevel}
+                    </span>
+                  )}
+                  {efficacy && (
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded ${efficacyColors[efficacy] || ''}`}>
+                      {efficacy.replace(/_/g, ' ')}
+                    </span>
+                  )}
+                </div>
+              );
+            };
+            
             return (
               <Card key={quadrant.id} className={`${colorClasses[quadrant.color]}`}>
                 <CardHeader className="pb-2">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${iconColors[quadrant.color]}`}>
-                      <QuadrantIcon className="w-4 h-4" />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${iconColors[quadrant.color]}`}>
+                        <QuadrantIcon className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-sm">{quadrant.label}</CardTitle>
+                        <CardDescription className="text-xs">{quadrant.description}</CardDescription>
+                      </div>
                     </div>
-                    <div>
-                      <CardTitle className="text-sm">{quadrant.label}</CardTitle>
-                      <CardDescription className="text-xs">{quadrant.description}</CardDescription>
-                    </div>
+                    <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                      {quadrant.items.length} / {recommendedCounts[quadrant.id]?.split(' ')[0] || '?'}
+                    </Badge>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <ul className="space-y-2">
-                    {(quadrant.items as QuadrantItem[]).slice(0, 4).map((item, idx) => (
-                      <li key={idx} className="text-sm flex items-start gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-foreground/40 mt-2 flex-shrink-0" />
-                        <span>{typeof item === 'string' ? item : item.text}</span>
-                      </li>
-                    ))}
+                  <ul className="space-y-3">
+                    {(quadrant.items as any[]).slice(0, 5).map((item, idx) => {
+                      const itemText = typeof item === 'string' 
+                        ? item 
+                        : (item.text || item.fact || item.goal || item.pain || item.behaviour || '');
+                      
+                      return (
+                        <li key={idx} className="text-sm border-l-2 border-foreground/20 pl-2">
+                          <div className="flex items-start gap-2 flex-wrap">
+                            <span className="flex-1">{itemText}</span>
+                            {/* Goals: Show origin badge */}
+                            {quadrant.id === 'goals' && item.origin && renderOriginBadge(item.origin)}
+                          </div>
+                          
+                          {/* Goals: Show measure of success */}
+                          {quadrant.id === 'goals' && item.measureOfSuccess && (
+                            <p className="text-[10px] text-muted-foreground mt-1 italic">
+                              Success: "{item.measureOfSuccess}"
+                            </p>
+                          )}
+                          
+                          {/* Pains: Show urgency/intensity and linked goals */}
+                          {quadrant.id === 'pains' && (
+                            <>
+                              {renderUrgencyIntensity(item.urgency, item.intensity)}
+                              {item.linkedGoalIds?.length > 0 && (
+                                <p className="text-[10px] text-emerald-600 mt-1">
+                                  Blocks: {item.linkedGoalIds.join(', ')}
+                                </p>
+                              )}
+                            </>
+                          )}
+                          
+                          {/* Behaviours: Show effort/efficacy and linked pains */}
+                          {quadrant.id === 'behaviours' && (
+                            <>
+                              {renderEffortEfficacy(item.effortLevel, item.efficacy)}
+                              {item.competitorSolution && (
+                                <p className="text-[10px] text-amber-600 mt-1">
+                                  Using: {item.competitorSolution}
+                                </p>
+                              )}
+                            </>
+                          )}
+                          
+                          {/* Facts: Show category */}
+                          {quadrant.id === 'facts' && item.category && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 mt-1 inline-block">
+                              {item.category}
+                            </span>
+                          )}
+                        </li>
+                      );
+                    })}
                     {quadrant.items.length === 0 && (
                       <li className="text-sm text-muted-foreground italic">No items yet</li>
                     )}
                   </ul>
-                  {quadrant.items.length > 4 && (
+                  {quadrant.items.length > 5 && (
                     <p className="text-xs text-muted-foreground mt-2">
-                      +{quadrant.items.length - 4} more
+                      +{quadrant.items.length - 5} more items
                     </p>
                   )}
                 </CardContent>
@@ -2045,6 +2172,28 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
       );
     }
 
+    // Categorize predictions into 4 quadrants based on WBT methodology
+    // X-axis: Impact if wrong (how much it causes Persona rethink) - Low left, High right
+    // Y-axis: Confidence level - High top, Low bottom
+    // Bottom-right = "Riskiest Predictions" (high impact, low confidence) - these need experimentation
+    // Note: Schema uses impactIfWrong field, but we treat any non-null impactIfWrong as "high impact"
+    const getImpact = (p: any): "high" | "low" => {
+      // If explicitly marked as risky, it's high impact
+      if (p.isRiskyPrediction) return "high";
+      // If impactIfWrong field has content, it's high impact
+      if (p.impactIfWrong && p.impactIfWrong.length > 0) return "high";
+      // Check direct impact field if present
+      if (p.impact === "high") return "high";
+      if (p.impact === "low") return "low";
+      // Default based on confidence - low confidence suggests high risk/impact
+      return p.confidence === "high" ? "low" : "high";
+    };
+    
+    const highConfHighImpact = predictions.filter(p => p.confidence === "high" && getImpact(p) === "high" && !p.isRiskyPrediction);
+    const highConfLowImpact = predictions.filter(p => p.confidence === "high" && getImpact(p) === "low" && !p.isRiskyPrediction);
+    const lowConfLowImpact = predictions.filter(p => (p.confidence === "low" || p.confidence === "medium") && getImpact(p) === "low" && !p.isRiskyPrediction);
+    const riskyPredictions = predictions.filter(p => p.isRiskyPrediction === true);
+
     return (
       <Card>
         <CardHeader>
@@ -2054,45 +2203,147 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
                 <Grid3x3 className="w-5 h-5 text-orange-600" />
               </div>
               <div>
-                <CardTitle>Predictions Grid</CardTitle>
-                <CardDescription>2x2 matrix of confidence vs impact predictions</CardDescription>
+                <CardTitle>Predictions 2x2 Grid</CardTitle>
+                <CardDescription>Sort predictions by Impact (if wrong) vs Confidence to identify riskiest assumptions</CardDescription>
               </div>
             </div>
-            <Badge variant="outline" className="gap-1 text-purple-600 border-purple-500/30 bg-purple-500/5">
-              <Sparkles className="w-3 h-3" />
-              AI Generated
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="gap-1 text-purple-600 border-purple-500/30 bg-purple-500/5">
+                <Sparkles className="w-3 h-3" />
+                AI Generated
+              </Badge>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => generatePredictionsMutation.mutate()}
+                disabled={generatePredictionsMutation.isPending}
+                className="gap-1"
+                data-testid="button-regenerate-predictions"
+              >
+                {generatePredictionsMutation.isPending ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-3 h-3" />
+                )}
+                Regenerate
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="p-4 rounded-lg bg-red-500/5 border border-red-500/20">
-              <h4 className="font-semibold text-red-600 text-xs uppercase mb-2">High Impact, Low Confidence</h4>
-              <ul className="space-y-2">
-                {predictions
-                  .filter(p => p.isRiskyPrediction)
-                  .slice(0, 3)
-                  .map((pred, i) => (
-                    <li key={i} className="text-sm flex items-start gap-2">
-                      <AlertTriangle className="w-3 h-3 mt-1 text-red-500" />
-                      {pred.prediction}
-                    </li>
-                  ))}
-              </ul>
+          {/* 2x2 Grid with axis labels */}
+          <div className="relative">
+            {/* Y-axis label */}
+            <div className="absolute -left-2 top-1/2 -translate-y-1/2 -rotate-90 text-xs font-semibold text-muted-foreground whitespace-nowrap">
+              ← Low Confidence — High Confidence →
             </div>
-            <div className="p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
-              <h4 className="font-semibold text-emerald-600 text-xs uppercase mb-2">High Impact, High Confidence</h4>
-              <ul className="space-y-2">
-                {predictions
-                  .filter(p => !p.isRiskyPrediction && p.confidence === "high")
-                  .slice(0, 3)
-                  .map((pred, i) => (
-                    <li key={i} className="text-sm flex items-start gap-2">
-                      <CheckCircle className="w-3 h-3 mt-1 text-emerald-500" />
-                      {pred.prediction}
-                    </li>
-                  ))}
-              </ul>
+            
+            <div className="ml-6">
+              {/* X-axis label */}
+              <div className="text-center text-xs font-semibold text-muted-foreground mb-2">
+                ← Low Impact — High Impact →
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                {/* Top-left: High Confidence, Low Impact - "Park for now" */}
+                <div className="p-4 rounded-lg bg-slate-500/5 border border-slate-500/20 min-h-[140px]">
+                  <h4 className="font-semibold text-slate-600 text-xs uppercase mb-2 flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-slate-400" />
+                    Low Impact, High Confidence
+                  </h4>
+                  <p className="text-[10px] text-muted-foreground mb-2">Park these - low priority</p>
+                  <ul className="space-y-1.5">
+                    {highConfLowImpact.slice(0, 2).map((pred, i) => (
+                      <li key={i} className="text-xs flex items-start gap-1.5 text-muted-foreground">
+                        <span className="w-1 h-1 rounded-full bg-slate-400 mt-1.5 flex-shrink-0" />
+                        <span className="line-clamp-2">{pred.prediction}</span>
+                      </li>
+                    ))}
+                    {highConfLowImpact.length === 0 && (
+                      <li className="text-xs text-muted-foreground italic">None identified</li>
+                    )}
+                  </ul>
+                </div>
+                
+                {/* Top-right: High Confidence, High Impact - "Foundation" */}
+                <div className="p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/20 min-h-[140px]">
+                  <h4 className="font-semibold text-emerald-600 text-xs uppercase mb-2 flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3" />
+                    High Impact, High Confidence
+                  </h4>
+                  <p className="text-[10px] text-emerald-600/70 mb-2">Foundation - proceed confidently</p>
+                  <ul className="space-y-1.5">
+                    {highConfHighImpact.filter(p => !p.isRiskyPrediction).slice(0, 2).map((pred, i) => (
+                      <li key={i} className="text-xs flex items-start gap-1.5">
+                        <CheckCircle className="w-3 h-3 mt-0.5 text-emerald-500 flex-shrink-0" />
+                        <span className="line-clamp-2">{pred.prediction}</span>
+                      </li>
+                    ))}
+                    {highConfHighImpact.filter(p => !p.isRiskyPrediction).length === 0 && (
+                      <li className="text-xs text-muted-foreground italic">None identified</li>
+                    )}
+                  </ul>
+                </div>
+                
+                {/* Bottom-left: Low Confidence, Low Impact - "Monitor" */}
+                <div className="p-4 rounded-lg bg-amber-500/5 border border-amber-500/20 min-h-[140px]">
+                  <h4 className="font-semibold text-amber-600 text-xs uppercase mb-2 flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-amber-400" />
+                    Low Impact, Low Confidence
+                  </h4>
+                  <p className="text-[10px] text-amber-600/70 mb-2">Monitor - validate opportunistically</p>
+                  <ul className="space-y-1.5">
+                    {lowConfLowImpact.slice(0, 2).map((pred, i) => (
+                      <li key={i} className="text-xs flex items-start gap-1.5 text-amber-700">
+                        <span className="w-1 h-1 rounded-full bg-amber-400 mt-1.5 flex-shrink-0" />
+                        <span className="line-clamp-2">{pred.prediction}</span>
+                      </li>
+                    ))}
+                    {lowConfLowImpact.length === 0 && (
+                      <li className="text-xs text-muted-foreground italic">None identified</li>
+                    )}
+                  </ul>
+                </div>
+                
+                {/* Bottom-right: Low Confidence, High Impact - "RISKIEST - Experiment!" */}
+                <div className="p-4 rounded-lg bg-red-500/10 border-2 border-red-500/40 min-h-[140px] relative">
+                  <div className="absolute -top-2 -right-2">
+                    <Badge className="bg-red-500 text-white text-[10px] px-2">EXPERIMENT</Badge>
+                  </div>
+                  <h4 className="font-semibold text-red-600 text-xs uppercase mb-2 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" />
+                    High Impact, Low Confidence
+                  </h4>
+                  <p className="text-[10px] text-red-600/70 mb-2">Riskiest - prioritize for CDI testing</p>
+                  <ul className="space-y-1.5">
+                    {riskyPredictions.slice(0, 3).map((pred, i) => (
+                      <li key={i} className="text-xs flex items-start gap-1.5 text-red-700">
+                        <AlertTriangle className="w-3 h-3 mt-0.5 text-red-500 flex-shrink-0" />
+                        <span className="line-clamp-2">{pred.prediction}</span>
+                      </li>
+                    ))}
+                    {riskyPredictions.length === 0 && (
+                      <li className="text-xs text-muted-foreground italic">None identified</li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+              
+              {/* Summary stats */}
+              <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                <div className="flex items-center gap-4 text-xs">
+                  <span className="text-muted-foreground">
+                    Total: <strong>{predictions.length}</strong> predictions
+                  </span>
+                  <span className="text-red-600">
+                    <AlertTriangle className="w-3 h-3 inline mr-1" />
+                    <strong>{riskyPredictions.length}</strong> risky (need testing)
+                  </span>
+                </div>
+                <p className="text-[10px] text-muted-foreground max-w-xs text-right">
+                  Focus CDI interviews on the bottom-right quadrant to validate high-impact, low-confidence assumptions
+                </p>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -2140,30 +2391,162 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
     return (
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center">
-              <MessageSquare className="w-5 h-5 text-teal-600" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center">
+                <MessageSquare className="w-5 h-5 text-teal-600" />
+              </div>
+              <div>
+                <CardTitle>{script.scriptName || "Discovery Interview Script"}</CardTitle>
+                <CardDescription className="flex items-center gap-2">
+                  <span>Target: {script.targetRole}</span>
+                  {script.estimatedDuration && (
+                    <Badge variant="outline" className="text-xs">{script.estimatedDuration}</Badge>
+                  )}
+                </CardDescription>
+              </div>
             </div>
-            <div>
-              <CardTitle>{script.scriptName}</CardTitle>
-              <CardDescription>Target: {script.targetRole}</CardDescription>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="gap-1 text-purple-600 border-purple-500/30 bg-purple-500/5">
+                <Sparkles className="w-3 h-3" />
+                AI Generated
+              </Badge>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => generateInterviewScriptMutation.mutate()}
+                disabled={generateInterviewScriptMutation.isPending}
+                className="gap-1"
+                data-testid="button-regenerate-interview-script"
+              >
+                {generateInterviewScriptMutation.isPending ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-3 h-3" />
+                )}
+                Regenerate
+              </Button>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Interview Tips */}
+          {script.interviewTips && script.interviewTips.length > 0 && (
+            <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
+              <h4 className="font-semibold text-sm text-amber-700 mb-2 flex items-center gap-2">
+                <Lightbulb className="w-4 h-4" />
+                Mom Test Tips
+              </h4>
+              <ul className="space-y-1">
+                {script.interviewTips.map((tip: string, idx: number) => (
+                  <li key={idx} className="text-xs flex items-start gap-2">
+                    <span className="text-amber-500 mt-0.5">•</span>
+                    <span>{tip}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          
+          {/* Interview Sections */}
           {script.sections?.map((section: any, idx: number) => (
             <div key={idx} className="p-4 rounded-lg border bg-muted/30">
-              <h4 className="font-semibold mb-3">{section.sectionName}</h4>
-              <div className="space-y-3">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-semibold">{section.sectionName}</h4>
+                {section.timeAllocation && (
+                  <Badge variant="outline" className="text-xs">{section.timeAllocation}</Badge>
+                )}
+              </div>
+              {section.sectionPurpose && (
+                <p className="text-xs text-muted-foreground mb-3 italic">{section.sectionPurpose}</p>
+              )}
+              <div className="space-y-4">
                 {section.questions?.map((q: any, qIdx: number) => (
                   <div key={qIdx} className="pl-4 border-l-2 border-teal-500/30">
-                    <p className="font-medium text-sm">{q.question}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Validates: {q.validates}</p>
+                    <div className="flex items-start gap-2 mb-1">
+                      <p className="font-medium text-sm flex-1">{q.question}</p>
+                      {q.hypothesisId && (
+                        <Badge variant="outline" className="text-[10px] bg-purple-500/10 text-purple-600">
+                          {q.hypothesisId}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      <strong>Validates:</strong> {q.validates}
+                    </p>
+                    {q.listenFor && q.listenFor.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-[10px] font-semibold text-emerald-600 uppercase mb-1">Listen For:</p>
+                        <ul className="space-y-0.5">
+                          {q.listenFor.map((signal: string, sIdx: number) => (
+                            <li key={sIdx} className="text-xs text-emerald-700 flex items-start gap-1">
+                              <CheckCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                              <span>{signal}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {q.redFlags && q.redFlags.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-[10px] font-semibold text-red-600 uppercase mb-1">Red Flags:</p>
+                        <ul className="space-y-0.5">
+                          {q.redFlags.map((flag: string, fIdx: number) => (
+                            <li key={fIdx} className="text-xs text-red-600 flex items-start gap-1">
+                              <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                              <span>{flag}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {q.followUps && q.followUps.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-[10px] font-semibold text-blue-600 uppercase mb-1">Follow-up Probes:</p>
+                        <ul className="space-y-0.5">
+                          {q.followUps.map((followUp: string, fuIdx: number) => (
+                            <li key={fuIdx} className="text-xs text-blue-600 flex items-start gap-1">
+                              <ChevronRight className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                              <span>{followUp}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             </div>
           ))}
+          
+          {/* Closing Script */}
+          {script.closingScript && (
+            <div className="p-3 rounded-lg bg-slate-500/5 border border-slate-500/20">
+              <h4 className="font-semibold text-sm mb-2">Closing Script</h4>
+              <p className="text-sm">{script.closingScript}</p>
+            </div>
+          )}
+          
+          {/* Simulated Transcript */}
+          {script.simulatedTranscript && (
+            <div className="p-4 rounded-lg bg-gradient-to-br from-teal-500/5 to-purple-500/5 border border-teal-500/20">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-semibold text-sm flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-teal-600" />
+                  Simulated Interview Transcript
+                </h4>
+                <Badge variant="outline" className="text-xs">Practice Material</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                This simulated conversation helps you prepare for real interviews. Notice how questions flow naturally and build on responses.
+              </p>
+              <div className="bg-background/50 rounded-lg p-4 max-h-[400px] overflow-y-auto">
+                <pre className="text-sm whitespace-pre-wrap font-sans leading-relaxed">
+                  {script.simulatedTranscript.split('\\n').join('\n')}
+                </pre>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     );

@@ -15309,11 +15309,31 @@ Create a detailed buyer persona with the following structure (like a professiona
 - Engagement Preferences (3-5): How they prefer to be contacted and engaged
 - Key Challenges (3-5): Major obstacles they face in their role
 
-**4-Quadrant Structure:**
-1. Facts (4-6 items): Demographic, psychographic, and professional facts about this buyer
-2. Goals (3-5 items): What business outcomes they're trying to achieve with clear measures of success
-3. Pains (3-5 items): Obstacles, frustrations, and challenges blocking their goals
-4. Behaviours (3-5 items): How they make decisions, who they consult, what information they seek
+**4-Quadrant Structure (Working Backwards Toolkit format):**
+
+1. Facts (20-25 items): Demographic, psychographic, and professional facts about this ONE specific buyer (not a stereotype). Include details like:
+   - Professional background, reporting structure, tenure
+   - Industry experience, geographic responsibility
+   - Decision-making authority and budget control
+   - Education, certifications, professional affiliations
+   - Personal context that influences work decisions
+
+2. Goals (5-8 items): Buyer's current, actionable aspirations. For EACH goal specify:
+   - origin: "social" (recognition, status), "emotional" (feeling, satisfaction), or "functional" (practical outcome)
+   - measureOfSuccess: What the buyer would say "in their own words" if achieved
+   - priority: "high", "medium", or "low"
+
+3. Pains (4-6 items): Blockers preventing goal achievement. EACH pain MUST link to at least 1 Goal. For each specify:
+   - linkedGoalIds: Array of goal IDs this pain blocks
+   - urgency: "high", "medium", or "low" (how quickly they need to solve)
+   - intensity: "high", "medium", or "low" (how unhappy with current situation)
+   - journeyPhasesMostFelt: Array of phases where pain is felt: "awareness", "search_selection", "purchasing", "usage", "repurchasing"
+
+4. Behaviours (3-5 items): Current actions buyer is taking. EACH behaviour MUST link to at least 1 Pain. For each specify:
+   - linkedPainIds: Array of pain IDs this behaviour addresses
+   - effortLevel: "seeking_solutions" (researching), "taking_explicit_actions" (actively trying), or "investing_time_money" (committed resources)
+   - efficacy: "not_working", "partially_working", or "working_well"
+   - competitorSolution: Name any competitor solutions they're using
 
 Return JSON in this exact format:
 {
@@ -15326,10 +15346,10 @@ Return JSON in this exact format:
   "behavioralTraits": ["Data-driven decision maker", "Prefers collaborative approach", "Risk-conscious"],
   "engagementPreferences": ["Email for initial contact", "In-person for key meetings", "LinkedIn for thought leadership"],
   "challenges": ["Proving ROI to board", "Aligning stakeholders", "Managing change resistance"],
-  "facts": [{"id": "f1", "text": "Fact description", "category": "professional"}],
-  "goals": [{"id": "g1", "text": "Goal description", "priority": "high", "measureOfSuccess": "How they measure achievement"}],
-  "pains": [{"id": "p1", "text": "Pain description", "urgency": "high"}],
-  "behaviours": [{"id": "b1", "text": "Behaviour description", "effortLevel": "seeking_solutions"}]
+  "facts": [{"id": "f1", "fact": "Fact description", "category": "professional", "source": "discovery"}],
+  "goals": [{"id": "g1", "goal": "Goal description", "origin": "functional", "priority": "high", "measureOfSuccess": "Specific metric or outcome they'd cite"}],
+  "pains": [{"id": "p1", "pain": "Pain description", "linkedGoalIds": ["g1"], "urgency": "high", "intensity": "high", "journeyPhasesMostFelt": ["awareness", "search_selection"]}],
+  "behaviours": [{"id": "b1", "behaviour": "Behaviour description", "linkedPainIds": ["p1"], "effortLevel": "seeking_solutions", "efficacy": "partially_working", "competitorSolution": null}]
 }`;
 
       const response = await openai.chat.completions.create({
@@ -15436,43 +15456,54 @@ ${confirmedOutcomes.length > 0 ? confirmedOutcomes.map((o: any) =>
   `- ${o.outcome || o.title || o.description || 'Outcome'}`
 ).join('\n') : 'No confirmed outcomes yet'}
 
-=== JOURNEY REQUIREMENTS ===
-Create a buyer journey with 6 sales-aligned phases: Prospecting, Qualifying, Discovery, Proposing, Negotiating, Closing
+=== JOURNEY REQUIREMENTS (Working Backwards Toolkit) ===
+Create a buyer journey with 5 WBT-standard phases: Awareness, Search & Selection, Purchase, Experience, Advocacy
 
-IMPORTANT: Each phase must include an "outcomeMapping" field that specifies:
-- Which target outcomes/KPIs are relevant to address or validate at this stage
-- How this phase contributes to achieving those outcomes
+This journey describes the BUYER's perspective - what they do, think, and feel at each stage of their buying journey. Focus on pain points and blockers that can be addressed through a sales play.
 
-For each phase, provide (like a professional seller playbook):
+For each phase, provide BOTH WBT buyer-perspective fields AND seller playbook fields:
+- phaseName: Display name for the phase
+- phaseId: ID matching the phase key
 - description: What this phase is about (2-3 sentences)
+
+WBT Buyer Fields:
+- tasks: What the buyer is actively doing (4-5 items)
+- emotions: How the buyer feels at this stage (2-3 items)  
+- painPoints: Specific frustrations and blockers (3-4 items)
+- decisionFactors: What influences their decisions (3-4 items)
+
+Seller Playbook Fields (for sales enablement):
 - keyConsiderations: What the seller should think about (3-4 items)
-- keyActivities: Specific actions to take (4-5 items with bullet points)
+- keyActivities: Specific seller actions to take (4-5 items)
 - touchpoints: How to engage the buyer (2-3 items)
-- questionsToAsk: Specific questions sellers should ask (3-4 items)
+- questionsToAsk: Questions sellers should ask (3-4 items)
 - whatGoodLooksLike: Success criteria for this phase (3-4 items)
-- mustCompleteBeforeNext: Gates/checklist items before moving to next stage (3-4 items)
-- blockers: Common obstacles at this stage (2-3 items with severity: high/medium/low)
-- outcomeMapping: Array of objects linking to target outcomes - [{outcomeId: number | string, relevance: "primary" | "supporting", howAddressed: "Description of how this phase addresses the outcome"}]
+- blockers: Common obstacles [{blocker: string, severity: "high"|"medium"|"low"}]
+- outcomeMapping: [{outcomeId: string, relevance: "primary"|"supporting", howAddressed: string}]
 
 Return JSON in this exact format:
 {
   "phases": {
-    "prospecting": {
-      "description": "The strategic identification and outreach to buyers who may be suitable for current opportunities.",
-      "keyConsiderations": ["Match solution to buyer profile", "Customize outreach to buyer motivations"],
-      "keyActivities": ["Research buyer background and motivation", "Make contact via preferred channel", "Focus on relationship-first language"],
-      "touchpoints": ["Email", "LinkedIn", "Phone"],
-      "questionsToAsk": ["What's driving your interest in this area?", "What would need to change for you to consider a solution?"],
-      "whatGoodLooksLike": ["Targeted and timely outreach", "Personalized value proposition", "CRM updated after each touchpoint"],
-      "mustCompleteBeforeNext": ["Enter new lead into CRM", "Complete initial profile", "Assign correct stage and owner"],
-      "blockers": [{"blocker": "No response to outreach", "severity": "medium"}],
-      "outcomeMapping": [{"outcomeId": "kpi-1", "relevance": "supporting", "howAddressed": "Identify buyers with pain points aligned to our value proposition"}]
+    "awareness": {
+      "phaseName": "Awareness",
+      "phaseId": "awareness",
+      "description": "The buyer recognizes a problem or opportunity and begins initial research.",
+      "tasks": ["Recognizing a problem exists", "Beginning research", "Seeking peer insights"],
+      "emotions": ["Uncertain about scope", "Curious about solutions"],
+      "painPoints": ["Difficulty articulating the problem", "Overwhelmed by information"],
+      "decisionFactors": ["Source credibility", "Relevance to situation"],
+      "keyConsiderations": ["Build awareness of the problem", "Establish thought leadership"],
+      "keyActivities": ["Share educational content", "Engage on social media", "Attend industry events"],
+      "touchpoints": ["LinkedIn articles", "Webinars", "Industry conferences"],
+      "questionsToAsk": ["What triggered your interest in this area?", "How are others in your industry handling this?"],
+      "whatGoodLooksLike": ["Buyer engages with content", "Buyer acknowledges the problem", "Initial meeting scheduled"],
+      "blockers": [{"blocker": "Buyer doesn't see urgency", "severity": "high"}],
+      "outcomeMapping": [{"outcomeId": "kpi-1", "relevance": "supporting", "howAddressed": "Help buyer recognize business impact"}]
     },
-    "qualifying": { ... },
-    "discovery": { ... },
-    "proposing": { ... },
-    "negotiating": { ... },
-    "closing": { ... }
+    "search_selection": { ...similar structure with both WBT and playbook fields... },
+    "purchase": { ... },
+    "experience": { ... },
+    "advocacy": { ... }
   }
 }`;
 
@@ -15759,6 +15790,12 @@ Create a professional "Mom Test" style interview script with 5 sections:
 - Provide 2-3 follow-up probes to go deeper
 - Questions should be open-ended and non-leading
 
+Additionally, create a SIMULATED INTERVIEW TRANSCRIPT - a realistic mock interview that shows how a conversation might flow with this persona. This helps sellers prepare for real interviews. The transcript should:
+- Show natural conversation flow with follow-up questions
+- Include realistic answers based on the persona's pains and goals
+- Demonstrate how to probe deeper on interesting responses
+- Show both validating and invalidating responses to help sellers recognize both
+
 Return JSON:
 {
   "scriptName": "Discovery Interview Script for ${persona?.personaTitle || 'Executive'}",
@@ -15788,7 +15825,8 @@ Return JSON:
     "Take notes on exact words they use",
     "Watch for emotional reactions to pain points"
   ],
-  "closingScript": "Thank them and explain next steps"
+  "closingScript": "Thank them and explain next steps",
+  "simulatedTranscript": "INTERVIEWER: Thanks for taking the time to meet with me today. I'd love to learn more about your role...\\n\\nBUYER: Of course. I'm the [role] here at [company], and I've been in this position for about [X] years...\\n\\n[Continue with realistic dialogue that demonstrates the interview techniques, shows natural follow-ups, and includes specific responses based on the persona's documented pains and goals. Make it 400-600 words long.]"
 }`;
 
       const response = await openai.chat.completions.create({
@@ -15805,8 +15843,11 @@ Return JSON:
         personaId: personaId || persona?.id || null,
         scriptName: aiResult.scriptName || "Discovery Interview Script",
         targetRole: aiResult.targetRole || persona?.personaTitle || "",
+        estimatedDuration: aiResult.estimatedDuration || "45-60 minutes",
         sections: aiResult.sections || [],
         interviewTips: aiResult.interviewTips || [],
+        closingScript: aiResult.closingScript || "",
+        simulatedTranscript: aiResult.simulatedTranscript || null,
         aiGenerated: true,
       });
 
