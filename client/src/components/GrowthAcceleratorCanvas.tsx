@@ -1670,48 +1670,100 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {JOURNEY_PHASES.map((phase, idx) => {
-            // Handle both new object format and legacy array format
-            let journeyPhase: JourneyPhaseData | undefined;
-            if (journey.phases) {
-              if (Array.isArray(journey.phases)) {
-                // Legacy format: array of phases with phaseId
-                const legacyPhase = (journey.phases as LegacyJourneyPhase[]).find((p) => p.phaseId === phase.id);
-                if (legacyPhase) {
-                  // Convert legacy format to new format, preserving legacy-specific fields
-                  journeyPhase = {
-                    description: legacyPhase.description || "",
-                    keyConsiderations: [],
-                    keyActivities: legacyPhase.tasks || [],
-                    touchpoints: legacyPhase.touchpoints || [],
-                    questionsToAsk: [],
-                    whatGoodLooksLike: legacyPhase.decisionFactors || [],
-                    mustCompleteBeforeNext: [],
-                    blockers: (legacyPhase.painPoints || []).map((p: string) => ({ blocker: p, severity: "medium" as const })),
-                    emotions: legacyPhase.emotions || [],
-                    legacyFormat: true
-                  };
-                }
-              } else {
-                // New format: object keyed by phase id
-                journeyPhase = (journey.phases as BuyerJourneyPhases)[phase.id as keyof BuyerJourneyPhases];
-              }
-            }
-            return (
-              <Card key={phase.id} className="border-amber-500/20 bg-amber-500/5">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center text-sm font-bold text-amber-700">
-                      {idx + 1}
+          {/* Handle both legacy array format and new object format */}
+          {Array.isArray(journey.phases) ? (
+            // Legacy format: render array phases directly
+            (journey.phases as LegacyJourneyPhase[]).map((legacyPhase, idx) => {
+              const journeyPhase: JourneyPhaseData = {
+                description: legacyPhase.description || "",
+                keyConsiderations: [],
+                keyActivities: legacyPhase.tasks || [],
+                touchpoints: legacyPhase.touchpoints || [],
+                questionsToAsk: [],
+                whatGoodLooksLike: legacyPhase.decisionFactors || [],
+                mustCompleteBeforeNext: [],
+                blockers: (legacyPhase.painPoints || []).map((p: string) => ({ blocker: p, severity: "medium" as const })),
+                emotions: legacyPhase.emotions || [],
+                legacyFormat: true
+              };
+              return (
+                <Card key={legacyPhase.phaseId} className="border-amber-500/20 bg-amber-500/5">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center text-sm font-bold text-amber-700">
+                        {idx + 1}
+                      </div>
+                      <div>
+                        <CardTitle className="text-sm">{legacyPhase.phaseName}</CardTitle>
+                        <CardDescription className="text-xs">{legacyPhase.phaseId}</CardDescription>
+                      </div>
                     </div>
-                    <div>
-                      <CardTitle className="text-sm">{phase.name}</CardTitle>
-                      <CardDescription className="text-xs">{phase.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="text-xs space-y-3">
+                    {journeyPhase.keyActivities?.length > 0 && (
+                      <div>
+                        <p className="font-semibold text-emerald-700 mb-1 flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" />
+                          Tasks
+                        </p>
+                        <ul className="space-y-1">
+                          {journeyPhase.keyActivities.slice(0, 3).map((activity: string, i: number) => (
+                            <li key={i} className="flex items-start gap-1">
+                              <span className="w-1 h-1 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />
+                              <span>{activity}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {journeyPhase.blockers?.length > 0 && (
+                      <div>
+                        <p className="font-semibold text-red-700 mb-1 flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3" />
+                          Pain Points
+                        </p>
+                        <ul className="space-y-1">
+                          {journeyPhase.blockers.slice(0, 2).map((blocker, i: number) => (
+                            <li key={i} className="flex items-start gap-1 text-red-600/80">
+                              <span className="w-1 h-1 rounded-full bg-red-500 mt-1.5 flex-shrink-0" />
+                              <span>{blocker.blocker}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {journeyPhase.emotions && journeyPhase.emotions.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {journeyPhase.emotions.slice(0, 3).map((emotion: string, i: number) => (
+                          <Badge key={i} variant="secondary" className="text-[10px] px-1.5 py-0 bg-amber-500/10 text-amber-700 border-amber-500/30">
+                            {emotion}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })
+          ) : (
+            // New format: render using JOURNEY_PHASES
+            JOURNEY_PHASES.map((phase, idx) => {
+              const journeyPhase = (journey.phases as BuyerJourneyPhases)[phase.id as keyof BuyerJourneyPhases];
+              return (
+                <Card key={phase.id} className="border-amber-500/20 bg-amber-500/5">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center text-sm font-bold text-amber-700">
+                        {idx + 1}
+                      </div>
+                      <div>
+                        <CardTitle className="text-sm">{phase.name}</CardTitle>
+                        <CardDescription className="text-xs">{phase.description}</CardDescription>
+                      </div>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="text-xs space-y-3">
-                  {journeyPhase ? (
+                  </CardHeader>
+                  <CardContent className="text-xs space-y-3">
+                    {journeyPhase ? (
                     <>
                       {journeyPhase.description && (
                         <p className="text-sm text-muted-foreground">{journeyPhase.description}</p>
@@ -1839,8 +1891,9 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
                   )}
                 </CardContent>
               </Card>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       </div>
     );

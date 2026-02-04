@@ -3946,12 +3946,38 @@ export type GaPrediction = typeof gaPredictions.$inferSelect;
 export const gaInterviewScripts = pgTable("ga_interview_scripts", {
   id: serial("id").primaryKey(),
   canvasId: integer("canvas_id").notNull().references(() => growthAcceleratorCanvases.id, { onDelete: "cascade" }),
+  personaId: integer("persona_id"),
   
-  // Script metadata
+  // Script metadata (new enhanced format)
+  scriptName: text("script_name"),
+  targetRole: text("target_role"),
+  estimatedDuration: text("estimated_duration"),
+  
+  // Legacy field - keeping for backward compatibility
   scriptTitle: text("script_title"),
   targetPredictionIds: integer("target_prediction_ids").array(), // Which risky predictions this tests
   
-  // Interview questions (10 recommended, "Mom Test" style - past behavior focused)
+  // Enhanced interview sections (new "Mom Test" format with hypothesis mapping)
+  sections: jsonb("sections").$type<Array<{
+    sectionName: string;
+    sectionPurpose?: string;
+    timeAllocation?: string;
+    questions: Array<{
+      question: string;
+      hypothesisId?: string;
+      hypothesisType?: "buyer" | "problem" | "solution";
+      validates: string;
+      listenFor: string[];
+      followUps: string[];
+      redFlags?: string[];
+    }>;
+  }>>(),
+  
+  // Interview tips and closing script
+  interviewTips: text("interview_tips").array(),
+  closingScript: text("closing_script"),
+  
+  // Legacy questions field (keeping for backward compatibility)
   questions: jsonb("questions").$type<Array<{
     id: string;
     question: string;
