@@ -15628,30 +15628,41 @@ Return JSON in this format:
         return res.status(400).json({ error: "No hypotheses found. Generate hypotheses first." });
       }
 
-      const prompt = `You are an expert in sales validation. Generate testable predictions based on these hypotheses.
+      const prompt = `You are an expert sales validation strategist. Generate testable predictions based on these hypotheses for a 2x2 impact/confidence matrix.
 
 Buyer Hypothesis: ${hypothesis.buyerHypothesis}
 Problem Hypothesis: ${hypothesis.problemHypothesis}
 Solution Hypothesis: ${hypothesis.solutionHypothesis}
 
-Generate 6-8 predictions across a 2x2 matrix of confidence (high/low) and impact (high/low).
-For each prediction, specify:
-- The prediction itself
-- Which hypothesis it tests (buyer, problem, or solution)
-- Impact if wrong
-- Your confidence level
+=== INSTRUCTIONS ===
+Generate 8-10 rich predictions distributed across a 2x2 matrix:
+- HIGH IMPACT + HIGH CONFIDENCE (2-3): Core beliefs that must be true
+- HIGH IMPACT + LOW CONFIDENCE (2-3): Risky predictions - critical but uncertain
+- LOW IMPACT + HIGH CONFIDENCE (1-2): Nice-to-haves we're confident about  
+- LOW IMPACT + LOW CONFIDENCE (1-2): Exploratory assumptions
 
-Focus on predictions that would invalidate your hypotheses if wrong.
+For each prediction, provide:
+1. A specific, testable statement ("We predict that...")
+2. Which hypothesis it validates (buyer, problem, or solution)
+3. Impact level (high/low) - how much it affects our strategy if wrong
+4. Confidence level (high/medium/low) - how certain we are
+5. Detailed consequences if wrong (what would need to change)
+6. Validation method - how we would test this prediction
+7. Evidence we need - what signals confirm or refute this
+8. Mark "isRiskyPrediction: true" for HIGH IMPACT + LOW CONFIDENCE predictions
 
-Return JSON in this format:
+Return JSON:
 {
   "predictions": [
     {
-      "prediction": "We predict that [testable statement]...",
+      "prediction": "We predict that [specific testable statement]...",
       "sourceHypothesis": "buyer|problem|solution",
-      "impactIfWrong": "If wrong, we would need to [pivot/change]...",
+      "impact": "high|low",
       "confidence": "high|medium|low",
-      "isRiskyPrediction": true/false
+      "impactIfWrong": "If wrong, we would need to [specific pivot/change required]...",
+      "validationMethod": "To test this, we will [specific action]...",
+      "evidenceNeeded": "We need to see [specific signals]...",
+      "isRiskyPrediction": true|false
     }
   ]
 }`;
@@ -15672,8 +15683,11 @@ Return JSON in this format:
           hypothesisId: hypothesis.id,
           prediction: pred.prediction || "",
           sourceHypothesis: pred.sourceHypothesis || "buyer",
+          impact: pred.impact || "high",
           impactIfWrong: pred.impactIfWrong || "",
           confidence: pred.confidence || "medium",
+          validationMethod: pred.validationMethod || "",
+          evidenceNeeded: pred.evidenceNeeded || "",
           isRiskyPrediction: pred.isRiskyPrediction || false,
           experimentStatus: "not_tested",
           aiGenerated: true,
@@ -15700,50 +15714,81 @@ Return JSON in this format:
       const predictions = await storage.getGaPredictions(canvasId);
       const project = await storage.getProject(projectId);
 
-      const prompt = `You are an expert sales discovery interviewer. Create a structured interview script to validate buyer hypotheses.
+      // Build hypothesis mapping for clear question attribution
+      const hypothesisMapping = hypotheses.map((h: any, idx: number) => ({
+        id: `H${idx + 1}`,
+        buyer: h.buyerHypothesis,
+        problem: h.problemHypothesis,
+        solution: h.solutionHypothesis
+      }));
 
+      const riskyPredictions = predictions.filter((p: any) => p.isRiskyPrediction);
+
+      const prompt = `You are an expert sales discovery interviewer using "Mom Test" principles. Create a structured interview script to validate buyer hypotheses through past behavior questions, not future intentions.
+
+=== CONTEXT ===
 Company: ${project?.name || "Target Company"}
 ${persona ? `Persona: ${persona.personaName} - ${persona.personaTitle}
 Goals: ${JSON.stringify(persona.goals)}
-Pains: ${JSON.stringify(persona.pains)}` : "No persona defined"}
+Pains: ${JSON.stringify(persona.pains)}
+Challenges: ${JSON.stringify(persona.challenges || [])}
+Engagement Style: ${JSON.stringify(persona.engagementPreferences || [])}` : "No persona defined"}
 
-Hypotheses to Validate:
-${hypotheses.map((h: any) => `- Buyer: ${h.buyerHypothesis}\n  Problem: ${h.problemHypothesis}\n  Solution: ${h.solutionHypothesis}`).join('\n') || 'No hypotheses defined'}
+=== HYPOTHESES TO VALIDATE ===
+${hypothesisMapping.map((h: any) => `${h.id}:
+  - Buyer Hypothesis: ${h.buyer}
+  - Problem Hypothesis: ${h.problem}
+  - Solution Hypothesis: ${h.solution}`).join('\n\n') || 'No hypotheses defined'}
 
-Key Predictions to Test:
-${predictions.filter((p: any) => p.isRiskyPrediction).map((p: any) => `- ${p.prediction}`).join('\n') || 'No predictions defined'}
+=== RISKY PREDICTIONS TO TEST (High Impact + Low Confidence) ===
+${riskyPredictions.map((p: any, idx: number) => `P${idx + 1}: ${p.prediction}`).join('\n') || 'No risky predictions yet'}
 
-Create an interview script with:
-1. Opening questions to build rapport and understand context (2-3 questions)
-2. Discovery questions to validate buyer hypotheses (3-4 questions)
-3. Problem validation questions to confirm pain points (3-4 questions)
-4. Solution fit questions to test solution hypotheses (2-3 questions)
-5. Closing questions to understand decision process (2 questions)
+=== INTERVIEW SCRIPT REQUIREMENTS ===
+Create a professional "Mom Test" style interview script with 5 sections:
 
-For each question, include:
-- The question itself
-- What hypothesis/prediction it validates
-- Key things to listen for
-- Follow-up probes
+1. OPENING (2-3 questions): Build rapport, understand their role and current priorities
+2. SITUATION (3-4 questions): Explore current state, past behavior, what they've tried before
+3. PROBLEM VALIDATION (4-5 questions): Confirm pain points, understand severity, past attempts to solve
+4. SOLUTION FIT (3-4 questions): Test solution hypotheses, understand decision criteria
+5. COMMITMENT & NEXT STEPS (2-3 questions): Understand decision process, timeline, stakeholders
+
+=== QUESTION QUALITY REQUIREMENTS ===
+- Focus on PAST BEHAVIOR not future intentions ("Tell me about a time..." not "Would you...")
+- Each question must clearly map to which hypothesis it validates (use H1, H2, etc.)
+- Include specific signals that confirm or refute the hypothesis
+- Provide 2-3 follow-up probes to go deeper
+- Questions should be open-ended and non-leading
 
 Return JSON:
 {
-  "scriptName": "Discovery Interview Script",
+  "scriptName": "Discovery Interview Script for ${persona?.personaTitle || 'Executive'}",
   "targetRole": "${persona?.personaTitle || 'Executive'}",
+  "estimatedDuration": "45-60 minutes",
   "sections": [
     {
       "sectionName": "Opening",
+      "sectionPurpose": "Build rapport and understand context",
+      "timeAllocation": "5 minutes",
       "questions": [
         {
-          "question": "Question text",
-          "validates": "Which hypothesis this validates",
-          "listenFor": ["Key signals to note"],
-          "followUps": ["Probe 1", "Probe 2"]
+          "question": "Tell me about your role and what you're currently focused on...",
+          "hypothesisId": "H1",
+          "hypothesisType": "buyer|problem|solution",
+          "validates": "Clear description of what this question tests",
+          "listenFor": ["Signal 1 that confirms", "Signal 2 that refutes", "Key insight to capture"],
+          "followUps": ["Probe to go deeper", "Clarifying question"],
+          "redFlags": ["Warning sign if they say this"]
         }
       ]
     }
   ],
-  "interviewTips": ["Tip 1", "Tip 2"]
+  "interviewTips": [
+    "Start with broader context before diving into specifics",
+    "Let silences work - don't fill them too quickly",
+    "Take notes on exact words they use",
+    "Watch for emotional reactions to pain points"
+  ],
+  "closingScript": "Thank them and explain next steps"
 }`;
 
       const response = await openai.chat.completions.create({

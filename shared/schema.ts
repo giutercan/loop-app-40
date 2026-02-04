@@ -3902,13 +3902,19 @@ export const gaPredictions = pgTable("ga_predictions", {
   prediction: text("prediction").notNull(),
   
   // Source - which hypothesis it came from
-  sourceHypothesis: text("source_hypothesis", { enum: ["buyer", "problem"] }).notNull(),
+  sourceHypothesis: text("source_hypothesis", { enum: ["buyer", "problem", "solution"] }).notNull(),
   
   // 2x2 Grid positioning
-  // X-axis: Impact - if wrong, how much would we rethink the Persona?
-  impactIfWrong: text("impact_if_wrong", { enum: ["high", "medium", "low"] }).notNull(),
+  // X-axis: Impact level (high/low)
+  impact: text("impact", { enum: ["high", "low"] }),
+  // Legacy: detailed impact description
+  impactIfWrong: text("impact_if_wrong"),
   // Y-axis: Confidence - how confident are we this is true?
   confidence: text("confidence", { enum: ["high", "medium", "low"] }).notNull(),
+  
+  // Validation approach
+  validationMethod: text("validation_method"),
+  evidenceNeeded: text("evidence_needed"),
   
   // Derived: Is this a "Risky Prediction"? (high impact + low confidence)
   isRiskyPrediction: boolean("is_risky_prediction").default(false),

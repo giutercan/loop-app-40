@@ -724,16 +724,98 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
     }
   }, [journey, autoGenerationPhase, predictions, generatePredictionsMutation.isPending]);
 
-  // Complete auto-generation phase after predictions
+  // Chain generation: after predictions created, auto-generate interview script
   useEffect(() => {
-    if (predictions && predictions.length > 0 && autoGenerationPhase === "predictions") {
+    if (
+      predictions && 
+      predictions.length > 0 && 
+      autoGenerationPhase === "predictions" &&
+      !generateInterviewScriptMutation.isPending &&
+      (!interviewScripts || interviewScripts.length === 0)
+    ) {
+      setAutoGenerationPhase("interview");
+      toast({
+        title: "Generating Interview Script",
+        description: "AI is creating discovery interview questions...",
+      });
+      generateInterviewScriptMutation.mutate();
+    }
+  }, [predictions, autoGenerationPhase, interviewScripts, generateInterviewScriptMutation.isPending]);
+
+  // Chain generation: after interview script created, auto-generate tenets
+  useEffect(() => {
+    // Check if tenets is null, undefined, or empty array - need to generate
+    const needsTenets = tenets === null || tenets === undefined || (Array.isArray(tenets) && tenets.length === 0);
+    if (
+      interviewScripts && 
+      interviewScripts.length > 0 && 
+      autoGenerationPhase === "interview" &&
+      !generateTenetsMutation.isPending &&
+      needsTenets
+    ) {
+      setAutoGenerationPhase("tenets");
+      toast({
+        title: "Generating Solution Tenets",
+        description: "AI is creating customer-centric design principles...",
+      });
+      generateTenetsMutation.mutate();
+    }
+  }, [interviewScripts, autoGenerationPhase, tenets, generateTenetsMutation.isPending]);
+
+  // Chain generation: after tenets created, auto-generate press release
+  useEffect(() => {
+    // Check if tenets has content (object with properties or non-empty array)
+    const hasTenets = tenets && (Array.isArray(tenets) ? tenets.length > 0 : Object.keys(tenets).length > 0);
+    // Check if press release needs generation
+    const needsPressRelease = pressRelease === null || pressRelease === undefined;
+    if (
+      hasTenets && 
+      autoGenerationPhase === "tenets" &&
+      !generatePressReleaseMutation.isPending &&
+      needsPressRelease
+    ) {
+      setAutoGenerationPhase("press_release");
+      toast({
+        title: "Generating Press Release",
+        description: "AI is creating a Working Backwards press release...",
+      });
+      generatePressReleaseMutation.mutate();
+    }
+  }, [tenets, autoGenerationPhase, pressRelease, generatePressReleaseMutation.isPending]);
+
+  // Chain generation: after press release created, auto-generate sales actions
+  useEffect(() => {
+    // Check if press release has content
+    const hasPressRelease = pressRelease && Object.keys(pressRelease).length > 0;
+    // Check if sales actions needs generation
+    const needsSalesActions = salesActions === null || salesActions === undefined || 
+      (typeof salesActions === 'object' && Object.keys(salesActions).length === 0);
+    if (
+      hasPressRelease && 
+      autoGenerationPhase === "press_release" &&
+      !generateSalesActionsMutation.isPending &&
+      needsSalesActions
+    ) {
+      setAutoGenerationPhase("actions");
+      toast({
+        title: "Generating Sales Actions",
+        description: "AI is creating a prioritized action plan...",
+      });
+      generateSalesActionsMutation.mutate();
+    }
+  }, [pressRelease, autoGenerationPhase, salesActions, generateSalesActionsMutation.isPending]);
+
+  // Complete auto-generation phase after all sections generated
+  useEffect(() => {
+    const hasSalesActions = salesActions && typeof salesActions === 'object' && Object.keys(salesActions).length > 0;
+    if (hasSalesActions && autoGenerationPhase === "actions") {
       setAutoGenerationPhase(null);
       toast({
-        title: "Sales Play Ready",
-        description: "Core framework generated. You can now review and refine each section.",
+        title: "Sales Play Complete",
+        description: "Full framework generated: Persona, Hypotheses, Journey, Predictions, Interview Script, Tenets, Press Release, and Action Plan. Review and refine as needed.",
       });
     }
-  }, [predictions, autoGenerationPhase]);
+  }, [salesActions, autoGenerationPhase]);
 
   const getSectionCompletion = (sectionId: string): number => {
     if (!canvas?.sectionCompletion) return 0;
