@@ -1416,7 +1416,9 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
                     <p className="text-xs text-muted-foreground font-medium mb-1">Behavioral Traits</p>
                     <div className="flex flex-wrap gap-1">
                       {persona.behavioralTraits.slice(0, 3).map((trait, idx) => (
-                        <Badge key={idx} variant="secondary" className="text-xs">{trait}</Badge>
+                        <Badge key={idx} variant="secondary" className="text-xs">
+                          {typeof trait === 'object' && trait !== null ? (trait as any).text || JSON.stringify(trait) : String(trait)}
+                        </Badge>
                       ))}
                     </div>
                   </div>
@@ -1426,7 +1428,9 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
                     <p className="text-xs text-muted-foreground font-medium mb-1">Engagement Preferences</p>
                     <div className="flex flex-wrap gap-1">
                       {persona.engagementPreferences.slice(0, 3).map((pref, idx) => (
-                        <Badge key={idx} variant="outline" className="text-xs">{pref}</Badge>
+                        <Badge key={idx} variant="outline" className="text-xs">
+                          {typeof pref === 'object' && pref !== null ? (pref as any).text || JSON.stringify(pref) : String(pref)}
+                        </Badge>
                       ))}
                     </div>
                   </div>
@@ -1436,7 +1440,9 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
                     <p className="text-xs text-muted-foreground font-medium mb-1">Key Challenges</p>
                     <div className="flex flex-wrap gap-1">
                       {persona.challenges.slice(0, 3).map((challenge, idx) => (
-                        <Badge key={idx} variant="outline" className="text-xs border-amber-500/30 text-amber-700 bg-amber-500/5">{challenge}</Badge>
+                        <Badge key={idx} variant="outline" className="text-xs border-amber-500/30 text-amber-700 bg-amber-500/5">
+                          {typeof challenge === 'object' && challenge !== null ? (challenge as any).text || JSON.stringify(challenge) : String(challenge)}
+                        </Badge>
                       ))}
                     </div>
                   </div>
