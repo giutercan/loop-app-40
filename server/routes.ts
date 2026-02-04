@@ -16121,6 +16121,122 @@ Return JSON:
     }
   });
 
+  // AI Content Refinement - allows users to refine generated content with a prompt
+  app.post("/api/growth-accelerator/canvases/:id/refine", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const { type, itemId, prompt, projectId } = req.body;
+
+      if (!type || !prompt) {
+        return res.status(400).json({ error: "Type and prompt are required" });
+      }
+
+      // Get current content based on type
+      let currentContent: any = null;
+      let updateFunction: Function | null = null;
+
+      if (type === "persona") {
+        // Use itemId if provided, otherwise get first persona
+        if (itemId) {
+          currentContent = await storage.getBuyerPersonaById(itemId);
+        } else {
+          const personas = await storage.getBuyerPersonas(canvasId);
+          currentContent = personas[0];
+        }
+        updateFunction = storage.updateBuyerPersona.bind(storage);
+      } else if (type === "hypotheses") {
+        // Use itemId if provided to get specific hypothesis
+        if (itemId) {
+          currentContent = await storage.getGaHypothesisById(itemId);
+        } else {
+          const hypotheses = await storage.getGaHypotheses(canvasId);
+          currentContent = hypotheses[0];
+        }
+        if (currentContent) {
+          updateFunction = storage.updateGaHypothesis.bind(storage);
+        }
+      } else if (type === "journey") {
+        // Use itemId if provided, otherwise get first journey
+        if (itemId) {
+          currentContent = await storage.getBuyerJourneyById(itemId);
+        } else {
+          const journeys = await storage.getBuyerJourneys(canvasId);
+          currentContent = journeys[0];
+        }
+        updateFunction = storage.updateBuyerJourney.bind(storage);
+      } else if (type === "predictions") {
+        const predictions = await storage.getGaPredictions(canvasId);
+        currentContent = predictions;
+      }
+
+      if (!currentContent) {
+        return res.status(404).json({ error: `No ${type} found to refine` });
+      }
+
+      // Build AI prompt for refinement
+      const refinementPrompt = `You are an expert sales strategist. You have previously generated content for a buyer-centric sales play. 
+The user wants to refine the ${type} content with the following instructions:
+
+USER REFINEMENT REQUEST:
+"${prompt}"
+
+CURRENT CONTENT:
+${JSON.stringify(currentContent, null, 2)}
+
+Please update the content according to the user's instructions while preserving the overall structure.
+Return the refined content in the exact same JSON structure as the original.`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: refinementPrompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+      });
+
+      const refinedContent = JSON.parse(response.choices[0].message.content || "{}");
+
+      // Update based on type
+      if (type === "persona" && currentContent.id) {
+        await storage.updateBuyerPersona(currentContent.id, {
+          personaName: refinedContent.personaName,
+          personaTitle: refinedContent.personaTitle,
+          personaCompany: refinedContent.personaCompany,
+          ageRange: refinedContent.ageRange,
+          careerStage: refinedContent.careerStage,
+          familyStatus: refinedContent.familyStatus,
+          financialSituation: refinedContent.financialSituation,
+          behavioralTraits: refinedContent.behavioralTraits,
+          engagementPreferences: refinedContent.engagementPreferences,
+          challenges: refinedContent.challenges,
+          facts: refinedContent.facts,
+          goals: refinedContent.goals,
+          pains: refinedContent.pains,
+          behaviours: refinedContent.behaviours,
+        });
+        res.json({ success: true, refined: refinedContent });
+      } else if (type === "hypotheses" && currentContent?.id) {
+        // Update specific hypothesis (using itemId)
+        await storage.updateGaHypothesis(currentContent.id, {
+          buyerHypothesis: refinedContent.buyerHypothesis || currentContent.buyerHypothesis,
+          problemHypothesis: refinedContent.problemHypothesis || currentContent.problemHypothesis,
+          solutionHypothesis: refinedContent.solutionHypothesis || currentContent.solutionHypothesis,
+        });
+        res.json({ success: true, refined: refinedContent });
+      } else if (type === "journey" && currentContent.id) {
+        await storage.updateBuyerJourney(currentContent.id, {
+          journeyContext: refinedContent.journeyContext,
+          phases: refinedContent.phases,
+        });
+        res.json({ success: true, refined: refinedContent });
+      } else {
+        res.json({ success: true, refined: refinedContent });
+      }
+    } catch (error: any) {
+      console.error("Error refining content:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Buyer Journeys
   app.get("/api/growth-accelerator/canvases/:id/journeys", async (req, res) => {
     try {

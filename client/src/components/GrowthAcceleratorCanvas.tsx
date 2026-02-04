@@ -260,6 +260,11 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
   const [selectedPersonaTitle, setSelectedPersonaTitle] = useState<string | null>(null);
   const [customPersonaTitle, setCustomPersonaTitle] = useState("");
   const [showPersonaSelector, setShowPersonaSelector] = useState(false);
+  const [autoGenerationPhase, setAutoGenerationPhase] = useState<string | null>(null);
+  const [autoGenerationFailed, setAutoGenerationFailed] = useState(false);
+  const [aiRefinePrompt, setAiRefinePrompt] = useState("");
+  const [showRefineDialog, setShowRefineDialog] = useState(false);
+  const [refineTarget, setRefineTarget] = useState<{ type: string; id?: number } | null>(null);
   
   const { data: canvas, isLoading: canvasLoading, refetch: refetchCanvas } = useQuery<GrowthAcceleratorCanvas>({
     queryKey: ["/api/projects", projectId, "growth-accelerator/canvases"],
@@ -363,15 +368,27 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
       return res.json() as Promise<PersonaRecommendations>;
     },
     onSuccess: (data) => {
-      setShowPersonaSelector(true);
       if (data.recommendations?.length > 0) {
-        setSelectedPersonaTitle(data.recommendations[0].title);
+        const primaryRec = data.recommendations[0];
+        setSelectedPersonaTitle(primaryRec.title);
+        
+        // If in auto-generation mode, automatically generate with the primary recommendation
+        if (autoGenerationPhase === "persona") {
+          generatePersonaMutation.mutate({ selectedTitle: primaryRec.title });
+        } else {
+          // Manual mode - show selector dialog
+          setShowPersonaSelector(true);
+        }
+      } else {
+        setShowPersonaSelector(true);
       }
     },
     onError: () => {
+      setAutoGenerationPhase(null);
+      setAutoGenerationFailed(true);
       toast({
         title: "Error",
-        description: "Failed to get persona recommendations.",
+        description: "Failed to get persona recommendations. Click 'Generate Persona' to try again.",
         variant: "destructive",
       });
     },
@@ -599,6 +616,124 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
       toast({ title: "Error", description: "Failed to generate sales actions.", variant: "destructive" });
     },
   });
+
+  // AI refinement mutation - refines content based on user prompt
+  const refineContentMutation = useMutation({
+    mutationFn: async ({ type, id, prompt }: { type: string; id?: number; prompt: string }) => {
+      const res = await apiRequest("POST", `/api/growth-accelerator/canvases/${canvas?.id}/refine`, {
+        type,
+        itemId: id,
+        prompt,
+        projectId,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      // Refetch based on content type
+      if (refineTarget?.type === "persona") refetchPersona();
+      if (refineTarget?.type === "hypotheses") refetchHypotheses();
+      if (refineTarget?.type === "journey") refetchJourney();
+      if (refineTarget?.type === "predictions") refetchPredictions();
+      
+      setShowRefineDialog(false);
+      setAiRefinePrompt("");
+      setRefineTarget(null);
+      toast({
+        title: "Content Refined",
+        description: "AI has updated the content based on your feedback.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to refine content.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Auto-generation flow: when canvas exists but no persona, auto-generate
+  useEffect(() => {
+    if (
+      canvas?.id && 
+      !personaLoading && 
+      persona === null && 
+      !generatePersonaMutation.isPending &&
+      !recommendPersonasMutation.isPending &&
+      !autoGenerationPhase &&
+      !autoGenerationFailed // Don't retry if previously failed
+    ) {
+      setAutoGenerationPhase("persona");
+      toast({
+        title: "Generating Sales Play",
+        description: "AI is analyzing discovery data to create your buyer persona...",
+      });
+      recommendPersonasMutation.mutate();
+    }
+  }, [canvas?.id, personaLoading, persona, generatePersonaMutation.isPending, recommendPersonasMutation.isPending, autoGenerationPhase, autoGenerationFailed]);
+
+  // Chain generation: after persona created, auto-generate hypotheses
+  useEffect(() => {
+    if (
+      persona && 
+      autoGenerationPhase === "persona" &&
+      !generateHypothesesMutation.isPending &&
+      (!hypotheses || hypotheses.length === 0)
+    ) {
+      setAutoGenerationPhase("hypotheses");
+      toast({
+        title: "Generating Hypotheses",
+        description: "AI is creating buyer, problem, and solution hypotheses...",
+      });
+      generateHypothesesMutation.mutate();
+    }
+  }, [persona, autoGenerationPhase, hypotheses, generateHypothesesMutation.isPending]);
+
+  // Chain generation: after hypotheses created, auto-generate journey
+  useEffect(() => {
+    if (
+      hypotheses && 
+      hypotheses.length > 0 && 
+      autoGenerationPhase === "hypotheses" &&
+      !generateJourneyMutation.isPending &&
+      !journey
+    ) {
+      setAutoGenerationPhase("journey");
+      toast({
+        title: "Generating Buyer Journey",
+        description: "AI is mapping the buyer journey with outcome linkages...",
+      });
+      generateJourneyMutation.mutate();
+    }
+  }, [hypotheses, autoGenerationPhase, journey, generateJourneyMutation.isPending]);
+
+  // Chain generation: after journey created, auto-generate predictions
+  useEffect(() => {
+    if (
+      journey && 
+      autoGenerationPhase === "journey" &&
+      !generatePredictionsMutation.isPending &&
+      (!predictions || predictions.length === 0)
+    ) {
+      setAutoGenerationPhase("predictions");
+      toast({
+        title: "Generating Predictions",
+        description: "AI is creating a predictions matrix...",
+      });
+      generatePredictionsMutation.mutate();
+    }
+  }, [journey, autoGenerationPhase, predictions, generatePredictionsMutation.isPending]);
+
+  // Complete auto-generation phase after predictions
+  useEffect(() => {
+    if (predictions && predictions.length > 0 && autoGenerationPhase === "predictions") {
+      setAutoGenerationPhase(null);
+      toast({
+        title: "Sales Play Ready",
+        description: "Core framework generated. You can now review and refine each section.",
+      });
+    }
+  }, [predictions, autoGenerationPhase]);
 
   const getSectionCompletion = (sectionId: string): number => {
     if (!canvas?.sectionCompletion) return 0;
@@ -1209,6 +1344,20 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
             <Button 
               variant="outline" 
               size="sm"
+              onClick={() => {
+                setRefineTarget({ type: "persona", id: persona.id });
+                setShowRefineDialog(true);
+              }}
+              className="gap-1"
+              style={{ borderColor: 'hsl(var(--kf-emerald) / 0.5)', color: 'hsl(var(--kf-forest))' }}
+              data-testid="button-refine-persona"
+            >
+              <MessageSquare className="w-3 h-3" />
+              Refine with AI
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
               onClick={() => resetPersonaMutation.mutate()}
               disabled={resetPersonaMutation.isPending}
               className="gap-1 text-red-600 border-red-500/30 hover:bg-red-500/10"
@@ -1405,12 +1554,28 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
               </p>
             </div>
           </div>
-          {journey.aiGenerated && (
-            <Badge variant="outline" className="gap-1 text-purple-600 border-purple-500/30 bg-purple-500/5">
-              <Sparkles className="w-3 h-3" />
-              AI Generated
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {journey.aiGenerated && (
+              <Badge variant="outline" className="gap-1 text-purple-600 border-purple-500/30 bg-purple-500/5">
+                <Sparkles className="w-3 h-3" />
+                AI Generated
+              </Badge>
+            )}
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                setRefineTarget({ type: "journey", id: journey.id });
+                setShowRefineDialog(true);
+              }}
+              className="gap-1"
+              style={{ borderColor: 'hsl(var(--kf-emerald) / 0.5)', color: 'hsl(var(--kf-forest))' }}
+              data-testid="button-refine-journey"
+            >
+              <MessageSquare className="w-3 h-3" />
+              Refine
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1640,10 +1805,26 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
                 <CardDescription>Buyer, Problem, and Solution hypotheses to validate</CardDescription>
               </div>
             </div>
-            <Badge variant="outline" className="gap-1 text-purple-600 border-purple-500/30 bg-purple-500/5">
-              <Sparkles className="w-3 h-3" />
-              AI Generated
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="gap-1 text-purple-600 border-purple-500/30 bg-purple-500/5">
+                <Sparkles className="w-3 h-3" />
+                AI Generated
+              </Badge>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  setRefineTarget({ type: "hypotheses", id: currentHypothesis.id });
+                  setShowRefineDialog(true);
+                }}
+                className="gap-1"
+                style={{ borderColor: 'hsl(var(--kf-emerald) / 0.5)', color: 'hsl(var(--kf-forest))' }}
+                data-testid="button-refine-hypotheses"
+              >
+                <MessageSquare className="w-3 h-3" />
+                Refine
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -2359,6 +2540,62 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
           {renderStepContent()}
         </div>
       </div>
+
+      {/* AI Refine Dialog */}
+      <Dialog open={showRefineDialog} onOpenChange={setShowRefineDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5" style={{ color: 'hsl(var(--kf-emerald))' }} />
+              Refine with AI
+            </DialogTitle>
+            <DialogDescription>
+              Tell AI how you'd like to improve or change this {refineTarget?.type || "content"}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Textarea
+              value={aiRefinePrompt}
+              onChange={(e) => setAiRefinePrompt(e.target.value)}
+              placeholder="e.g., Make the persona more senior-focused, add emphasis on cost reduction goals, include more specific industry challenges..."
+              className="min-h-[120px]"
+              data-testid="textarea-refine-prompt"
+            />
+            <p className="text-xs text-muted-foreground">
+              AI will update the content while preserving the overall structure.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowRefineDialog(false);
+                setAiRefinePrompt("");
+                setRefineTarget(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                if (refineTarget && aiRefinePrompt.trim()) {
+                  refineContentMutation.mutate({
+                    type: refineTarget.type,
+                    id: refineTarget.id,
+                    prompt: aiRefinePrompt.trim(),
+                  });
+                }
+              }}
+              disabled={refineContentMutation.isPending || !aiRefinePrompt.trim()}
+              style={{ backgroundColor: 'hsl(var(--kf-emerald))' }}
+              data-testid="button-confirm-refine"
+            >
+              {refineContentMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Refine Content
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
