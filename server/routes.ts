@@ -15352,7 +15352,7 @@ Return JSON in this exact format:
       // Get persona if available
       let persona = null;
       if (personaId) {
-        persona = await storage.getBuyerPersona(personaId);
+        persona = await storage.getBuyerPersonaById(personaId);
       }
       
       const project = await storage.getProject(projectId);
