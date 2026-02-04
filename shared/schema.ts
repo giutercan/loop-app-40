@@ -3779,6 +3779,12 @@ export const gaHypotheses = pgTable("ga_hypotheses", {
   solutionUrl: text("solution_url"), // Link to solution details
   solutionFeatures: text("solution_features").array(),
   
+  // Outcome & Alignment Attribution (links to Discovery data)
+  linkedValueCaseIds: integer("linked_value_case_ids").array(), // Value cases that support this hypothesis
+  linkedCommitmentIds: integer("linked_commitment_ids").array(), // KPI commitments that validate this
+  linkedJobThemeIds: integer("linked_job_theme_ids").array(), // Job themes this addresses
+  outcomeEvidence: jsonb("outcome_evidence"), // JSON with detailed outcome connections
+  
   // Version tracking (hypotheses evolve through experimentation)
   version: integer("version").default(1),
   previousVersionId: integer("previous_version_id"),

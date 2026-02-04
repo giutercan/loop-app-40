@@ -337,6 +337,34 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
     },
   });
 
+  // Fetch Discovery data for outcome attribution
+  const { data: valueCases } = useQuery<any[]>({
+    queryKey: ["/api/projects", projectId, "value-cases"],
+    queryFn: async () => {
+      const res = await fetch(`/api/projects/${projectId}/value-cases`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  const { data: commitments } = useQuery<any[]>({
+    queryKey: ["/api/projects", projectId, "commitments"],
+    queryFn: async () => {
+      const res = await fetch(`/api/projects/${projectId}/commitments`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  const { data: jobThemes } = useQuery<any[]>({
+    queryKey: ["/api/projects", projectId, "job-themes"],
+    queryFn: async () => {
+      const res = await fetch(`/api/projects/${projectId}/job-themes`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
   const createCanvasMutation = useMutation({
     mutationFn: async (data: Partial<GrowthAcceleratorCanvas>) => {
       const res = await apiRequest("POST", `/api/projects/${projectId}/growth-accelerator/canvases`, data);
@@ -2046,6 +2074,59 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
                 Solution Hypothesis
               </h4>
               <p className="text-sm">{currentHypothesis.solutionHypothesis}</p>
+              
+              {/* Outcome Attribution */}
+              {((currentHypothesis as any).linkedValueCaseIds?.length > 0 || 
+                (currentHypothesis as any).linkedCommitmentIds?.length > 0 || 
+                (currentHypothesis as any).linkedJobThemeIds?.length > 0) && (
+                <div className="mt-3 pt-3 border-t border-emerald-500/20">
+                  <p className="text-xs font-medium text-emerald-700 mb-2 flex items-center gap-1">
+                    <Target className="w-3 h-3" />
+                    Linked to Discovery Data
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(currentHypothesis as any).linkedValueCaseIds?.map((id: number) => {
+                      const vc = valueCases?.find((v: any) => v.id === id);
+                      return (
+                        <Badge key={`vc-${id}`} variant="outline" className="text-[10px] border-blue-500/30 text-blue-600 bg-blue-500/5">
+                          {vc?.title || `Value Case #${id}`}
+                        </Badge>
+                      );
+                    })}
+                    {(currentHypothesis as any).linkedCommitmentIds?.map((id: number) => {
+                      const kpi = commitments?.find((c: any) => c.id === id);
+                      return (
+                        <Badge key={`kpi-${id}`} variant="outline" className="text-[10px] border-purple-500/30 text-purple-600 bg-purple-500/5">
+                          {kpi?.kpiName || kpi?.commitmentTitle || `KPI #${id}`}
+                        </Badge>
+                      );
+                    })}
+                    {(currentHypothesis as any).linkedJobThemeIds?.map((id: number) => {
+                      const jt = jobThemes?.find((j: any) => j.id === id);
+                      return (
+                        <Badge key={`jt-${id}`} variant="outline" className="text-[10px] border-amber-500/30 text-amber-600 bg-amber-500/5">
+                          {jt?.jobName || `Job Theme #${id}`}
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Solution Features */}
+              {currentHypothesis.solutionFeatures && currentHypothesis.solutionFeatures.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-emerald-500/20">
+                  <p className="text-xs font-medium text-emerald-700 mb-2">Key Features:</p>
+                  <ul className="space-y-1">
+                    {currentHypothesis.solutionFeatures.map((feature: string, i: number) => (
+                      <li key={i} className="text-xs flex items-start gap-1.5">
+                        <CheckCircle className="w-3 h-3 text-emerald-500 mt-0.5 flex-shrink-0" />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
         </CardContent>

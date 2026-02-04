@@ -15580,8 +15580,20 @@ Return JSON in this exact format:
       const persona = personaId ? personas.find(p => p.id === personaId) : personas[0];
       const project = await storage.getProject(projectId);
 
-      const prompt = `You are an expert in sales hypothesis creation. Generate three interconnected hypotheses based on this buyer persona.
+      // Fetch Discovery data for outcome & alignment context
+      let valueCases: any[] = [];
+      let commitments: any[] = [];
+      let jobThemes: any[] = [];
+      
+      if (projectId) {
+        valueCases = await storage.getValueCases(projectId);
+        commitments = await storage.getKpiCommitments(projectId);
+        jobThemes = await storage.getJobThemes(projectId);
+      }
 
+      const prompt = `You are an expert in sales hypothesis creation for management consulting engagements. Generate three interconnected hypotheses based on the buyer persona AND the Discovery outcomes/alignment data.
+
+=== BUYER PERSONA ===
 ${persona ? `
 Persona: ${persona.personaName} - ${persona.personaTitle}
 Company: ${persona.personaCompany}
@@ -15591,10 +15603,33 @@ Pains: ${JSON.stringify(persona.pains)}
 Behaviours: ${JSON.stringify(persona.behaviours)}
 ` : `Company: ${project?.name || "Target Company"}`}
 
-Create three hypotheses:
-1. Buyer Hypothesis - Who we believe is the ideal buyer and why
-2. Problem Hypothesis - What specific problem they struggle with
-3. Solution Hypothesis - How our solution uniquely addresses their needs
+=== DISCOVERY OUTCOMES & ALIGNMENT DATA ===
+${valueCases.length > 0 ? `
+Value Cases (potential business outcomes):
+${valueCases.map((vc, i) => `${i + 1}. [ID:${vc.id}] ${vc.title}: ${vc.description || ''} - Value: ${vc.estimatedValue || 'TBD'}`).join('\n')}
+` : 'No value cases defined yet.'}
+
+${commitments.length > 0 ? `
+KPI Commitments (measurable outcomes promised):
+${commitments.map((c, i) => `${i + 1}. [ID:${c.id}] ${c.kpiName}: Target ${c.targetValue}${c.unit || ''} (${c.status || 'pending'})`).join('\n')}
+` : 'No KPI commitments defined yet.'}
+
+${jobThemes.length > 0 ? `
+Job Themes (strategic priorities):
+${jobThemes.map((jt, i) => `${i + 1}. [ID:${jt.id}] ${jt.jobName}: ${jt.jobDescription || ''}`).join('\n')}
+` : 'No job themes defined yet.'}
+
+=== INSTRUCTIONS ===
+Create three hypotheses that are GROUNDED in the Discovery data:
+
+1. **Buyer Hypothesis** - Who is the ideal buyer and why (based on persona facts & behaviors)
+2. **Problem Hypothesis** - What specific problems they face (tie to persona pains & value cases)
+3. **Solution Hypothesis** - How we uniquely solve this (tie DIRECTLY to KPI commitments & job themes)
+
+The Solution Hypothesis should specifically reference:
+- Which KPI commitments we will help achieve
+- Which job themes our solution addresses
+- What measurable outcomes the buyer can expect
 
 Return JSON in this format:
 {
@@ -15602,12 +15637,20 @@ Return JSON in this format:
   "buyerHypothesisRationale": "Based on [specific facts and behaviors]...",
   "buyerHypothesisFactIds": ["f1", "f2"],
   "buyerHypothesisBehaviourIds": ["b1"],
-  "problemHypothesis": "These buyers struggle with [specific problem] which causes [business impact]...",
-  "problemHypothesisRationale": "The pain points and goals suggest...",
+  "problemHypothesis": "These buyers struggle with [specific problem from value cases] which causes [business impact]...",
+  "problemHypothesisRationale": "The pain points, goals, and value cases suggest...",
   "problemHypothesisPainIds": ["p1", "p2"],
   "problemHypothesisGoalIds": ["g1"],
-  "solutionHypothesis": "Our solution uniquely solves this by [key differentiators]...",
-  "solutionFeatures": ["feature1", "feature2", "feature3"]
+  "solutionHypothesis": "Our solution delivers [specific KPI outcomes] by addressing [job themes]. We commit to [target metrics from commitments]...",
+  "solutionFeatures": ["feature aligned to KPI 1", "feature aligned to job theme 2", "feature aligned to value case 3"],
+  "linkedValueCaseIds": [1, 2],
+  "linkedCommitmentIds": [3, 4],
+  "linkedJobThemeIds": [5],
+  "outcomeEvidence": {
+    "valueCaseConnections": [{"id": 1, "connection": "How this hypothesis addresses value case 1"}],
+    "commitmentConnections": [{"id": 3, "connection": "How this hypothesis delivers on commitment 3"}],
+    "jobThemeConnections": [{"id": 5, "connection": "How this hypothesis addresses job theme 5"}]
+  }
 }`;
 
       const response = await openai.chat.completions.create({
@@ -15633,6 +15676,10 @@ Return JSON in this format:
         solutionHypothesis: aiResult.solutionHypothesis || "",
         solutionUrl: "",
         solutionFeatures: aiResult.solutionFeatures || [],
+        linkedValueCaseIds: aiResult.linkedValueCaseIds || [],
+        linkedCommitmentIds: aiResult.linkedCommitmentIds || [],
+        linkedJobThemeIds: aiResult.linkedJobThemeIds || [],
+        outcomeEvidence: aiResult.outcomeEvidence || null,
         version: 1,
         aiGenerated: true,
       });
