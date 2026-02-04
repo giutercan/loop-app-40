@@ -1410,41 +1410,44 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
                 )}
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 {persona.behavioralTraits && persona.behavioralTraits.length > 0 && (
-                  <div>
-                    <p className="text-xs text-muted-foreground font-medium mb-1">Behavioral Traits</p>
-                    <div className="flex flex-wrap gap-1">
-                      {persona.behavioralTraits.slice(0, 3).map((trait, idx) => (
-                        <Badge key={idx} variant="secondary" className="text-xs">
-                          {typeof trait === 'object' && trait !== null ? (trait as any).text || JSON.stringify(trait) : String(trait)}
-                        </Badge>
+                  <div className="border-l-2 border-slate-400 pl-3">
+                    <p className="text-xs text-muted-foreground font-semibold mb-2 uppercase tracking-wide">Behavioral Traits</p>
+                    <ul className="space-y-1">
+                      {persona.behavioralTraits.map((trait, idx) => (
+                        <li key={idx} className="text-sm text-foreground flex items-start gap-2">
+                          <span className="text-slate-400 mt-1">•</span>
+                          <span>{typeof trait === 'object' && trait !== null ? (trait as any).text || JSON.stringify(trait) : String(trait)}</span>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   </div>
                 )}
                 {persona.engagementPreferences && persona.engagementPreferences.length > 0 && (
-                  <div>
-                    <p className="text-xs text-muted-foreground font-medium mb-1">Engagement Preferences</p>
-                    <div className="flex flex-wrap gap-1">
-                      {persona.engagementPreferences.slice(0, 3).map((pref, idx) => (
-                        <Badge key={idx} variant="outline" className="text-xs">
-                          {typeof pref === 'object' && pref !== null ? (pref as any).text || JSON.stringify(pref) : String(pref)}
-                        </Badge>
+                  <div className="border-l-2 border-blue-400 pl-3">
+                    <p className="text-xs text-muted-foreground font-semibold mb-2 uppercase tracking-wide">Engagement Preferences</p>
+                    <ul className="space-y-1">
+                      {persona.engagementPreferences.map((pref, idx) => (
+                        <li key={idx} className="text-sm text-foreground flex items-start gap-2">
+                          <span className="text-blue-400 mt-1">•</span>
+                          <span>{typeof pref === 'object' && pref !== null ? (pref as any).text || JSON.stringify(pref) : String(pref)}</span>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   </div>
                 )}
                 {persona.challenges && persona.challenges.length > 0 && (
-                  <div>
-                    <p className="text-xs text-muted-foreground font-medium mb-1">Key Challenges</p>
-                    <div className="flex flex-wrap gap-1">
-                      {persona.challenges.slice(0, 3).map((challenge, idx) => (
-                        <Badge key={idx} variant="outline" className="text-xs border-amber-500/30 text-amber-700 bg-amber-500/5">
-                          {typeof challenge === 'object' && challenge !== null ? (challenge as any).text || JSON.stringify(challenge) : String(challenge)}
-                        </Badge>
+                  <div className="border-l-2 border-amber-400 pl-3">
+                    <p className="text-xs text-muted-foreground font-semibold mb-2 uppercase tracking-wide">Key Challenges</p>
+                    <ul className="space-y-1">
+                      {persona.challenges.map((challenge, idx) => (
+                        <li key={idx} className="text-sm text-amber-700 dark:text-amber-400 flex items-start gap-2">
+                          <span className="text-amber-400 mt-1">•</span>
+                          <span>{typeof challenge === 'object' && challenge !== null ? (challenge as any).text || JSON.stringify(challenge) : String(challenge)}</span>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   </div>
                 )}
               </div>
