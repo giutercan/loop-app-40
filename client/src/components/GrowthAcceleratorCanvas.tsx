@@ -261,6 +261,7 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
   const [showPersonaSelector, setShowPersonaSelector] = useState(false);
   const [autoGenerationPhase, setAutoGenerationPhase] = useState<string | null>(null);
   const [autoGenerationFailed, setAutoGenerationFailed] = useState(false);
+  const [isGeneratingAll, setIsGeneratingAll] = useState(false);
   const [aiRefinePrompt, setAiRefinePrompt] = useState("");
   const [showRefineDialog, setShowRefineDialog] = useState(false);
   const [refineTarget, setRefineTarget] = useState<{ type: string; id?: number } | null>(null);
@@ -414,9 +415,10 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
     onError: () => {
       setAutoGenerationPhase(null);
       setAutoGenerationFailed(true);
+      setIsGeneratingAll(false);
       toast({
         title: "Error",
-        description: "Failed to get persona recommendations. Click 'Generate Persona' to try again.",
+        description: "Failed to get persona recommendations. Click 'Generate All' to retry.",
         variant: "destructive",
       });
     },
@@ -443,9 +445,12 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
       });
     },
     onError: () => {
+      setAutoGenerationPhase(null);
+      setAutoGenerationFailed(true);
+      setIsGeneratingAll(false);
       toast({
         title: "Error",
-        description: "Failed to generate persona.",
+        description: "Failed to generate persona. Click 'Generate All' to retry.",
         variant: "destructive",
       });
     },
@@ -494,9 +499,12 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
       });
     },
     onError: () => {
+      setAutoGenerationPhase(null);
+      setAutoGenerationFailed(true);
+      setIsGeneratingAll(false);
       toast({
         title: "Error",
-        description: "Failed to generate journey.",
+        description: "Failed to generate journey. Click 'Generate All' to retry.",
         variant: "destructive",
       });
     },
@@ -519,9 +527,12 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
       });
     },
     onError: () => {
+      setAutoGenerationPhase(null);
+      setAutoGenerationFailed(true);
+      setIsGeneratingAll(false);
       toast({
         title: "Error",
-        description: "Failed to generate hypotheses.",
+        description: "Failed to generate hypotheses. Click 'Generate All' to retry.",
         variant: "destructive",
       });
     },
@@ -544,9 +555,12 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
       });
     },
     onError: () => {
+      setAutoGenerationPhase(null);
+      setAutoGenerationFailed(true);
+      setIsGeneratingAll(false);
       toast({
         title: "Error",
-        description: "Failed to generate predictions.",
+        description: "Failed to generate predictions. Click 'Generate All' to retry.",
         variant: "destructive",
       });
     },
@@ -594,7 +608,10 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
       toast({ title: "Interview Script Generated", description: "AI has created a discovery interview script." });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to generate interview script.", variant: "destructive" });
+      setAutoGenerationPhase(null);
+      setAutoGenerationFailed(true);
+      setIsGeneratingAll(false);
+      toast({ title: "Error", description: "Failed to generate interview script. Click 'Generate All' to retry.", variant: "destructive" });
     },
   });
 
@@ -619,7 +636,10 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
       toast({ title: "Solution Tenets Generated", description: "AI has created customer-centric design principles." });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to generate tenets.", variant: "destructive" });
+      setAutoGenerationPhase(null);
+      setAutoGenerationFailed(true);
+      setIsGeneratingAll(false);
+      toast({ title: "Error", description: "Failed to generate tenets. Click 'Generate All' to retry.", variant: "destructive" });
     },
   });
 
@@ -630,7 +650,10 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
       toast({ title: "Press Release Generated", description: "AI has created a Working Backwards press release." });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to generate press release.", variant: "destructive" });
+      setAutoGenerationPhase(null);
+      setAutoGenerationFailed(true);
+      setIsGeneratingAll(false);
+      toast({ title: "Error", description: "Failed to generate press release. Click 'Generate All' to retry.", variant: "destructive" });
     },
   });
 
@@ -641,7 +664,10 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
       toast({ title: "Sales Actions Generated", description: "AI has created a prioritized action plan." });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to generate sales actions.", variant: "destructive" });
+      setAutoGenerationPhase(null);
+      setAutoGenerationFailed(true);
+      setIsGeneratingAll(false);
+      toast({ title: "Error", description: "Failed to generate sales actions. Click 'Generate All' to retry.", variant: "destructive" });
     },
   });
 
@@ -681,6 +707,7 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
   });
 
   // Auto-generation flow: when canvas exists but no persona, auto-generate
+  // This only triggers for new canvases - existing canvases use the "Generate All" button
   useEffect(() => {
     if (
       canvas?.id && 
@@ -689,16 +716,19 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
       !generatePersonaMutation.isPending &&
       !recommendPersonasMutation.isPending &&
       !autoGenerationPhase &&
-      !autoGenerationFailed // Don't retry if previously failed
+      !autoGenerationFailed &&
+      !isGeneratingAll
     ) {
+      // Auto-start generation for new canvases
       setAutoGenerationPhase("persona");
+      setIsGeneratingAll(true);
       toast({
         title: "Generating Sales Play",
-        description: "AI is analyzing discovery data to create your buyer persona...",
+        description: "AI is analyzing discovery data and will generate all sections automatically...",
       });
       recommendPersonasMutation.mutate();
     }
-  }, [canvas?.id, personaLoading, persona, generatePersonaMutation.isPending, recommendPersonasMutation.isPending, autoGenerationPhase, autoGenerationFailed]);
+  }, [canvas?.id, personaLoading, persona, generatePersonaMutation.isPending, recommendPersonasMutation.isPending, autoGenerationPhase, autoGenerationFailed, isGeneratingAll]);
 
   // Chain generation: after persona created, auto-generate hypotheses
   useEffect(() => {
@@ -844,6 +874,90 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
       });
     }
   }, [salesActions, autoGenerationPhase]);
+
+  // Helper function to check if a section has data (handles both arrays and objects)
+  const hasData = (data: any): boolean => {
+    if (!data) return false;
+    if (Array.isArray(data)) return data.length > 0;
+    if (typeof data === 'object') return Object.keys(data).length > 0;
+    return true;
+  };
+
+  // Find the first missing section for generation
+  const findFirstMissingSection = (): string | null => {
+    if (!persona) return "persona";
+    if (!hasData(hypotheses)) return "hypotheses";
+    if (!journey) return "journey";
+    if (!hasData(predictions)) return "predictions";
+    if (!hasData(interviewScripts)) return "interview";
+    if (!hasData(tenets)) return "tenets";
+    if (!pressRelease) return "press_release";
+    if (!hasData(salesActions)) return "actions";
+    return null; // All complete
+  };
+
+  // Generate All function - starts automatic chain from the beginning or resumes from missing section
+  const handleGenerateAll = () => {
+    if (!canvas?.id) return;
+    
+    setIsGeneratingAll(true);
+    setAutoGenerationFailed(false);
+    
+    const missingSection = findFirstMissingSection();
+    
+    if (!missingSection) {
+      setIsGeneratingAll(false);
+      toast({ title: "Already Complete", description: "All sections have been generated. Use individual regenerate buttons to update specific sections." });
+      return;
+    }
+
+    toast({
+      title: "Generating Sales Play",
+      description: "AI will generate all remaining sections automatically...",
+    });
+
+    switch (missingSection) {
+      case "persona":
+        setAutoGenerationPhase("persona");
+        recommendPersonasMutation.mutate();
+        break;
+      case "hypotheses":
+        setAutoGenerationPhase("hypotheses");
+        generateHypothesesMutation.mutate();
+        break;
+      case "journey":
+        setAutoGenerationPhase("journey");
+        generateJourneyMutation.mutate();
+        break;
+      case "predictions":
+        setAutoGenerationPhase("predictions");
+        generatePredictionsMutation.mutate();
+        break;
+      case "interview":
+        setAutoGenerationPhase("interview");
+        generateInterviewScriptMutation.mutate();
+        break;
+      case "tenets":
+        setAutoGenerationPhase("tenets");
+        generateTenetsMutation.mutate();
+        break;
+      case "press_release":
+        setAutoGenerationPhase("press_release");
+        generatePressReleaseMutation.mutate();
+        break;
+      case "actions":
+        setAutoGenerationPhase("actions");
+        generateSalesActionsMutation.mutate();
+        break;
+    }
+  };
+
+  // Track when generation completes to reset isGeneratingAll
+  useEffect(() => {
+    if (isGeneratingAll && !autoGenerationPhase) {
+      setIsGeneratingAll(false);
+    }
+  }, [autoGenerationPhase, isGeneratingAll]);
 
   const getSectionCompletion = (sectionId: string): number => {
     if (!canvas?.sectionCompletion) return 0;
@@ -2933,6 +3047,25 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button 
+                size="sm" 
+                onClick={handleGenerateAll}
+                disabled={isGeneratingAll || !!autoGenerationPhase}
+                data-testid="button-generate-all"
+                className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
+              >
+                {(isGeneratingAll || autoGenerationPhase) ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-1" />
+                    Generate All
+                  </>
+                )}
+              </Button>
               <Button 
                 size="sm" 
                 variant="outline" 
