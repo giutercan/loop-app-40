@@ -1783,7 +1783,7 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
     const selectedPhaseInfo = JOURNEY_PHASES.find(p => p.id === selectedJourneyPhase);
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -1792,9 +1792,7 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
             </div>
             <div>
               <h3 className="font-bold">Buyer Journey Map</h3>
-              <p className="text-sm text-muted-foreground">
-                {journey.journeyContext === "pre_solution" ? "Pre-Solution" : "Post-Solution"} Journey
-              </p>
+              <p className="text-sm text-muted-foreground">Click a phase to view details</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -1821,220 +1819,125 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
           </div>
         </div>
 
-        {/* Horizontal Timeline */}
-        <div className="relative">
-          <div className="flex items-center justify-between">
-            {JOURNEY_PHASES.map((phase, idx) => {
-              const isSelected = selectedJourneyPhase === phase.id;
-              const hasData = !!getPhaseData(phase.id);
-              return (
-                <div key={phase.id} className="flex items-center flex-1">
-                  {/* Phase Step */}
-                  <button
-                    onClick={() => setSelectedJourneyPhase(phase.id)}
-                    className={`relative flex flex-col items-center group cursor-pointer transition-all ${
-                      isSelected ? 'scale-105' : 'hover:scale-102'
-                    }`}
-                    data-testid={`button-journey-phase-${phase.id}`}
-                  >
-                    {/* Circle with number */}
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-                      isSelected 
-                        ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30' 
-                        : hasData 
-                          ? 'bg-amber-500/20 text-amber-700 hover:bg-amber-500/30' 
-                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                    }`}>
-                      {idx + 1}
-                    </div>
-                    {/* Phase name */}
-                    <span className={`mt-2 text-xs font-medium text-center max-w-[80px] leading-tight ${
-                      isSelected ? 'text-amber-700' : 'text-muted-foreground'
-                    }`}>
-                      {phase.name}
-                    </span>
-                    {/* Active indicator */}
-                    {isSelected && (
-                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-amber-500" />
-                    )}
-                  </button>
-                  {/* Connector line */}
-                  {idx < JOURNEY_PHASES.length - 1 && (
-                    <div className="flex-1 h-0.5 mx-2 bg-gradient-to-r from-amber-500/30 to-amber-500/10 relative top-[-12px]">
-                      <ChevronRight className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 text-amber-500/50" />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+        {/* Simple Phase Tabs */}
+        <div className="flex gap-1 p-1 bg-muted/50 rounded-lg">
+          {JOURNEY_PHASES.map((phase, idx) => {
+            const isSelected = selectedJourneyPhase === phase.id;
+            return (
+              <button
+                key={phase.id}
+                onClick={() => setSelectedJourneyPhase(phase.id)}
+                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+                  isSelected 
+                    ? 'bg-background shadow-sm text-amber-700' 
+                    : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+                }`}
+                data-testid={`button-journey-phase-${phase.id}`}
+              >
+                <span className="hidden sm:inline">{idx + 1}. </span>{phase.name}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Detail Panel for Selected Phase */}
-        <Card className="border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-transparent">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center">
-                <span className="text-lg font-bold text-amber-700">
-                  {JOURNEY_PHASES.findIndex(p => p.id === selectedJourneyPhase) + 1}
-                </span>
-              </div>
-              <div>
-                <CardTitle>{selectedPhaseInfo?.name}</CardTitle>
-                <CardDescription>{selectedPhaseInfo?.description}</CardDescription>
-              </div>
+        {/* Phase Details */}
+        {selectedPhaseData ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Left Column */}
+            <div className="space-y-4">
+              {selectedPhaseData.keyActivities?.length > 0 && (
+                <Card className="border-emerald-500/20">
+                  <CardHeader className="py-3 px-4">
+                    <CardTitle className="text-sm flex items-center gap-2 text-emerald-700">
+                      <CheckCircle className="w-4 h-4" />
+                      What Buyers Do
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4 pt-0">
+                    <ul className="space-y-1.5">
+                      {selectedPhaseData.keyActivities.slice(0, 4).map((activity: string, i: number) => (
+                        <li key={i} className="text-sm flex items-start gap-2">
+                          <span className="text-emerald-500 mt-1">•</span>
+                          {activity}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+
+              {selectedPhaseData.blockers?.length > 0 && (
+                <Card className="border-red-500/20">
+                  <CardHeader className="py-3 px-4">
+                    <CardTitle className="text-sm flex items-center gap-2 text-red-700">
+                      <AlertTriangle className="w-4 h-4" />
+                      Pain Points
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4 pt-0">
+                    <ul className="space-y-1.5">
+                      {selectedPhaseData.blockers.slice(0, 3).map((blocker, i: number) => (
+                        <li key={i} className="text-sm flex items-start gap-2">
+                          <span className="text-red-500 mt-1">•</span>
+                          {blocker.blocker}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
             </div>
-          </CardHeader>
-          <CardContent>
-            {selectedPhaseData ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Column 1: Buyer Activities */}
-                <div className="space-y-4">
-                  {selectedPhaseData.keyActivities?.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold text-emerald-700 mb-2 flex items-center gap-1.5">
-                        <CheckCircle className="w-4 h-4" />
-                        Buyer Tasks
-                      </h4>
-                      <ul className="space-y-2">
-                        {selectedPhaseData.keyActivities.map((activity: string, i: number) => (
-                          <li key={i} className="flex items-start gap-2 text-sm">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 flex-shrink-0" />
-                            <span>{activity}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  
-                  {selectedPhaseData.emotions && selectedPhaseData.emotions.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold text-pink-700 mb-2 flex items-center gap-1.5">
-                        <Heart className="w-4 h-4" />
-                        Buyer Emotions
-                      </h4>
-                      <div className="flex flex-wrap gap-1.5">
-                        {selectedPhaseData.emotions.map((emotion: string, i: number) => (
-                          <Badge key={i} variant="outline" className="text-xs border-pink-500/30 text-pink-600 bg-pink-500/5">
-                            {emotion}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
 
-                {/* Column 2: Pain Points & Blockers */}
-                <div className="space-y-4">
-                  {selectedPhaseData.blockers?.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold text-red-700 mb-2 flex items-center gap-1.5">
-                        <AlertTriangle className="w-4 h-4" />
-                        Pain Points & Blockers
-                      </h4>
-                      <ul className="space-y-2">
-                        {selectedPhaseData.blockers.map((blocker, i: number) => (
-                          <li key={i} className="flex items-start gap-2 text-sm">
-                            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 flex-shrink-0 ${
-                              blocker.severity === 'high' ? 'border-red-500/50 text-red-600 bg-red-500/5' :
-                              blocker.severity === 'medium' ? 'border-amber-500/50 text-amber-600 bg-amber-500/5' :
-                              'border-slate-500/50 text-slate-600'
-                            }`}>
-                              {blocker.severity}
-                            </Badge>
-                            <span>{blocker.blocker}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+            {/* Right Column */}
+            <div className="space-y-4">
+              {selectedPhaseData.questionsToAsk?.length > 0 && (
+                <Card className="border-blue-500/20">
+                  <CardHeader className="py-3 px-4">
+                    <CardTitle className="text-sm flex items-center gap-2 text-blue-700">
+                      <MessageCircle className="w-4 h-4" />
+                      Questions to Ask
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4 pt-0">
+                    <ul className="space-y-1.5">
+                      {selectedPhaseData.questionsToAsk.slice(0, 3).map((q: string, i: number) => (
+                        <li key={i} className="text-sm italic text-blue-600/80">
+                          "{q}"
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
 
-                  {selectedPhaseData.whatGoodLooksLike?.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold text-purple-700 mb-2 flex items-center gap-1.5">
-                        <Star className="w-4 h-4" />
-                        What Good Looks Like
-                      </h4>
-                      <ul className="space-y-2">
-                        {selectedPhaseData.whatGoodLooksLike.map((item: string, i: number) => (
-                          <li key={i} className="flex items-start gap-2 text-sm">
-                            <span className="w-1.5 h-1.5 rounded-full bg-purple-500 mt-2 flex-shrink-0" />
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
+              {selectedPhaseData.emotions && selectedPhaseData.emotions.length > 0 && (
+                <Card className="border-pink-500/20">
+                  <CardHeader className="py-3 px-4">
+                    <CardTitle className="text-sm flex items-center gap-2 text-pink-700">
+                      <Heart className="w-4 h-4" />
+                      Buyer Emotions
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4 pt-0">
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedPhaseData.emotions.map((emotion: string, i: number) => (
+                        <Badge key={i} variant="secondary" className="text-xs bg-pink-500/10 text-pink-700">
+                          {emotion}
+                        </Badge>
+                      ))}
                     </div>
-                  )}
-                </div>
-
-                {/* Column 3: Seller Actions */}
-                <div className="space-y-4">
-                  {selectedPhaseData.questionsToAsk?.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold text-blue-700 mb-2 flex items-center gap-1.5">
-                        <MessageCircle className="w-4 h-4" />
-                        Questions to Ask
-                      </h4>
-                      <ul className="space-y-2">
-                        {selectedPhaseData.questionsToAsk.map((q: string, i: number) => (
-                          <li key={i} className="text-sm italic text-blue-600/80">
-                            "{q}"
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {selectedPhaseData.touchpoints?.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold text-amber-700 mb-2 flex items-center gap-1.5">
-                        <Compass className="w-4 h-4" />
-                        Touchpoints
-                      </h4>
-                      <div className="flex flex-wrap gap-1.5">
-                        {selectedPhaseData.touchpoints.map((tp: string, i: number) => (
-                          <Badge key={i} variant="secondary" className="text-xs bg-amber-500/10 text-amber-700">
-                            {tp}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedPhaseData.outcomeMapping && selectedPhaseData.outcomeMapping.length > 0 && (
-                    <div className="pt-3 border-t" style={{ borderColor: 'hsl(var(--kf-emerald) / 0.2)' }}>
-                      <h4 className="font-semibold mb-2 flex items-center gap-1.5" style={{ color: 'hsl(var(--kf-forest))' }}>
-                        <Target className="w-4 h-4" />
-                        Target Outcomes
-                      </h4>
-                      <ul className="space-y-2">
-                        {selectedPhaseData.outcomeMapping.map((mapping: OutcomeMapping, i: number) => (
-                          <li key={i} className="flex items-start gap-2 text-sm">
-                            <Badge 
-                              variant="outline" 
-                              className="text-[10px] px-1.5 py-0 flex-shrink-0"
-                              style={mapping.relevance === 'primary' 
-                                ? { borderColor: 'hsl(var(--kf-emerald) / 0.5)', color: 'hsl(var(--kf-forest))', backgroundColor: 'hsl(var(--kf-emerald) / 0.1)' }
-                                : { borderColor: 'hsl(var(--kf-ocean) / 0.5)', color: 'hsl(var(--kf-ocean))' }
-                              }
-                            >
-                              {mapping.relevance}
-                            </Badge>
-                            <span className="text-muted-foreground">{mapping.howAddressed}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <p className="text-muted-foreground italic text-center py-8">
-                No data mapped for this phase yet. Generate a new journey to populate all phases.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+        ) : (
+          <Card className="border-dashed">
+            <CardContent className="py-8 text-center text-muted-foreground">
+              No data for this phase. Generate a journey to populate.
+            </CardContent>
+          </Card>
+        )}
       </div>
     );
   };
@@ -2208,159 +2111,144 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
     const riskyPredictions = predictions.filter(p => p.isRiskyPrediction === true);
 
     return (
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
-                <Grid3x3 className="w-5 h-5 text-orange-600" />
-              </div>
-              <div>
-                <CardTitle>Predictions 2x2 Grid</CardTitle>
-                <CardDescription>Sort predictions by Impact (if wrong) vs Confidence to identify riskiest assumptions</CardDescription>
-              </div>
+      <div className="space-y-4">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
+              <Grid3x3 className="w-5 h-5 text-orange-600" />
             </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="gap-1 text-purple-600 border-purple-500/30 bg-purple-500/5">
-                <Sparkles className="w-3 h-3" />
-                AI Generated
-              </Badge>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => generatePredictionsMutation.mutate()}
-                disabled={generatePredictionsMutation.isPending}
-                className="gap-1"
-                data-testid="button-regenerate-predictions"
-              >
-                {generatePredictionsMutation.isPending ? (
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                ) : (
-                  <RefreshCw className="w-3 h-3" />
-                )}
-                Regenerate
-              </Button>
+            <div>
+              <h3 className="font-bold">Predictions Grid</h3>
+              <p className="text-sm text-muted-foreground">Impact vs Confidence analysis</p>
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          {/* 2x2 Grid with axis labels */}
-          <div className="relative">
-            {/* Y-axis label */}
-            <div className="absolute -left-2 top-1/2 -translate-y-1/2 -rotate-90 text-xs font-semibold text-muted-foreground whitespace-nowrap">
-              ← Low Confidence — High Confidence →
-            </div>
-            
-            <div className="ml-6">
-              {/* X-axis label */}
-              <div className="text-center text-xs font-semibold text-muted-foreground mb-2">
-                ← Low Impact — High Impact →
-              </div>
-              
-              <div className="grid grid-cols-2 gap-3">
-                {/* Top-left: High Confidence, Low Impact - "Park for now" */}
-                <div className="p-4 rounded-lg bg-slate-500/5 border border-slate-500/20 min-h-[140px]">
-                  <h4 className="font-semibold text-slate-600 text-xs uppercase mb-2 flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-slate-400" />
-                    Low Impact, High Confidence
-                  </h4>
-                  <p className="text-[10px] text-muted-foreground mb-2">Park these - low priority</p>
-                  <ul className="space-y-1.5">
-                    {highConfLowImpact.slice(0, 2).map((pred, i) => (
-                      <li key={i} className="text-xs flex items-start gap-1.5 text-muted-foreground">
-                        <span className="w-1 h-1 rounded-full bg-slate-400 mt-1.5 flex-shrink-0" />
-                        <span className="line-clamp-2">{pred.prediction}</span>
-                      </li>
-                    ))}
-                    {highConfLowImpact.length === 0 && (
-                      <li className="text-xs text-muted-foreground italic">None identified</li>
-                    )}
-                  </ul>
-                </div>
-                
-                {/* Top-right: High Confidence, High Impact - "Foundation" */}
-                <div className="p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/20 min-h-[140px]">
-                  <h4 className="font-semibold text-emerald-600 text-xs uppercase mb-2 flex items-center gap-1">
-                    <CheckCircle className="w-3 h-3" />
-                    High Impact, High Confidence
-                  </h4>
-                  <p className="text-[10px] text-emerald-600/70 mb-2">Foundation - proceed confidently</p>
-                  <ul className="space-y-1.5">
-                    {highConfHighImpact.filter(p => !p.isRiskyPrediction).slice(0, 2).map((pred, i) => (
-                      <li key={i} className="text-xs flex items-start gap-1.5">
-                        <CheckCircle className="w-3 h-3 mt-0.5 text-emerald-500 flex-shrink-0" />
-                        <span className="line-clamp-2">{pred.prediction}</span>
-                      </li>
-                    ))}
-                    {highConfHighImpact.filter(p => !p.isRiskyPrediction).length === 0 && (
-                      <li className="text-xs text-muted-foreground italic">None identified</li>
-                    )}
-                  </ul>
-                </div>
-                
-                {/* Bottom-left: Low Confidence, Low Impact - "Monitor" */}
-                <div className="p-4 rounded-lg bg-amber-500/5 border border-amber-500/20 min-h-[140px]">
-                  <h4 className="font-semibold text-amber-600 text-xs uppercase mb-2 flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-amber-400" />
-                    Low Impact, Low Confidence
-                  </h4>
-                  <p className="text-[10px] text-amber-600/70 mb-2">Monitor - validate opportunistically</p>
-                  <ul className="space-y-1.5">
-                    {lowConfLowImpact.slice(0, 2).map((pred, i) => (
-                      <li key={i} className="text-xs flex items-start gap-1.5 text-amber-700">
-                        <span className="w-1 h-1 rounded-full bg-amber-400 mt-1.5 flex-shrink-0" />
-                        <span className="line-clamp-2">{pred.prediction}</span>
-                      </li>
-                    ))}
-                    {lowConfLowImpact.length === 0 && (
-                      <li className="text-xs text-muted-foreground italic">None identified</li>
-                    )}
-                  </ul>
-                </div>
-                
-                {/* Bottom-right: Low Confidence, High Impact - "RISKIEST - Experiment!" */}
-                <div className="p-4 rounded-lg bg-red-500/10 border-2 border-red-500/40 min-h-[140px] relative">
-                  <div className="absolute -top-2 -right-2">
-                    <Badge className="bg-red-500 text-white text-[10px] px-2">EXPERIMENT</Badge>
-                  </div>
-                  <h4 className="font-semibold text-red-600 text-xs uppercase mb-2 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" />
-                    High Impact, Low Confidence
-                  </h4>
-                  <p className="text-[10px] text-red-600/70 mb-2">Riskiest - prioritize for CDI testing</p>
-                  <ul className="space-y-1.5">
-                    {riskyPredictions.slice(0, 3).map((pred, i) => (
-                      <li key={i} className="text-xs flex items-start gap-1.5 text-red-700">
-                        <AlertTriangle className="w-3 h-3 mt-0.5 text-red-500 flex-shrink-0" />
-                        <span className="line-clamp-2">{pred.prediction}</span>
-                      </li>
-                    ))}
-                    {riskyPredictions.length === 0 && (
-                      <li className="text-xs text-muted-foreground italic">None identified</li>
-                    )}
-                  </ul>
-                </div>
-              </div>
-              
-              {/* Summary stats */}
-              <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                <div className="flex items-center gap-4 text-xs">
-                  <span className="text-muted-foreground">
-                    Total: <strong>{predictions.length}</strong> predictions
-                  </span>
-                  <span className="text-red-600">
-                    <AlertTriangle className="w-3 h-3 inline mr-1" />
-                    <strong>{riskyPredictions.length}</strong> risky (need testing)
-                  </span>
-                </div>
-                <p className="text-[10px] text-muted-foreground max-w-xs text-right">
-                  Focus CDI interviews on the bottom-right quadrant to validate high-impact, low-confidence assumptions
-                </p>
-              </div>
-            </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="gap-1 text-purple-600 border-purple-500/30 bg-purple-500/5">
+              <Sparkles className="w-3 h-3" />
+              AI Generated
+            </Badge>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => generatePredictionsMutation.mutate()}
+              disabled={generatePredictionsMutation.isPending}
+              className="gap-1"
+              data-testid="button-regenerate-predictions"
+            >
+              {generatePredictionsMutation.isPending ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <RefreshCw className="w-3 h-3" />
+              )}
+              Regenerate
+            </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        {/* Simplified 2x2 Grid */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* Top-left: Safe Zone */}
+          <Card className="border-slate-500/20 bg-slate-500/5">
+            <CardHeader className="py-3 px-4">
+              <CardTitle className="text-xs uppercase text-slate-600 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-slate-400" />
+                Safe Zone
+              </CardTitle>
+              <CardDescription className="text-[10px]">Low impact, high confidence</CardDescription>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 pt-0">
+              {highConfLowImpact.length > 0 ? (
+                <ul className="space-y-1">
+                  {highConfLowImpact.slice(0, 2).map((pred, i) => (
+                    <li key={i} className="text-xs text-muted-foreground line-clamp-1">• {pred.prediction}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">None</p>
+              )}
+            </CardContent>
+          </Card>
+          
+          {/* Top-right: Foundation */}
+          <Card className="border-emerald-500/20 bg-emerald-500/5">
+            <CardHeader className="py-3 px-4">
+              <CardTitle className="text-xs uppercase text-emerald-600 flex items-center gap-2">
+                <CheckCircle className="w-3 h-3" />
+                Foundation
+              </CardTitle>
+              <CardDescription className="text-[10px]">High impact, high confidence</CardDescription>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 pt-0">
+              {highConfHighImpact.length > 0 ? (
+                <ul className="space-y-1">
+                  {highConfHighImpact.slice(0, 2).map((pred, i) => (
+                    <li key={i} className="text-xs text-emerald-700 line-clamp-1">• {pred.prediction}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">None</p>
+              )}
+            </CardContent>
+          </Card>
+          
+          {/* Bottom-left: Monitor */}
+          <Card className="border-amber-500/20 bg-amber-500/5">
+            <CardHeader className="py-3 px-4">
+              <CardTitle className="text-xs uppercase text-amber-600 flex items-center gap-2">
+                <Eye className="w-3 h-3" />
+                Monitor
+              </CardTitle>
+              <CardDescription className="text-[10px]">Low impact, low confidence</CardDescription>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 pt-0">
+              {lowConfLowImpact.length > 0 ? (
+                <ul className="space-y-1">
+                  {lowConfLowImpact.slice(0, 2).map((pred, i) => (
+                    <li key={i} className="text-xs text-amber-700 line-clamp-1">• {pred.prediction}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">None</p>
+              )}
+            </CardContent>
+          </Card>
+          
+          {/* Bottom-right: Test First! */}
+          <Card className="border-red-500/30 bg-red-500/5 relative">
+            <Badge className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px]">TEST FIRST</Badge>
+            <CardHeader className="py-3 px-4">
+              <CardTitle className="text-xs uppercase text-red-600 flex items-center gap-2">
+                <AlertTriangle className="w-3 h-3" />
+                Risky Assumptions
+              </CardTitle>
+              <CardDescription className="text-[10px]">High impact, low confidence</CardDescription>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 pt-0">
+              {riskyPredictions.length > 0 ? (
+                <ul className="space-y-1">
+                  {riskyPredictions.slice(0, 3).map((pred, i) => (
+                    <li key={i} className="text-xs text-red-700 line-clamp-1">• {pred.prediction}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">None identified</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+              
+        {/* Summary */}
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <span>Total: <strong>{predictions.length}</strong> predictions</span>
+          {riskyPredictions.length > 0 && (
+            <span className="text-red-600">
+              <AlertTriangle className="w-3 h-3 inline mr-1" />
+              <strong>{riskyPredictions.length}</strong> risky
+            </span>
+          )}
+        </div>
+      </div>
     );
   };
 
