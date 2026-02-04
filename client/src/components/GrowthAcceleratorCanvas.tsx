@@ -634,17 +634,28 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
       const pageWidth = 170;
       const lineHeight = 6;
 
+      // Korn Ferry brand colors for PDF
+      const KF_FOREST = [0, 99, 79] as const;    // #00634F
+      const KF_OCEAN = [0, 89, 113] as const;    // #005971
+      const KF_EMERALD = [0, 155, 119] as const; // #009B77
+      const KF_NAVY = [0, 23, 59] as const;      // #00173B
+      const BLACK = [0, 0, 0] as const;
+      
       const addTitle = (text: string, size: number = 16) => {
         doc.setFontSize(size);
         doc.setFont("helvetica", "bold");
+        doc.setTextColor(...KF_FOREST);
         doc.text(text, leftMargin, yPos);
+        doc.setTextColor(...BLACK);
         yPos += lineHeight + 2;
       };
 
       const addSubtitle = (text: string) => {
         doc.setFontSize(12);
         doc.setFont("helvetica", "bold");
+        doc.setTextColor(...KF_OCEAN);
         doc.text(text, leftMargin, yPos);
+        doc.setTextColor(...BLACK);
         yPos += lineHeight;
       };
 
@@ -773,11 +784,30 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
           if (phase.decisionFactors?.length) {
             addText(`Decision Factors: ${phase.decisionFactors.join(", ")}`);
           }
-          // Add outcome mapping to PDF
+          // Add outcome mapping to PDF with KF branding
           if (phase.outcomeMapping?.length) {
-            addText("Target Outcomes:");
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(...KF_FOREST);
+            doc.text("Target Outcomes:", leftMargin, yPos);
+            doc.setTextColor(...BLACK);
+            yPos += lineHeight;
             phase.outcomeMapping.forEach((mapping: OutcomeMapping) => {
-              addText(`- [${mapping.relevance.toUpperCase()}] ${mapping.howAddressed}`, 5);
+              const label = mapping.relevance === 'primary' ? '[PRIMARY]' : '[SUPPORTING]';
+              doc.setFontSize(9);
+              doc.setFont("helvetica", "bold");
+              if (mapping.relevance === 'primary') {
+                doc.setTextColor(...KF_EMERALD);
+              } else {
+                doc.setTextColor(...KF_OCEAN);
+              }
+              doc.text(label, leftMargin + 5, yPos);
+              const labelWidth = doc.getTextWidth(label) + 2;
+              doc.setFont("helvetica", "normal");
+              doc.setTextColor(...BLACK);
+              const descLines = doc.splitTextToSize(mapping.howAddressed, pageWidth - 10 - labelWidth);
+              doc.text(descLines, leftMargin + 5 + labelWidth, yPos);
+              yPos += descLines.length * lineHeight + 1;
             });
           }
         });
@@ -1521,8 +1551,8 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
                       )}
                       
                       {journeyPhase.outcomeMapping && journeyPhase.outcomeMapping.length > 0 && (
-                        <div className="pt-2 border-t border-amber-500/20">
-                          <p className="font-semibold text-orange-700 mb-1 flex items-center gap-1">
+                        <div className="pt-2 border-t" style={{ borderColor: 'hsl(var(--kf-emerald) / 0.2)' }}>
+                          <p className="font-semibold mb-1 flex items-center gap-1" style={{ color: 'hsl(var(--kf-forest))' }}>
                             <Target className="w-3 h-3" />
                             Target Outcomes
                           </p>
@@ -1531,11 +1561,11 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
                               <li key={i} className="flex items-start gap-1.5">
                                 <Badge 
                                   variant="outline" 
-                                  className={`text-[9px] px-1 py-0 flex-shrink-0 ${
-                                    mapping.relevance === 'primary' 
-                                      ? 'border-orange-500/50 text-orange-600 bg-orange-500/10' 
-                                      : 'border-slate-500/50 text-slate-600'
-                                  }`}
+                                  className="text-[9px] px-1 py-0 flex-shrink-0"
+                                  style={mapping.relevance === 'primary' 
+                                    ? { borderColor: 'hsl(var(--kf-emerald) / 0.5)', color: 'hsl(var(--kf-forest))', backgroundColor: 'hsl(var(--kf-emerald) / 0.1)' }
+                                    : { borderColor: 'hsl(var(--kf-ocean) / 0.5)', color: 'hsl(var(--kf-ocean))' }
+                                  }
                                 >
                                   {mapping.relevance}
                                 </Badge>
