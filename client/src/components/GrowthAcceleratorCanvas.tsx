@@ -231,10 +231,10 @@ const GA_STEPS = {
 // WBT-aligned buyer journey phases (Working Backwards Toolkit standard)
 const JOURNEY_PHASES = [
   { id: "awareness", name: "Awareness", description: "Buyer recognizes a problem or opportunity" },
-  { id: "search_selection", name: "Search & Selection", description: "Buyer evaluates options and vendors" },
-  { id: "purchase", name: "Purchase", description: "Buyer makes the decision and commits" },
-  { id: "experience", name: "Experience", description: "Buyer implements and uses the solution" },
-  { id: "advocacy", name: "Advocacy", description: "Buyer becomes a champion and reference" },
+  { id: "consideration", name: "Consideration", description: "Buyer evaluates options and vendors" },
+  { id: "decision", name: "Decision", description: "Buyer makes the decision and commits" },
+  { id: "implementation", name: "Implementation", description: "Buyer implements and uses the solution" },
+  { id: "valueRealization", name: "Value Realization", description: "Buyer sees results and becomes champion" },
 ];
 
 interface PersonaRecommendation {
