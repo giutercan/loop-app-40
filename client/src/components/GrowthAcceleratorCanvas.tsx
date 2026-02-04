@@ -228,14 +228,13 @@ const GA_STEPS = {
   ],
 };
 
-// Sales-aligned journey phases (like a professional seller playbook)
+// WBT-aligned buyer journey phases (Working Backwards Toolkit standard)
 const JOURNEY_PHASES = [
-  { id: "prospecting", name: "Prospecting", description: "Strategic identification and outreach" },
-  { id: "qualifying", name: "Qualifying", description: "Validating lead fit and readiness" },
-  { id: "discovery", name: "Discovery", description: "Understanding needs and motivations" },
-  { id: "proposing", name: "Proposing", description: "Presenting tailored solutions" },
-  { id: "negotiating", name: "Negotiating", description: "Finalizing terms and agreements" },
-  { id: "closing", name: "Closing", description: "Securing sign-off and handover" },
+  { id: "awareness", name: "Awareness", description: "Buyer recognizes a problem or opportunity" },
+  { id: "search_selection", name: "Search & Selection", description: "Buyer evaluates options and vendors" },
+  { id: "purchase", name: "Purchase", description: "Buyer makes the decision and commits" },
+  { id: "experience", name: "Experience", description: "Buyer implements and uses the solution" },
+  { id: "advocacy", name: "Advocacy", description: "Buyer becomes a champion and reference" },
 ];
 
 interface PersonaRecommendation {
@@ -265,6 +264,7 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
   const [aiRefinePrompt, setAiRefinePrompt] = useState("");
   const [showRefineDialog, setShowRefineDialog] = useState(false);
   const [refineTarget, setRefineTarget] = useState<{ type: string; id?: number } | null>(null);
+  const [selectedJourneyPhase, setSelectedJourneyPhase] = useState<string>("awareness");
   
   const { data: canvas, isLoading: canvasLoading, refetch: refetchCanvas } = useQuery<GrowthAcceleratorCanvas>({
     queryKey: ["/api/projects", projectId, "growth-accelerator/canvases"],
@@ -1758,8 +1758,33 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
       );
     }
 
+    // Helper to get phase data from either legacy array or new object format
+    const getPhaseData = (phaseId: string): JourneyPhaseData | null => {
+      if (Array.isArray(journey.phases)) {
+        const legacyPhase = (journey.phases as LegacyJourneyPhase[]).find(p => p.phaseId === phaseId);
+        if (!legacyPhase) return null;
+        return {
+          description: legacyPhase.description || "",
+          keyConsiderations: [],
+          keyActivities: legacyPhase.tasks || [],
+          touchpoints: legacyPhase.touchpoints || [],
+          questionsToAsk: [],
+          whatGoodLooksLike: legacyPhase.decisionFactors || [],
+          mustCompleteBeforeNext: [],
+          blockers: (legacyPhase.painPoints || []).map((p: string) => ({ blocker: p, severity: "medium" as const })),
+          emotions: legacyPhase.emotions || [],
+          legacyFormat: true
+        };
+      }
+      return (journey.phases as BuyerJourneyPhases)[phaseId as keyof BuyerJourneyPhases] || null;
+    };
+
+    const selectedPhaseData = getPhaseData(selectedJourneyPhase);
+    const selectedPhaseInfo = JOURNEY_PHASES.find(p => p.id === selectedJourneyPhase);
+
     return (
-      <div className="space-y-4">
+      <div className="space-y-6">
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
@@ -1796,232 +1821,220 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Handle both legacy array format and new object format */}
-          {Array.isArray(journey.phases) ? (
-            // Legacy format: render array phases directly
-            (journey.phases as LegacyJourneyPhase[]).map((legacyPhase, idx) => {
-              const journeyPhase: JourneyPhaseData = {
-                description: legacyPhase.description || "",
-                keyConsiderations: [],
-                keyActivities: legacyPhase.tasks || [],
-                touchpoints: legacyPhase.touchpoints || [],
-                questionsToAsk: [],
-                whatGoodLooksLike: legacyPhase.decisionFactors || [],
-                mustCompleteBeforeNext: [],
-                blockers: (legacyPhase.painPoints || []).map((p: string) => ({ blocker: p, severity: "medium" as const })),
-                emotions: legacyPhase.emotions || [],
-                legacyFormat: true
-              };
+        {/* Horizontal Timeline */}
+        <div className="relative">
+          <div className="flex items-center justify-between">
+            {JOURNEY_PHASES.map((phase, idx) => {
+              const isSelected = selectedJourneyPhase === phase.id;
+              const hasData = !!getPhaseData(phase.id);
               return (
-                <Card key={legacyPhase.phaseId} className="border-amber-500/20 bg-amber-500/5">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center text-sm font-bold text-amber-700">
-                        {idx + 1}
-                      </div>
-                      <div>
-                        <CardTitle className="text-sm">{legacyPhase.phaseName}</CardTitle>
-                        <CardDescription className="text-xs">{legacyPhase.phaseId}</CardDescription>
-                      </div>
+                <div key={phase.id} className="flex items-center flex-1">
+                  {/* Phase Step */}
+                  <button
+                    onClick={() => setSelectedJourneyPhase(phase.id)}
+                    className={`relative flex flex-col items-center group cursor-pointer transition-all ${
+                      isSelected ? 'scale-105' : 'hover:scale-102'
+                    }`}
+                    data-testid={`button-journey-phase-${phase.id}`}
+                  >
+                    {/* Circle with number */}
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                      isSelected 
+                        ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30' 
+                        : hasData 
+                          ? 'bg-amber-500/20 text-amber-700 hover:bg-amber-500/30' 
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                    }`}>
+                      {idx + 1}
                     </div>
-                  </CardHeader>
-                  <CardContent className="text-xs space-y-3">
-                    {journeyPhase.keyActivities?.length > 0 && (
-                      <div>
-                        <p className="font-semibold text-emerald-700 mb-1 flex items-center gap-1">
-                          <CheckCircle className="w-3 h-3" />
-                          Tasks
-                        </p>
-                        <ul className="space-y-1">
-                          {journeyPhase.keyActivities.slice(0, 3).map((activity: string, i: number) => (
-                            <li key={i} className="flex items-start gap-1">
-                              <span className="w-1 h-1 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />
-                              <span>{activity}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                    {/* Phase name */}
+                    <span className={`mt-2 text-xs font-medium text-center max-w-[80px] leading-tight ${
+                      isSelected ? 'text-amber-700' : 'text-muted-foreground'
+                    }`}>
+                      {phase.name}
+                    </span>
+                    {/* Active indicator */}
+                    {isSelected && (
+                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-amber-500" />
                     )}
-                    {journeyPhase.blockers?.length > 0 && (
-                      <div>
-                        <p className="font-semibold text-red-700 mb-1 flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3" />
-                          Pain Points
-                        </p>
-                        <ul className="space-y-1">
-                          {journeyPhase.blockers.slice(0, 2).map((blocker, i: number) => (
-                            <li key={i} className="flex items-start gap-1 text-red-600/80">
-                              <span className="w-1 h-1 rounded-full bg-red-500 mt-1.5 flex-shrink-0" />
-                              <span>{blocker.blocker}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    {journeyPhase.emotions && journeyPhase.emotions.length > 0 && (
-                      <div className="flex flex-wrap gap-1 pt-1">
-                        {journeyPhase.emotions.slice(0, 3).map((emotion: string, i: number) => (
-                          <Badge key={i} variant="secondary" className="text-[10px] px-1.5 py-0 bg-amber-500/10 text-amber-700 border-amber-500/30">
+                  </button>
+                  {/* Connector line */}
+                  {idx < JOURNEY_PHASES.length - 1 && (
+                    <div className="flex-1 h-0.5 mx-2 bg-gradient-to-r from-amber-500/30 to-amber-500/10 relative top-[-12px]">
+                      <ChevronRight className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 text-amber-500/50" />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Detail Panel for Selected Phase */}
+        <Card className="border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-transparent">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                <span className="text-lg font-bold text-amber-700">
+                  {JOURNEY_PHASES.findIndex(p => p.id === selectedJourneyPhase) + 1}
+                </span>
+              </div>
+              <div>
+                <CardTitle>{selectedPhaseInfo?.name}</CardTitle>
+                <CardDescription>{selectedPhaseInfo?.description}</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {selectedPhaseData ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Column 1: Buyer Activities */}
+                <div className="space-y-4">
+                  {selectedPhaseData.keyActivities?.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-emerald-700 mb-2 flex items-center gap-1.5">
+                        <CheckCircle className="w-4 h-4" />
+                        Buyer Tasks
+                      </h4>
+                      <ul className="space-y-2">
+                        {selectedPhaseData.keyActivities.map((activity: string, i: number) => (
+                          <li key={i} className="flex items-start gap-2 text-sm">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 flex-shrink-0" />
+                            <span>{activity}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {selectedPhaseData.emotions && selectedPhaseData.emotions.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-pink-700 mb-2 flex items-center gap-1.5">
+                        <Heart className="w-4 h-4" />
+                        Buyer Emotions
+                      </h4>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedPhaseData.emotions.map((emotion: string, i: number) => (
+                          <Badge key={i} variant="outline" className="text-xs border-pink-500/30 text-pink-600 bg-pink-500/5">
                             {emotion}
                           </Badge>
                         ))}
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })
-          ) : (
-            // New format: render using JOURNEY_PHASES
-            JOURNEY_PHASES.map((phase, idx) => {
-              const journeyPhase = (journey.phases as BuyerJourneyPhases)[phase.id as keyof BuyerJourneyPhases];
-              return (
-                <Card key={phase.id} className="border-amber-500/20 bg-amber-500/5">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center text-sm font-bold text-amber-700">
-                        {idx + 1}
-                      </div>
-                      <div>
-                        <CardTitle className="text-sm">{phase.name}</CardTitle>
-                        <CardDescription className="text-xs">{phase.description}</CardDescription>
+                    </div>
+                  )}
+                </div>
+
+                {/* Column 2: Pain Points & Blockers */}
+                <div className="space-y-4">
+                  {selectedPhaseData.blockers?.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-red-700 mb-2 flex items-center gap-1.5">
+                        <AlertTriangle className="w-4 h-4" />
+                        Pain Points & Blockers
+                      </h4>
+                      <ul className="space-y-2">
+                        {selectedPhaseData.blockers.map((blocker, i: number) => (
+                          <li key={i} className="flex items-start gap-2 text-sm">
+                            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 flex-shrink-0 ${
+                              blocker.severity === 'high' ? 'border-red-500/50 text-red-600 bg-red-500/5' :
+                              blocker.severity === 'medium' ? 'border-amber-500/50 text-amber-600 bg-amber-500/5' :
+                              'border-slate-500/50 text-slate-600'
+                            }`}>
+                              {blocker.severity}
+                            </Badge>
+                            <span>{blocker.blocker}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {selectedPhaseData.whatGoodLooksLike?.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-purple-700 mb-2 flex items-center gap-1.5">
+                        <Star className="w-4 h-4" />
+                        What Good Looks Like
+                      </h4>
+                      <ul className="space-y-2">
+                        {selectedPhaseData.whatGoodLooksLike.map((item: string, i: number) => (
+                          <li key={i} className="flex items-start gap-2 text-sm">
+                            <span className="w-1.5 h-1.5 rounded-full bg-purple-500 mt-2 flex-shrink-0" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                {/* Column 3: Seller Actions */}
+                <div className="space-y-4">
+                  {selectedPhaseData.questionsToAsk?.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-blue-700 mb-2 flex items-center gap-1.5">
+                        <MessageCircle className="w-4 h-4" />
+                        Questions to Ask
+                      </h4>
+                      <ul className="space-y-2">
+                        {selectedPhaseData.questionsToAsk.map((q: string, i: number) => (
+                          <li key={i} className="text-sm italic text-blue-600/80">
+                            "{q}"
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {selectedPhaseData.touchpoints?.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-amber-700 mb-2 flex items-center gap-1.5">
+                        <Compass className="w-4 h-4" />
+                        Touchpoints
+                      </h4>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedPhaseData.touchpoints.map((tp: string, i: number) => (
+                          <Badge key={i} variant="secondary" className="text-xs bg-amber-500/10 text-amber-700">
+                            {tp}
+                          </Badge>
+                        ))}
                       </div>
                     </div>
-                  </CardHeader>
-                  <CardContent className="text-xs space-y-3">
-                    {journeyPhase ? (
-                    <>
-                      {journeyPhase.description && (
-                        <p className="text-sm text-muted-foreground">{journeyPhase.description}</p>
-                      )}
-                      
-                      {journeyPhase.keyActivities?.length > 0 && (
-                        <div>
-                          <p className="font-semibold text-emerald-700 mb-1 flex items-center gap-1">
-                            <CheckCircle className="w-3 h-3" />
-                            Key Activities
-                          </p>
-                          <ul className="space-y-1">
-                            {journeyPhase.keyActivities.slice(0, 3).map((activity: string, i: number) => (
-                              <li key={i} className="flex items-start gap-1">
-                                <span className="w-1 h-1 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />
-                                <span>{activity}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      
-                      {journeyPhase.questionsToAsk?.length > 0 && (
-                        <div>
-                          <p className="font-semibold text-blue-700 mb-1 flex items-center gap-1">
-                            <MessageCircle className="w-3 h-3" />
-                            Questions to Ask
-                          </p>
-                          <ul className="space-y-1">
-                            {journeyPhase.questionsToAsk.slice(0, 2).map((q: string, i: number) => (
-                              <li key={i} className="flex items-start gap-1 italic text-blue-600/80">
-                                <span className="not-italic">"</span>{q}<span className="not-italic">"</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      
-                      {journeyPhase.whatGoodLooksLike?.length > 0 && (
-                        <div>
-                          <p className="font-semibold text-purple-700 mb-1 flex items-center gap-1">
-                            <Star className="w-3 h-3" />
-                            What Good Looks Like
-                          </p>
-                          <ul className="space-y-1">
-                            {journeyPhase.whatGoodLooksLike.slice(0, 2).map((item: string, i: number) => (
-                              <li key={i} className="flex items-start gap-1">
-                                <span className="w-1 h-1 rounded-full bg-purple-500 mt-1.5 flex-shrink-0" />
-                                <span>{item}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      
-                      {journeyPhase.blockers?.length > 0 && (
-                        <div>
-                          <p className="font-semibold text-red-700 mb-1 flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3" />
-                            Blockers
-                          </p>
-                          <ul className="space-y-1">
-                            {journeyPhase.blockers.slice(0, 2).map((blocker, i: number) => (
-                              <li key={i} className="flex items-start gap-1">
-                                <Badge variant="outline" className={`text-[10px] px-1 py-0 ${
-                                  blocker.severity === 'high' ? 'border-red-500/50 text-red-600' :
-                                  blocker.severity === 'medium' ? 'border-amber-500/50 text-amber-600' :
-                                  'border-slate-500/50 text-slate-600'
-                                }`}>
-                                  {blocker.severity}
-                                </Badge>
-                                <span>{blocker.blocker}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      
-                      {journeyPhase.emotions && journeyPhase.emotions.length > 0 && (
-                        <div>
-                          <p className="font-semibold text-pink-700 mb-1 flex items-center gap-1">
-                            <Heart className="w-3 h-3" />
-                            Buyer Emotions
-                          </p>
-                          <div className="flex flex-wrap gap-1">
-                            {journeyPhase.emotions.slice(0, 4).map((emotion: string, i: number) => (
-                              <Badge key={i} variant="outline" className="text-[10px] border-pink-500/30 text-pink-600 bg-pink-500/5">
-                                {emotion}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {journeyPhase.outcomeMapping && journeyPhase.outcomeMapping.length > 0 && (
-                        <div className="pt-2 border-t" style={{ borderColor: 'hsl(var(--kf-emerald) / 0.2)' }}>
-                          <p className="font-semibold mb-1 flex items-center gap-1" style={{ color: 'hsl(var(--kf-forest))' }}>
-                            <Target className="w-3 h-3" />
-                            Target Outcomes
-                          </p>
-                          <ul className="space-y-1.5">
-                            {journeyPhase.outcomeMapping.slice(0, 2).map((mapping: OutcomeMapping, i: number) => (
-                              <li key={i} className="flex items-start gap-1.5">
-                                <Badge 
-                                  variant="outline" 
-                                  className="text-[9px] px-1 py-0 flex-shrink-0"
-                                  style={mapping.relevance === 'primary' 
-                                    ? { borderColor: 'hsl(var(--kf-emerald) / 0.5)', color: 'hsl(var(--kf-forest))', backgroundColor: 'hsl(var(--kf-emerald) / 0.1)' }
-                                    : { borderColor: 'hsl(var(--kf-ocean) / 0.5)', color: 'hsl(var(--kf-ocean))' }
-                                  }
-                                >
-                                  {mapping.relevance}
-                                </Badge>
-                                <span className="text-[10px] text-muted-foreground leading-tight">
-                                  {mapping.howAddressed}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <p className="text-muted-foreground italic">Not mapped yet</p>
                   )}
-                </CardContent>
-              </Card>
-              );
-            })
-          )}
-        </div>
+
+                  {selectedPhaseData.outcomeMapping && selectedPhaseData.outcomeMapping.length > 0 && (
+                    <div className="pt-3 border-t" style={{ borderColor: 'hsl(var(--kf-emerald) / 0.2)' }}>
+                      <h4 className="font-semibold mb-2 flex items-center gap-1.5" style={{ color: 'hsl(var(--kf-forest))' }}>
+                        <Target className="w-4 h-4" />
+                        Target Outcomes
+                      </h4>
+                      <ul className="space-y-2">
+                        {selectedPhaseData.outcomeMapping.map((mapping: OutcomeMapping, i: number) => (
+                          <li key={i} className="flex items-start gap-2 text-sm">
+                            <Badge 
+                              variant="outline" 
+                              className="text-[10px] px-1.5 py-0 flex-shrink-0"
+                              style={mapping.relevance === 'primary' 
+                                ? { borderColor: 'hsl(var(--kf-emerald) / 0.5)', color: 'hsl(var(--kf-forest))', backgroundColor: 'hsl(var(--kf-emerald) / 0.1)' }
+                                : { borderColor: 'hsl(var(--kf-ocean) / 0.5)', color: 'hsl(var(--kf-ocean))' }
+                              }
+                            >
+                              {mapping.relevance}
+                            </Badge>
+                            <span className="text-muted-foreground">{mapping.howAddressed}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="text-muted-foreground italic text-center py-8">
+                No data mapped for this phase yet. Generate a new journey to populate all phases.
+              </p>
+            )}
+          </CardContent>
+        </Card>
       </div>
     );
   };
