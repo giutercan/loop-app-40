@@ -16790,4 +16790,674 @@ Return the refined content in the exact same JSON structure as the original.`;
       res.status(500).json({ error: error.message });
     }
   });
+
+  // ============================================================================
+  // GROWTH ACCELERATOR - NEW SECTIONS FOR COMPLETE SALES PLAY
+  // ============================================================================
+
+  // Generate Simulated Interview Transcript
+  app.post("/api/growth-accelerator/canvases/:id/generate-simulated-interview", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const { projectId, personaId } = req.body;
+
+      // Get persona, predictions, and hypothesis data
+      const personas = await storage.getGaBuyerPersonas(canvasId);
+      const persona = personaId ? personas.find(p => p.id === personaId) : personas[0];
+      const predictions = await storage.getGaPredictions(canvasId);
+      const riskyPredictions = predictions.filter((p: any) => p.isRiskyPrediction);
+      const hypotheses = await storage.getGaHypotheses(canvasId);
+      const hypothesis = hypotheses[0];
+
+      if (!persona) {
+        return res.status(400).json({ error: "No persona found. Generate a persona first." });
+      }
+
+      const prompt = `You are an expert interviewer conducting customer discovery. Generate a realistic simulated interview transcript with a buyer that matches this persona profile.
+
+=== BUYER PERSONA ===
+Name: ${persona.personaName || "Unknown"}
+Title: ${persona.personaTitle || "Senior Leader"}
+Company: ${persona.personaCompany || "Enterprise Company"}
+Facts: ${JSON.stringify(persona.facts || [])}
+Goals: ${JSON.stringify(persona.goals || [])}
+Pains: ${JSON.stringify(persona.pains || [])}
+Behaviours: ${JSON.stringify(persona.behaviours || [])}
+
+=== HYPOTHESES TO VALIDATE ===
+Buyer Hypothesis: ${hypothesis?.buyerHypothesis || "N/A"}
+Problem Hypothesis: ${hypothesis?.problemHypothesis || "N/A"}
+Solution Hypothesis: ${hypothesis?.solutionHypothesis || "N/A"}
+
+=== RISKY PREDICTIONS TO TEST ===
+${riskyPredictions.map((p: any) => `- ${p.prediction} (${p.sourceHypothesis})`).join('\n')}
+
+=== INSTRUCTIONS ===
+Generate a realistic 10-15 exchange interview transcript where:
+1. The interviewer uses "Mom Test" style questions (past behavior, not hypothetical)
+2. The interviewee responds naturally with stories, specific examples, and emotional context
+3. Key predictions are validated or invalidated through conversation
+4. Include moments of insight discovery and honest frustration
+5. The interviewee should reveal real challenges that align with persona pains
+
+Create a simulated interviewee that is different but similar to the persona - use a different name but similar role and challenges.
+
+Return JSON:
+{
+  "interviewee": {
+    "name": "Full Name",
+    "title": "Job Title",
+    "company": "Company Name (realistic)",
+    "context": "Brief context about why they agreed to the interview"
+  },
+  "transcript": [
+    {
+      "speaker": "interviewer|interviewee",
+      "text": "The spoken text",
+      "linkedPredictionId": number or null,
+      "insightTag": "Optional key insight tag"
+    }
+  ],
+  "keyInsights": [
+    {
+      "insight": "Key insight discovered",
+      "predictionId": number or null,
+      "validated": true/false,
+      "evidence": "Quote or behavior that supports this"
+    }
+  ],
+  "predictionValidationSummary": [
+    {
+      "predictionId": number,
+      "prediction": "The prediction text",
+      "validated": true/false,
+      "evidence": "Evidence from interview"
+    }
+  ]
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.8,
+      });
+
+      const aiResult = JSON.parse(response.choices[0].message.content || "{}");
+
+      // Map prediction IDs to actual predictions
+      const predictionValidation = (aiResult.predictionValidationSummary || []).map((pv: any, idx: number) => ({
+        predictionId: riskyPredictions[idx]?.id || idx,
+        prediction: riskyPredictions[idx]?.prediction || pv.prediction,
+        validated: pv.validated,
+        evidence: pv.evidence
+      }));
+
+      const interview = await storage.createGaSimulatedInterview({
+        canvasId,
+        personaId: persona.id,
+        intervieweeName: aiResult.interviewee?.name || "Anonymous",
+        intervieweeTitle: aiResult.interviewee?.title || "Senior Leader",
+        intervieweeCompany: aiResult.interviewee?.company || "Enterprise Corp",
+        intervieweeContext: aiResult.interviewee?.context || "",
+        transcript: aiResult.transcript || [],
+        keyInsights: aiResult.keyInsights || [],
+        predictionValidationSummary: predictionValidation,
+        aiGenerated: true,
+      });
+
+      res.status(201).json(interview);
+    } catch (error: any) {
+      console.error("Error generating simulated interview:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get Simulated Interviews
+  app.get("/api/growth-accelerator/canvases/:id/simulated-interviews", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const interviews = await storage.getGaSimulatedInterviews(canvasId);
+      res.json(interviews);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Generate Solution Ideas (Crazy-8s) with KF Offerings
+  app.post("/api/growth-accelerator/canvases/:id/generate-solution-ideas", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const { projectId } = req.body;
+
+      // Get persona pains, goals, and project data
+      const personas = await storage.getGaBuyerPersonas(canvasId);
+      const persona = personas[0];
+      const hypotheses = await storage.getGaHypotheses(canvasId);
+      const hypothesis = hypotheses[0];
+      
+      // Get KPI commitments and value cases from project
+      let valueCases: any[] = [];
+      let commitments: any[] = [];
+      if (projectId) {
+        valueCases = await storage.getValueCases(projectId);
+        commitments = await storage.getKpiCommitments(projectId);
+      }
+
+      if (!persona) {
+        return res.status(400).json({ error: "No persona found. Generate a persona first." });
+      }
+
+      const pains = persona.pains || [];
+
+      const prompt = `You are a Korn Ferry strategic sales consultant. Generate 10 distinct solution ideas that combine Korn Ferry offerings with the buyer's pains and goals.
+
+=== BUYER PERSONA ===
+Name: ${persona.personaName || "Unknown"}
+Title: ${persona.personaTitle || "Senior Leader"}
+Goals: ${JSON.stringify(persona.goals || [])}
+Pains: ${JSON.stringify(pains)}
+
+=== HYPOTHESES ===
+Problem: ${hypothesis?.problemHypothesis || "N/A"}
+Solution: ${hypothesis?.solutionHypothesis || "N/A"}
+
+=== EXISTING VALUE CASES (from Discovery) ===
+${valueCases.slice(0, 5).map(vc => `- ${vc.title}: ${vc.painPoint} → ${vc.kornFerryValue}`).join('\n')}
+
+=== EXISTING KPI COMMITMENTS ===
+${commitments.slice(0, 5).map(c => `- ${c.kpiName}: ${c.targetValue} (${c.valueAtStake})`).join('\n')}
+
+=== KORN FERRY SOLUTION AREAS ===
+- ASSESS: Leadership assessment, Success Profiles, talent analytics, 360 feedback
+- DEVELOP: Executive coaching, leadership development, team effectiveness, L&D programs
+- TRANSFORM: Organization design, change management, culture transformation, M&A integration
+- REWARD: Compensation strategy, total rewards, pay equity, executive compensation
+- COMMERCIAL: Sales effectiveness, sales training, commercial transformation
+- ANALYTICS: Workforce analytics, predictive talent models, market intelligence
+
+=== INSTRUCTIONS ===
+Generate 10 distinct solution ideas using "Crazy-8s" brainstorming style:
+1. Each solution should map to specific Korn Ferry offerings and solution areas
+2. Show which persona pains each solution addresses (with checkmarks ✅ for addressed, ❌ for not)
+3. Make solutions range from quick-wins to transformational
+4. Include innovative combinations of KF offerings
+5. Recommend the TOP solution with rationale
+
+Return JSON:
+{
+  "solutionIdeas": [
+    {
+      "solutionName": "Name of the solution",
+      "description": "2-3 sentence description",
+      "kornFerryOfferings": ["Offering 1", "Offering 2"],
+      "kornFerrySolutionAreas": ["ASSESS", "DEVELOP"],
+      "painToFeatureMapping": [
+        {
+          "painId": "pain_id",
+          "painDescription": "The pain",
+          "feature": "Specific feature/capability",
+          "howItSolves": "How it solves this pain",
+          "addressed": true/false
+        }
+      ],
+      "painsAddressed": 5,
+      "totalPains": 6,
+      "tenetAlignment": 85,
+      "strategicFit": 90,
+      "isRecommended": true/false,
+      "recommendationRationale": "Why this is recommended (only for top solution)"
+    }
+  ]
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.8,
+      });
+
+      const aiResult = JSON.parse(response.choices[0].message.content || "{}");
+
+      // Clear existing solution ideas for this canvas
+      await storage.deleteGaSolutionIdeas(canvasId);
+
+      // Create solution ideas
+      const createdIdeas = [];
+      for (const idea of (aiResult.solutionIdeas || [])) {
+        const created = await storage.createGaSolutionIdea({
+          canvasId,
+          solutionName: idea.solutionName || "",
+          description: idea.description || "",
+          kornFerryOfferings: idea.kornFerryOfferings || [],
+          kornFerrySolutionAreas: idea.kornFerrySolutionAreas || [],
+          painToFeatureMapping: idea.painToFeatureMapping || [],
+          painsAddressed: idea.painsAddressed || 0,
+          totalPains: idea.totalPains || 0,
+          tenetAlignment: idea.tenetAlignment || 0,
+          strategicFit: idea.strategicFit || 0,
+          isRecommended: idea.isRecommended || false,
+          recommendationRationale: idea.recommendationRationale || null,
+          aiGenerated: true,
+        });
+        createdIdeas.push(created);
+      }
+
+      res.status(201).json(createdIdeas);
+    } catch (error: any) {
+      console.error("Error generating solution ideas:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get Solution Ideas
+  app.get("/api/growth-accelerator/canvases/:id/solution-ideas", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const ideas = await storage.getGaSolutionIdeas(canvasId);
+      res.json(ideas);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Generate Journey Unblocked Analysis
+  app.post("/api/growth-accelerator/canvases/:id/generate-journey-analysis", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+
+      // Get journey, solution tenets, and recommended solution
+      const journeys = await storage.getBuyerJourneys(canvasId);
+      const journey = journeys[0];
+      const tenets = await storage.getGaSolutionTenets(canvasId);
+      const solutionIdeas = await storage.getGaSolutionIdeas(canvasId);
+      const recommendedSolution = solutionIdeas.find((s: any) => s.isRecommended) || solutionIdeas[0];
+      const personas = await storage.getGaBuyerPersonas(canvasId);
+      const persona = personas[0];
+
+      const prompt = `You are a sales strategy expert. Analyze how our recommended solution unblocks each phase of the buyer journey.
+
+=== BUYER PERSONA ===
+${persona ? `${persona.personaName} - ${persona.personaTitle}` : "Senior Leader"}
+Pains: ${JSON.stringify(persona?.pains || [])}
+
+=== BUYER JOURNEY PHASES ===
+${journey ? JSON.stringify(journey.phases) : "Standard 5-phase buyer journey"}
+
+=== RECOMMENDED SOLUTION ===
+${recommendedSolution ? `
+Name: ${recommendedSolution.solutionName}
+Description: ${recommendedSolution.description}
+KF Offerings: ${(recommendedSolution.kornFerryOfferings || []).join(', ')}
+` : "No solution selected yet"}
+
+=== SOLUTION TENETS ===
+${tenets ? JSON.stringify(tenets.tenets) : "Not yet defined"}
+
+=== INSTRUCTIONS ===
+For each of the 5 buyer journey phases (awareness, consideration, decision, implementation, valueRealization):
+1. Describe typical buyer behavior at this phase
+2. Assess if our solution unblocks this phase (fully, partially, or not)
+3. Explain HOW the solution helps at this phase
+4. Identify remaining blockers even with our solution
+5. Suggest a sales play angle for this phase
+
+Return JSON:
+{
+  "phaseAnalysis": [
+    {
+      "phase": "awareness|consideration|decision|implementation|valueRealization",
+      "phaseName": "Human-readable phase name",
+      "buyerBehavior": "What happens at this phase",
+      "unblockedBySolution": true/false,
+      "unblockStatus": "fully|partially|not",
+      "howSolutionHelps": "Specific way solution helps",
+      "remainingBlockers": ["Blocker 1", "Blocker 2"],
+      "salesPlayOpportunity": "Sales play angle for this phase"
+    }
+  ],
+  "phasesFullyUnblocked": 3,
+  "phasesPartiallyUnblocked": 2,
+  "criticalGaps": ["Gap 1", "Gap 2"],
+  "salesPlaySummary": "Overall sales play summary based on journey analysis",
+  "conversionMechanisms": ["How to convert from phase X to Y"]
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+      });
+
+      const aiResult = JSON.parse(response.choices[0].message.content || "{}");
+
+      // Check if analysis already exists and update or create
+      const existing = await storage.getGaJourneyAnalysis(canvasId);
+      let analysis;
+      if (existing) {
+        analysis = await storage.updateGaJourneyAnalysis(existing.id, {
+          phaseAnalysis: aiResult.phaseAnalysis || [],
+          phasesFullyUnblocked: aiResult.phasesFullyUnblocked || 0,
+          phasesPartiallyUnblocked: aiResult.phasesPartiallyUnblocked || 0,
+          criticalGaps: aiResult.criticalGaps || [],
+          salesPlaySummary: aiResult.salesPlaySummary || "",
+          conversionMechanisms: aiResult.conversionMechanisms || [],
+          aiGenerated: true,
+        });
+      } else {
+        analysis = await storage.createGaJourneyAnalysis({
+          canvasId,
+          phaseAnalysis: aiResult.phaseAnalysis || [],
+          phasesFullyUnblocked: aiResult.phasesFullyUnblocked || 0,
+          phasesPartiallyUnblocked: aiResult.phasesPartiallyUnblocked || 0,
+          criticalGaps: aiResult.criticalGaps || [],
+          salesPlaySummary: aiResult.salesPlaySummary || "",
+          conversionMechanisms: aiResult.conversionMechanisms || [],
+          aiGenerated: true,
+        });
+      }
+
+      res.status(201).json(analysis);
+    } catch (error: any) {
+      console.error("Error generating journey analysis:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get Journey Analysis
+  app.get("/api/growth-accelerator/canvases/:id/journey-analysis", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const analysis = await storage.getGaJourneyAnalysis(canvasId);
+      res.json(analysis || null);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Generate Value Proposition
+  app.post("/api/growth-accelerator/canvases/:id/generate-value-proposition", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const { projectId } = req.body;
+
+      // Get all relevant data
+      const personas = await storage.getGaBuyerPersonas(canvasId);
+      const persona = personas[0];
+      const hypotheses = await storage.getGaHypotheses(canvasId);
+      const hypothesis = hypotheses[0];
+      const solutionIdeas = await storage.getGaSolutionIdeas(canvasId);
+      const recommendedSolution = solutionIdeas.find((s: any) => s.isRecommended) || solutionIdeas[0];
+      const tenets = await storage.getGaSolutionTenets(canvasId);
+
+      // Get value cases for proof points
+      let valueCases: any[] = [];
+      if (projectId) {
+        valueCases = await storage.getValueCases(projectId);
+      }
+
+      const prompt = `You are a marketing strategist. Create a compelling value proposition for this solution.
+
+=== TARGET CUSTOMER ===
+${persona ? `${persona.personaName} - ${persona.personaTitle} at ${persona.personaCompany}` : "Senior enterprise leader"}
+Problems/Pains: ${JSON.stringify(persona?.pains || [])}
+Goals: ${JSON.stringify(persona?.goals || [])}
+
+=== THE SOLUTION ===
+${recommendedSolution ? `
+Name: ${recommendedSolution.solutionName}
+Description: ${recommendedSolution.description}
+KF Offerings: ${(recommendedSolution.kornFerryOfferings || []).join(', ')}
+` : hypothesis?.solutionHypothesis || "Leadership development solution"}
+
+=== SOLUTION TENETS ===
+${tenets ? JSON.stringify(tenets.tenets) : "Customer-obsessed, outcome-focused"}
+
+=== VALUE CASES FROM DISCOVERY ===
+${valueCases.slice(0, 3).map(vc => `- ${vc.title}: ${vc.businessImpact}`).join('\n')}
+
+=== INSTRUCTIONS ===
+Create a complete value proposition package including:
+1. Target customer description
+2. Their core problem/need
+3. Specific benefit we provide
+4. Clear value proposition statement
+5. What makes us stand out (differentiation)
+6. Competitive advantage
+7. Proof points (testimonials, benchmarks, ROI)
+8. Tagline
+9. Elevator pitch (30 seconds)
+10. Call to action
+11. Tone/voice guidelines with do's and don'ts
+
+Return JSON:
+{
+  "targetCustomer": "Description of who",
+  "customerProblem": "Their core problem",
+  "specificBenefit": "What we provide",
+  "valuePropositionStatement": "Clear, concise value prop",
+  "whatMakesUsStandOut": "Our differentiation",
+  "competitiveAdvantage": "Why choose us",
+  "proofPoints": [
+    {
+      "category": "testimonial|case_study|benchmark|metric|expert|roi",
+      "title": "Proof point title",
+      "description": "Details",
+      "source": "Source if available"
+    }
+  ],
+  "tagline": "Short memorable tagline",
+  "elevatorPitch": "30-second pitch",
+  "callToAction": "What action to take",
+  "toneGuidelines": ["Guideline 1", "Guideline 2"],
+  "doStatements": ["Do say this", "Do emphasize this"],
+  "dontStatements": ["Don't say this", "Avoid this"]
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+      });
+
+      const aiResult = JSON.parse(response.choices[0].message.content || "{}");
+
+      // Check if exists and update or create
+      const existing = await storage.getGaValueProposition(canvasId);
+      let valueProp;
+      if (existing) {
+        valueProp = await storage.updateGaValueProposition(existing.id, {
+          targetCustomer: aiResult.targetCustomer || "",
+          customerProblem: aiResult.customerProblem || "",
+          specificBenefit: aiResult.specificBenefit || "",
+          valuePropositionStatement: aiResult.valuePropositionStatement || "",
+          whatMakesUsStandOut: aiResult.whatMakesUsStandOut || "",
+          competitiveAdvantage: aiResult.competitiveAdvantage || "",
+          proofPoints: aiResult.proofPoints || [],
+          tagline: aiResult.tagline || "",
+          elevatorPitch: aiResult.elevatorPitch || "",
+          callToAction: aiResult.callToAction || "",
+          toneGuidelines: aiResult.toneGuidelines || [],
+          doStatements: aiResult.doStatements || [],
+          dontStatements: aiResult.dontStatements || [],
+          aiGenerated: true,
+        });
+      } else {
+        valueProp = await storage.createGaValueProposition({
+          canvasId,
+          targetCustomer: aiResult.targetCustomer || "",
+          customerProblem: aiResult.customerProblem || "",
+          specificBenefit: aiResult.specificBenefit || "",
+          valuePropositionStatement: aiResult.valuePropositionStatement || "",
+          whatMakesUsStandOut: aiResult.whatMakesUsStandOut || "",
+          competitiveAdvantage: aiResult.competitiveAdvantage || "",
+          proofPoints: aiResult.proofPoints || [],
+          tagline: aiResult.tagline || "",
+          elevatorPitch: aiResult.elevatorPitch || "",
+          callToAction: aiResult.callToAction || "",
+          toneGuidelines: aiResult.toneGuidelines || [],
+          doStatements: aiResult.doStatements || [],
+          dontStatements: aiResult.dontStatements || [],
+          aiGenerated: true,
+        });
+      }
+
+      res.status(201).json(valueProp);
+    } catch (error: any) {
+      console.error("Error generating value proposition:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get Value Proposition
+  app.get("/api/growth-accelerator/canvases/:id/value-proposition", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const valueProp = await storage.getGaValueProposition(canvasId);
+      res.json(valueProp || null);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Generate Success Metrics
+  app.post("/api/growth-accelerator/canvases/:id/generate-success-metrics", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const { projectId } = req.body;
+
+      // Get existing KPI commitments from the project
+      let commitments: any[] = [];
+      if (projectId) {
+        commitments = await storage.getKpiCommitments(projectId);
+      }
+
+      // Get solution context
+      const solutionIdeas = await storage.getGaSolutionIdeas(canvasId);
+      const recommendedSolution = solutionIdeas.find((s: any) => s.isRecommended) || solutionIdeas[0];
+      const personas = await storage.getGaBuyerPersonas(canvasId);
+      const persona = personas[0];
+
+      const prompt = `You are a sales operations expert. Define success metrics for this sales play based on existing KPI commitments.
+
+=== SOLUTION ===
+${recommendedSolution ? `${recommendedSolution.solutionName}: ${recommendedSolution.description}` : "Leadership development solution"}
+
+=== BUYER PERSONA ===
+${persona ? `${persona.personaTitle} at ${persona.personaCompany}` : "Senior enterprise leader"}
+
+=== EXISTING KPI COMMITMENTS (from Strategy & Outcomes) ===
+${commitments.slice(0, 10).map(c => `- ${c.kpiName}: Target ${c.targetValue}, Baseline ${c.baselineValue}, Value at Stake: ${c.valueAtStake}`).join('\n')}
+
+=== INSTRUCTIONS ===
+Generate three categories of success metrics:
+
+1. BUYER METRICS (Is the buyer delighted?)
+   - Customer Satisfaction (CSAT)
+   - Net Promoter Score (NPS)
+   - Retention Rate
+   - Customer Effort Score
+   - Referrals
+
+2. BUSINESS METRICS (Are we getting great returns?)
+   - ROI
+   - Customer Acquisition Cost (CAC)
+   - Conversion Rate
+   - Average Deal Size
+   - Sales Cycle Time
+   - Customer Lifetime Value (CLTV)
+
+3. SALES METRICS (Are we selling efficiently?)
+   - Win Rate
+   - Sales Cycle Efficiency
+   - Activity Level
+   - Lead Conversion Rate
+   - Follow-up Rate
+   - Deal Progression Speed
+
+Link metrics to existing KPI commitments where possible.
+
+Return JSON:
+{
+  "buyerMetrics": [
+    {
+      "metricName": "Metric name",
+      "target": "Target value",
+      "measurementMethod": "How to measure",
+      "linkedKpiCommitmentId": number or null,
+      "category": "satisfaction|retention|advocacy|effort"
+    }
+  ],
+  "businessMetrics": [
+    {
+      "metricName": "Metric name",
+      "target": "Target value",
+      "measurementMethod": "How to measure",
+      "linkedKpiCommitmentId": number or null,
+      "category": "roi|cac|conversion|deal_size|cycle_time|ltv"
+    }
+  ],
+  "salesMetrics": [
+    {
+      "metricName": "Metric name",
+      "target": "Target value",
+      "measurementMethod": "How to measure",
+      "linkedKpiCommitmentId": number or null,
+      "category": "win_rate|efficiency|activity|lead_conversion|follow_up|progression"
+    }
+  ],
+  "linkedCommitmentIds": [1, 2, 3]
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+      });
+
+      const aiResult = JSON.parse(response.choices[0].message.content || "{}");
+
+      // Check if exists and update or create
+      const existing = await storage.getGaSuccessMetrics(canvasId);
+      let metrics;
+      if (existing) {
+        metrics = await storage.updateGaSuccessMetrics(existing.id, {
+          buyerMetrics: aiResult.buyerMetrics || [],
+          businessMetrics: aiResult.businessMetrics || [],
+          salesMetrics: aiResult.salesMetrics || [],
+          linkedCommitmentIds: aiResult.linkedCommitmentIds || [],
+          aiGenerated: true,
+        });
+      } else {
+        metrics = await storage.createGaSuccessMetrics({
+          canvasId,
+          buyerMetrics: aiResult.buyerMetrics || [],
+          businessMetrics: aiResult.businessMetrics || [],
+          salesMetrics: aiResult.salesMetrics || [],
+          linkedCommitmentIds: aiResult.linkedCommitmentIds || [],
+          aiGenerated: true,
+        });
+      }
+
+      res.status(201).json(metrics);
+    } catch (error: any) {
+      console.error("Error generating success metrics:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get Success Metrics
+  app.get("/api/growth-accelerator/canvases/:id/success-metrics", async (req, res) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      const metrics = await storage.getGaSuccessMetrics(canvasId);
+      res.json(metrics || null);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 }

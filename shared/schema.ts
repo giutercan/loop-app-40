@@ -4227,3 +4227,236 @@ export const insertGaSalesPlayActionsSchema = createInsertSchema(gaSalesPlayActi
 });
 export type InsertGaSalesPlayActions = z.infer<typeof insertGaSalesPlayActionsSchema>;
 export type GaSalesPlayActions = typeof gaSalesPlayActions.$inferSelect;
+
+// ============================================================================
+// GROWTH ACCELERATOR - ADDITIONAL TABLES FOR COMPLETE SALES PLAY
+// ============================================================================
+
+// Simulated Interview Transcripts - AI-generated realistic interview for preparation
+export const gaSimulatedInterviews = pgTable("ga_simulated_interviews", {
+  id: serial("id").primaryKey(),
+  canvasId: integer("canvas_id").notNull().references(() => growthAcceleratorCanvases.id, { onDelete: "cascade" }),
+  personaId: integer("persona_id").references(() => buyerPersonas.id, { onDelete: "set null" }),
+  
+  // Simulated interviewee (can be different from persona for variety)
+  intervieweeName: text("interviewee_name"),
+  intervieweeTitle: text("interviewee_title"),
+  intervieweeCompany: text("interviewee_company"),
+  intervieweeContext: text("interviewee_context"), // Brief context about this person
+  
+  // The full transcript in Q&A format
+  transcript: jsonb("transcript").$type<Array<{
+    speaker: "interviewer" | "interviewee";
+    text: string;
+    linkedPredictionId?: number; // Which prediction this validates
+    insightTag?: string; // Key insight extracted from this exchange
+  }>>(),
+  
+  // Summary of key insights
+  keyInsights: jsonb("key_insights").$type<Array<{
+    insight: string;
+    predictionId?: number;
+    validated: boolean;
+    evidence: string;
+  }>>(),
+  
+  // Prediction validation summary
+  predictionValidationSummary: jsonb("prediction_validation_summary").$type<Array<{
+    predictionId: number;
+    prediction: string;
+    validated: boolean;
+    evidence: string;
+  }>>(),
+  
+  aiGenerated: boolean("ai_generated").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertGaSimulatedInterviewSchema = createInsertSchema(gaSimulatedInterviews).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertGaSimulatedInterview = z.infer<typeof insertGaSimulatedInterviewSchema>;
+export type GaSimulatedInterview = typeof gaSimulatedInterviews.$inferSelect;
+
+// Solution Ideas (Crazy-8s style) - 10 distinct solution ideas with KF offerings
+export const gaSolutionIdeas = pgTable("ga_solution_ideas", {
+  id: serial("id").primaryKey(),
+  canvasId: integer("canvas_id").notNull().references(() => growthAcceleratorCanvases.id, { onDelete: "cascade" }),
+  
+  // Solution identity
+  solutionName: text("solution_name").notNull(),
+  description: text("description"),
+  
+  // Korn Ferry offering alignment
+  kornFerryOfferings: text("korn_ferry_offerings").array(), // e.g., ["Leadership Assessment", "Executive Coaching"]
+  kornFerrySolutionAreas: text("korn_ferry_solution_areas").array(), // e.g., ["ASSESS", "DEVELOP"]
+  
+  // Pain-to-feature mapping (critical for sales play)
+  painToFeatureMapping: jsonb("pain_to_feature_mapping").$type<Array<{
+    painId: string;
+    painDescription: string;
+    feature: string;
+    howItSolves: string;
+    addressed: boolean; // Does this solution address this pain?
+  }>>(),
+  
+  // Scoring
+  painsAddressed: integer("pains_addressed").default(0), // Count of pains addressed
+  totalPains: integer("total_pains").default(0),
+  tenetAlignment: integer("tenet_alignment").default(0), // 0-100
+  strategicFit: integer("strategic_fit").default(0), // 0-100
+  
+  // Selection
+  isRecommended: boolean("is_recommended").default(false),
+  recommendationRationale: text("recommendation_rationale"),
+  
+  aiGenerated: boolean("ai_generated").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertGaSolutionIdeaSchema = createInsertSchema(gaSolutionIdeas).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertGaSolutionIdea = z.infer<typeof insertGaSolutionIdeaSchema>;
+export type GaSolutionIdea = typeof gaSolutionIdeas.$inferSelect;
+
+// Buyer Journey Unblocked Analysis - How solution helps at each phase
+export const gaJourneyAnalysis = pgTable("ga_journey_analysis", {
+  id: serial("id").primaryKey(),
+  canvasId: integer("canvas_id").notNull().references(() => growthAcceleratorCanvases.id, { onDelete: "cascade" }),
+  
+  // Analysis per buyer journey phase
+  phaseAnalysis: jsonb("phase_analysis").$type<Array<{
+    phase: "awareness" | "consideration" | "decision" | "implementation" | "valueRealization";
+    phaseName: string;
+    buyerBehavior: string; // What happens at this phase
+    unblockedBySolution: boolean; // Does our solution unblock this phase?
+    unblockStatus: "fully" | "partially" | "not"; // How much does it unblock
+    howSolutionHelps: string; // Specific way solution helps
+    remainingBlockers: string[]; // What blockers remain
+    salesPlayOpportunity: string; // Sales play angle for this phase
+  }>>(),
+  
+  // Overall summary
+  phasesFullyUnblocked: integer("phases_fully_unblocked").default(0),
+  phasesPartiallyUnblocked: integer("phases_partially_unblocked").default(0),
+  criticalGaps: text("critical_gaps").array(),
+  
+  // Sales play implications
+  salesPlaySummary: text("sales_play_summary"),
+  conversionMechanisms: text("conversion_mechanisms").array(), // How to convert from one phase to next
+  
+  aiGenerated: boolean("ai_generated").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertGaJourneyAnalysisSchema = createInsertSchema(gaJourneyAnalysis).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertGaJourneyAnalysis = z.infer<typeof insertGaJourneyAnalysisSchema>;
+export type GaJourneyAnalysis = typeof gaJourneyAnalysis.$inferSelect;
+
+// Core Value Proposition - Customer-focused value statement
+export const gaValuePropositions = pgTable("ga_value_propositions", {
+  id: serial("id").primaryKey(),
+  canvasId: integer("canvas_id").notNull().references(() => growthAcceleratorCanvases.id, { onDelete: "cascade" }),
+  
+  // Customer focus
+  targetCustomer: text("target_customer"), // Who is the customer
+  customerProblem: text("customer_problem"), // Their problem/need
+  specificBenefit: text("specific_benefit"), // What benefit we provide
+  
+  // The value proposition statement
+  valuePropositionStatement: text("value_proposition_statement"),
+  
+  // Differentiation
+  whatMakesUsStandOut: text("what_makes_us_stand_out"),
+  competitiveAdvantage: text("competitive_advantage"),
+  
+  // Proof points
+  proofPoints: jsonb("proof_points").$type<Array<{
+    category: "testimonial" | "case_study" | "benchmark" | "metric" | "expert" | "roi";
+    title: string;
+    description: string;
+    source?: string;
+  }>>(),
+  
+  // Messaging
+  tagline: text("tagline"),
+  elevatorPitch: text("elevator_pitch"), // 30-second pitch
+  callToAction: text("call_to_action"),
+  
+  // Tone and voice
+  toneGuidelines: text("tone_guidelines").array(),
+  doStatements: text("do_statements").array(), // Things to say
+  dontStatements: text("dont_statements").array(), // Things to avoid
+  
+  aiGenerated: boolean("ai_generated").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertGaValuePropositionSchema = createInsertSchema(gaValuePropositions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertGaValueProposition = z.infer<typeof insertGaValuePropositionSchema>;
+export type GaValueProposition = typeof gaValuePropositions.$inferSelect;
+
+// Success Metrics - Buyer/Business/Sales metrics with targets
+export const gaSuccessMetrics = pgTable("ga_success_metrics", {
+  id: serial("id").primaryKey(),
+  canvasId: integer("canvas_id").notNull().references(() => growthAcceleratorCanvases.id, { onDelete: "cascade" }),
+  
+  // Buyer Metrics - Is the buyer delighted?
+  buyerMetrics: jsonb("buyer_metrics").$type<Array<{
+    metricName: string;
+    target: string;
+    measurementMethod: string;
+    linkedKpiCommitmentId?: number; // Link to existing KPI commitment
+    category: "satisfaction" | "retention" | "advocacy" | "effort";
+  }>>(),
+  
+  // Business Metrics - Are we getting great returns?
+  businessMetrics: jsonb("business_metrics").$type<Array<{
+    metricName: string;
+    target: string;
+    measurementMethod: string;
+    linkedKpiCommitmentId?: number;
+    category: "roi" | "cac" | "conversion" | "deal_size" | "cycle_time" | "ltv";
+  }>>(),
+  
+  // Sales Metrics - Are we selling efficiently?
+  salesMetrics: jsonb("sales_metrics").$type<Array<{
+    metricName: string;
+    target: string;
+    measurementMethod: string;
+    linkedKpiCommitmentId?: number;
+    category: "win_rate" | "efficiency" | "activity" | "lead_conversion" | "follow_up" | "progression";
+  }>>(),
+  
+  // Attribution to existing commitments
+  linkedCommitmentIds: integer("linked_commitment_ids").array(),
+  
+  aiGenerated: boolean("ai_generated").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertGaSuccessMetricsSchema = createInsertSchema(gaSuccessMetrics).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertGaSuccessMetrics = z.infer<typeof insertGaSuccessMetricsSchema>;
+export type GaSuccessMetrics = typeof gaSuccessMetrics.$inferSelect;

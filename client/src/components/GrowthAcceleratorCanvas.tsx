@@ -215,16 +215,21 @@ const GA_STEPS = {
     { id: "buyer_journey", label: "Buyer Journey", icon: Map, description: "5-phase journey map" },
     { id: "predictions", label: "Predictions Grid", icon: Grid3x3, description: "2x2 confidence/impact matrix" },
     { id: "interview_script", label: "Interview Script", icon: MessageSquare, description: "Validation questions" },
+    { id: "simulated_interview", label: "Simulated Interview", icon: MessageCircle, description: "AI-generated interview transcript" },
   ],
   what_to_say: [
     { id: "solution_tenets", label: "Solution Tenets", icon: Compass, description: "Core value propositions" },
+    { id: "solution_ideas", label: "Solution Design", icon: Lightbulb, description: "Crazy-8s solution brainstorming" },
     { id: "press_release", label: "Press Release", icon: Newspaper, description: "Future-back narrative" },
+    { id: "value_proposition", label: "Value Proposition", icon: Target, description: "Core messaging and proof points" },
   ],
   what_to_show: [
     { id: "battle_cards", label: "Battle Cards", icon: Swords, description: "Competitive positioning" },
+    { id: "journey_analysis", label: "Journey Unblocked", icon: Map, description: "How our solution unblocks buyer journey" },
   ],
   what_to_do: [
     { id: "sales_actions", label: "Sales Play Actions", icon: PlayCircle, description: "Executable playbook" },
+    { id: "success_metrics", label: "Success Metrics", icon: Target, description: "Buyer, Business, Sales metrics" },
   ],
 };
 
@@ -597,6 +602,37 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
     enabled: !!canvas?.id,
   });
 
+  // New section queries
+  const { data: simulatedInterviews, refetch: refetchSimulatedInterviews } = useQuery<any[]>({
+    queryKey: ["/api/growth-accelerator/canvases", canvas?.id, "simulated-interviews"],
+    queryFn: () => canvas?.id ? fetch(`/api/growth-accelerator/canvases/${canvas.id}/simulated-interviews`).then(r => r.json()) : Promise.resolve([]),
+    enabled: !!canvas?.id,
+  });
+
+  const { data: solutionIdeas, refetch: refetchSolutionIdeas } = useQuery<any[]>({
+    queryKey: ["/api/growth-accelerator/canvases", canvas?.id, "solution-ideas"],
+    queryFn: () => canvas?.id ? fetch(`/api/growth-accelerator/canvases/${canvas.id}/solution-ideas`).then(r => r.json()) : Promise.resolve([]),
+    enabled: !!canvas?.id,
+  });
+
+  const { data: journeyAnalysis, refetch: refetchJourneyAnalysis } = useQuery<any>({
+    queryKey: ["/api/growth-accelerator/canvases", canvas?.id, "journey-analysis"],
+    queryFn: () => canvas?.id ? fetch(`/api/growth-accelerator/canvases/${canvas.id}/journey-analysis`).then(r => r.json()) : Promise.resolve(null),
+    enabled: !!canvas?.id,
+  });
+
+  const { data: valueProposition, refetch: refetchValueProposition } = useQuery<any>({
+    queryKey: ["/api/growth-accelerator/canvases", canvas?.id, "value-proposition"],
+    queryFn: () => canvas?.id ? fetch(`/api/growth-accelerator/canvases/${canvas.id}/value-proposition`).then(r => r.json()) : Promise.resolve(null),
+    enabled: !!canvas?.id,
+  });
+
+  const { data: successMetrics, refetch: refetchSuccessMetrics } = useQuery<any>({
+    queryKey: ["/api/growth-accelerator/canvases", canvas?.id, "success-metrics"],
+    queryFn: () => canvas?.id ? fetch(`/api/growth-accelerator/canvases/${canvas.id}/success-metrics`).then(r => r.json()) : Promise.resolve(null),
+    enabled: !!canvas?.id,
+  });
+
   // New AI generation mutations
   const generateInterviewScriptMutation = useMutation({
     mutationFn: () => apiRequest("POST", `/api/growth-accelerator/canvases/${canvas?.id}/generate-interview-script`, {
@@ -668,6 +704,65 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
       setAutoGenerationFailed(true);
       setIsGeneratingAll(false);
       toast({ title: "Error", description: "Failed to generate sales actions. Click 'Generate All' to retry.", variant: "destructive" });
+    },
+  });
+
+  // New section generation mutations
+  const generateSimulatedInterviewMutation = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/growth-accelerator/canvases/${canvas?.id}/generate-simulated-interview`, {
+      projectId,
+      personaId: persona?.id,
+    }),
+    onSuccess: () => {
+      refetchSimulatedInterviews();
+      toast({ title: "Simulated Interview Generated", description: "AI has created a realistic interview transcript." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to generate simulated interview.", variant: "destructive" });
+    },
+  });
+
+  const generateSolutionIdeasMutation = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/growth-accelerator/canvases/${canvas?.id}/generate-solution-ideas`, { projectId }),
+    onSuccess: () => {
+      refetchSolutionIdeas();
+      toast({ title: "Solution Ideas Generated", description: "AI has created 10 solution ideas using Crazy-8s methodology." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to generate solution ideas.", variant: "destructive" });
+    },
+  });
+
+  const generateJourneyAnalysisMutation = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/growth-accelerator/canvases/${canvas?.id}/generate-journey-analysis`, { projectId }),
+    onSuccess: () => {
+      refetchJourneyAnalysis();
+      toast({ title: "Journey Analysis Generated", description: "AI has analyzed how our solution unblocks the buyer journey." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to generate journey analysis.", variant: "destructive" });
+    },
+  });
+
+  const generateValuePropositionMutation = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/growth-accelerator/canvases/${canvas?.id}/generate-value-proposition`, { projectId }),
+    onSuccess: () => {
+      refetchValueProposition();
+      toast({ title: "Value Proposition Generated", description: "AI has created a compelling value proposition." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to generate value proposition.", variant: "destructive" });
+    },
+  });
+
+  const generateSuccessMetricsMutation = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/growth-accelerator/canvases/${canvas?.id}/generate-success-metrics`, { projectId }),
+    onSuccess: () => {
+      refetchSuccessMetrics();
+      toast({ title: "Success Metrics Generated", description: "AI has defined buyer, business, and sales metrics." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to generate success metrics.", variant: "destructive" });
     },
   });
 
@@ -800,14 +895,32 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
     }
   }, [predictions, autoGenerationPhase, interviewScripts, generateInterviewScriptMutation.isPending]);
 
-  // Chain generation: after interview script created, auto-generate tenets
+  // Chain generation: after interview script, auto-generate simulated interview
   useEffect(() => {
-    // Check if tenets is null, undefined, or empty array - need to generate
-    const needsTenets = tenets === null || tenets === undefined || (Array.isArray(tenets) && tenets.length === 0);
+    const needsSimulatedInterview = !simulatedInterviews || simulatedInterviews.length === 0;
     if (
       interviewScripts && 
       interviewScripts.length > 0 && 
       autoGenerationPhase === "interview" &&
+      !generateSimulatedInterviewMutation.isPending &&
+      needsSimulatedInterview
+    ) {
+      setAutoGenerationPhase("simulated_interview");
+      toast({
+        title: "Generating Simulated Interview",
+        description: "AI is creating a realistic interview transcript...",
+      });
+      generateSimulatedInterviewMutation.mutate();
+    }
+  }, [interviewScripts, autoGenerationPhase, simulatedInterviews, generateSimulatedInterviewMutation.isPending]);
+
+  // Chain generation: after simulated interview, auto-generate tenets
+  useEffect(() => {
+    const hasSimulatedInterview = simulatedInterviews && simulatedInterviews.length > 0;
+    const needsTenets = tenets === null || tenets === undefined || (Array.isArray(tenets) && tenets.length === 0);
+    if (
+      hasSimulatedInterview && 
+      autoGenerationPhase === "simulated_interview" &&
       !generateTenetsMutation.isPending &&
       needsTenets
     ) {
@@ -818,17 +931,34 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
       });
       generateTenetsMutation.mutate();
     }
-  }, [interviewScripts, autoGenerationPhase, tenets, generateTenetsMutation.isPending]);
+  }, [simulatedInterviews, autoGenerationPhase, tenets, generateTenetsMutation.isPending]);
 
-  // Chain generation: after tenets created, auto-generate press release
+  // Chain generation: after tenets created, auto-generate solution ideas
   useEffect(() => {
-    // Check if tenets has content (object with properties or non-empty array)
     const hasTenets = tenets && (Array.isArray(tenets) ? tenets.length > 0 : Object.keys(tenets).length > 0);
-    // Check if press release needs generation
-    const needsPressRelease = pressRelease === null || pressRelease === undefined;
+    const needsSolutionIdeas = !solutionIdeas || solutionIdeas.length === 0;
     if (
       hasTenets && 
       autoGenerationPhase === "tenets" &&
+      !generateSolutionIdeasMutation.isPending &&
+      needsSolutionIdeas
+    ) {
+      setAutoGenerationPhase("solution_ideas");
+      toast({
+        title: "Generating Solution Ideas",
+        description: "AI is brainstorming Crazy-8s solutions...",
+      });
+      generateSolutionIdeasMutation.mutate();
+    }
+  }, [tenets, autoGenerationPhase, solutionIdeas, generateSolutionIdeasMutation.isPending]);
+
+  // Chain generation: after solution ideas, auto-generate press release
+  useEffect(() => {
+    const hasSolutionIdeas = solutionIdeas && solutionIdeas.length > 0;
+    const needsPressRelease = pressRelease === null || pressRelease === undefined;
+    if (
+      hasSolutionIdeas && 
+      autoGenerationPhase === "solution_ideas" &&
       !generatePressReleaseMutation.isPending &&
       needsPressRelease
     ) {
@@ -839,18 +969,54 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
       });
       generatePressReleaseMutation.mutate();
     }
-  }, [tenets, autoGenerationPhase, pressRelease, generatePressReleaseMutation.isPending]);
+  }, [solutionIdeas, autoGenerationPhase, pressRelease, generatePressReleaseMutation.isPending]);
 
-  // Chain generation: after press release created, auto-generate sales actions
+  // Chain generation: after press release, auto-generate value proposition
   useEffect(() => {
-    // Check if press release has content
     const hasPressRelease = pressRelease && Object.keys(pressRelease).length > 0;
-    // Check if sales actions needs generation
-    const needsSalesActions = salesActions === null || salesActions === undefined || 
-      (typeof salesActions === 'object' && Object.keys(salesActions).length === 0);
+    const needsValueProp = valueProposition === null || valueProposition === undefined;
     if (
       hasPressRelease && 
       autoGenerationPhase === "press_release" &&
+      !generateValuePropositionMutation.isPending &&
+      needsValueProp
+    ) {
+      setAutoGenerationPhase("value_proposition");
+      toast({
+        title: "Generating Value Proposition",
+        description: "AI is creating compelling messaging...",
+      });
+      generateValuePropositionMutation.mutate();
+    }
+  }, [pressRelease, autoGenerationPhase, valueProposition, generateValuePropositionMutation.isPending]);
+
+  // Chain generation: after value proposition, auto-generate journey analysis
+  useEffect(() => {
+    const hasValueProp = valueProposition && Object.keys(valueProposition).length > 0;
+    const needsJourneyAnalysis = journeyAnalysis === null || journeyAnalysis === undefined;
+    if (
+      hasValueProp && 
+      autoGenerationPhase === "value_proposition" &&
+      !generateJourneyAnalysisMutation.isPending &&
+      needsJourneyAnalysis
+    ) {
+      setAutoGenerationPhase("journey_analysis");
+      toast({
+        title: "Analyzing Journey",
+        description: "AI is analyzing how our solution unblocks the buyer journey...",
+      });
+      generateJourneyAnalysisMutation.mutate();
+    }
+  }, [valueProposition, autoGenerationPhase, journeyAnalysis, generateJourneyAnalysisMutation.isPending]);
+
+  // Chain generation: after journey analysis, auto-generate sales actions
+  useEffect(() => {
+    const hasJourneyAnalysis = journeyAnalysis && Object.keys(journeyAnalysis).length > 0;
+    const needsSalesActions = salesActions === null || salesActions === undefined || 
+      (typeof salesActions === 'object' && Object.keys(salesActions).length === 0);
+    if (
+      hasJourneyAnalysis && 
+      autoGenerationPhase === "journey_analysis" &&
       !generateSalesActionsMutation.isPending &&
       needsSalesActions
     ) {
@@ -861,19 +1027,38 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
       });
       generateSalesActionsMutation.mutate();
     }
-  }, [pressRelease, autoGenerationPhase, salesActions, generateSalesActionsMutation.isPending]);
+  }, [journeyAnalysis, autoGenerationPhase, salesActions, generateSalesActionsMutation.isPending]);
+
+  // Chain generation: after sales actions, auto-generate success metrics
+  useEffect(() => {
+    const hasSalesActions = salesActions && typeof salesActions === 'object' && Object.keys(salesActions).length > 0;
+    const needsSuccessMetrics = successMetrics === null || successMetrics === undefined;
+    if (
+      hasSalesActions && 
+      autoGenerationPhase === "actions" &&
+      !generateSuccessMetricsMutation.isPending &&
+      needsSuccessMetrics
+    ) {
+      setAutoGenerationPhase("success_metrics");
+      toast({
+        title: "Generating Success Metrics",
+        description: "AI is defining buyer, business, and sales metrics...",
+      });
+      generateSuccessMetricsMutation.mutate();
+    }
+  }, [salesActions, autoGenerationPhase, successMetrics, generateSuccessMetricsMutation.isPending]);
 
   // Complete auto-generation phase after all sections generated
   useEffect(() => {
-    const hasSalesActions = salesActions && typeof salesActions === 'object' && Object.keys(salesActions).length > 0;
-    if (hasSalesActions && autoGenerationPhase === "actions") {
+    const hasSuccessMetrics = successMetrics && Object.keys(successMetrics).length > 0;
+    if (hasSuccessMetrics && autoGenerationPhase === "success_metrics") {
       setAutoGenerationPhase(null);
       toast({
         title: "Sales Play Complete",
-        description: "Full framework generated: Persona, Hypotheses, Journey, Predictions, Interview Script, Tenets, Press Release, and Action Plan. Review and refine as needed.",
+        description: "Full framework generated: Persona, Hypotheses, Journey, Predictions, Interview, Simulated Interview, Tenets, Solution Ideas, Press Release, Value Proposition, Journey Analysis, Actions, and Success Metrics.",
       });
     }
-  }, [salesActions, autoGenerationPhase]);
+  }, [successMetrics, autoGenerationPhase]);
 
   // Helper function to check if a section has data (handles both arrays and objects)
   const hasData = (data: any): boolean => {
@@ -890,9 +1075,15 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
     if (!journey) return "journey";
     if (!hasData(predictions)) return "predictions";
     if (!hasData(interviewScripts)) return "interview";
+    if (!hasData(simulatedInterviews)) return "simulated_interview";
     if (!hasData(tenets)) return "tenets";
+    if (!hasData(solutionIdeas)) return "solution_ideas";
     if (!pressRelease) return "press_release";
+    if (!valueProposition) return "value_proposition";
+    if (!hasData(battleCards)) return "battle_cards";
+    if (!journeyAnalysis) return "journey_analysis";
     if (!hasData(salesActions)) return "actions";
+    if (!successMetrics) return "success_metrics";
     return null; // All complete
   };
 
@@ -937,17 +1128,42 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
         setAutoGenerationPhase("interview");
         generateInterviewScriptMutation.mutate();
         break;
+      case "simulated_interview":
+        setAutoGenerationPhase("simulated_interview");
+        generateSimulatedInterviewMutation.mutate();
+        break;
       case "tenets":
         setAutoGenerationPhase("tenets");
         generateTenetsMutation.mutate();
+        break;
+      case "solution_ideas":
+        setAutoGenerationPhase("solution_ideas");
+        generateSolutionIdeasMutation.mutate();
         break;
       case "press_release":
         setAutoGenerationPhase("press_release");
         generatePressReleaseMutation.mutate();
         break;
+      case "value_proposition":
+        setAutoGenerationPhase("value_proposition");
+        generateValuePropositionMutation.mutate();
+        break;
+      case "battle_cards":
+        setAutoGenerationPhase("battle_cards");
+        // Battle cards require competitor name - skip in auto-generation
+        setAutoGenerationPhase(null);
+        break;
+      case "journey_analysis":
+        setAutoGenerationPhase("journey_analysis");
+        generateJourneyAnalysisMutation.mutate();
+        break;
       case "actions":
         setAutoGenerationPhase("actions");
         generateSalesActionsMutation.mutate();
+        break;
+      case "success_metrics":
+        setAutoGenerationPhase("success_metrics");
+        generateSuccessMetricsMutation.mutate();
         break;
     }
   };
@@ -3063,6 +3279,518 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
     );
   };
 
+  // Render Simulated Interview Section
+  const renderSimulatedInterview = () => {
+    const interviews = simulatedInterviews || [];
+    const latestInterview = interviews[0];
+
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <MessageCircle className="w-5 h-5 text-blue-600" />
+              Simulated Interview Transcript
+            </CardTitle>
+            <CardDescription>AI-generated interview validating predictions with simulated buyer</CardDescription>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => generateSimulatedInterviewMutation.mutate()}
+            disabled={generateSimulatedInterviewMutation.isPending || !persona}
+            data-testid="button-generate-simulated-interview"
+          >
+            {generateSimulatedInterviewMutation.isPending ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...</>
+            ) : (
+              <><Sparkles className="w-4 h-4 mr-2" /> Generate Interview</>
+            )}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {!latestInterview ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <MessageCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>No simulated interview yet. Generate one to validate your predictions.</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="p-4 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-3 mb-2">
+                  <User className="w-5 h-5 text-primary" />
+                  <div>
+                    <p className="font-medium">{latestInterview.intervieweeName}</p>
+                    <p className="text-sm text-muted-foreground">{latestInterview.intervieweeTitle} at {latestInterview.intervieweeCompany}</p>
+                  </div>
+                </div>
+                {latestInterview.intervieweeContext && (
+                  <p className="text-sm text-muted-foreground mt-2">{latestInterview.intervieweeContext}</p>
+                )}
+              </div>
+
+              <div className="space-y-4 max-h-[400px] overflow-y-auto">
+                {(latestInterview.transcript || []).map((entry: any, idx: number) => (
+                  <div key={idx} className={`flex gap-3 ${entry.speaker === 'interviewer' ? '' : 'flex-row-reverse'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
+                      entry.speaker === 'interviewer' 
+                        ? 'bg-primary/10 text-primary' 
+                        : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {entry.speaker === 'interviewer' ? 'I' : 'B'}
+                    </div>
+                    <div className={`flex-1 p-3 rounded-lg ${
+                      entry.speaker === 'interviewer' 
+                        ? 'bg-muted/50' 
+                        : 'bg-blue-50 dark:bg-blue-900/20'
+                    }`}>
+                      <p className="text-sm">{entry.text}</p>
+                      {entry.insightTag && (
+                        <Badge variant="outline" className="mt-2 text-xs">
+                          <Lightbulb className="w-3 h-3 mr-1" />
+                          {entry.insightTag}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {latestInterview.keyInsights && latestInterview.keyInsights.length > 0 && (
+                <div className="mt-6">
+                  <h4 className="font-medium mb-3 flex items-center gap-2">
+                    <Lightbulb className="w-4 h-4 text-amber-600" />
+                    Key Insights
+                  </h4>
+                  <div className="grid gap-3">
+                    {latestInterview.keyInsights.map((insight: any, idx: number) => (
+                      <div key={idx} className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                        <div className="flex items-start gap-2">
+                          {insight.validated ? (
+                            <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
+                          ) : (
+                            <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5" />
+                          )}
+                          <div>
+                            <p className="font-medium text-sm">{insight.insight}</p>
+                            <p className="text-xs text-muted-foreground mt-1">"{insight.evidence}"</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // Render Solution Ideas (Crazy-8s) Section
+  const renderSolutionIdeas = () => {
+    const ideas = solutionIdeas || [];
+    const recommendedIdea = ideas.find((i: any) => i.isRecommended);
+
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Lightbulb className="w-5 h-5 text-amber-600" />
+              Solution Design (Crazy-8s)
+            </CardTitle>
+            <CardDescription>10 solution ideas combining Korn Ferry offerings with buyer pains</CardDescription>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => generateSolutionIdeasMutation.mutate()}
+            disabled={generateSolutionIdeasMutation.isPending || !persona}
+            data-testid="button-generate-solution-ideas"
+          >
+            {generateSolutionIdeasMutation.isPending ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...</>
+            ) : (
+              <><Sparkles className="w-4 h-4 mr-2" /> Generate Ideas</>
+            )}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {ideas.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Lightbulb className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>No solution ideas yet. Generate to brainstorm solutions.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {recommendedIdea && (
+                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border-2 border-green-500">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Star className="w-5 h-5 text-green-600" />
+                    <span className="font-semibold text-green-700 dark:text-green-400">Recommended Solution</span>
+                  </div>
+                  <h4 className="font-bold text-lg">{recommendedIdea.solutionName}</h4>
+                  <p className="text-sm text-muted-foreground mt-1">{recommendedIdea.description}</p>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {(recommendedIdea.kornFerrySolutionAreas || []).map((area: string, idx: number) => (
+                      <Badge key={idx} className="bg-primary/10 text-primary">{area}</Badge>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex items-center gap-4 text-sm">
+                    <span>Pains Addressed: <strong>{recommendedIdea.painsAddressed}/{recommendedIdea.totalPains}</strong></span>
+                    <span>Strategic Fit: <strong>{recommendedIdea.strategicFit}%</strong></span>
+                  </div>
+                  {recommendedIdea.recommendationRationale && (
+                    <p className="text-sm text-green-700 dark:text-green-400 mt-2 italic">{recommendedIdea.recommendationRationale}</p>
+                  )}
+                </div>
+              )}
+
+              <div className="grid gap-3 md:grid-cols-2">
+                {ideas.filter((i: any) => !i.isRecommended).slice(0, 9).map((idea: any, idx: number) => (
+                  <div key={idea.id || idx} className="p-3 border rounded-lg hover-elevate">
+                    <h5 className="font-medium text-sm">{idea.solutionName}</h5>
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{idea.description}</p>
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {(idea.kornFerrySolutionAreas || []).slice(0, 3).map((area: string, aIdx: number) => (
+                        <Badge key={aIdx} variant="outline" className="text-xs">{area}</Badge>
+                      ))}
+                    </div>
+                    <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+                      <span>Pains: {idea.painsAddressed}/{idea.totalPains}</span>
+                      <Progress value={(idea.painsAddressed / idea.totalPains) * 100} className="w-16 h-1" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // Render Journey Unblocked Analysis Section
+  const renderJourneyAnalysis = () => {
+    const analysis = journeyAnalysis;
+
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Map className="w-5 h-5 text-purple-600" />
+              Journey Unblocked Analysis
+            </CardTitle>
+            <CardDescription>How our solution unblocks each phase of the buyer journey</CardDescription>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => generateJourneyAnalysisMutation.mutate()}
+            disabled={generateJourneyAnalysisMutation.isPending}
+            data-testid="button-generate-journey-analysis"
+          >
+            {generateJourneyAnalysisMutation.isPending ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Analyzing...</>
+            ) : (
+              <><Sparkles className="w-4 h-4 mr-2" /> Analyze Journey</>
+            )}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {!analysis ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Map className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>No journey analysis yet. Generate to see how our solution helps.</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-green-600">{analysis.phasesFullyUnblocked}</p>
+                  <p className="text-xs text-muted-foreground">Fully Unblocked</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-amber-600">{analysis.phasesPartiallyUnblocked}</p>
+                  <p className="text-xs text-muted-foreground">Partially Unblocked</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {(analysis.phaseAnalysis || []).map((phase: any, idx: number) => (
+                  <div key={idx} className={`p-4 rounded-lg border ${
+                    phase.unblockStatus === 'fully' ? 'bg-green-50 dark:bg-green-900/20 border-green-200' :
+                    phase.unblockStatus === 'partially' ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200' :
+                    'bg-red-50 dark:bg-red-900/20 border-red-200'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium">{phase.phaseName}</h4>
+                      <Badge variant={phase.unblockStatus === 'fully' ? 'default' : phase.unblockStatus === 'partially' ? 'secondary' : 'destructive'}>
+                        {phase.unblockStatus === 'fully' ? 'Fully Unblocked' : phase.unblockStatus === 'partially' ? 'Partially Unblocked' : 'Not Unblocked'}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-2">{phase.howSolutionHelps}</p>
+                    {phase.remainingBlockers && phase.remainingBlockers.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-xs font-medium text-muted-foreground">Remaining Blockers:</p>
+                        <ul className="text-xs text-muted-foreground list-disc list-inside">
+                          {phase.remainingBlockers.map((blocker: string, bIdx: number) => (
+                            <li key={bIdx}>{blocker}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {phase.salesPlayOpportunity && (
+                      <div className="mt-2 p-2 bg-background rounded">
+                        <p className="text-xs"><strong>Sales Play Angle:</strong> {phase.salesPlayOpportunity}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {analysis.salesPlaySummary && (
+                <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
+                  <h4 className="font-medium mb-2">Sales Play Summary</h4>
+                  <p className="text-sm">{analysis.salesPlaySummary}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // Render Value Proposition Section
+  const renderValueProposition = () => {
+    const vp = valueProposition;
+
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="w-5 h-5 text-green-600" />
+              Value Proposition
+            </CardTitle>
+            <CardDescription>Core messaging, proof points, and call to action</CardDescription>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => generateValuePropositionMutation.mutate()}
+            disabled={generateValuePropositionMutation.isPending}
+            data-testid="button-generate-value-proposition"
+          >
+            {generateValuePropositionMutation.isPending ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...</>
+            ) : (
+              <><Sparkles className="w-4 h-4 mr-2" /> Generate Value Prop</>
+            )}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {!vp ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Target className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>No value proposition yet. Generate to create messaging.</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {vp.valuePropositionStatement && (
+                <div className="p-4 bg-gradient-to-r from-primary/10 to-purple-500/10 rounded-lg border border-primary/20">
+                  <p className="text-lg font-medium italic">"{vp.valuePropositionStatement}"</p>
+                  {vp.tagline && <p className="text-sm text-muted-foreground mt-2">Tagline: {vp.tagline}</p>}
+                </div>
+              )}
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <h4 className="font-medium mb-2">Target Customer</h4>
+                  <p className="text-sm">{vp.targetCustomer}</p>
+                </div>
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <h4 className="font-medium mb-2">Their Problem</h4>
+                  <p className="text-sm">{vp.customerProblem}</p>
+                </div>
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <h4 className="font-medium mb-2">Our Benefit</h4>
+                  <p className="text-sm">{vp.specificBenefit}</p>
+                </div>
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <h4 className="font-medium mb-2">What Makes Us Stand Out</h4>
+                  <p className="text-sm">{vp.whatMakesUsStandOut}</p>
+                </div>
+              </div>
+
+              {vp.elevatorPitch && (
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200">
+                  <h4 className="font-medium mb-2 flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4" />
+                    30-Second Elevator Pitch
+                  </h4>
+                  <p className="text-sm">{vp.elevatorPitch}</p>
+                </div>
+              )}
+
+              {vp.proofPoints && vp.proofPoints.length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-3">Proof Points</h4>
+                  <div className="grid gap-2">
+                    {vp.proofPoints.map((proof: any, idx: number) => (
+                      <div key={idx} className="p-3 border rounded-lg flex items-start gap-3">
+                        <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
+                        <div>
+                          <p className="font-medium text-sm">{proof.title}</p>
+                          <p className="text-xs text-muted-foreground">{proof.description}</p>
+                          <Badge variant="outline" className="mt-1 text-xs">{proof.category}</Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {vp.callToAction && (
+                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 text-center">
+                  <h4 className="font-medium mb-2">Call to Action</h4>
+                  <p className="text-sm font-medium text-green-700 dark:text-green-400">{vp.callToAction}</p>
+                </div>
+              )}
+
+              {(vp.doStatements?.length > 0 || vp.dontStatements?.length > 0) && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                    <h4 className="font-medium mb-2 text-green-700 dark:text-green-400">Do Say</h4>
+                    <ul className="space-y-1">
+                      {(vp.doStatements || []).map((stmt: string, idx: number) => (
+                        <li key={idx} className="text-sm flex items-start gap-2">
+                          <CheckCircle className="w-3 h-3 text-green-600 mt-1" />
+                          {stmt}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                    <h4 className="font-medium mb-2 text-red-700 dark:text-red-400">Don't Say</h4>
+                    <ul className="space-y-1">
+                      {(vp.dontStatements || []).map((stmt: string, idx: number) => (
+                        <li key={idx} className="text-sm flex items-start gap-2">
+                          <AlertTriangle className="w-3 h-3 text-red-600 mt-1" />
+                          {stmt}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // Render Success Metrics Section
+  const renderSuccessMetrics = () => {
+    const metrics = successMetrics;
+
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="w-5 h-5 text-emerald-600" />
+              Success Metrics
+            </CardTitle>
+            <CardDescription>Buyer, Business, and Sales metrics to track success</CardDescription>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => generateSuccessMetricsMutation.mutate()}
+            disabled={generateSuccessMetricsMutation.isPending}
+            data-testid="button-generate-success-metrics"
+          >
+            {generateSuccessMetricsMutation.isPending ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...</>
+            ) : (
+              <><Sparkles className="w-4 h-4 mr-2" /> Generate Metrics</>
+            )}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {!metrics ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Target className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>No success metrics yet. Generate to define KPIs.</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="grid gap-6 md:grid-cols-3">
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200">
+                  <h4 className="font-medium mb-3 flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                    <Heart className="w-4 h-4" />
+                    Buyer Metrics
+                  </h4>
+                  <p className="text-xs text-muted-foreground mb-3">Is the buyer delighted?</p>
+                  <div className="space-y-2">
+                    {(metrics.buyerMetrics || []).map((m: any, idx: number) => (
+                      <div key={idx} className="p-2 bg-background rounded">
+                        <p className="text-sm font-medium">{m.metricName}</p>
+                        <p className="text-xs text-muted-foreground">Target: {m.target}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200">
+                  <h4 className="font-medium mb-3 flex items-center gap-2 text-green-700 dark:text-green-400">
+                    <Target className="w-4 h-4" />
+                    Business Metrics
+                  </h4>
+                  <p className="text-xs text-muted-foreground mb-3">Are we getting great returns?</p>
+                  <div className="space-y-2">
+                    {(metrics.businessMetrics || []).map((m: any, idx: number) => (
+                      <div key={idx} className="p-2 bg-background rounded">
+                        <p className="text-sm font-medium">{m.metricName}</p>
+                        <p className="text-xs text-muted-foreground">Target: {m.target}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200">
+                  <h4 className="font-medium mb-3 flex items-center gap-2 text-purple-700 dark:text-purple-400">
+                    <PlayCircle className="w-4 h-4" />
+                    Sales Metrics
+                  </h4>
+                  <p className="text-xs text-muted-foreground mb-3">Are we selling efficiently?</p>
+                  <div className="space-y-2">
+                    {(metrics.salesMetrics || []).map((m: any, idx: number) => (
+                      <div key={idx} className="p-2 bg-background rounded">
+                        <p className="text-sm font-medium">{m.metricName}</p>
+                        <p className="text-xs text-muted-foreground">Target: {m.target}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {metrics.linkedCommitmentIds && metrics.linkedCommitmentIds.length > 0 && (
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    <CheckCircle className="w-4 h-4 inline mr-1 text-green-600" />
+                    Linked to {metrics.linkedCommitmentIds.length} KPI commitments from Strategy & Outcomes
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
   const renderStepContent = () => {
     switch (activeStep) {
       case "buyer_persona":
@@ -3075,14 +3803,24 @@ export function GrowthAcceleratorCanvas({ projectId, accountId, companyName }: G
         return renderPredictionsGrid();
       case "interview_script":
         return renderInterviewScript();
+      case "simulated_interview":
+        return renderSimulatedInterview();
       case "solution_tenets":
         return renderTenets();
+      case "solution_ideas":
+        return renderSolutionIdeas();
       case "press_release":
         return renderPressRelease();
+      case "value_proposition":
+        return renderValueProposition();
       case "battle_cards":
         return renderBattleCards();
+      case "journey_analysis":
+        return renderJourneyAnalysis();
       case "sales_actions":
         return renderSalesActions();
+      case "success_metrics":
+        return renderSuccessMetrics();
       default:
         return null;
     }
