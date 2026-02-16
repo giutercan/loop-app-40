@@ -30,6 +30,7 @@ import {
   CheckCircle2,
   Pencil,
   FolderOpen,
+  Presentation,
 } from "lucide-react";
 import { AppTour } from "@/components/AppTour";
 import { PhaseChecklist } from "@/components/PhaseChecklist";
@@ -274,6 +275,14 @@ export default function ProjectLayout({
                       <Link href="/projects" data-testid="sidebar-all-projects">
                         <Home className="w-4 h-4" />
                         <span className="group-data-[collapsible=icon]:hidden">All Projects</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Presentation Studio">
+                      <Link href={parentAccount ? `/presentation-studio/${parentAccount.id}/${projectId}` : `/presentation-studio`} data-testid="sidebar-presentation-studio">
+                        <Presentation className="w-4 h-4" />
+                        <span className="group-data-[collapsible=icon]:hidden">Presentation Studio</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
