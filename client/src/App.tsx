@@ -20,6 +20,7 @@ import AccountHub from "@/pages/account-hub";
 import AccountRoleView from "@/pages/account-role-view";
 import ProjectRoleView from "@/pages/project-role-view";
 import Presentation from "@/pages/presentation";
+import PresentationStudio from "@/pages/presentation-studio";
 import CompanionCanvas from "@/pages/companion-canvas";
 import ProjectLayout from "@/components/ProjectLayout";
 import HandoffHub from "@/pages/handoff-hub";
@@ -105,6 +106,8 @@ function Router() {
       <Route path="/shared/alignment/:token" component={SharedAlignment} />
       <Route path="/portal/:token" component={CustomerPortal} />
       <Route path="/presentation" component={Presentation} />
+      <Route path="/presentation-studio" component={PresentationStudio} />
+      <Route path="/presentation-studio/:accountId/:projectId" component={PresentationStudio} />
       <Route path="/companion" component={CompanionCanvas} />
       <Route path="/integrations" component={Integrations} />
       <Route path="/leader" component={LeaderWorkspace} />

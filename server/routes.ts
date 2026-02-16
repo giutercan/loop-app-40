@@ -2,6 +2,8 @@ import type { Express } from "express";
 import { storage } from "./storage";
 import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale, generateStrategicPillars, generateStorySuggestion, generateDiscoveryKpiSuggestions, enrichContactWithAI, openai, generateCompetitiveIntelligence, generateKPIValueCaseRecommendations, generateLiveIntelligence, generateEvidencePackRecommendations, generateItemCoaching, researchMeetingAttendee } from "./ai";
 import { EvidencePackService } from "./services/evidence-pack.service";
+import { generatePresentationPlan, aggregatePresentationData, type PresentationRequest, type TopicCategory } from "./services/presentation-studio.service";
+import pptxgen from "pptxgenjs";
 import { z } from "zod";
 import crypto from "crypto";
 import { OUTCOME_JOURNEY_TEMPLATES, type SolutionPatternId } from "@shared/value-frameworks";
@@ -17457,6 +17459,576 @@ Return JSON:
       const metrics = await storage.getGaSuccessMetrics(canvasId);
       res.json(metrics || null);
     } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ─── Presentation Studio Routes ───────────────────────────────────────────────
+
+  const KF_COLORS = {
+    navy: "00173B",
+    forestGreen: "00634F",
+    oceanBlue: "005971",
+    emerald: "009B77",
+    mint: "05C690",
+    lime: "8DC63F",
+    cyan: "00ADBB",
+    purple: "A3238E",
+    gray: "929192",
+    lightGray: "DAD8D6",
+    white: "FFFFFF"
+  };
+
+  app.post("/api/presentations/plan", async (req, res) => {
+    try {
+      const body = req.body as PresentationRequest;
+      if (!body.accountId || !body.projectId || !body.purpose || !body.audience || !body.selectedTopics?.length) {
+        return res.status(400).json({ error: "Missing required fields: accountId, projectId, purpose, audience, selectedTopics" });
+      }
+      const plan = await generatePresentationPlan(body);
+      res.json(plan);
+    } catch (error: any) {
+      console.error("Error generating presentation plan:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/presentations/export", async (req, res) => {
+    try {
+      const body = req.body as PresentationRequest;
+      if (!body.accountId || !body.projectId || !body.purpose || !body.audience || !body.selectedTopics?.length) {
+        return res.status(400).json({ error: "Missing required fields: accountId, projectId, purpose, audience, selectedTopics" });
+      }
+
+      const plan = await generatePresentationPlan(body);
+      const template = plan.recommendedTemplate;
+
+      const templateConfig: Record<string, { titleBg: string; accentColor: string; headerColor: string; textColor: string; subtitleColor: string }> = {
+        executive_modern: { titleBg: KF_COLORS.navy, accentColor: KF_COLORS.emerald, headerColor: KF_COLORS.navy, textColor: "333333", subtitleColor: KF_COLORS.gray },
+        data_driven: { titleBg: KF_COLORS.white, accentColor: KF_COLORS.oceanBlue, headerColor: KF_COLORS.oceanBlue, textColor: "333333", subtitleColor: KF_COLORS.gray },
+        visual_narrative: { titleBg: KF_COLORS.forestGreen, accentColor: KF_COLORS.purple, headerColor: KF_COLORS.forestGreen, textColor: "333333", subtitleColor: KF_COLORS.gray },
+      };
+      const config = templateConfig[template] || templateConfig.executive_modern;
+
+      const pres = new pptxgen();
+      pres.defineLayout({ name: "KF_WIDE", width: 13.333, height: 7.5 });
+      pres.layout = "KF_WIDE";
+      pres.author = "Korn Ferry";
+      pres.company = "Korn Ferry";
+      pres.subject = body.customTitle || "Presentation";
+
+      const account = await storage.getAccount(body.accountId);
+      const project = await storage.getProject(body.projectId);
+
+      for (let i = 0; i < plan.slides.length; i++) {
+        const slideData = plan.slides[i];
+        const slide = pres.addSlide();
+
+        slide.addText("KORN FERRY", {
+          x: 10.5, y: 0.2, w: 2.5, h: 0.35,
+          fontSize: 10, fontFace: "Arial",
+          color: config.accentColor, bold: true, align: "right",
+        });
+
+        slide.addText(`${i + 1}`, {
+          x: 6.0, y: 7.0, w: 1.333, h: 0.4,
+          fontSize: 8, fontFace: "Arial",
+          color: KF_COLORS.gray, align: "center",
+        });
+
+        if (slideData.speakerNotes) {
+          slide.addNotes(slideData.speakerNotes);
+        }
+
+        switch (slideData.slideType) {
+          case "title": {
+            slide.background = { color: config.titleBg };
+            const titleColor = config.titleBg === KF_COLORS.white ? config.headerColor : KF_COLORS.white;
+            slide.addText(slideData.title, {
+              x: 0.8, y: 2.0, w: 11.7, h: 1.5,
+              fontSize: 36, fontFace: "Arial",
+              color: titleColor, bold: true, align: "left",
+            });
+            if (slideData.subtitle) {
+              slide.addText(slideData.subtitle, {
+                x: 0.8, y: 3.6, w: 11.7, h: 0.8,
+                fontSize: 18, fontFace: "Arial",
+                color: config.titleBg === KF_COLORS.white ? KF_COLORS.gray : KF_COLORS.lightGray,
+                align: "left",
+              });
+            }
+            if (slideData.bodyContent) {
+              slide.addText(slideData.bodyContent, {
+                x: 0.8, y: 4.6, w: 11.7, h: 0.6,
+                fontSize: 12, fontFace: "Arial",
+                color: config.titleBg === KF_COLORS.white ? KF_COLORS.gray : KF_COLORS.lightGray,
+                align: "left",
+              });
+            }
+            break;
+          }
+
+          case "section_divider": {
+            slide.addShape(pres.ShapeType.rect, {
+              x: 0, y: 2.5, w: 13.333, h: 2.5,
+              fill: { color: config.accentColor },
+            });
+            slide.addText(slideData.title, {
+              x: 0.8, y: 2.7, w: 11.7, h: 2.0,
+              fontSize: 30, fontFace: "Arial",
+              color: KF_COLORS.white, bold: true, align: "left", valign: "middle",
+            });
+            break;
+          }
+
+          case "content": {
+            slide.addShape(pres.ShapeType.rect, {
+              x: 0, y: 0, w: 13.333, h: 0.8,
+              fill: { color: config.accentColor },
+            });
+            slide.addText(slideData.title, {
+              x: 0.5, y: 0.1, w: 9.5, h: 0.6,
+              fontSize: 18, fontFace: "Arial",
+              color: KF_COLORS.white, bold: true,
+            });
+            let yPos = 1.2;
+            if (slideData.bodyContent) {
+              slide.addText(slideData.bodyContent, {
+                x: 0.8, y: yPos, w: 11.7, h: 1.0,
+                fontSize: 14, fontFace: "Arial",
+                color: config.textColor, align: "left",
+              });
+              yPos += 1.2;
+            }
+            if (slideData.bulletPoints?.length) {
+              const bullets = slideData.bulletPoints.map(bp => ({
+                text: bp,
+                options: { bullet: { type: "bullet" as const }, fontSize: 13, color: config.textColor },
+              }));
+              slide.addText(bullets, {
+                x: 0.8, y: yPos, w: 11.7, h: 5.0,
+                fontFace: "Arial", paraSpaceAfter: 8,
+              });
+            }
+            break;
+          }
+
+          case "kpi_scorecard": {
+            slide.addShape(pres.ShapeType.rect, {
+              x: 0, y: 0, w: 13.333, h: 0.8,
+              fill: { color: config.accentColor },
+            });
+            slide.addText(slideData.title, {
+              x: 0.5, y: 0.1, w: 9.5, h: 0.6,
+              fontSize: 18, fontFace: "Arial",
+              color: KF_COLORS.white, bold: true,
+            });
+            if (slideData.metrics?.length) {
+              const cols = Math.min(slideData.metrics.length, 4);
+              const boxW = 11.0 / cols;
+              slideData.metrics.forEach((metric, idx) => {
+                const col = idx % cols;
+                const row = Math.floor(idx / cols);
+                const xPos = 1.0 + col * (boxW + 0.2);
+                const yPos = 1.3 + row * 2.2;
+                const trendSymbol = metric.trend === "up" ? "\u25B2" : metric.trend === "down" ? "\u25BC" : "\u25CF";
+                const trendColor = metric.trend === "up" ? KF_COLORS.emerald : metric.trend === "down" ? "CC3333" : KF_COLORS.gray;
+                slide.addShape(pres.ShapeType.roundRect, {
+                  x: xPos, y: yPos, w: boxW, h: 1.8,
+                  fill: { color: "F5F5F5" },
+                  rectRadius: 0.1,
+                  line: { color: KF_COLORS.lightGray, width: 1 },
+                });
+                slide.addText(metric.value, {
+                  x: xPos, y: yPos + 0.2, w: boxW, h: 0.7,
+                  fontSize: 28, fontFace: "Arial",
+                  color: metric.color?.replace("#", "") || config.accentColor,
+                  bold: true, align: "center",
+                });
+                slide.addText(`${trendSymbol}`, {
+                  x: xPos, y: yPos + 0.85, w: boxW, h: 0.3,
+                  fontSize: 14, fontFace: "Arial",
+                  color: trendColor, align: "center",
+                });
+                slide.addText(metric.label, {
+                  x: xPos, y: yPos + 1.15, w: boxW, h: 0.5,
+                  fontSize: 11, fontFace: "Arial",
+                  color: KF_COLORS.gray, align: "center",
+                });
+              });
+            }
+            break;
+          }
+
+          case "chart": {
+            slide.addShape(pres.ShapeType.rect, {
+              x: 0, y: 0, w: 13.333, h: 0.8,
+              fill: { color: config.accentColor },
+            });
+            slide.addText(slideData.title, {
+              x: 0.5, y: 0.1, w: 9.5, h: 0.6,
+              fontSize: 18, fontFace: "Arial",
+              color: KF_COLORS.white, bold: true,
+            });
+            if (slideData.chartData) {
+              const chartTypeMap: Record<string, pptxgen.CHART_NAME> = {
+                bar: pres.ChartType.bar,
+                pie: pres.ChartType.pie,
+                line: pres.ChartType.line,
+                doughnut: pres.ChartType.doughnut,
+              };
+              const chartType = chartTypeMap[slideData.chartData.type] || pres.ChartType.bar;
+              const chartColors = slideData.chartData.colors?.map(c => c.replace("#", "")) ||
+                [KF_COLORS.emerald, KF_COLORS.oceanBlue, KF_COLORS.cyan, KF_COLORS.lime, KF_COLORS.purple, KF_COLORS.mint];
+              slide.addChart(chartType, [
+                { name: slideData.title, labels: slideData.chartData.labels, values: slideData.chartData.data },
+              ], {
+                x: 1.0, y: 1.2, w: 11.0, h: 5.5,
+                showLegend: true, legendPos: "b",
+                chartColors: chartColors,
+                showValue: true,
+              });
+            }
+            break;
+          }
+
+          case "timeline": {
+            slide.addShape(pres.ShapeType.rect, {
+              x: 0, y: 0, w: 13.333, h: 0.8,
+              fill: { color: config.accentColor },
+            });
+            slide.addText(slideData.title, {
+              x: 0.5, y: 0.1, w: 9.5, h: 0.6,
+              fontSize: 18, fontFace: "Arial",
+              color: KF_COLORS.white, bold: true,
+            });
+            if (slideData.flowSteps?.length) {
+              const stepCount = slideData.flowSteps.length;
+              const stepW = Math.min(2.0, 11.0 / stepCount);
+              const startX = (13.333 - stepCount * stepW) / 2;
+              slide.addShape(pres.ShapeType.rect, {
+                x: startX, y: 3.5, w: stepCount * stepW, h: 0.05,
+                fill: { color: config.accentColor },
+              });
+              slideData.flowSteps.forEach((step, idx) => {
+                const xPos = startX + idx * stepW + stepW / 2 - 0.15;
+                slide.addShape(pres.ShapeType.ellipse, {
+                  x: xPos, y: 3.3, w: 0.3, h: 0.3,
+                  fill: { color: config.accentColor },
+                });
+                slide.addText(step.label, {
+                  x: xPos - 0.7, y: 2.3, w: 1.7, h: 0.8,
+                  fontSize: 10, fontFace: "Arial",
+                  color: config.headerColor, bold: true, align: "center",
+                });
+                if (step.description) {
+                  slide.addText(step.description, {
+                    x: xPos - 0.7, y: 3.8, w: 1.7, h: 0.8,
+                    fontSize: 9, fontFace: "Arial",
+                    color: KF_COLORS.gray, align: "center",
+                  });
+                }
+              });
+            }
+            break;
+          }
+
+          case "quote": {
+            slide.background = { color: "F7F7F7" };
+            slide.addShape(pres.ShapeType.rect, {
+              x: 0, y: 0, w: 13.333, h: 0.8,
+              fill: { color: config.accentColor },
+            });
+            slide.addText(slideData.title, {
+              x: 0.5, y: 0.1, w: 9.5, h: 0.6,
+              fontSize: 18, fontFace: "Arial",
+              color: KF_COLORS.white, bold: true,
+            });
+            if (slideData.quoteText) {
+              slide.addText(`\u201C${slideData.quoteText}\u201D`, {
+                x: 1.5, y: 1.5, w: 10.3, h: 3.5,
+                fontSize: 22, fontFace: "Georgia",
+                color: config.headerColor, italic: true, align: "center", valign: "middle",
+              });
+            }
+            if (slideData.quoteAuthor) {
+              slide.addText(`\u2014 ${slideData.quoteAuthor}`, {
+                x: 1.5, y: 5.2, w: 10.3, h: 0.5,
+                fontSize: 14, fontFace: "Arial",
+                color: KF_COLORS.gray, align: "center",
+              });
+            }
+            break;
+          }
+
+          case "flow_diagram": {
+            slide.addShape(pres.ShapeType.rect, {
+              x: 0, y: 0, w: 13.333, h: 0.8,
+              fill: { color: config.accentColor },
+            });
+            slide.addText(slideData.title, {
+              x: 0.5, y: 0.1, w: 9.5, h: 0.6,
+              fontSize: 18, fontFace: "Arial",
+              color: KF_COLORS.white, bold: true,
+            });
+            if (slideData.flowSteps?.length) {
+              const stepCount = slideData.flowSteps.length;
+              const boxW = Math.min(2.2, 10.0 / stepCount);
+              const gap = 0.4;
+              const totalW = stepCount * boxW + (stepCount - 1) * gap;
+              const startX = (13.333 - totalW) / 2;
+              slideData.flowSteps.forEach((step, idx) => {
+                const xPos = startX + idx * (boxW + gap);
+                slide.addShape(pres.ShapeType.roundRect, {
+                  x: xPos, y: 2.5, w: boxW, h: 2.5,
+                  fill: { color: config.accentColor },
+                  rectRadius: 0.1,
+                });
+                slide.addText(step.label, {
+                  x: xPos + 0.1, y: 2.7, w: boxW - 0.2, h: 0.6,
+                  fontSize: 12, fontFace: "Arial",
+                  color: KF_COLORS.white, bold: true, align: "center",
+                });
+                if (step.description) {
+                  slide.addText(step.description, {
+                    x: xPos + 0.1, y: 3.4, w: boxW - 0.2, h: 1.4,
+                    fontSize: 9, fontFace: "Arial",
+                    color: KF_COLORS.lightGray, align: "center", valign: "top",
+                  });
+                }
+                if (idx < stepCount - 1) {
+                  slide.addText("\u25B6", {
+                    x: xPos + boxW + 0.05, y: 3.4, w: 0.3, h: 0.5,
+                    fontSize: 16, fontFace: "Arial",
+                    color: config.accentColor, align: "center",
+                  });
+                }
+              });
+            }
+            break;
+          }
+
+          case "comparison": {
+            slide.addShape(pres.ShapeType.rect, {
+              x: 0, y: 0, w: 13.333, h: 0.8,
+              fill: { color: config.accentColor },
+            });
+            slide.addText(slideData.title, {
+              x: 0.5, y: 0.1, w: 9.5, h: 0.6,
+              fontSize: 18, fontFace: "Arial",
+              color: KF_COLORS.white, bold: true,
+            });
+            if (slideData.comparisonItems?.length) {
+              slide.addText("Before", {
+                x: 1.5, y: 1.2, w: 4.5, h: 0.5,
+                fontSize: 16, fontFace: "Arial",
+                color: KF_COLORS.gray, bold: true, align: "center",
+              });
+              slide.addText("After", {
+                x: 7.3, y: 1.2, w: 4.5, h: 0.5,
+                fontSize: 16, fontFace: "Arial",
+                color: config.accentColor, bold: true, align: "center",
+              });
+              slide.addShape(pres.ShapeType.rect, {
+                x: 6.5, y: 1.2, w: 0.03, h: 5.5,
+                fill: { color: KF_COLORS.lightGray },
+              });
+              slideData.comparisonItems.forEach((item, idx) => {
+                const yPos = 1.9 + idx * 1.3;
+                slide.addText(item.label, {
+                  x: 0.5, y: yPos, w: 1.0, h: 1.0,
+                  fontSize: 10, fontFace: "Arial",
+                  color: config.headerColor, bold: true, valign: "middle",
+                });
+                slide.addShape(pres.ShapeType.roundRect, {
+                  x: 1.5, y: yPos, w: 4.5, h: 1.0,
+                  fill: { color: "FFF3F3" }, rectRadius: 0.05,
+                });
+                slide.addText(item.before, {
+                  x: 1.7, y: yPos + 0.1, w: 4.1, h: 0.8,
+                  fontSize: 11, fontFace: "Arial",
+                  color: config.textColor, valign: "middle",
+                });
+                slide.addShape(pres.ShapeType.roundRect, {
+                  x: 7.3, y: yPos, w: 4.5, h: 1.0,
+                  fill: { color: "F0FFF5" }, rectRadius: 0.05,
+                });
+                slide.addText(item.after, {
+                  x: 7.5, y: yPos + 0.1, w: 4.1, h: 0.8,
+                  fontSize: 11, fontFace: "Arial",
+                  color: config.textColor, valign: "middle",
+                });
+              });
+            }
+            break;
+          }
+
+          case "summary": {
+            slide.addShape(pres.ShapeType.rect, {
+              x: 0, y: 0, w: 13.333, h: 0.8,
+              fill: { color: config.accentColor },
+            });
+            slide.addText(slideData.title, {
+              x: 0.5, y: 0.1, w: 9.5, h: 0.6,
+              fontSize: 18, fontFace: "Arial",
+              color: KF_COLORS.white, bold: true,
+            });
+            let sumY = 1.4;
+            if (slideData.bulletPoints?.length) {
+              slideData.bulletPoints.forEach((point) => {
+                slide.addText(`\u2713`, {
+                  x: 0.8, y: sumY, w: 0.5, h: 0.5,
+                  fontSize: 16, fontFace: "Arial",
+                  color: KF_COLORS.emerald, bold: true,
+                });
+                slide.addText(point, {
+                  x: 1.4, y: sumY, w: 11.0, h: 0.5,
+                  fontSize: 14, fontFace: "Arial",
+                  color: config.textColor,
+                });
+                sumY += 0.7;
+              });
+            }
+            if (slideData.bodyContent) {
+              slide.addText(slideData.bodyContent, {
+                x: 0.8, y: sumY + 0.3, w: 11.7, h: 1.0,
+                fontSize: 12, fontFace: "Arial",
+                color: KF_COLORS.gray, italic: true, align: "left",
+              });
+            }
+            break;
+          }
+
+          case "image_feature": {
+            slide.background = { color: config.titleBg };
+            slide.addShape(pres.ShapeType.rect, {
+              x: 0, y: 0, w: 13.333, h: 7.5,
+              fill: { color: config.titleBg },
+            });
+            slide.addShape(pres.ShapeType.rect, {
+              x: 0, y: 4.5, w: 13.333, h: 3.0,
+              fill: { color: "000000" },
+            });
+            slide.addText(slideData.title, {
+              x: 0.8, y: 4.8, w: 11.7, h: 0.8,
+              fontSize: 22, fontFace: "Arial",
+              color: KF_COLORS.white, bold: true,
+            });
+            if (slideData.bodyContent) {
+              slide.addText(slideData.bodyContent, {
+                x: 0.8, y: 5.7, w: 11.7, h: 1.2,
+                fontSize: 13, fontFace: "Arial",
+                color: KF_COLORS.lightGray,
+              });
+            }
+            if (slideData.imageCategory) {
+              slide.addText(`[${slideData.imageCategory.toUpperCase()} IMAGE]`, {
+                x: 3.0, y: 1.5, w: 7.3, h: 2.5,
+                fontSize: 14, fontFace: "Arial",
+                color: KF_COLORS.gray, align: "center", valign: "middle",
+                fill: { color: "E8E8E8" },
+              });
+            }
+            break;
+          }
+
+          default: {
+            slide.addShape(pres.ShapeType.rect, {
+              x: 0, y: 0, w: 13.333, h: 0.8,
+              fill: { color: config.accentColor },
+            });
+            slide.addText(slideData.title, {
+              x: 0.5, y: 0.1, w: 9.5, h: 0.6,
+              fontSize: 18, fontFace: "Arial",
+              color: KF_COLORS.white, bold: true,
+            });
+            if (slideData.bodyContent) {
+              slide.addText(slideData.bodyContent, {
+                x: 0.8, y: 1.2, w: 11.7, h: 5.0,
+                fontSize: 14, fontFace: "Arial",
+                color: config.textColor,
+              });
+            }
+            break;
+          }
+        }
+      }
+
+      const accountName = account?.name || "presentation";
+      const safeName = accountName.replace(/[^a-zA-Z0-9_-]/g, "_").substring(0, 50);
+      const filename = `${safeName}_${body.purpose}_${new Date().toISOString().split("T")[0]}`;
+
+      const pptxBuffer = await pres.write({ outputType: "nodebuffer" });
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.presentationml.presentation");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}.pptx"`);
+      res.send(Buffer.from(pptxBuffer as ArrayBuffer));
+    } catch (error: any) {
+      console.error("Error exporting presentation:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/presentations/topics/:projectId", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const topics: Record<string, { available: boolean; label: string }> = {};
+
+      try {
+        const headlines = await storage.getHeadlines(projectId);
+        const valueCases = await storage.getValueCases(projectId);
+        topics.discovery_insights = { available: headlines.length > 0 || valueCases.length > 0, label: "Discovery Insights" };
+      } catch { topics.discovery_insights = { available: false, label: "Discovery Insights" }; }
+
+      try {
+        const project = await storage.getProject(projectId);
+        const greenSheet = project?.greenSheetData as any;
+        topics.stakeholder_priorities = { available: !!greenSheet?.meetingContact, label: "Stakeholder Priorities" };
+      } catch { topics.stakeholder_priorities = { available: false, label: "Stakeholder Priorities" }; }
+
+      try {
+        const commitments = await storage.getKpiCommitments(projectId);
+        topics.kpi_commitments = { available: commitments.length > 0, label: "KPI Commitments" };
+      } catch { topics.kpi_commitments = { available: false, label: "KPI Commitments" }; }
+
+      try {
+        const pack = await storage.getEvidencePackByProject(projectId);
+        topics.evidence_pack = { available: !!pack, label: "Evidence Pack" };
+      } catch { topics.evidence_pack = { available: false, label: "Evidence Pack" }; }
+
+      try {
+        const stories = await storage.getSuccessStories(projectId);
+        topics.success_stories = { available: stories.length > 0, label: "Success Stories" };
+      } catch { topics.success_stories = { available: false, label: "Success Stories" }; }
+
+      try {
+        const project = await storage.getProject(projectId);
+        topics.green_sheet_objectives = { available: !!project?.greenSheetData, label: "Green Sheet Objectives" };
+      } catch { topics.green_sheet_objectives = { available: false, label: "Green Sheet Objectives" }; }
+
+      try {
+        const canvases = await storage.getGrowthAcceleratorCanvases(projectId);
+        topics.growth_accelerator = { available: canvases.length > 0, label: "Growth Accelerator" };
+      } catch { topics.growth_accelerator = { available: false, label: "Growth Accelerator" }; }
+
+      try {
+        const blueSheet = await storage.getBlueSheet(projectId);
+        const bsData = blueSheet?.data as any;
+        topics.competitive_landscape = { available: !!bsData?.competitions?.length, label: "Competitive Landscape" };
+      } catch { topics.competitive_landscape = { available: false, label: "Competitive Landscape" }; }
+
+      try {
+        const pillars = await storage.getStrategicPillars(projectId);
+        topics.alignment_progress = { available: pillars.length > 0, label: "Alignment Progress" };
+      } catch { topics.alignment_progress = { available: false, label: "Alignment Progress" }; }
+
+      try {
+        const metrics = await storage.getProjectValueMetrics(projectId);
+        topics.value_realization = { available: !!metrics, label: "Value Realization" };
+      } catch { topics.value_realization = { available: false, label: "Value Realization" }; }
+
+      res.json(topics);
+    } catch (error: any) {
+      console.error("Error fetching presentation topics:", error);
       res.status(500).json({ error: error.message });
     }
   });

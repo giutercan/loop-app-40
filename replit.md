@@ -26,6 +26,22 @@ The Evidence Pack transforms from a data dump into journey-based storytelling, o
 - **Provenance Tracking**: Full sourceType and source metadata with "What this proves" summaries and visual source attribution.
 - **Auto-Population**: Automatically populates from Discovery insights, KPI commitments, success stories, and client feedback with phase assignment based on source type.
 
+#### Presentation Studio (AI-Powered PowerPoint Generator)
+The Presentation Studio is a comprehensive tool for generating branded, client-ready PowerPoint presentations from account and project data. It aggregates data across all phases and uses AI to create tailored slide decks.
+- **Route**: `/presentation-studio` 
+- **Backend Service**: `server/services/presentation-studio.service.ts`
+- **API Routes**: `POST /api/presentations/plan`, `POST /api/presentations/export`, `GET /api/presentations/topics/:projectId`
+- **Data Aggregation**: Pulls from accounts, projects, KPI commitments, evidence packs, success stories, Green Sheet objectives, Growth Accelerator outputs, Blue Sheet competitive data, discovery insights, and strategic pillars.
+- **AI Content Generation**: GPT-4o generates slide content, narrative flow, speaker notes, and coaching recommendations tailored to audience and purpose.
+- **Smart Template Selection**: Three templates (Executive Modern, Data Driven, Visual Narrative) auto-selected based on audience and purpose with manual override.
+- **Coaching System**: AI coaching identifies data strengths and gaps, recommends narrative improvements, provides audience-specific tips, and template usage guidance.
+- **Topic Multi-Select**: 10 topic categories (Discovery Insights, Stakeholder Priorities, KPI Commitments, Alignment Progress, Value Realization, Evidence Pack, Success Stories, Green Sheet Objectives, Growth Accelerator, Competitive Landscape) with data availability indicators.
+- **Audience Options**: C-Suite, Client Sponsor, Delivery Team, Board, Internal Review, Buying Committee.
+- **Purpose Options**: Customer Engagement, QBR, Executive Pitch, Discovery Readout, Handoff Brief, Evidence Review, Value Story.
+- **PowerPoint Export**: Uses pptxgenjs to generate .pptx files with Korn Ferry branding, including 11 slide types (title, section divider, content, KPI scorecard, chart, timeline, quote, flow diagram, comparison, summary, image feature).
+- **Green Sheet Integration**: Green Sheet meeting objectives and call planner data flow into presentation topics for customer engagement meetings.
+- **Branded Image Library**: 12 professional images categorized (professional, teamwork, technology, leadership, cityscape, innovation) for contextual slide visuals.
+
 An Interactive Green Sheet offers role-based coaching and editable call objective fields. The Interactive Story Builder provides a three-phase storytelling framework with coaching tips and a story test functionality. A Tension Questions System offers AI-powered question recommendations. An Executive Demo Mode provides a guided tour showcasing the Sales to Delivery journey using seeded demo data.
 
 #### Growth Accelerator (Working Backwards Toolkit)
