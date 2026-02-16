@@ -170,117 +170,268 @@ const TEMPLATE_COLORS: Record<PresentationTemplate, { bg: string; accent: string
   visual_narrative: { bg: '#00634F', accent: '#A3238E', headerBg: '#00634F', headerText: '#ffffff' },
 };
 
+function MiniBarChart({ chartData, colors: templateColors }: { chartData: any; colors: any }) {
+  if (!chartData?.data || !chartData?.labels) return null;
+  const maxVal = Math.max(...chartData.data, 1);
+  const barColors = chartData.colors || [templateColors.accent, '#005971', '#009B77', '#00ADBB', '#A3238E', '#8DC63F', '#05C690', '#929192'];
+
+  if (chartData.type === 'pie' || chartData.type === 'doughnut') {
+    const total = chartData.data.reduce((a: number, b: number) => a + b, 0) || 1;
+    let cumAngle = 0;
+    const segments = chartData.data.map((val: number, i: number) => {
+      const angle = (val / total) * 360;
+      const start = cumAngle;
+      cumAngle += angle;
+      return { start, angle, color: barColors[i % barColors.length], label: chartData.labels[i], val, pct: Math.round((val / total) * 100) };
+    });
+
+    return (
+      <div className="flex items-center gap-3 w-full h-full">
+        <div className="w-[45%] flex items-center justify-center">
+          <svg viewBox="0 0 100 100" className="w-full max-w-[80px]">
+            {segments.map((seg: any, i: number) => {
+              const startRad = (seg.start - 90) * Math.PI / 180;
+              const endRad = (seg.start + seg.angle - 90) * Math.PI / 180;
+              const largeArc = seg.angle > 180 ? 1 : 0;
+              const outerR = chartData.type === 'doughnut' ? 45 : 48;
+              const innerR = chartData.type === 'doughnut' ? 28 : 0;
+              const x1 = 50 + outerR * Math.cos(startRad);
+              const y1 = 50 + outerR * Math.sin(startRad);
+              const x2 = 50 + outerR * Math.cos(endRad);
+              const y2 = 50 + outerR * Math.sin(endRad);
+              if (chartData.type === 'doughnut') {
+                const ix1 = 50 + innerR * Math.cos(endRad);
+                const iy1 = 50 + innerR * Math.sin(endRad);
+                const ix2 = 50 + innerR * Math.cos(startRad);
+                const iy2 = 50 + innerR * Math.sin(startRad);
+                return <path key={i} d={`M ${x1} ${y1} A ${outerR} ${outerR} 0 ${largeArc} 1 ${x2} ${y2} L ${ix1} ${iy1} A ${innerR} ${innerR} 0 ${largeArc} 0 ${ix2} ${iy2} Z`} fill={seg.color} />;
+              }
+              return <path key={i} d={`M 50 50 L ${x1} ${y1} A ${outerR} ${outerR} 0 ${largeArc} 1 ${x2} ${y2} Z`} fill={seg.color} />;
+            })}
+          </svg>
+        </div>
+        <div className="w-[55%] space-y-0.5">
+          {segments.slice(0, 5).map((seg: any, i: number) => (
+            <div key={i} className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: seg.color }} />
+              <span className="text-[clamp(5px,0.65vw,8px)] text-gray-600 truncate">{seg.label}</span>
+              <span className="text-[clamp(5px,0.65vw,8px)] text-gray-400 ml-auto shrink-0">{seg.pct}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col w-full h-full">
+      <div className="flex-1 flex items-end gap-[3%] px-[2%] pb-1">
+        {chartData.data.slice(0, 8).map((val: number, i: number) => (
+          <div key={i} className="flex-1 flex flex-col items-center justify-end h-full">
+            <div
+              className="w-full rounded-t-sm min-h-[2px]"
+              style={{
+                height: `${Math.max(5, (val / maxVal) * 100)}%`,
+                backgroundColor: barColors[i % barColors.length],
+              }}
+            />
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-[3%] px-[2%]">
+        {chartData.labels.slice(0, 8).map((label: string, i: number) => (
+          <div key={i} className="flex-1 text-center">
+            <span className="text-[clamp(4px,0.5vw,7px)] text-gray-500 leading-none block truncate">{label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TrendArrow({ trend }: { trend?: string }) {
+  if (trend === 'up') return <span className="text-emerald-500 text-[clamp(6px,0.7vw,10px)]">&#9650;</span>;
+  if (trend === 'down') return <span className="text-red-500 text-[clamp(6px,0.7vw,10px)]">&#9660;</span>;
+  if (trend === 'stable') return <span className="text-amber-500 text-[clamp(6px,0.7vw,10px)]">&#9644;</span>;
+  return null;
+}
+
 function SlideFullPreview({ slide, index, template }: { slide: SlideContent; index: number; template: PresentationTemplate }) {
   const colors = TEMPLATE_COLORS[template];
   const isTitle = slide.slideType === 'title' || slide.slideType === 'section_divider' || slide.slideType === 'image_feature';
 
   return (
     <div
-      className="w-full aspect-[16/9] rounded-md overflow-hidden relative border border-border"
-      style={{ backgroundColor: isTitle ? colors.bg : '#ffffff' }}
+      className="w-full aspect-[16/9] rounded-md overflow-hidden relative select-none"
+      style={{
+        backgroundColor: isTitle ? colors.bg : '#ffffff',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+      }}
     >
+      {isTitle && (
+        <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${colors.bg} 0%, ${colors.accent}33 100%)` }} />
+      )}
+
       {!isTitle && (
-        <div className="h-[10%] flex items-center px-[4%]" style={{ backgroundColor: colors.accent }}>
-          <span className="text-white font-semibold text-[clamp(8px,1.2vw,14px)] truncate">{slide.title}</span>
+        <div className="h-[8%] flex items-center justify-between px-[4%]" style={{ backgroundColor: colors.headerBg }}>
+          <span className="text-white font-semibold text-[clamp(7px,1.1vw,13px)] truncate">{slide.title}</span>
+          <span className="text-white/50 text-[clamp(5px,0.5vw,7px)] shrink-0 ml-2">{index + 1}</span>
         </div>
       )}
 
-      <div className={`flex-1 ${isTitle ? 'h-full' : 'h-[90%]'} p-[4%] flex flex-col`}>
+      <div className={`${isTitle ? 'h-full' : 'h-[92%]'} p-[4%] flex flex-col relative`}>
         {isTitle && (
-          <div className="flex-1 flex flex-col justify-center">
-            <p className="font-bold text-[clamp(12px,2vw,24px)] leading-tight" style={{ color: isTitle ? '#ffffff' : '#333333' }}>
+          <div className="flex-1 flex flex-col justify-center relative z-10">
+            <div className="w-12 h-[2px] mb-3" style={{ backgroundColor: colors.accent }} />
+            <p className="font-bold text-[clamp(14px,2.2vw,28px)] leading-tight text-white">
               {slide.title}
             </p>
             {slide.subtitle && (
-              <p className="mt-2 text-[clamp(8px,1.2vw,14px)] opacity-70" style={{ color: isTitle ? '#ffffff' : '#666666' }}>
+              <p className="mt-2 text-[clamp(8px,1.1vw,14px)] text-white/70 leading-snug">
                 {slide.subtitle}
               </p>
             )}
             {slide.bodyContent && (
-              <p className="mt-2 text-[clamp(7px,0.9vw,11px)] opacity-50" style={{ color: isTitle ? '#ffffff' : '#999999' }}>
+              <p className="mt-3 text-[clamp(6px,0.8vw,10px)] text-white/40">
                 {slide.bodyContent}
               </p>
             )}
+            <div className="absolute bottom-[4%] right-[4%] w-8 h-8 rounded-full border border-white/20" style={{ backgroundColor: colors.accent + '33' }} />
           </div>
         )}
 
         {!isTitle && slide.slideType === 'kpi_scorecard' && slide.metrics && (
-          <div className="grid grid-cols-2 gap-2 mt-1">
-            {slide.metrics.slice(0, 4).map((m, i) => (
-              <div key={i} className="rounded bg-gray-50 p-2 text-center">
-                <p className="text-[clamp(10px,1.5vw,20px)] font-bold" style={{ color: m.color || colors.accent }}>{m.value}</p>
-                <p className="text-[clamp(6px,0.7vw,9px)] text-gray-500 truncate">{m.label}</p>
-              </div>
-            ))}
+          <div className="flex-1 flex flex-col">
+            {slide.bodyContent && <p className="text-[clamp(6px,0.8vw,10px)] text-gray-500 mb-2">{slide.bodyContent}</p>}
+            <div className={`grid ${slide.metrics.length <= 3 ? 'grid-cols-3' : slide.metrics.length <= 4 ? 'grid-cols-2' : 'grid-cols-3'} gap-2 flex-1`}>
+              {slide.metrics.slice(0, 6).map((m, i) => (
+                <div key={i} className="rounded-md p-2 flex flex-col items-center justify-center text-center" style={{ backgroundColor: (m.color || colors.accent) + '0D', borderLeft: `3px solid ${m.color || colors.accent}` }}>
+                  <div className="flex items-center gap-1">
+                    <p className="text-[clamp(12px,1.8vw,24px)] font-bold leading-none" style={{ color: m.color || colors.accent }}>{m.value}</p>
+                    <TrendArrow trend={m.trend} />
+                  </div>
+                  <p className="text-[clamp(5px,0.65vw,8px)] text-gray-500 mt-1 leading-tight">{m.label}</p>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
-        {!isTitle && slide.slideType === 'quote' && slide.quoteText && (
-          <div className="flex-1 flex flex-col justify-center items-center text-center px-4">
-            <p className="text-[clamp(9px,1.1vw,16px)] italic text-gray-700 leading-relaxed">"{slide.quoteText}"</p>
-            {slide.quoteAuthor && <p className="mt-2 text-[clamp(7px,0.8vw,11px)] text-gray-500">— {slide.quoteAuthor}</p>}
+        {!isTitle && slide.slideType === 'quote' && (
+          <div className="flex-1 flex flex-col justify-center items-center text-center px-[8%]">
+            <div className="text-[clamp(20px,3vw,40px)] leading-none mb-1" style={{ color: colors.accent + '44' }}>"</div>
+            <p className="text-[clamp(8px,1.1vw,15px)] italic text-gray-700 leading-relaxed">{slide.quoteText}</p>
+            {slide.quoteAuthor && (
+              <div className="mt-2 flex items-center gap-1.5">
+                <div className="w-6 h-[1px]" style={{ backgroundColor: colors.accent }} />
+                <p className="text-[clamp(6px,0.75vw,10px)] font-medium" style={{ color: colors.accent }}>{slide.quoteAuthor}</p>
+              </div>
+            )}
+            {slide.bodyContent && <p className="mt-2 text-[clamp(5px,0.6vw,8px)] text-gray-400">{slide.bodyContent}</p>}
           </div>
         )}
 
         {!isTitle && (slide.slideType === 'content' || slide.slideType === 'summary') && (
-          <div className="mt-1 space-y-1">
-            {slide.bodyContent && <p className="text-[clamp(7px,0.9vw,12px)] text-gray-600">{slide.bodyContent}</p>}
-            {slide.bulletPoints && slide.bulletPoints.slice(0, 5).map((bp, i) => (
-              <div key={i} className="flex items-start gap-1">
-                <div className="w-1.5 h-1.5 rounded-full mt-1 shrink-0" style={{ backgroundColor: colors.accent }} />
-                <span className="text-[clamp(6px,0.8vw,11px)] text-gray-700 leading-tight">{bp}</span>
-              </div>
-            ))}
-            {slide.metrics && slide.metrics.length > 0 && (
-              <div className="grid grid-cols-2 gap-1 mt-1">
-                {slide.metrics.slice(0, 4).map((m, i) => (
-                  <div key={i} className="rounded bg-gray-50 p-1 text-center">
-                    <p className="text-[clamp(8px,1vw,14px)] font-bold" style={{ color: m.color || colors.accent }}>{m.value}</p>
-                    <p className="text-[clamp(5px,0.6vw,8px)] text-gray-500 truncate">{m.label}</p>
-                  </div>
-                ))}
-              </div>
-            )}
+          <div className="flex-1 flex flex-col">
+            {slide.bodyContent && <p className="text-[clamp(6px,0.85vw,11px)] text-gray-600 mb-1.5 leading-snug">{slide.bodyContent}</p>}
+
+            <div className={`flex-1 flex ${slide.metrics && slide.metrics.length > 0 && slide.bulletPoints && slide.bulletPoints.length > 0 ? 'gap-3' : ''}`}>
+              {slide.bulletPoints && slide.bulletPoints.length > 0 && (
+                <div className={`space-y-1 ${slide.metrics && slide.metrics.length > 0 ? 'w-[55%]' : 'w-full'}`}>
+                  {slide.bulletPoints.slice(0, 6).map((bp, i) => (
+                    <div key={i} className="flex items-start gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full mt-[3px] shrink-0" style={{ backgroundColor: colors.accent }} />
+                      <span className="text-[clamp(5px,0.75vw,10px)] text-gray-700 leading-snug">{bp}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {slide.metrics && slide.metrics.length > 0 && (
+                <div className={`${slide.bulletPoints && slide.bulletPoints.length > 0 ? 'w-[45%]' : 'w-full'} grid ${slide.bulletPoints && slide.bulletPoints.length > 0 ? 'grid-cols-1' : 'grid-cols-2'} gap-1.5 auto-rows-min`}>
+                  {slide.metrics.slice(0, 4).map((m, i) => (
+                    <div key={i} className="rounded p-1.5 flex items-center gap-1.5" style={{ backgroundColor: (m.color || colors.accent) + '0D' }}>
+                      <p className="text-[clamp(8px,1.2vw,16px)] font-bold leading-none" style={{ color: m.color || colors.accent }}>{m.value}</p>
+                      <div className="min-w-0">
+                        <p className="text-[clamp(4px,0.55vw,7px)] text-gray-500 truncate">{m.label}</p>
+                        {m.trend && <TrendArrow trend={m.trend} />}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
         {!isTitle && slide.slideType === 'comparison' && slide.comparisonItems && (
-          <div className="mt-1 space-y-1">
-            {slide.comparisonItems.slice(0, 3).map((item, i) => (
-              <div key={i} className="flex gap-2 text-[clamp(6px,0.8vw,10px)]">
-                <span className="font-medium text-gray-700 w-1/4 truncate">{item.label}</span>
-                <span className="text-red-600 w-[37%] truncate">{item.before}</span>
-                <span className="text-emerald-600 w-[37%] truncate">{item.after}</span>
+          <div className="flex-1 flex flex-col">
+            {slide.bodyContent && <p className="text-[clamp(5px,0.7vw,9px)] text-gray-500 mb-1.5">{slide.bodyContent}</p>}
+            <div className="flex-1">
+              <div className="grid grid-cols-[1fr_1fr_1fr] gap-1 mb-1">
+                <span className="text-[clamp(5px,0.6vw,8px)] font-semibold text-gray-500 uppercase tracking-wider"></span>
+                <span className="text-[clamp(5px,0.6vw,8px)] font-semibold text-red-400 uppercase tracking-wider text-center">Before</span>
+                <span className="text-[clamp(5px,0.6vw,8px)] font-semibold uppercase tracking-wider text-center" style={{ color: colors.accent }}>After</span>
               </div>
-            ))}
+              {slide.comparisonItems.slice(0, 5).map((item, i) => (
+                <div key={i} className="grid grid-cols-[1fr_1fr_1fr] gap-1 py-1 border-b border-gray-100 last:border-0">
+                  <span className="text-[clamp(5px,0.7vw,9px)] font-medium text-gray-700">{item.label}</span>
+                  <div className="text-center rounded px-1 py-0.5 bg-red-50">
+                    <span className="text-[clamp(5px,0.7vw,9px)] text-red-600">{item.before}</span>
+                  </div>
+                  <div className="text-center rounded px-1 py-0.5" style={{ backgroundColor: colors.accent + '0D' }}>
+                    <span className="text-[clamp(5px,0.7vw,9px)]" style={{ color: colors.accent }}>{item.after}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
         {!isTitle && slide.slideType === 'flow_diagram' && slide.flowSteps && (
-          <div className="flex items-center justify-center gap-1 mt-2 flex-wrap">
-            {slide.flowSteps.slice(0, 4).map((step, i) => (
-              <div key={i} className="flex items-center gap-1">
-                <div className="rounded px-2 py-1 text-white text-center" style={{ backgroundColor: colors.accent }}>
-                  <p className="text-[clamp(6px,0.7vw,9px)] font-medium">{step.label}</p>
+          <div className="flex-1 flex flex-col justify-center">
+            {slide.bodyContent && <p className="text-[clamp(5px,0.7vw,9px)] text-gray-500 mb-2 text-center">{slide.bodyContent}</p>}
+            <div className="flex items-stretch justify-center gap-0 mx-auto w-full px-[2%]">
+              {slide.flowSteps.slice(0, 5).map((step, i) => (
+                <div key={i} className="flex items-center flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 rounded-md p-1.5 text-center" style={{ backgroundColor: colors.accent + '11', borderTop: `2px solid ${colors.accent}` }}>
+                    <p className="text-[clamp(6px,0.8vw,10px)] font-semibold leading-tight" style={{ color: colors.accent }}>{step.label}</p>
+                    {step.description && <p className="text-[clamp(4px,0.5vw,7px)] text-gray-500 mt-0.5 leading-tight line-clamp-2">{step.description}</p>}
+                  </div>
+                  {i < (slide.flowSteps?.length || 0) - 1 && (
+                    <div className="shrink-0 px-0.5">
+                      <ChevronRight className="w-3 h-3" style={{ color: colors.accent }} />
+                    </div>
+                  )}
                 </div>
-                {i < (slide.flowSteps?.length || 0) - 1 && <ChevronRight className="w-3 h-3 text-gray-400" />}
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
 
-        {!isTitle && slide.slideType === 'chart' && (
+        {!isTitle && slide.slideType === 'chart' && slide.chartData && (
+          <div className="flex-1 flex flex-col">
+            {slide.bodyContent && <p className="text-[clamp(5px,0.7vw,9px)] text-gray-500 mb-1">{slide.bodyContent}</p>}
+            <div className="flex-1">
+              <MiniBarChart chartData={slide.chartData} colors={colors} />
+            </div>
+          </div>
+        )}
+
+        {!isTitle && slide.slideType === 'chart' && !slide.chartData && (
           <div className="flex-1 flex items-center justify-center">
-            <div className="w-3/4 h-3/4 rounded bg-gray-50 border border-gray-200 flex items-center justify-center">
-              <BarChart3 className="w-8 h-8 text-gray-300" />
+            <div className="w-3/4 h-3/4 rounded bg-gray-50 border border-dashed border-gray-200 flex items-center justify-center">
+              <BarChart3 className="w-6 h-6 text-gray-300" />
             </div>
           </div>
         )}
       </div>
 
-      <div className="absolute bottom-1 right-2 text-[clamp(6px,0.6vw,8px)] opacity-40" style={{ color: isTitle ? '#ffffff' : '#333333' }}>
-        {index + 1}
-      </div>
+      {isTitle && (
+        <div className="absolute bottom-[4%] left-[4%] text-[clamp(5px,0.5vw,7px)] text-white/30">
+          {index + 1}
+        </div>
+      )}
     </div>
   );
 }

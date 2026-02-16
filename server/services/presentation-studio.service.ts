@@ -96,6 +96,7 @@ interface AggregatedData {
   evidencePack: any;
   evidencePackItems: any[];
   successStories: any[];
+  successStoryLibrary: any[];
   headlines: any[];
   valueCases: any[];
   discoveryQuestions: any[];
@@ -118,6 +119,7 @@ export async function aggregatePresentationData(
     evidencePack: null,
     evidencePackItems: [],
     successStories: [],
+    successStoryLibrary: [],
     headlines: [],
     valueCases: [],
     discoveryQuestions: [],
@@ -169,6 +171,17 @@ export async function aggregatePresentationData(
     data.successStories = await storage.getSuccessStories(projectId);
   } catch (e) {
     console.warn("[PresentationStudio] Failed to fetch success stories:", e);
+  }
+
+  try {
+    const accountData = data.account;
+    const industry = accountData?.industry || undefined;
+    data.successStoryLibrary = await storage.getSuccessStoryLibrary({
+      industry,
+      approvalStatus: 'approved',
+    });
+  } catch (e) {
+    console.warn("[PresentationStudio] Failed to fetch success story library:", e);
   }
 
   try {
@@ -290,7 +303,7 @@ function assessDataCompleteness(
         break;
       }
       case 'success_stories': {
-        dataPoints = data.successStories.length;
+        dataPoints = data.successStories.length + data.successStoryLibrary.length;
         available = dataPoints > 0;
         break;
       }
@@ -390,11 +403,24 @@ function summarizeDataForPrompt(data: AggregatedData, topics: TopicCategory[]): 
     sections.push(`EVIDENCE PACK (${data.evidencePackItems.length} items, Quality Score: ${data.evidencePack?.qualityScore || 'N/A'}):\n${itemSummary}`);
   }
 
-  if (topics.includes('success_stories') && data.successStories.length > 0) {
-    const storySummary = data.successStories.slice(0, 5).map((s: any) =>
-      `- ${s.title}: Challenge: ${s.challenge || 'N/A'} | Solution: ${s.solution || 'N/A'} | Impact: ${s.impact || 'N/A'}`
-    ).join('\n');
-    sections.push(`SUCCESS STORIES (${data.successStories.length} total):\n${storySummary}`);
+  if (topics.includes('success_stories')) {
+    const stories: string[] = [];
+    if (data.successStories.length > 0) {
+      const projectStories = data.successStories.slice(0, 5).map((s: any) =>
+        `- [Project] ${s.title}: Category: ${s.category || 'N/A'} | Industry: ${s.industry || 'N/A'} | Capability: ${s.capabilityName || 'N/A'} | Relevance: ${s.relevanceReason || 'N/A'} | Excerpt: ${s.excerpt || 'N/A'}`
+      ).join('\n');
+      stories.push(projectStories);
+    }
+    if (data.successStoryLibrary.length > 0) {
+      const libraryStories = data.successStoryLibrary.slice(0, 5).map((s: any) =>
+        `- [Library] ${s.title}: Challenge: ${s.challenge || 'N/A'} | Solution: ${s.solution || 'N/A'} | Results: ${s.results || 'N/A'} | Metrics: ${s.metrics || 'N/A'} | Industry: ${s.industry || 'N/A'} | Capability: ${s.capabilityName || 'N/A'} | Timeframe: ${s.timeframeMonths ? s.timeframeMonths + ' months' : 'N/A'}`
+      ).join('\n');
+      stories.push(libraryStories);
+    }
+    const totalCount = data.successStories.length + data.successStoryLibrary.length;
+    if (totalCount > 0) {
+      sections.push(`SUCCESS STORIES (${totalCount} total - ${data.successStories.length} project-specific, ${data.successStoryLibrary.length} from library):\n${stories.join('\n')}`);
+    }
   }
 
   if (topics.includes('green_sheet_objectives')) {
@@ -431,7 +457,7 @@ async function generateSlidesWithAI(
   const audienceContext = AUDIENCE_CONTEXT[request.audience];
   const purposeContext = PURPOSE_CONTEXT[request.purpose];
 
-  const prompt = `You are a Korn Ferry presentation expert. Generate a professional slide deck in JSON format.
+  const prompt = `You are a Korn Ferry senior presentation strategist. Generate a RICH, DATA-DENSE, VISUALLY COMPELLING slide deck in JSON format.
 
 CONTEXT:
 - Audience: ${request.audience} - ${audienceContext}
@@ -444,67 +470,46 @@ CONTEXT:
 AVAILABLE DATA:
 ${dataSummary}
 
+CRITICAL DESIGN PRINCIPLES:
+1. EVERY SLIDE must contain substantial, specific content - NO generic placeholder text
+2. Use REAL numbers, names, and data from the available data above
+3. VARY slide types extensively - mix kpi_scorecard, chart, flow_diagram, comparison, quote, content, image_feature
+4. Each kpi_scorecard slide should have 3-6 metrics with specific values and trend indicators
+5. Each chart slide must have chartData with real labels and realistic data values (3-8 data points)
+6. comparison slides must show specific before vs after values from the data
+7. flow_diagram slides should have 3-5 clear steps with descriptions
+8. Content slides should have 3-5 substantive bullet points with specific insights, not generic statements
+9. Quote slides should feature client-relevant quotes or powerful value statements
+10. Include bodyContent AND bulletPoints AND metrics on content slides where relevant - pack value into every slide
+11. Speaker notes should be detailed talking points (2-3 sentences), not one-liners
+
 TEMPLATE GUIDELINES:
-- executive_modern: Clean, minimal slides with powerful statements. Max 12 slides. Heavy use of metrics and image_feature slides.
-- data_driven: Data-rich slides with charts, scorecards, and comparisons. Max 15 slides. Include chart data where possible.
-- visual_narrative: Story-driven slides with quotes, flow diagrams, and image features. Max 14 slides. Emphasize narrative arc.
+- executive_modern: 10-12 slides. Lead with bold metrics. Use kpi_scorecard + image_feature + comparison heavily. Every slide must have either metrics or a chart.
+- data_driven: 12-15 slides. Heavy use of charts, kpi_scorecards, comparison slides. Include chartData on at least 40% of slides. Each chart needs 4+ labeled data points.
+- visual_narrative: 10-14 slides. Story arc with quote slides, flow_diagrams, image_features. But still include data - every narrative slide should have at least one metric or bullet point backed by data.
 
-IMAGE CATEGORIES (assign to image_feature slides):
-- 'professional': Individual professional portraits
-- 'teamwork': Group collaboration shots
-- 'technology': Tech/innovation imagery
-- 'leadership': Executive/leader shots
-- 'cityscape': City/panorama views
-- 'innovation': Abstract/futuristic visuals
+IMAGE CATEGORIES (assign to image_feature and section_divider slides):
+- 'professional', 'teamwork', 'technology', 'leadership', 'cityscape', 'innovation'
 
-BRAND COLORS (use for chart colors and metric colors):
-- Navy: "#00173B" (primary text, headers)
-- Forest Green: "#00634F" (primary actions)
-- Ocean Blue: "#005971" (secondary elements)
-- Emerald: "#009B77" (success/positive metrics)
-- Mint: "#05C690" (highlights)
-- Lime: "#8DC63F" (growth indicators)
-- Cyan: "#00ADBB" (information)
-- Purple: "#A3238E" (premium/AI features)
-- Gray: "#929192" (neutral)
+BRAND COLORS (REQUIRED for chart colors and metric colors - assign specific colors):
+- Navy: "#00173B", Forest Green: "#00634F", Ocean Blue: "#005971"
+- Emerald: "#009B77" (for positive/success), Mint: "#05C690" (highlights)
+- Lime: "#8DC63F" (growth), Cyan: "#00ADBB" (info), Purple: "#A3238E" (premium)
 
-INSTRUCTIONS:
-1. Generate a complete slide deck as a JSON object with a "slides" array
-2. Start with a title slide, end with a summary slide
-3. Each slide MUST have: id (unique string like "slide-1"), slideType, title, topicSource (from the selected topics)
-4. Include speaker notes for every slide
-5. Include coaching tips for key slides
-6. For chart slides, include actual chartData with realistic numbers based on the data provided
-7. For kpi_scorecard slides, include metrics array with trend indicators
-8. For image_feature slides, assign appropriate imageCategory
-9. For comparison slides, include comparisonItems with before/after data
-10. For flow_diagram slides, include flowSteps
-11. Ensure the narrative flows logically from context to insights to evidence to next steps
-12. Match slide density to template style
+SLIDE TYPE REQUIREMENTS:
+- title: Must have title, subtitle, and bodyContent with date/context
+- section_divider: Must have title, subtitle, imageCategory
+- content: Must have title + at least 3 bulletPoints + optional bodyContent + optional metrics
+- kpi_scorecard: Must have title + 3-6 metrics each with label, value, trend ("up"/"down"/"stable"), and color
+- chart: Must have title + chartData with type (bar/pie/line/doughnut), labels array, data array, colors array
+- quote: Must have quoteText + quoteAuthor + optional bodyContent
+- flow_diagram: Must have title + 3-5 flowSteps each with label and description
+- comparison: Must have title + 3-5 comparisonItems each with label, before, after
+- summary: Must have title + 3-5 bulletPoints with specific next steps + optional metrics
+- image_feature: Must have title + subtitle + bodyContent + imageCategory
 
-Return ONLY valid JSON with this structure:
-{
-  "slides": [
-    {
-      "id": "slide-1",
-      "slideType": "title",
-      "title": "...",
-      "subtitle": "...",
-      "bodyContent": "...",
-      "bulletPoints": ["..."],
-      "metrics": [{"label": "...", "value": "...", "trend": "up", "color": "#009B77"}],
-      "chartData": {"type": "bar", "labels": ["..."], "data": [0], "colors": ["#00634F"]},
-      "quoteText": "...",
-      "quoteAuthor": "...",
-      "imageCategory": "professional",
-      "flowSteps": [{"label": "...", "description": "..."}],
-      "comparisonItems": [{"label": "...", "before": "...", "after": "..."}],
-      "coachingTip": "...",
-      "speakerNotes": "...",
-      "topicSource": "discovery_insights"
-    }
-  ]
-}`;
+Return ONLY valid JSON with a "slides" array. Each slide must have: id (e.g. "slide-1"), slideType, title, topicSource, speakerNotes. Include all relevant optional fields to make slides data-rich.`;
+
 
   try {
     const response = await openai.chat.completions.create({
@@ -521,7 +526,7 @@ Return ONLY valid JSON with this structure:
       ],
       response_format: { type: "json_object" },
       temperature: 0.7,
-      max_tokens: 4000,
+      max_tokens: 8000,
     });
 
     const content = response.choices[0]?.message?.content;
@@ -728,17 +733,41 @@ function generateFallbackSlides(
     }
   }
 
-  if (request.selectedTopics.includes('success_stories') && data.successStories.length > 0) {
-    for (const story of data.successStories.slice(0, 2)) {
+  if (request.selectedTopics.includes('success_stories')) {
+    const allStories: any[] = [];
+    for (const s of data.successStories.slice(0, 3)) {
+      allStories.push({
+        id: s.id,
+        title: s.title || 'Success Story',
+        bullets: [
+          s.category ? `Category: ${s.category}` : null,
+          s.capabilityName ? `Capability: ${s.capabilityName}` : null,
+          s.industry ? `Industry: ${s.industry}` : null,
+          s.relevanceReason ? `Relevance: ${s.relevanceReason}` : null,
+          s.excerpt ? `${s.excerpt}` : null,
+        ].filter(Boolean) as string[],
+      });
+    }
+    for (const s of data.successStoryLibrary.slice(0, 3)) {
+      allStories.push({
+        id: s.id,
+        title: s.title || 'Success Story',
+        bullets: [
+          s.challenge ? `Challenge: ${s.challenge}` : null,
+          s.solution ? `Solution: ${s.solution}` : null,
+          s.results ? `Results: ${s.results}` : null,
+          s.metrics ? `Metrics: ${s.metrics}` : null,
+          s.industry ? `Industry: ${s.industry}` : null,
+          s.timeframeMonths ? `Achieved in ${s.timeframeMonths} months` : null,
+        ].filter(Boolean) as string[],
+      });
+    }
+    for (const story of allStories.slice(0, 2)) {
       slides.push({
         id: `slide-story-${story.id || slides.length}`,
         slideType: 'content',
-        title: story.title || 'Success Story',
-        bulletPoints: [
-          `Challenge: ${story.challenge || 'N/A'}`,
-          `Solution: ${story.solution || 'N/A'}`,
-          `Impact: ${story.impact || 'N/A'}`,
-        ],
+        title: story.title,
+        bulletPoints: story.bullets,
         imageCategory: 'teamwork',
         speakerNotes: 'Share this success story to reinforce credibility and value delivery.',
         topicSource: 'success_stories',
@@ -931,12 +960,13 @@ export function generateCoaching(
   }
 
   if (request.selectedTopics.includes('success_stories')) {
-    if (aggregatedData.successStories.length === 0) {
+    const totalStories = aggregatedData.successStories.length + aggregatedData.successStoryLibrary.length;
+    if (totalStories === 0) {
       coaching.push({
         type: 'gap',
         priority: 'medium',
         title: 'No Success Stories',
-        description: 'No success stories are available for this project.',
+        description: 'No success stories are available for this project or in the global library.',
         actionableAdvice: 'Add success stories from similar engagements. Even early-stage wins can be powerful proof points.',
         relatedTopic: 'success_stories',
       });
@@ -945,7 +975,7 @@ export function generateCoaching(
         type: 'strength',
         priority: 'low',
         title: 'Success Stories Available',
-        description: `${aggregatedData.successStories.length} success story(ies) ready to showcase.`,
+        description: `${totalStories} success story(ies) ready to showcase (${aggregatedData.successStories.length} project-specific, ${aggregatedData.successStoryLibrary.length} from library).`,
         actionableAdvice: 'Use success stories to create emotional connection. Place them after data-heavy sections to re-engage the audience.',
         relatedTopic: 'success_stories',
       });
