@@ -113,7 +113,8 @@ import {
   Package,
   Filter,
   Crown,
-  Rocket
+  Rocket,
+  Presentation
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -7532,6 +7533,25 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
               </button>
             );
           })}
+
+          <Link href={`/presentation-studio/${accountId}/${projectId}`} data-testid="nav-presentation-studio">
+            <div className="w-full text-left p-3 rounded-lg border transition-all bg-gradient-to-r from-blue-500/5 to-indigo-500/5 border-blue-500/20 hover-elevate">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-blue-600">
+                  <Presentation className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-medium">Presentation Studio</p>
+                    <Badge variant="outline" className="text-[10px] py-0 h-4 border-blue-500/30 text-blue-600 bg-blue-500/5">
+                      AI
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate">Generate Client Decks</p>
+                </div>
+              </div>
+            </div>
+          </Link>
           
         </div>
       </div>
@@ -14091,6 +14111,20 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
           </div>
         </CardContent>
       </Card>
+
+      <Link href={`/presentation-studio/${accountId}/${projectId}`} data-testid="delivery-presentation-studio">
+        <div className="flex items-center gap-3 p-3 rounded-lg border bg-gradient-to-r from-blue-500/5 to-indigo-500/5 border-blue-500/20 hover-elevate">
+          <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-blue-600">
+            <Presentation className="w-4 h-4" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium">Presentation Studio</p>
+            <p className="text-xs text-muted-foreground">Generate AI-powered client decks</p>
+          </div>
+          <Badge variant="outline" className="text-[10px] py-0 h-4 border-blue-500/30 text-blue-600 bg-blue-500/5">AI</Badge>
+          <ArrowUpRight className="w-4 h-4 text-muted-foreground" />
+        </div>
+      </Link>
 
       {/* Stage Content */}
       {activeLifecycleStage === "onboarding" && (
