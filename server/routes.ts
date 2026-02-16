@@ -17493,14 +17493,145 @@ Return JSON:
     }
   });
 
+  app.post("/api/presentations/refine-slide", async (req, res) => {
+    try {
+      const { slide, instruction, accountId, projectId, purpose, audience } = req.body;
+      if (!slide || !instruction) {
+        return res.status(400).json({ error: "Missing required fields: slide, instruction" });
+      }
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "You are a Korn Ferry presentation expert. You refine individual presentation slides based on user instructions. Always respond with valid JSON containing the updated slide object with the same structure as the input slide."
+          },
+          {
+            role: "user",
+            content: `Refine this presentation slide based on the instruction below.
+
+CURRENT SLIDE:
+${JSON.stringify(slide, null, 2)}
+
+CONTEXT:
+- Purpose: ${purpose || 'customer_engagement'}
+- Audience: ${audience || 'client_sponsor'}
+
+USER INSTRUCTION: ${instruction}
+
+Return the updated slide as a JSON object with the same structure. Keep the same id and topicSource. Only modify what the instruction asks for. Return ONLY valid JSON with the updated slide object.`
+          }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+        max_tokens: 2000,
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        return res.status(500).json({ error: "Empty AI response" });
+      }
+
+      let refined;
+      try {
+        refined = JSON.parse(content);
+      } catch {
+        return res.status(500).json({ error: "AI returned invalid JSON. Please try again." });
+      }
+      if (!refined.title && !refined.slideType) {
+        return res.json({ ...slide, ...refined });
+      }
+      res.json(refined);
+    } catch (error: any) {
+      console.error("Error refining slide:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/presentations/fill-gap", async (req, res) => {
+    try {
+      const { coaching, slides, accountId, projectId, purpose, audience } = req.body;
+      if (!coaching) {
+        return res.status(400).json({ error: "Missing coaching recommendation" });
+      }
+
+      const data = await aggregatePresentationData(accountId, projectId, [coaching.relatedTopic || 'discovery_insights']);
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "You are a Korn Ferry presentation expert. You address gaps identified in coaching recommendations by generating or improving slide content. Always respond with valid JSON."
+          },
+          {
+            role: "user",
+            content: `A coaching recommendation identified a gap in the presentation. Generate content to address it.
+
+GAP/RECOMMENDATION:
+- Type: ${coaching.type}
+- Title: ${coaching.title}
+- Description: ${coaching.description}
+- Advice: ${coaching.actionableAdvice}
+- Related Topic: ${coaching.relatedTopic || 'N/A'}
+
+CURRENT SLIDES COUNT: ${slides?.length || 0}
+PURPOSE: ${purpose || 'customer_engagement'}
+AUDIENCE: ${audience || 'client_sponsor'}
+
+Return a JSON object with:
+{
+  "action": "add_slide" | "modify_existing" | "add_content",
+  "slide": { ... complete slide object if adding ... },
+  "modifications": [ { "slideId": "...", "changes": { ... } } ],
+  "explanation": "What was done to address the gap"
+}`
+          }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+        max_tokens: 2000,
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        return res.status(500).json({ error: "Empty AI response" });
+      }
+
+      let result;
+      try {
+        result = JSON.parse(content);
+      } catch {
+        return res.status(500).json({ error: "AI returned invalid JSON. Please try again." });
+      }
+      if (!result.action) {
+        result.action = 'add_slide';
+      }
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error filling gap:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/presentations/export", async (req, res) => {
     try {
-      const body = req.body as PresentationRequest;
+      const { slides: providedSlides, plan: providedPlan, ...requestBody } = req.body;
+      const body = requestBody as PresentationRequest;
       if (!body.accountId || !body.projectId || !body.purpose || !body.audience || !body.selectedTopics?.length) {
         return res.status(400).json({ error: "Missing required fields: accountId, projectId, purpose, audience, selectedTopics" });
       }
 
-      const plan = await generatePresentationPlan(body);
+      let plan;
+      if (providedSlides && providedSlides.length > 0) {
+        plan = {
+          recommendedTemplate: body.templateOverride || 'executive_modern',
+          slides: providedSlides,
+        };
+      } else {
+        plan = await generatePresentationPlan(body);
+      }
       const template = plan.recommendedTemplate;
 
       const templateConfig: Record<string, { titleBg: string; accentColor: string; headerColor: string; textColor: string; subtitleColor: string }> = {
