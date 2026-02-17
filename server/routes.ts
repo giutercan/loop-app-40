@@ -11566,6 +11566,29 @@ WORKFLOW GUIDANCE:
 - When discussing KPIs, offer to show current status or recommend improvements
 - For meeting prep, ask about the meeting type and provide tailored talking points
 
+CONFIDENCE SCORING:
+- Include confidence indicators in your recommendations: [High Confidence], [Medium Confidence], or [Low Confidence]
+- High Confidence: Based on actual data in the system (KPI actuals, recorded metrics)
+- Medium Confidence: Based on patterns and partial data
+- Low Confidence: Based on general best practices without specific data
+- Example: "[High Confidence] Based on 3 months of KPI data, employee retention is trending 12% above target."
+
+REASONING CHAIN:
+- Briefly explain WHY you are recommending something before stating the recommendation
+- Connect recommendations to data points: "Because [observation], I recommend [action]"
+- When multiple options exist, explain trade-offs concisely
+
+MULTI-STEP WORKFLOW AWARENESS:
+You can orchestrate these multi-step workflows:
+1. New Engagement Setup: createAccount -> createInitiativeWithDiscovery -> recommendKPIs -> prepareMeetingBundle
+2. QBR Preparation: getAccountSummary -> listKPIs -> runQBRPrep -> prepareMeetingBundle
+3. Account Handoff: getAccountSummary -> listKPIs -> runHandoffBundle
+When the user's goal maps to one of these workflows, guide them through the steps proactively.
+
+IMPACT PREVIEW:
+- Before executing any write or edit action, describe what will happen: "This will create a new account named X with industry Y..."
+- For destructive or significant changes, explicitly state the impact: "This will update the baseline from 50 to 75, which will change the progress calculation for all related KPIs."
+
 CONVERSATION STYLE:
 - Be warm and professional, like a helpful colleague
 - Keep responses focused but thorough
@@ -11732,62 +11755,240 @@ Be concise but helpful. Use the user's context (current account, project, page) 
             navigationCommand = tr.result.navigationCommand;
           }
           
-          // Build context updates for canvas mode
+          // Build context updates for canvas mode with server-computed dashboard payloads
           if (isCanvasMode && tr.result.success && tr.result.data) {
-            // Determine context update type based on tool used
+            const d = tr.result.data;
             if (tr.toolName === "getAccountSummary" || tr.toolName === "createAccount") {
+              const initiatives = d.initiatives || [];
+              const initiativeCount = Array.isArray(initiatives) ? initiatives.length : 0;
+              const kpiData = d.kpiSummary || d.kpis || {};
+              const onTrack = kpiData.onTrack || 0;
+              const atRisk = kpiData.atRisk || 0;
+              const offTrack = kpiData.offTrack || 0;
+              const noData = kpiData.noData || 0;
+              const totalKpi = onTrack + atRisk + offTrack + noData;
               contextUpdate = { 
                 type: "account", 
-                data: tr.result.data,
-                title: tr.result.data?.name || "Account"
+                data: d,
+                title: d?.name || "Account",
+                dashboard: {
+                  metrics: [
+                    { label: "Initiatives", value: String(initiativeCount), trend: "stable", color: "#005971" },
+                    { label: "KPIs On Track", value: `${onTrack}/${totalKpi}`, trend: onTrack >= offTrack ? "up" : "down", color: "#009B77" },
+                    { label: "At Risk", value: String(atRisk), trend: atRisk > 0 ? "down" : "up", color: "#f59e0b" },
+                    { label: "Off Track", value: String(offTrack), trend: offTrack > 0 ? "down" : "up", color: "#ef4444" }
+                  ],
+                  charts: [
+                    {
+                      id: "account-kpi-health",
+                      type: "doughnut",
+                      title: "KPI Health",
+                      labels: ["On Track", "At Risk", "Off Track", "No Data"],
+                      data: [onTrack, atRisk, offTrack, noData],
+                      colors: ["#009B77", "#f59e0b", "#ef4444", "#929192"]
+                    }
+                  ],
+                  tables: [],
+                  actions: atRisk + offTrack > 0 
+                    ? [{ label: "Review at-risk KPIs", priority: "high" }] 
+                    : [{ label: "All KPIs healthy", priority: "low" }]
+                }
               };
             } else if (tr.toolName === "getInitiativeSummary" || tr.toolName === "createInitiative" || tr.toolName === "createInitiativeWithDiscovery") {
+              const phase = d.currentPhase || d.phase || "discovery";
+              const jobThemes = d.jobThemes || [];
+              const kpis = d.kpis || [];
               contextUpdate = { 
                 type: "initiative", 
-                data: tr.result.data,
-                title: tr.result.data?.name || "Initiative"
+                data: d,
+                title: d?.name || "Initiative",
+                dashboard: {
+                  metrics: [
+                    { label: "Phase", value: phase.charAt(0).toUpperCase() + phase.slice(1), trend: "stable", color: "#00634F" },
+                    { label: "Job Themes", value: String(Array.isArray(jobThemes) ? jobThemes.length : 0), trend: "stable", color: "#005971" },
+                    { label: "KPIs", value: String(Array.isArray(kpis) ? kpis.length : 0), trend: "stable", color: "#009B77" }
+                  ],
+                  charts: [],
+                  tables: [],
+                  actions: [{ label: `Continue ${phase} phase`, priority: "medium" }]
+                }
               };
             } else if (tr.toolName === "listKPIs") {
+              const kpiList = Array.isArray(d) ? d : (d.kpis || []);
+              let kOnTrack = 0, kAtRisk = 0, kOffTrack = 0, kNoData = 0;
+              const kpiRows: string[][] = [];
+              for (const k of kpiList) {
+                const status = k.status || k.healthStatus || "no-data";
+                if (status === "on-track") kOnTrack++;
+                else if (status === "at-risk") kAtRisk++;
+                else if (status === "off-track") kOffTrack++;
+                else kNoData++;
+                kpiRows.push([k.kpiName || k.name || "KPI", status, `${k.progressPercent || 0}%`]);
+              }
               contextUpdate = { 
                 type: "kpis", 
-                data: tr.result.data,
-                title: "KPIs"
+                data: d,
+                title: "KPIs",
+                dashboard: {
+                  metrics: [
+                    { label: "Total KPIs", value: String(kpiList.length), trend: "stable", color: "#005971" },
+                    { label: "On Track", value: String(kOnTrack), trend: "up", color: "#009B77" },
+                    { label: "At Risk", value: String(kAtRisk), trend: kAtRisk > 0 ? "down" : "up", color: "#f59e0b" },
+                    { label: "Off Track", value: String(kOffTrack), trend: kOffTrack > 0 ? "down" : "up", color: "#ef4444" }
+                  ],
+                  charts: [
+                    {
+                      id: "kpi-status-breakdown",
+                      type: "doughnut",
+                      title: "KPI Status",
+                      labels: ["On Track", "At Risk", "Off Track", "No Data"],
+                      data: [kOnTrack, kAtRisk, kOffTrack, kNoData],
+                      colors: ["#009B77", "#f59e0b", "#ef4444", "#929192"]
+                    }
+                  ],
+                  tables: [
+                    { title: "KPI Overview", headers: ["KPI", "Status", "Progress"], rows: kpiRows.slice(0, 10) }
+                  ],
+                  actions: []
+                }
               };
             } else if (tr.toolName === "prepareMeetingBundle") {
               contextUpdate = { 
                 type: "meeting", 
-                data: tr.result.data,
-                title: "Meeting Prep"
+                data: d,
+                title: "Meeting Prep",
+                dashboard: {
+                  metrics: [
+                    { label: "Talking Points", value: String((d.talkingPoints || []).length), trend: "stable", color: "#005971" },
+                    { label: "Questions", value: String((d.questions || d.discoveryQuestions || []).length), trend: "stable", color: "#00634F" }
+                  ],
+                  charts: [],
+                  tables: [],
+                  actions: [{ label: "Review talking points before meeting", priority: "high" }]
+                }
               };
             } else if (tr.toolName === "listAccounts") {
+              const acctList = Array.isArray(d) ? d : [];
+              const tierCounts: Record<string, number> = {};
+              for (const a of acctList) {
+                const t = a.tier || "unspecified";
+                tierCounts[t] = (tierCounts[t] || 0) + 1;
+              }
               contextUpdate = { 
                 type: "accounts", 
-                data: tr.result.data,
-                title: "All Accounts"
+                data: d,
+                title: "All Accounts",
+                dashboard: {
+                  metrics: [
+                    { label: "Total Accounts", value: String(acctList.length), trend: "stable", color: "#00634F" }
+                  ],
+                  charts: Object.keys(tierCounts).length > 0 ? [
+                    {
+                      id: "account-tiers",
+                      type: "doughnut",
+                      title: "Account Tiers",
+                      labels: Object.keys(tierCounts).map(t => t.charAt(0).toUpperCase() + t.slice(1)),
+                      data: Object.values(tierCounts),
+                      colors: ["#00634F", "#005971", "#009B77"]
+                    }
+                  ] : [],
+                  tables: [],
+                  actions: []
+                }
               };
             } else if (tr.toolName === "listInitiatives") {
+              const initList = Array.isArray(d) ? d : [];
+              const phaseCounts: Record<string, number> = {};
+              for (const init of initList) {
+                const p = init.currentPhase || "discovery";
+                phaseCounts[p] = (phaseCounts[p] || 0) + 1;
+              }
               contextUpdate = { 
                 type: "initiatives", 
-                data: tr.result.data,
-                title: "Initiatives"
+                data: d,
+                title: "Initiatives",
+                dashboard: {
+                  metrics: [
+                    { label: "Total Initiatives", value: String(initList.length), trend: "stable", color: "#005971" }
+                  ],
+                  charts: Object.keys(phaseCounts).length > 0 ? [
+                    {
+                      id: "initiative-phases",
+                      type: "bar",
+                      title: "By Phase",
+                      labels: Object.keys(phaseCounts).map(p => p.charAt(0).toUpperCase() + p.slice(1)),
+                      data: Object.values(phaseCounts),
+                      colors: ["#005971", "#00634F", "#009B77"]
+                    }
+                  ] : [],
+                  tables: [],
+                  actions: []
+                }
               };
             } else if (tr.toolName === "recommendNextAction" || tr.toolName === "recommendKPIs") {
+              const recs = d.recommendations || d;
+              const recList = Array.isArray(recs) ? recs : [];
               contextUpdate = { 
                 type: "recommendations", 
-                data: tr.result.data,
-                title: "AI Recommendations"
+                data: d,
+                title: "AI Recommendations",
+                dashboard: {
+                  metrics: [
+                    { label: "Recommendations", value: String(recList.length), trend: "stable", color: "#A3238E" }
+                  ],
+                  charts: [],
+                  tables: recList.length > 0 ? [
+                    {
+                      title: "Recommended Actions",
+                      headers: ["Action", "Priority", "Rationale"],
+                      rows: recList.slice(0, 8).map((r: any) => [
+                        r.title || r.action || r.recommendation || String(r),
+                        r.priority || "medium",
+                        r.rationale || r.reason || ""
+                      ])
+                    }
+                  ] : [],
+                  actions: []
+                }
               };
             } else if (tr.toolName === "listJobThemes") {
+              const themes = Array.isArray(d) ? d : [];
               contextUpdate = { 
                 type: "initiatives", 
-                data: tr.result.data,
-                title: "Job Themes & Priorities"
+                data: d,
+                title: "Job Themes & Priorities",
+                dashboard: {
+                  metrics: [
+                    { label: "Job Themes", value: String(themes.length), trend: "stable", color: "#005971" }
+                  ],
+                  charts: [],
+                  tables: themes.length > 0 ? [
+                    {
+                      title: "Job Themes",
+                      headers: ["Theme", "Priority", "KPIs"],
+                      rows: themes.slice(0, 10).map((t: any) => [
+                        t.jobName || t.name || "Theme",
+                        t.priorityRank ? `#${t.priorityRank}` : "-",
+                        String(t.kpiCount || 0)
+                      ])
+                    }
+                  ] : [],
+                  actions: []
+                }
               };
             } else if (tr.toolName === "editKPI" || tr.toolName === "updateKPI" || tr.toolName === "createKPI") {
               contextUpdate = { 
                 type: "kpis", 
-                data: Array.isArray(tr.result.data) ? tr.result.data : [tr.result.data],
-                title: "KPI Updated"
+                data: Array.isArray(d) ? d : [d],
+                title: "KPI Updated",
+                dashboard: {
+                  metrics: [
+                    { label: "Action", value: tr.toolName === "createKPI" ? "Created" : "Updated", trend: "up", color: "#009B77" }
+                  ],
+                  charts: [],
+                  tables: [],
+                  actions: [{ label: "Verify KPI data is correct", priority: "medium" }]
+                }
               };
             }
           }
@@ -12014,6 +12215,418 @@ Be concise but helpful. Use the user's context (current account, project, page) 
       res.send(buffer);
     } catch (error: any) {
       console.error("Error in voice speak:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // COMPANION - Proactive Intelligence, Portfolio Analytics & Agent Memory
+  // ============================================================================
+
+  // In-memory agent memory store (per-user welcome-back experience)
+  const agentMemoryStore = new Map<string, any>();
+
+  // POST /api/companion/proactive-briefing - Proactive intelligence briefing
+  app.post("/api/companion/proactive-briefing", async (req, res) => {
+    try {
+      const accounts = await storage.getAccounts();
+      const now = new Date();
+      const hour = now.getHours();
+      const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
+      let totalInitiatives = 0;
+      let totalKPIs = 0;
+      let kpisOnTrack = 0;
+      let kpisAtRisk = 0;
+      let kpisOffTrack = 0;
+      let kpisNoData = 0;
+      let totalValuePromised = 0;
+      let totalValueRealized = 0;
+      const urgentItems: any[] = [];
+      const actionRows: string[][] = [];
+      const staleAccounts: any[] = [];
+      const phaseCount: Record<string, number> = { discovery: 0, alignment: 0, realisation: 0 };
+      const healthCounts = { onTrack: 0, atRisk: 0, offTrack: 0, noData: 0 };
+
+      for (const account of accounts) {
+        const initiatives = await storage.getInitiativesForAccount(account.id);
+        totalInitiatives += initiatives.length;
+
+        let accountLastActivity: Date | null = null;
+
+        for (const project of initiatives) {
+          if (project.currentPhase && phaseCount[project.currentPhase] !== undefined) {
+            phaseCount[project.currentPhase]++;
+          }
+
+          const updatedAt = project.updatedAt ? new Date(project.updatedAt) : null;
+          if (updatedAt && (!accountLastActivity || updatedAt > accountLastActivity)) {
+            accountLastActivity = updatedAt;
+          }
+
+          const [allKPIs, allActuals] = await Promise.all([
+            storage.getAllJobThemeKPIsForProject(project.id),
+            storage.getAllKPIActualsForProject(project.id)
+          ]);
+
+          const actualsMap = new Map<number, typeof allActuals>();
+          for (const actual of allActuals) {
+            if (!actualsMap.has(actual.jobThemeKPIId)) {
+              actualsMap.set(actual.jobThemeKPIId, []);
+            }
+            actualsMap.get(actual.jobThemeKPIId)!.push(actual);
+          }
+
+          for (const kpi of allKPIs) {
+            if (!kpi.isSelected) continue;
+            totalKPIs++;
+            const actuals = actualsMap.get(kpi.id) || [];
+            const baselineVal = parseNumeric(kpi.baselineValue);
+            const targetVal = parseNumeric(kpi.targetValue);
+
+            if (baselineVal === null || targetVal === null || actuals.length === 0) {
+              kpisNoData++;
+              healthCounts.noData++;
+              continue;
+            }
+
+            const sorted = [...actuals].sort((a, b) => new Date(b.actualDate).getTime() - new Date(a.actualDate).getTime());
+            const latestParsed = parseNumeric(sorted[0]?.actualValue);
+            if (latestParsed === null) {
+              kpisNoData++;
+              healthCounts.noData++;
+              continue;
+            }
+
+            const targetDelta = targetVal - baselineVal;
+            const currentDelta = latestParsed - baselineVal;
+            const progressPercent = targetDelta !== 0 ? (currentDelta / targetDelta) * 100 : 0;
+
+            if (progressPercent >= 80) {
+              kpisOnTrack++;
+              healthCounts.onTrack++;
+            } else if (progressPercent >= 50) {
+              kpisAtRisk++;
+              healthCounts.atRisk++;
+              urgentItems.push({
+                type: "at-risk-kpi",
+                kpiName: kpi.kpiName,
+                account: account.name,
+                project: project.name,
+                progress: Math.round(progressPercent)
+              });
+              actionRows.push([`Review at-risk KPI: ${kpi.kpiName}`, account.name, "High"]);
+            } else {
+              kpisOffTrack++;
+              healthCounts.offTrack++;
+              urgentItems.push({
+                type: "off-track-kpi",
+                kpiName: kpi.kpiName,
+                account: account.name,
+                project: project.name,
+                progress: Math.round(progressPercent)
+              });
+              actionRows.push([`Urgent: Off-track KPI "${kpi.kpiName}"`, account.name, "Critical"]);
+            }
+
+            const vpuParsed = parseNumeric(kpi.estimatedValuePerUnit);
+            if (vpuParsed !== null) {
+              totalValuePromised += Math.abs(targetDelta) * vpuParsed;
+              totalValueRealized += Math.abs(currentDelta) * vpuParsed;
+            }
+          }
+        }
+
+        const daysSinceActivity = accountLastActivity
+          ? Math.floor((now.getTime() - accountLastActivity.getTime()) / (1000 * 60 * 60 * 24))
+          : 999;
+        if (daysSinceActivity >= 30) {
+          staleAccounts.push({ name: account.name, daysSinceActivity });
+          actionRows.push([`Re-engage stale account (${daysSinceActivity}d inactive)`, account.name, "Medium"]);
+        }
+      }
+
+      const onTrackDisplay = `${kpisOnTrack}/${totalKPIs > 0 ? totalKPIs : 0}`;
+      const summary = `You have ${accounts.length} account${accounts.length !== 1 ? 's' : ''} with ${totalInitiatives} initiative${totalInitiatives !== 1 ? 's' : ''}. ${kpisAtRisk + kpisOffTrack > 0 ? `${kpisAtRisk + kpisOffTrack} KPI${kpisAtRisk + kpisOffTrack !== 1 ? 's' : ''} need attention.` : 'All KPIs are looking healthy.'}`;
+
+      const suggestedPrompts: any[] = [];
+      if (kpisOffTrack + kpisAtRisk > 0) {
+        suggestedPrompts.push({ label: "Review off-track KPIs", prompt: "Show me all KPIs that are off-track or at risk" });
+      }
+      if (staleAccounts.length > 0) {
+        suggestedPrompts.push({ label: "Re-engage stale accounts", prompt: `Which accounts haven't had activity in over 30 days?` });
+      }
+      suggestedPrompts.push(
+        { label: "Prepare for next meeting", prompt: "Help me prepare for my next client meeting" },
+        { label: "Portfolio analytics", prompt: "Show me portfolio analytics across all accounts" },
+        { label: "Create new engagement", prompt: "I want to set up a new client engagement" }
+      );
+
+      res.json({
+        briefing: {
+          greeting: `${greeting}! Here's your portfolio overview.`,
+          summary,
+          urgentItems,
+          staleAccounts,
+          metrics: [
+            { label: "Total Accounts", value: String(accounts.length), trend: "stable", color: "#00634F" },
+            { label: "Active Initiatives", value: String(totalInitiatives), trend: "stable", color: "#005971" },
+            { label: "KPIs On Track", value: onTrackDisplay, trend: kpisOnTrack > kpisOffTrack ? "up" : "down", color: "#009B77" },
+            { label: "At Risk", value: String(kpisAtRisk + kpisOffTrack), trend: kpisAtRisk + kpisOffTrack > 0 ? "down" : "up", color: "#ef4444" }
+          ],
+          charts: [
+            {
+              id: "portfolio-health",
+              type: "doughnut",
+              title: "Portfolio Health",
+              labels: ["On Track", "At Risk", "Off Track", "No Data"],
+              data: [healthCounts.onTrack, healthCounts.atRisk, healthCounts.offTrack, healthCounts.noData],
+              colors: ["#009B77", "#f59e0b", "#ef4444", "#929192"]
+            },
+            {
+              id: "phase-distribution",
+              type: "bar",
+              title: "Initiatives by Phase",
+              labels: ["Discovery", "Alignment", "Realisation"],
+              data: [phaseCount.discovery, phaseCount.alignment, phaseCount.realisation],
+              colors: ["#005971", "#00634F", "#009B77"]
+            }
+          ],
+          tables: [
+            {
+              title: "Priority Actions",
+              headers: ["Action", "Account", "Priority"],
+              rows: actionRows.slice(0, 10)
+            }
+          ],
+          pipeline: {
+            totalValuePromised: Math.round(totalValuePromised),
+            totalValueRealized: Math.round(totalValueRealized),
+            realisationPercent: totalValuePromised > 0 ? Math.round((totalValueRealized / totalValuePromised) * 100) : 0
+          },
+          suggestedPrompts
+        }
+      });
+    } catch (error: any) {
+      console.error("Error generating proactive briefing:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/companion/portfolio-analytics - Cross-module portfolio analytics
+  app.post("/api/companion/portfolio-analytics", async (req, res) => {
+    try {
+      const accounts = await storage.getAccounts();
+
+      let totalPipelineValue = 0;
+      let totalRealizedValue = 0;
+      const kpiHealth = { onTrack: 0, atRisk: 0, offTrack: 0, notStarted: 0 };
+      const phaseBreakdown: Record<string, number> = { discovery: 0, alignment: 0, realisation: 0 };
+      const industryDist: Record<string, number> = {};
+      const tierDist: Record<string, number> = {};
+      const kpiPerformance: Array<{ name: string; account: string; progress: number; status: string }> = [];
+
+      for (const account of accounts) {
+        const industry = account.industry || "Unspecified";
+        const tier = account.tier || "unspecified";
+        industryDist[industry] = (industryDist[industry] || 0) + 1;
+        tierDist[tier] = (tierDist[tier] || 0) + 1;
+
+        const initiatives = await storage.getInitiativesForAccount(account.id);
+
+        for (const project of initiatives) {
+          if (project.currentPhase && phaseBreakdown[project.currentPhase] !== undefined) {
+            phaseBreakdown[project.currentPhase]++;
+          }
+
+          const [allKPIs, allActuals] = await Promise.all([
+            storage.getAllJobThemeKPIsForProject(project.id),
+            storage.getAllKPIActualsForProject(project.id)
+          ]);
+
+          const actualsMap = new Map<number, typeof allActuals>();
+          for (const actual of allActuals) {
+            if (!actualsMap.has(actual.jobThemeKPIId)) {
+              actualsMap.set(actual.jobThemeKPIId, []);
+            }
+            actualsMap.get(actual.jobThemeKPIId)!.push(actual);
+          }
+
+          for (const kpi of allKPIs) {
+            if (!kpi.isSelected) continue;
+            const actuals = actualsMap.get(kpi.id) || [];
+            const baselineVal = parseNumeric(kpi.baselineValue);
+            const targetVal = parseNumeric(kpi.targetValue);
+            const vpuVal = parseNumeric(kpi.estimatedValuePerUnit);
+
+            if (baselineVal === null || targetVal === null || actuals.length === 0) {
+              kpiHealth.notStarted++;
+              continue;
+            }
+
+            const sorted = [...actuals].sort((a, b) => new Date(b.actualDate).getTime() - new Date(a.actualDate).getTime());
+            const latestParsed = parseNumeric(sorted[0]?.actualValue);
+            if (latestParsed === null) {
+              kpiHealth.notStarted++;
+              continue;
+            }
+
+            const targetDelta = targetVal - baselineVal;
+            const currentDelta = latestParsed - baselineVal;
+            const progressPercent = targetDelta !== 0 ? (currentDelta / targetDelta) * 100 : 0;
+
+            let status = "off-track";
+            if (progressPercent >= 80) {
+              kpiHealth.onTrack++;
+              status = "on-track";
+            } else if (progressPercent >= 50) {
+              kpiHealth.atRisk++;
+              status = "at-risk";
+            } else {
+              kpiHealth.offTrack++;
+            }
+
+            kpiPerformance.push({
+              name: kpi.kpiName,
+              account: account.name,
+              progress: Math.round(progressPercent),
+              status
+            });
+
+            if (vpuVal !== null) {
+              totalPipelineValue += Math.abs(targetDelta) * vpuVal;
+              totalRealizedValue += Math.abs(currentDelta) * vpuVal;
+            }
+          }
+        }
+      }
+
+      const sortedPerformance = [...kpiPerformance].sort((a, b) => b.progress - a.progress);
+      const topPerforming = sortedPerformance.slice(0, 5);
+      const worstPerforming = [...kpiPerformance].sort((a, b) => a.progress - b.progress).slice(0, 5);
+
+      const industryLabels = Object.keys(industryDist);
+      const industryData = Object.values(industryDist);
+      const tierLabels = Object.keys(tierDist);
+      const tierData = Object.values(tierDist);
+      const totalKPIs = kpiHealth.onTrack + kpiHealth.atRisk + kpiHealth.offTrack + kpiHealth.notStarted;
+
+      res.json({
+        analytics: {
+          metrics: [
+            { label: "Total Pipeline Value", value: `$${(totalPipelineValue / 1000000).toFixed(1)}M`, trend: "stable", color: "#00634F" },
+            { label: "Value Realized", value: `$${(totalRealizedValue / 1000000).toFixed(1)}M`, trend: totalRealizedValue > 0 ? "up" : "stable", color: "#009B77" },
+            { label: "Total Accounts", value: String(accounts.length), trend: "stable", color: "#005971" },
+            { label: "KPI Health", value: `${kpiHealth.onTrack}/${totalKPIs} on track`, trend: kpiHealth.onTrack >= kpiHealth.offTrack ? "up" : "down", color: "#00ADBB" }
+          ],
+          charts: [
+            {
+              id: "kpi-health-distribution",
+              type: "doughnut",
+              title: "KPI Health Distribution",
+              labels: ["On Track", "At Risk", "Off Track", "Not Started"],
+              data: [kpiHealth.onTrack, kpiHealth.atRisk, kpiHealth.offTrack, kpiHealth.notStarted],
+              colors: ["#009B77", "#f59e0b", "#ef4444", "#929192"]
+            },
+            {
+              id: "initiative-phases",
+              type: "bar",
+              title: "Initiative Phase Breakdown",
+              labels: ["Discovery", "Alignment", "Realisation"],
+              data: [phaseBreakdown.discovery, phaseBreakdown.alignment, phaseBreakdown.realisation],
+              colors: ["#005971", "#00634F", "#009B77"]
+            },
+            {
+              id: "industry-distribution",
+              type: "bar",
+              title: "Industry Distribution",
+              labels: industryLabels,
+              data: industryData,
+              colors: industryLabels.map((_, i) => ["#00173B", "#00634F", "#005971", "#009B77", "#00ADBB", "#A3238E"][i % 6])
+            },
+            {
+              id: "tier-distribution",
+              type: "doughnut",
+              title: "Tier Distribution",
+              labels: tierLabels.map(t => t.charAt(0).toUpperCase() + t.slice(1)),
+              data: tierData,
+              colors: ["#00634F", "#005971", "#009B77"]
+            }
+          ],
+          tables: [
+            {
+              title: "Top Performing KPIs",
+              headers: ["KPI", "Account", "Progress", "Status"],
+              rows: topPerforming.map(k => [k.name, k.account, `${k.progress}%`, k.status])
+            },
+            {
+              title: "KPIs Needing Attention",
+              headers: ["KPI", "Account", "Progress", "Status"],
+              rows: worstPerforming.map(k => [k.name, k.account, `${k.progress}%`, k.status])
+            }
+          ],
+          pipeline: {
+            totalPipelineValue: Math.round(totalPipelineValue),
+            totalRealizedValue: Math.round(totalRealizedValue),
+            realisationPercent: totalPipelineValue > 0 ? Math.round((totalRealizedValue / totalPipelineValue) * 100) : 0
+          }
+        }
+      });
+    } catch (error: any) {
+      console.error("Error generating portfolio analytics:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/companion/memory - Retrieve agent memory
+  app.get("/api/companion/memory", async (req, res) => {
+    try {
+      const userId = (req.query.userId as string) || "default";
+      const memory = agentMemoryStore.get(userId) || {
+        lastAccountId: null,
+        lastProjectId: null,
+        lastDashboardType: null,
+        sessionCount: 0,
+        preferences: {},
+        lastAccessedAt: null
+      };
+      res.json({ memory });
+    } catch (error: any) {
+      console.error("Error fetching agent memory:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/companion/memory - Save agent memory
+  app.post("/api/companion/memory", async (req, res) => {
+    try {
+      const memorySchema = z.object({
+        userId: z.string().optional().default("default"),
+        lastAccountId: z.number().nullable().optional(),
+        lastProjectId: z.number().nullable().optional(),
+        lastDashboardType: z.string().nullable().optional(),
+        sessionCount: z.number().optional(),
+        preferences: z.record(z.any()).optional()
+      });
+
+      const parseResult = memorySchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: "Invalid memory data", details: parseResult.error });
+      }
+
+      const { userId, ...memoryData } = parseResult.data;
+      const existing = agentMemoryStore.get(userId) || {};
+      const updated = {
+        ...existing,
+        ...memoryData,
+        sessionCount: memoryData.sessionCount ?? (existing.sessionCount || 0) + 1,
+        lastAccessedAt: new Date().toISOString()
+      };
+      agentMemoryStore.set(userId, updated);
+
+      res.json({ success: true, memory: updated });
+    } catch (error: any) {
+      console.error("Error saving agent memory:", error);
       res.status(500).json({ error: error.message });
     }
   });
