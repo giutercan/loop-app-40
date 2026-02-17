@@ -99,17 +99,25 @@ interface MetricConfig {
   subtitle?: string;
 }
 
+interface RowLink {
+  route: string;
+  label?: string;
+}
+
 interface TableConfig {
   title: string;
   headers: string[];
   rows: string[][];
+  rowLinks?: RowLink[];
 }
 
 interface ActionConfig {
   label: string;
-  prompt: string;
+  prompt?: string;
+  route?: string;
   icon?: string;
   variant?: "default" | "outline";
+  priority?: string;
 }
 
 interface UrgentItem {
@@ -313,7 +321,8 @@ function MetricCard({ metric }: { metric: MetricConfig }) {
   );
 }
 
-function DataTable({ table }: { table: TableConfig }) {
+function DataTable({ table, onNavigate }: { table: TableConfig; onNavigate?: (route: string) => void }) {
+  const hasLinks = table.rowLinks && table.rowLinks.length > 0;
   return (
     <div className="w-full">
       <p className="text-xs font-medium text-muted-foreground mb-2">{table.title}</p>
@@ -322,14 +331,35 @@ function DataTable({ table }: { table: TableConfig }) {
           <thead>
             <tr className="bg-muted/50">
               {table.headers.map((h, i) => <th key={i} className="px-3 py-2 text-left font-medium text-muted-foreground">{h}</th>)}
+              {hasLinks && <th className="px-2 py-2 w-8" />}
             </tr>
           </thead>
           <tbody>
-            {table.rows.map((row, ri) => (
-              <tr key={ri} className="border-t border-border">
-                {row.map((cell, ci) => <td key={ci} className="px-3 py-2 text-foreground">{cell}</td>)}
-              </tr>
-            ))}
+            {table.rows.map((row, ri) => {
+              const link = table.rowLinks?.[ri];
+              const isClickable = !!link?.route && !!onNavigate;
+              return (
+                <tr
+                  key={ri}
+                  className={cn("border-t border-border transition-colors", isClickable && "cursor-pointer hover:bg-muted/50")}
+                  onClick={isClickable ? () => onNavigate!(link!.route) : undefined}
+                  data-testid={`row-table-${ri}`}
+                >
+                  {row.map((cell, ci) => (
+                    <td key={ci} className="px-3 py-2 text-foreground">
+                      {ci === 0 && isClickable ? (
+                        <span className="font-medium" style={{ color: BRAND.ocean }}>{cell}</span>
+                      ) : cell}
+                    </td>
+                  ))}
+                  {hasLinks && (
+                    <td className="px-2 py-2">
+                      {isClickable && <ArrowRight className="h-3 w-3 text-muted-foreground" />}
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -432,6 +462,7 @@ function WelcomeDashboard({ onLoadBriefing, isLoading }: { onLoadBriefing: () =>
 }
 
 function DashboardView({ panel, onAction, isBriefingLoading, onLoadBriefing }: { panel: DashboardPanel; onAction: (prompt: string) => void; isBriefingLoading: boolean; onLoadBriefing: () => void }) {
+  const [, navigate] = useLocation();
   if (panel.type === "welcome") return <WelcomeDashboard onLoadBriefing={onLoadBriefing} isLoading={isBriefingLoading} />;
 
   const hasMetrics = panel.metrics && panel.metrics.length > 0;
@@ -525,7 +556,7 @@ function DashboardView({ panel, onAction, isBriefingLoading, onLoadBriefing }: {
 
         {hasTables && panel.tables!.map((table, i) => (
           <Card key={i}>
-            <CardContent className="p-4"><DataTable table={table} /></CardContent>
+            <CardContent className="p-4"><DataTable table={table} onNavigate={(route) => navigate(route)} /></CardContent>
           </Card>
         ))}
 
@@ -534,8 +565,23 @@ function DashboardView({ panel, onAction, isBriefingLoading, onLoadBriefing }: {
             <p className="text-xs font-medium text-muted-foreground">Suggested Next Steps</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {panel.actions!.map((action, i) => (
-                <button key={i} className="flex items-center gap-2.5 rounded-lg border border-border p-3 text-left hover-elevate transition-colors" onClick={() => onAction(action.prompt)} data-testid={`button-dashboard-action-${i}`}>
-                  <Zap className="h-3.5 w-3.5 shrink-0" style={{ color: BRAND.forest }} />
+                <button
+                  key={i}
+                  className="flex items-center gap-2.5 rounded-lg border border-border p-3 text-left hover-elevate transition-colors"
+                  onClick={() => {
+                    if (action.route) {
+                      navigate(action.route);
+                    } else if (action.prompt) {
+                      onAction(action.prompt);
+                    }
+                  }}
+                  data-testid={`button-dashboard-action-${i}`}
+                >
+                  {action.route ? (
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0" style={{ color: BRAND.ocean }} />
+                  ) : (
+                    <Zap className="h-3.5 w-3.5 shrink-0" style={{ color: BRAND.forest }} />
+                  )}
                   <span className="text-xs text-foreground flex-1">{action.label}</span>
                   <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
                 </button>
@@ -544,18 +590,18 @@ function DashboardView({ panel, onAction, isBriefingLoading, onLoadBriefing }: {
           </div>
         )}
 
-        {panel.type === "account" && panel.data?.account?.id && (
-          <Link href={`/accounts/${panel.data.account.id}/sales`}>
-            <Button variant="outline" size="sm" data-testid="button-view-account">
-              <ExternalLink className="h-3.5 w-3.5 mr-1.5" />Open Account
+        {panel.type === "account" && panel.data?.accountId && (
+          <Link href={`/accounts/${panel.data.accountId}/sales`}>
+            <Button variant="outline" size="sm" className="gap-1.5" data-testid="button-view-account">
+              <ExternalLink className="h-3.5 w-3.5" />Open Full Account View
             </Button>
           </Link>
         )}
 
-        {panel.type === "initiative" && panel.data?.initiative?.id && (
-          <Link href={`/projects/${panel.data.initiative.id}/sales`}>
-            <Button variant="outline" size="sm" data-testid="button-view-initiative">
-              <ExternalLink className="h-3.5 w-3.5 mr-1.5" />Open Initiative
+        {(panel.type === "initiative" || panel.type === "kpis" || panel.type === "meeting") && panel.data?.projectId && (
+          <Link href={`/projects/${panel.data.projectId}/sales`}>
+            <Button variant="outline" size="sm" className="gap-1.5" data-testid="button-view-initiative">
+              <ExternalLink className="h-3.5 w-3.5" />Open Full Initiative View
             </Button>
           </Link>
         )}

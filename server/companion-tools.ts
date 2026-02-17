@@ -1716,6 +1716,7 @@ async function executeSurfaceData(args: {
     let onTrack = 0, atRisk = 0, offTrack = 0, noData = 0;
     let totalValue = 0;
     const initiativeRows: string[][] = [];
+    const initiativeRowLinks: Array<{ route: string }> = [];
     const phaseCount: Record<string, number> = {};
 
     for (const proj of initiatives) {
@@ -1749,6 +1750,7 @@ async function executeSurfaceData(args: {
       }
       const healthLabel = projOffTrack > 0 ? "At Risk" : projAtRisk > 0 ? "Caution" : projOnTrack > 0 ? "Healthy" : "No Data";
       initiativeRows.push([proj.name, phase.charAt(0).toUpperCase() + phase.slice(1), healthLabel]);
+      initiativeRowLinks.push({ route: `/projects/${proj.id}/sales` });
     }
 
     return {
@@ -1784,9 +1786,15 @@ async function executeSurfaceData(args: {
           tables: initiativeRows.length > 0 ? [{
             title: "Initiatives",
             headers: ["Name", "Phase", "Health"],
-            rows: initiativeRows
+            rows: initiativeRows,
+            rowLinks: initiativeRowLinks
           }] : [],
-          actions: [],
+          actions: [
+            { label: "Open Account Page", route: `/accounts/${account.id}/sales` },
+            { label: "Create New Initiative", prompt: `Create a new initiative for ${account.name}` },
+            ...(atRisk + offTrack > 0 ? [{ label: "Review At-Risk KPIs", prompt: `Show me the at-risk KPIs for ${account.name}` }] : []),
+            { label: "Prepare Meeting Brief", prompt: `Prepare a meeting brief for ${account.name}` }
+          ],
           accountId: account.id
         }
       }
@@ -1798,12 +1806,14 @@ async function executeSurfaceData(args: {
     const tierCounts: Record<string, number> = {};
     const industryCounts: Record<string, number> = {};
     const accountRows: string[][] = [];
+    const accountRowLinks: Array<{ route: string }> = [];
     for (const a of accounts) {
       const t = a.tier || "unspecified";
       const ind = a.industry || "Other";
       tierCounts[t] = (tierCounts[t] || 0) + 1;
       industryCounts[ind] = (industryCounts[ind] || 0) + 1;
       accountRows.push([a.name, ind, t.charAt(0).toUpperCase() + t.slice(1)]);
+      accountRowLinks.push({ route: `/accounts/${a.id}/sales` });
     }
     return {
       success: true,
@@ -1837,9 +1847,14 @@ async function executeSurfaceData(args: {
           tables: accountRows.length > 0 ? [{
             title: "Account Portfolio",
             headers: ["Account", "Industry", "Tier"],
-            rows: accountRows.slice(0, 15)
+            rows: accountRows.slice(0, 15),
+            rowLinks: accountRowLinks.slice(0, 15)
           }] : [],
-          actions: []
+          actions: [
+            { label: "View All Accounts", route: "/accounts" },
+            { label: "Create New Account", prompt: "Create a new account" },
+            { label: "Portfolio Overview", prompt: "Show me the portfolio overview" }
+          ]
         }
       }
     };
@@ -1907,7 +1922,12 @@ async function executeSurfaceData(args: {
             headers: ["KPI", "Status", "Progress", "Value"],
             rows: kpiRows
           }] : [],
-          actions: [],
+          actions: [
+            { label: "Open Initiative", route: `/projects/${project.id}/sales` },
+            { label: "View KPI Trends", prompt: `Show me KPI trends for ${project.name}` },
+            { label: "Prepare Meeting Brief", prompt: `Prepare a meeting brief for ${project.name}` },
+            ...(offTrack > 0 ? [{ label: "Review Off-Track KPIs", prompt: `Which KPIs are off track for ${project.name} and what can we do?` }] : [])
+          ],
           projectId: project.id
         }
       }
@@ -1990,7 +2010,12 @@ async function executeSurfaceData(args: {
             headers: ["KPI", "Status", "Progress"],
             rows: kpiRows
           }] : [],
-          actions: [],
+          actions: [
+            { label: "Open Initiative", route: `/projects/${args.projectId}/sales` },
+            { label: "View KPI Trends", prompt: `Show me the KPI trends for this initiative` },
+            ...(offTrack > 0 ? [{ label: "Recommend Improvements", prompt: `What actions can improve the off-track KPIs?` }] : []),
+            { label: "Prepare QBR", prompt: `Help me prepare a QBR for this initiative` }
+          ],
           projectId: args.projectId
         }
       }
@@ -2004,6 +2029,7 @@ async function executeSurfaceData(args: {
     let totalValuePromised = 0, totalValueRealized = 0;
     const phaseCount: Record<string, number> = { discovery: 0, alignment: 0, realisation: 0 };
     const accountHealthRows: string[][] = [];
+    const accountHealthRowLinks: Array<{ route: string }> = [];
 
     for (const account of accounts) {
       const initiatives = await storage.getInitiativesForAccount(account.id);
@@ -2044,6 +2070,7 @@ async function executeSurfaceData(args: {
       if (initiatives.length > 0) {
         const health = acctOff > 0 ? "Needs Attention" : acctRisk > 0 ? "Caution" : acctOn > 0 ? "Healthy" : "No KPI Data";
         accountHealthRows.push([account.name, String(initiatives.length), health]);
+        accountHealthRowLinks.push({ route: `/accounts/${account.id}/sales` });
       }
     }
 
@@ -2088,9 +2115,14 @@ async function executeSurfaceData(args: {
           tables: accountHealthRows.length > 0 ? [{
             title: "Account Health Summary",
             headers: ["Account", "Initiatives", "Health"],
-            rows: accountHealthRows
+            rows: accountHealthRows,
+            rowLinks: accountHealthRowLinks
           }] : [],
-          actions: []
+          actions: [
+            { label: "View All Accounts", route: "/accounts" },
+            { label: "Show Account List", prompt: "Show me all accounts" },
+            ...(offTrack > 0 ? [{ label: "Review At-Risk Accounts", prompt: "Which accounts need attention and why?" }] : [])
+          ]
         }
       }
     };
@@ -2150,7 +2182,11 @@ async function executeSurfaceData(args: {
             headers: ["KPI", "Current", "Target", "Progress", "Trend"],
             rows: trendRows
           }] : [],
-          actions: [],
+          actions: [
+            { label: "Open Initiative", route: `/projects/${args.projectId}/sales` },
+            { label: "View KPI Health", prompt: `Show me the KPI health dashboard for ${project.name}` },
+            { label: "Recommend Actions", prompt: `Based on these KPI trends, what actions should I take?` }
+          ],
           projectId: args.projectId
         }
       }
@@ -2192,7 +2228,12 @@ async function executeSurfaceData(args: {
               rows: selectedKPIs.slice(0, 8).map((k: any) => [k.kpiName, k.baselineValue || "—", k.targetValue || "—"])
             }] : [])
           ],
-          actions: [],
+          actions: [
+            { label: "Open Initiative", route: `/projects/${args.projectId}/sales` },
+            { label: "Generate Talking Points", prompt: `Generate meeting talking points for ${project.name}` },
+            { label: "View KPI Health", prompt: `Show me the KPI health for ${project.name}` },
+            { label: "Create Meeting Bundle", prompt: `Prepare a full meeting bundle for ${project.name}` }
+          ],
           projectId: args.projectId
         }
       }
@@ -2205,11 +2246,13 @@ async function executeSurfaceData(args: {
     
     if (entityType === "accounts") {
       const rows: string[][] = [];
+      const rowLinks: Array<{ route: string }> = [];
       for (const id of args.entityIds) {
         const acct = await storage.getAccount(id);
         if (!acct) continue;
         const inits = await storage.getInitiativesForAccount(id);
         rows.push([acct.name, acct.industry || "—", acct.tier || "—", String(inits.length)]);
+        rowLinks.push({ route: `/accounts/${acct.id}/sales` });
       }
       return {
         success: true,
@@ -2222,9 +2265,10 @@ async function executeSurfaceData(args: {
             tables: rows.length > 0 ? [{
               title: "Side-by-Side Comparison",
               headers: ["Account", "Industry", "Tier", "Initiatives"],
-              rows
+              rows,
+              rowLinks
             }] : [],
-            actions: []
+            actions: rows.map((r, i) => ({ label: `Open ${r[0]}`, route: rowLinks[i]?.route }))
           }
         }
       };
