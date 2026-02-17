@@ -69,7 +69,7 @@ interface ToolCall {
 }
 
 interface DashboardPanel {
-  type: "welcome" | "briefing" | "account" | "accounts" | "initiative" | "initiatives" | "kpis" | "meeting" | "recommendations" | "portfolio";
+  type: "welcome" | "briefing" | "account" | "accounts" | "initiative" | "initiatives" | "kpis" | "meeting" | "recommendations" | "portfolio" | "info_card";
   data?: any;
   title?: string;
   charts?: ChartConfig[];
@@ -77,6 +77,8 @@ interface DashboardPanel {
   tables?: TableConfig[];
   actions?: ActionConfig[];
   urgentItems?: UrgentItem[];
+  infoContent?: string;
+  infoItems?: Array<{ label: string; value: string }>;
 }
 
 interface ChartConfig {
@@ -353,76 +355,17 @@ function UrgentItemCard({ item }: { item: UrgentItem }) {
 function buildDashboardFromContext(contextUpdate: any): DashboardPanel {
   if (!contextUpdate) return { type: "welcome" };
 
-  if (contextUpdate.dashboard) {
-    return {
-      type: contextUpdate.type,
-      data: contextUpdate.data,
-      title: contextUpdate.title || contextUpdate.dashboard?.title,
-      charts: contextUpdate.dashboard.charts || [],
-      metrics: contextUpdate.dashboard.metrics || [],
-      tables: contextUpdate.dashboard.tables || [],
-      actions: contextUpdate.dashboard.actions || [],
-    };
-  }
-
-  const panel: DashboardPanel = {
-    type: contextUpdate.type,
+  return {
+    type: contextUpdate.type || "info_card",
     data: contextUpdate.data,
-    title: contextUpdate.title,
-    charts: [],
-    metrics: [],
-    tables: [],
+    title: contextUpdate.title || contextUpdate.dashboard?.title,
+    charts: contextUpdate.dashboard?.charts || [],
+    metrics: contextUpdate.dashboard?.metrics || [],
+    tables: contextUpdate.dashboard?.tables || [],
+    actions: contextUpdate.dashboard?.actions || [],
+    infoContent: contextUpdate.infoContent,
+    infoItems: contextUpdate.infoItems,
   };
-
-  if (contextUpdate.type === "account" && contextUpdate.data) {
-    const acct = contextUpdate.data;
-    panel.metrics = [
-      { label: "Initiatives", value: String(acct.initiativeCount || acct.projectCount || 0), color: BRAND.forest },
-      { label: "Total Value", value: acct.totalValue ? `$${(acct.totalValue / 1000000).toFixed(1)}M` : "$0", trend: "up", color: BRAND.emerald },
-      { label: "Industry", value: acct.industry || "—", color: BRAND.ocean },
-      { label: "Tier", value: acct.tier || "—", color: BRAND.purple },
-    ];
-    if (acct.initiatives && acct.initiatives.length > 0) {
-      const phases: Record<string, number> = {};
-      acct.initiatives.forEach((ini: any) => { const p = ini.phase || "discovery"; phases[p] = (phases[p] || 0) + 1; });
-      panel.charts = [{ id: "init-phases", type: "doughnut", title: "Initiatives by Phase", labels: Object.keys(phases).map(p => p.charAt(0).toUpperCase() + p.slice(1)), data: Object.values(phases) }];
-      panel.tables = [{ title: "Active Initiatives", headers: ["Initiative", "Phase", "Value"], rows: acct.initiatives.slice(0, 8).map((ini: any) => [ini.name, (ini.phase || "Discovery").charAt(0).toUpperCase() + (ini.phase || "discovery").slice(1), ini.promisedValue ? `$${(ini.promisedValue / 1000000).toFixed(1)}M` : "—"]) }];
-    }
-  }
-
-  if (contextUpdate.type === "accounts" && Array.isArray(contextUpdate.data)) {
-    const accounts = contextUpdate.data;
-    panel.metrics = [
-      { label: "Total Accounts", value: String(accounts.length), color: BRAND.forest },
-      { label: "Enterprise", value: String(accounts.filter((a: any) => a.tier === "enterprise").length), color: BRAND.navy },
-      { label: "Strategic", value: String(accounts.filter((a: any) => a.tier === "strategic").length), color: BRAND.ocean },
-      { label: "Growth", value: String(accounts.filter((a: any) => a.tier === "growth").length), color: BRAND.emerald },
-    ];
-    const industries: Record<string, number> = {};
-    accounts.forEach((a: any) => { const ind = a.industry || "Other"; industries[ind] = (industries[ind] || 0) + 1; });
-    if (Object.keys(industries).length > 1) panel.charts = [{ id: "accts-ind", type: "doughnut", title: "Accounts by Industry", labels: Object.keys(industries), data: Object.values(industries) }];
-    panel.tables = [{ title: "Account Portfolio", headers: ["Account", "Industry", "Tier"], rows: accounts.slice(0, 10).map((a: any) => [a.name, a.industry || "—", a.tier || "—"]) }];
-  }
-
-  if (contextUpdate.type === "kpis" && Array.isArray(contextUpdate.data)) {
-    const kpis = contextUpdate.data;
-    const onTrack = kpis.filter((k: any) => k.healthStatus === "on_track").length;
-    const atRisk = kpis.filter((k: any) => k.healthStatus === "at_risk").length;
-    const offTrack = kpis.filter((k: any) => k.healthStatus === "off_track").length;
-    panel.metrics = [
-      { label: "Total KPIs", value: String(kpis.length), color: BRAND.forest },
-      { label: "On Track", value: String(onTrack), trend: "up", color: BRAND.emerald },
-      { label: "At Risk", value: String(atRisk), trend: "stable", color: "#f59e0b" },
-      { label: "Off Track", value: String(offTrack), trend: "down", color: "#ef4444" },
-    ];
-    const healthData = [onTrack, atRisk, offTrack].filter(v => v > 0);
-    const healthLabels = ["On Track", "At Risk", "Off Track"].filter((_, i) => [onTrack, atRisk, offTrack][i] > 0);
-    const healthColors = [BRAND.emerald, "#f59e0b", "#ef4444"].filter((_, i) => [onTrack, atRisk, offTrack][i] > 0);
-    if (healthData.length > 0) panel.charts = [{ id: "kpi-health", type: "doughnut", title: "KPI Health", labels: healthLabels, data: healthData, colors: healthColors }];
-    panel.tables = [{ title: "KPI Details", headers: ["KPI", "Current", "Target", "Health"], rows: kpis.slice(0, 10).map((k: any) => [k.kpiName || k.name, k.currentValue || k.latestActual || "—", k.targetValue || k.target || "—", k.healthStatus?.replace("_", " ") || "—"]) }];
-  }
-
-  return panel;
 }
 
 function buildBriefingDashboard(briefing: any): DashboardPanel {
@@ -442,6 +385,7 @@ function DashboardTypeIcon({ type }: { type: string }) {
   const iconMap: Record<string, any> = {
     briefing: Globe, account: Building2, accounts: Building2, initiative: Briefcase, initiatives: Briefcase,
     kpis: Target, meeting: Calendar, recommendations: Lightbulb, portfolio: BarChart3, welcome: Sparkles,
+    info_card: FileText,
   };
   const Icon = iconMap[type] || BarChart3;
   return <Icon className="h-4 w-4" />;
@@ -495,6 +439,8 @@ function DashboardView({ panel, onAction, isBriefingLoading, onLoadBriefing }: {
   const hasTables = panel.tables && panel.tables.length > 0;
   const hasUrgent = panel.urgentItems && panel.urgentItems.length > 0;
   const hasActions = panel.actions && panel.actions.length > 0;
+  const hasInfoContent = panel.infoContent && panel.infoContent.length > 0;
+  const hasInfoItems = panel.infoItems && panel.infoItems.length > 0;
   const meetingData = panel.type === "meeting" ? panel.data : null;
 
   return (
@@ -519,6 +465,30 @@ function DashboardView({ panel, onAction, isBriefingLoading, onLoadBriefing }: {
           <div className="space-y-2">
             {panel.urgentItems!.map((item, i) => <UrgentItemCard key={i} item={item} />)}
           </div>
+        )}
+
+        {hasInfoContent && (
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{panel.infoContent}</div>
+            </CardContent>
+          </Card>
+        )}
+
+        {hasInfoItems && (
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              {panel.infoItems!.map((item, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <div className="h-2 w-2 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: BRAND.forest }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-muted-foreground">{item.label}</p>
+                    <p className="text-sm text-foreground">{item.value}</p>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         )}
 
         {hasMetrics && (

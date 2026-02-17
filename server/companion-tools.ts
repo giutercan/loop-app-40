@@ -457,6 +457,56 @@ export const companionToolDefinitions: ToolDefinition[] = [
   },
   
   // ============================================================================
+  // DASHBOARD TOOLS - Control what appears on the left panel
+  // ============================================================================
+  {
+    name: "surfaceData",
+    description: `Show real-time data visualization on the left dashboard panel. ALWAYS call this tool when you have data to present visually. The tool queries actual system data and renders it on the left panel.
+
+WHEN TO USE:
+- After retrieving any data with other tools (accounts, KPIs, initiatives)
+- When the user asks to see/show/display/visualize anything
+- When you want to highlight specific data points from the conversation
+- After completing a workflow to show results
+
+WHEN NOT TO USE:
+- When you are still gathering information and don't have real data yet
+- When you are asking clarifying questions
+
+The "view" parameter determines what data to pull from the system. Available views:
+- "account_detail": Show a single account with its initiatives and KPI health (requires accountId)
+- "account_list": Show all accounts with tier/industry breakdown
+- "initiative_detail": Show an initiative with KPIs, phase, and progress (requires projectId)
+- "kpi_health": Show KPI health dashboard for a project (requires projectId)
+- "portfolio_overview": Show cross-portfolio health metrics
+- "meeting_prep": Show meeting preparation data (requires projectId)
+- "comparison": Compare multiple entities side by side (requires entityIds)
+- "kpi_trends": Show KPI progress over time (requires projectId)
+- "info_card": Show a simple information card with title and content you provide (no system query needed)
+
+IMPORTANT: Only use "info_card" view when you want to display AI-generated content or conversation summaries. For ALL data that exists in the system, use the specific view type so real data is fetched.`,
+    parameters: {
+      type: "object",
+      properties: {
+        view: { 
+          type: "string", 
+          enum: ["account_detail", "account_list", "initiative_detail", "kpi_health", "portfolio_overview", "meeting_prep", "comparison", "kpi_trends", "info_card"],
+          description: "What type of data visualization to show"
+        },
+        accountId: { type: "number", description: "Account ID (for account_detail view)" },
+        projectId: { type: "number", description: "Project/initiative ID (for initiative_detail, kpi_health, meeting_prep, kpi_trends views)" },
+        entityIds: { type: "array", items: { type: "number" }, description: "IDs to compare (for comparison view)" },
+        entityType: { type: "string", enum: ["accounts", "initiatives", "kpis"], description: "Type of entities to compare (for comparison view)" },
+        title: { type: "string", description: "Custom title for the panel (optional, defaults based on view type)" },
+        infoContent: { type: "string", description: "Content for info_card view - markdown-formatted text to display" },
+        infoItems: { type: "array", items: { type: "object", properties: { label: { type: "string" }, value: { type: "string" } } }, description: "Key-value pairs for info_card view" }
+      },
+      required: ["view"]
+    },
+    capability: "read"
+  },
+  
+  // ============================================================================
   // NAVIGATE TOOLS - Guide user through the application
   // ============================================================================
   {
@@ -579,6 +629,9 @@ export async function executeCompanionTool(
       
       case "showInContext":
         return await showInContext(args.entityType, args.entityId, args.displayMode);
+      
+      case "surfaceData":
+        return await executeSurfaceData(args);
       
       default:
         return { success: false, error: `Unknown tool: ${toolName}` };
@@ -1617,6 +1670,569 @@ async function runHandoffBundle(
       }
     }
   };
+}
+
+function parseNumericValue(val: any): number | null {
+  if (val === null || val === undefined) return null;
+  const n = Number(String(val).replace(/[^0-9.\-]/g, ''));
+  return isNaN(n) ? null : n;
+}
+
+async function executeSurfaceData(args: {
+  view: string;
+  accountId?: number;
+  projectId?: number;
+  entityIds?: number[];
+  entityType?: string;
+  title?: string;
+  infoContent?: string;
+  infoItems?: Array<{ label: string; value: string }>;
+}): Promise<ToolResult> {
+  const { view } = args;
+
+  if (view === "info_card") {
+    return {
+      success: true,
+      data: {
+        _dashboardPayload: {
+          type: "info_card",
+          title: args.title || "Information",
+          metrics: [],
+          charts: [],
+          tables: [],
+          actions: [],
+          infoContent: args.infoContent || "",
+          infoItems: args.infoItems || [],
+        }
+      }
+    };
+  }
+
+  if (view === "account_detail") {
+    if (!args.accountId) return { success: false, error: "accountId is required for account_detail view" };
+    const account = await storage.getAccount(args.accountId);
+    if (!account) return { success: false, error: `Account ${args.accountId} not found` };
+    const initiatives = await storage.getInitiativesForAccount(args.accountId);
+    let onTrack = 0, atRisk = 0, offTrack = 0, noData = 0;
+    let totalValue = 0;
+    const initiativeRows: string[][] = [];
+    const phaseCount: Record<string, number> = {};
+
+    for (const proj of initiatives) {
+      const phase = proj.currentPhase || "discovery";
+      phaseCount[phase] = (phaseCount[phase] || 0) + 1;
+      const kpis = await storage.getAllJobThemeKPIsForProject(proj.id);
+      const actuals = await storage.getAllKPIActualsForProject(proj.id);
+      const actualsMap = new Map<number, any[]>();
+      for (const a of actuals) {
+        if (!actualsMap.has(a.jobThemeKPIId)) actualsMap.set(a.jobThemeKPIId, []);
+        actualsMap.get(a.jobThemeKPIId)!.push(a);
+      }
+      let projOnTrack = 0, projAtRisk = 0, projOffTrack = 0;
+      for (const kpi of kpis) {
+        if (!kpi.isSelected) continue;
+        const kActuals = actualsMap.get(kpi.id) || [];
+        const base = parseNumericValue(kpi.baselineValue);
+        const target = parseNumericValue(kpi.targetValue);
+        if (base === null || target === null || kActuals.length === 0) { noData++; continue; }
+        const sorted = [...kActuals].sort((a, b) => new Date(b.actualDate).getTime() - new Date(a.actualDate).getTime());
+        const latest = parseNumericValue(sorted[0]?.actualValue);
+        if (latest === null) { noData++; continue; }
+        const td = target - base;
+        const cd = latest - base;
+        const pct = td !== 0 ? (cd / td) * 100 : 0;
+        if (pct >= 80) { onTrack++; projOnTrack++; }
+        else if (pct >= 50) { atRisk++; projAtRisk++; }
+        else { offTrack++; projOffTrack++; }
+        const vpu = parseNumericValue(kpi.estimatedValuePerUnit);
+        if (vpu !== null) totalValue += Math.abs(cd) * vpu;
+      }
+      const healthLabel = projOffTrack > 0 ? "At Risk" : projAtRisk > 0 ? "Caution" : projOnTrack > 0 ? "Healthy" : "No Data";
+      initiativeRows.push([proj.name, phase.charAt(0).toUpperCase() + phase.slice(1), healthLabel]);
+    }
+
+    return {
+      success: true,
+      data: {
+        _dashboardPayload: {
+          type: "account",
+          title: args.title || account.name,
+          metrics: [
+            { label: "Initiatives", value: String(initiatives.length), trend: "stable", color: "#005971" },
+            { label: "KPIs On Track", value: `${onTrack}/${onTrack + atRisk + offTrack + noData}`, trend: onTrack >= offTrack ? "up" : "down", color: "#009B77" },
+            { label: "At Risk", value: String(atRisk), trend: atRisk > 0 ? "down" : "up", color: "#f59e0b" },
+            { label: "Value Realized", value: totalValue > 0 ? `$${(totalValue / 1000000).toFixed(1)}M` : "$0", trend: "up", color: "#00634F" }
+          ],
+          charts: [
+            ...(onTrack + atRisk + offTrack > 0 ? [{
+              id: "acct-kpi-health",
+              type: "doughnut" as const,
+              title: "KPI Health Distribution",
+              labels: ["On Track", "At Risk", "Off Track", "No Data"],
+              data: [onTrack, atRisk, offTrack, noData],
+              colors: ["#009B77", "#f59e0b", "#ef4444", "#929192"]
+            }] : []),
+            ...(Object.keys(phaseCount).length > 0 ? [{
+              id: "acct-phases",
+              type: "bar" as const,
+              title: "Initiatives by Phase",
+              labels: Object.keys(phaseCount).map(p => p.charAt(0).toUpperCase() + p.slice(1)),
+              data: Object.values(phaseCount),
+              colors: ["#005971", "#00634F", "#009B77"]
+            }] : [])
+          ],
+          tables: initiativeRows.length > 0 ? [{
+            title: "Initiatives",
+            headers: ["Name", "Phase", "Health"],
+            rows: initiativeRows
+          }] : [],
+          actions: [],
+          accountId: account.id
+        }
+      }
+    };
+  }
+
+  if (view === "account_list") {
+    const accounts = await storage.getAccounts();
+    const tierCounts: Record<string, number> = {};
+    const industryCounts: Record<string, number> = {};
+    const accountRows: string[][] = [];
+    for (const a of accounts) {
+      const t = a.tier || "unspecified";
+      const ind = a.industry || "Other";
+      tierCounts[t] = (tierCounts[t] || 0) + 1;
+      industryCounts[ind] = (industryCounts[ind] || 0) + 1;
+      accountRows.push([a.name, ind, t.charAt(0).toUpperCase() + t.slice(1)]);
+    }
+    return {
+      success: true,
+      data: {
+        _dashboardPayload: {
+          type: "accounts",
+          title: args.title || "All Accounts",
+          metrics: [
+            { label: "Total Accounts", value: String(accounts.length), trend: "stable", color: "#00634F" },
+            { label: "Enterprise", value: String(tierCounts["enterprise"] || 0), trend: "stable", color: "#00173B" },
+            { label: "Strategic", value: String(tierCounts["strategic"] || 0), trend: "stable", color: "#005971" },
+            { label: "Growth", value: String(tierCounts["growth"] || 0), trend: "stable", color: "#009B77" }
+          ],
+          charts: [
+            ...(Object.keys(industryCounts).length > 1 ? [{
+              id: "accts-industry",
+              type: "doughnut" as const,
+              title: "By Industry",
+              labels: Object.keys(industryCounts),
+              data: Object.values(industryCounts)
+            }] : []),
+            ...(Object.keys(tierCounts).length > 1 ? [{
+              id: "accts-tier",
+              type: "bar" as const,
+              title: "By Tier",
+              labels: Object.keys(tierCounts).map(t => t.charAt(0).toUpperCase() + t.slice(1)),
+              data: Object.values(tierCounts),
+              colors: ["#00173B", "#005971", "#009B77"]
+            }] : [])
+          ],
+          tables: accountRows.length > 0 ? [{
+            title: "Account Portfolio",
+            headers: ["Account", "Industry", "Tier"],
+            rows: accountRows.slice(0, 15)
+          }] : [],
+          actions: []
+        }
+      }
+    };
+  }
+
+  if (view === "initiative_detail") {
+    if (!args.projectId) return { success: false, error: "projectId is required for initiative_detail view" };
+    const project = await storage.getProject(args.projectId);
+    if (!project) return { success: false, error: `Initiative ${args.projectId} not found` };
+    const themes = await storage.getJobThemes(args.projectId);
+    const kpis = await storage.getAllJobThemeKPIsForProject(args.projectId);
+    const actuals = await storage.getAllKPIActualsForProject(args.projectId);
+    const actualsMap = new Map<number, any[]>();
+    for (const a of actuals) {
+      if (!actualsMap.has(a.jobThemeKPIId)) actualsMap.set(a.jobThemeKPIId, []);
+      actualsMap.get(a.jobThemeKPIId)!.push(a);
+    }
+    let onTrack = 0, atRisk = 0, offTrack = 0, noData = 0;
+    const kpiRows: string[][] = [];
+    for (const kpi of kpis) {
+      if (!kpi.isSelected) continue;
+      const kActuals = actualsMap.get(kpi.id) || [];
+      const base = parseNumericValue(kpi.baselineValue);
+      const target = parseNumericValue(kpi.targetValue);
+      if (base === null || target === null || kActuals.length === 0) {
+        noData++;
+        kpiRows.push([kpi.kpiName, "No Data", "—", "—"]);
+        continue;
+      }
+      const sorted = [...kActuals].sort((a, b) => new Date(b.actualDate).getTime() - new Date(a.actualDate).getTime());
+      const latest = parseNumericValue(sorted[0]?.actualValue);
+      if (latest === null) { noData++; kpiRows.push([kpi.kpiName, "No Data", "—", "—"]); continue; }
+      const td = target - base;
+      const cd = latest - base;
+      const pct = td !== 0 ? Math.round((cd / td) * 100) : 0;
+      let status: string;
+      if (pct >= 80) { onTrack++; status = "On Track"; }
+      else if (pct >= 50) { atRisk++; status = "At Risk"; }
+      else { offTrack++; status = "Off Track"; }
+      kpiRows.push([kpi.kpiName, status, `${pct}%`, `${latest} / ${target} ${kpi.unit || ''}`]);
+    }
+    const phase = project.currentPhase || "discovery";
+    return {
+      success: true,
+      data: {
+        _dashboardPayload: {
+          type: "initiative",
+          title: args.title || project.name,
+          metrics: [
+            { label: "Phase", value: phase.charAt(0).toUpperCase() + phase.slice(1), trend: "stable", color: "#00634F" },
+            { label: "Job Themes", value: String(themes.length), trend: "stable", color: "#005971" },
+            { label: "KPIs On Track", value: `${onTrack}/${onTrack + atRisk + offTrack + noData}`, trend: onTrack >= offTrack ? "up" : "down", color: "#009B77" },
+            { label: "Off Track", value: String(offTrack), trend: offTrack > 0 ? "down" : "up", color: "#ef4444" }
+          ],
+          charts: onTrack + atRisk + offTrack > 0 ? [{
+            id: "init-kpi-health",
+            type: "doughnut" as const,
+            title: "KPI Health",
+            labels: ["On Track", "At Risk", "Off Track", "No Data"],
+            data: [onTrack, atRisk, offTrack, noData],
+            colors: ["#009B77", "#f59e0b", "#ef4444", "#929192"]
+          }] : [],
+          tables: kpiRows.length > 0 ? [{
+            title: "KPI Performance",
+            headers: ["KPI", "Status", "Progress", "Value"],
+            rows: kpiRows
+          }] : [],
+          actions: [],
+          projectId: project.id
+        }
+      }
+    };
+  }
+
+  if (view === "kpi_health") {
+    if (!args.projectId) return { success: false, error: "projectId is required for kpi_health view" };
+    const project = await storage.getProject(args.projectId);
+    if (!project) return { success: false, error: `Initiative ${args.projectId} not found` };
+    const kpis = await storage.getAllJobThemeKPIsForProject(args.projectId);
+    const actuals = await storage.getAllKPIActualsForProject(args.projectId);
+    const actualsMap = new Map<number, any[]>();
+    for (const a of actuals) {
+      if (!actualsMap.has(a.jobThemeKPIId)) actualsMap.set(a.jobThemeKPIId, []);
+      actualsMap.get(a.jobThemeKPIId)!.push(a);
+    }
+    let onTrack = 0, atRisk = 0, offTrack = 0, noData = 0;
+    const kpiRows: string[][] = [];
+    const progressData: number[] = [];
+    const progressLabels: string[] = [];
+    for (const kpi of kpis) {
+      if (!kpi.isSelected) continue;
+      const kActuals = actualsMap.get(kpi.id) || [];
+      const base = parseNumericValue(kpi.baselineValue);
+      const target = parseNumericValue(kpi.targetValue);
+      if (base === null || target === null || kActuals.length === 0) {
+        noData++;
+        kpiRows.push([kpi.kpiName, "No Data", "—"]);
+        continue;
+      }
+      const sorted = [...kActuals].sort((a, b) => new Date(b.actualDate).getTime() - new Date(a.actualDate).getTime());
+      const latest = parseNumericValue(sorted[0]?.actualValue);
+      if (latest === null) { noData++; kpiRows.push([kpi.kpiName, "No Data", "—"]); continue; }
+      const td = target - base;
+      const cd = latest - base;
+      const pct = td !== 0 ? Math.round((cd / td) * 100) : 0;
+      let status: string;
+      if (pct >= 80) { onTrack++; status = "On Track"; }
+      else if (pct >= 50) { atRisk++; status = "At Risk"; }
+      else { offTrack++; status = "Off Track"; }
+      kpiRows.push([kpi.kpiName, status, `${pct}%`]);
+      progressLabels.push(kpi.kpiName.length > 15 ? kpi.kpiName.slice(0, 15) + '...' : kpi.kpiName);
+      progressData.push(Math.max(0, Math.min(100, pct)));
+    }
+    const totalTracked = onTrack + atRisk + offTrack + noData;
+    const overallHealth = totalTracked > 0 ? Math.round((onTrack / totalTracked) * 100) : 0;
+    return {
+      success: true,
+      data: {
+        _dashboardPayload: {
+          type: "kpis",
+          title: args.title || `KPIs - ${project.name}`,
+          metrics: [
+            { label: "Total KPIs", value: String(totalTracked), trend: "stable", color: "#005971" },
+            { label: "On Track", value: String(onTrack), trend: "up", color: "#009B77" },
+            { label: "At Risk", value: String(atRisk), trend: atRisk > 0 ? "down" : "up", color: "#f59e0b" },
+            { label: "Off Track", value: String(offTrack), trend: offTrack > 0 ? "down" : "up", color: "#ef4444" }
+          ],
+          charts: [
+            ...(onTrack + atRisk + offTrack > 0 ? [{
+              id: "kpi-health-doughnut",
+              type: "doughnut" as const,
+              title: "KPI Health Distribution",
+              labels: ["On Track", "At Risk", "Off Track", "No Data"],
+              data: [onTrack, atRisk, offTrack, noData],
+              colors: ["#009B77", "#f59e0b", "#ef4444", "#929192"]
+            }] : []),
+            { id: "kpi-overall-gauge", type: "gauge" as const, title: "Overall Health Score", labels: ["Health %"], data: [overallHealth], maxValue: 100 },
+            ...(progressData.length > 0 ? [{
+              id: "kpi-progress-bars",
+              type: "horizontal_bar" as const,
+              title: "KPI Progress",
+              labels: progressLabels,
+              data: progressData
+            }] : [])
+          ],
+          tables: kpiRows.length > 0 ? [{
+            title: "KPI Details",
+            headers: ["KPI", "Status", "Progress"],
+            rows: kpiRows
+          }] : [],
+          actions: [],
+          projectId: args.projectId
+        }
+      }
+    };
+  }
+
+  if (view === "portfolio_overview") {
+    const accounts = await storage.getAccounts();
+    let totalInitiatives = 0, totalKPIs = 0;
+    let onTrack = 0, atRisk = 0, offTrack = 0, noData = 0;
+    let totalValuePromised = 0, totalValueRealized = 0;
+    const phaseCount: Record<string, number> = { discovery: 0, alignment: 0, realisation: 0 };
+    const accountHealthRows: string[][] = [];
+
+    for (const account of accounts) {
+      const initiatives = await storage.getInitiativesForAccount(account.id);
+      totalInitiatives += initiatives.length;
+      let acctOn = 0, acctRisk = 0, acctOff = 0;
+      for (const proj of initiatives) {
+        if (proj.currentPhase && phaseCount[proj.currentPhase] !== undefined) phaseCount[proj.currentPhase]++;
+        const kpis = await storage.getAllJobThemeKPIsForProject(proj.id);
+        const actuals = await storage.getAllKPIActualsForProject(proj.id);
+        const actualsMap = new Map<number, any[]>();
+        for (const a of actuals) {
+          if (!actualsMap.has(a.jobThemeKPIId)) actualsMap.set(a.jobThemeKPIId, []);
+          actualsMap.get(a.jobThemeKPIId)!.push(a);
+        }
+        for (const kpi of kpis) {
+          if (!kpi.isSelected) continue;
+          totalKPIs++;
+          const kActuals = actualsMap.get(kpi.id) || [];
+          const base = parseNumericValue(kpi.baselineValue);
+          const target = parseNumericValue(kpi.targetValue);
+          if (base === null || target === null || kActuals.length === 0) { noData++; continue; }
+          const sorted = [...kActuals].sort((a, b) => new Date(b.actualDate).getTime() - new Date(a.actualDate).getTime());
+          const latest = parseNumericValue(sorted[0]?.actualValue);
+          if (latest === null) { noData++; continue; }
+          const td = target - base;
+          const cd = latest - base;
+          const pct = td !== 0 ? (cd / td) * 100 : 0;
+          if (pct >= 80) { onTrack++; acctOn++; }
+          else if (pct >= 50) { atRisk++; acctRisk++; }
+          else { offTrack++; acctOff++; }
+          const vpu = parseNumericValue(kpi.estimatedValuePerUnit);
+          if (vpu !== null) {
+            totalValuePromised += Math.abs(td) * vpu;
+            totalValueRealized += Math.abs(cd) * vpu;
+          }
+        }
+      }
+      if (initiatives.length > 0) {
+        const health = acctOff > 0 ? "Needs Attention" : acctRisk > 0 ? "Caution" : acctOn > 0 ? "Healthy" : "No KPI Data";
+        accountHealthRows.push([account.name, String(initiatives.length), health]);
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        _dashboardPayload: {
+          type: "portfolio",
+          title: args.title || "Portfolio Overview",
+          metrics: [
+            { label: "Accounts", value: String(accounts.length), trend: "stable", color: "#00634F" },
+            { label: "Initiatives", value: String(totalInitiatives), trend: "stable", color: "#005971" },
+            { label: "KPIs On Track", value: `${onTrack}/${totalKPIs}`, trend: onTrack >= offTrack ? "up" : "down", color: "#009B77" },
+            { label: "Pipeline Value", value: totalValuePromised > 0 ? `$${(totalValuePromised / 1000000).toFixed(1)}M` : "$0", trend: "up", color: "#00173B" }
+          ],
+          charts: [
+            ...(onTrack + atRisk + offTrack > 0 ? [{
+              id: "portfolio-health",
+              type: "doughnut" as const,
+              title: "KPI Health Across Portfolio",
+              labels: ["On Track", "At Risk", "Off Track", "No Data"],
+              data: [onTrack, atRisk, offTrack, noData],
+              colors: ["#009B77", "#f59e0b", "#ef4444", "#929192"]
+            }] : []),
+            {
+              id: "portfolio-phases",
+              type: "bar" as const,
+              title: "Initiatives by Phase",
+              labels: ["Discovery", "Alignment", "Realisation"],
+              data: [phaseCount.discovery, phaseCount.alignment, phaseCount.realisation],
+              colors: ["#005971", "#00634F", "#009B77"]
+            },
+            ...(totalValuePromised > 0 ? [{
+              id: "portfolio-value-gauge",
+              type: "gauge" as const,
+              title: "Value Realization",
+              labels: ["Realized %"],
+              data: [totalValuePromised > 0 ? Math.round((totalValueRealized / totalValuePromised) * 100) : 0],
+              maxValue: 100
+            }] : [])
+          ],
+          tables: accountHealthRows.length > 0 ? [{
+            title: "Account Health Summary",
+            headers: ["Account", "Initiatives", "Health"],
+            rows: accountHealthRows
+          }] : [],
+          actions: []
+        }
+      }
+    };
+  }
+
+  if (view === "kpi_trends") {
+    if (!args.projectId) return { success: false, error: "projectId is required for kpi_trends view" };
+    const project = await storage.getProject(args.projectId);
+    if (!project) return { success: false, error: `Initiative ${args.projectId} not found` };
+    const kpis = await storage.getAllJobThemeKPIsForProject(args.projectId);
+    const actuals = await storage.getAllKPIActualsForProject(args.projectId);
+    const actualsMap = new Map<number, any[]>();
+    for (const a of actuals) {
+      if (!actualsMap.has(a.jobThemeKPIId)) actualsMap.set(a.jobThemeKPIId, []);
+      actualsMap.get(a.jobThemeKPIId)!.push(a);
+    }
+    const trendRows: string[][] = [];
+    const kpiNames: string[] = [];
+    const latestPcts: number[] = [];
+    for (const kpi of kpis) {
+      if (!kpi.isSelected) continue;
+      const kActuals = actualsMap.get(kpi.id) || [];
+      if (kActuals.length === 0) continue;
+      const base = parseNumericValue(kpi.baselineValue);
+      const target = parseNumericValue(kpi.targetValue);
+      if (base === null || target === null) continue;
+      const sorted = [...kActuals].sort((a, b) => new Date(a.actualDate).getTime() - new Date(b.actualDate).getTime());
+      const td = target - base;
+      const latestVal = parseNumericValue(sorted[sorted.length - 1]?.actualValue);
+      const prevVal = sorted.length > 1 ? parseNumericValue(sorted[sorted.length - 2]?.actualValue) : null;
+      if (latestVal === null) continue;
+      const pct = td !== 0 ? Math.round(((latestVal - base) / td) * 100) : 0;
+      const trend = prevVal !== null && td !== 0 ? Math.round(((latestVal - prevVal) / Math.abs(td)) * 100) : 0;
+      const trendStr = trend > 0 ? `+${trend}%` : `${trend}%`;
+      trendRows.push([kpi.kpiName, `${latestVal}`, `${target}`, `${pct}%`, trendStr]);
+      kpiNames.push(kpi.kpiName.length > 12 ? kpi.kpiName.slice(0, 12) + '..' : kpi.kpiName);
+      latestPcts.push(Math.max(0, Math.min(100, pct)));
+    }
+    return {
+      success: true,
+      data: {
+        _dashboardPayload: {
+          type: "kpis",
+          title: args.title || `KPI Trends - ${project.name}`,
+          metrics: [
+            { label: "KPIs Tracked", value: String(trendRows.length), trend: "stable", color: "#005971" }
+          ],
+          charts: latestPcts.length > 0 ? [{
+            id: "kpi-trends-bar",
+            type: "horizontal_bar" as const,
+            title: "Current Progress (%)",
+            labels: kpiNames,
+            data: latestPcts
+          }] : [],
+          tables: trendRows.length > 0 ? [{
+            title: "KPI Trend Data",
+            headers: ["KPI", "Current", "Target", "Progress", "Trend"],
+            rows: trendRows
+          }] : [],
+          actions: [],
+          projectId: args.projectId
+        }
+      }
+    };
+  }
+
+  if (view === "meeting_prep") {
+    if (!args.projectId) return { success: false, error: "projectId is required for meeting_prep view" };
+    const project = await storage.getProject(args.projectId);
+    if (!project) return { success: false, error: `Initiative ${args.projectId} not found` };
+    const themes = await storage.getJobThemes(args.projectId);
+    const questions = await storage.getQuestions(args.projectId);
+    const notes = await storage.getDiscoveryNotes(args.projectId);
+    const kpis = await storage.getAllJobThemeKPIsForProject(args.projectId);
+    const selectedKPIs = kpis.filter(k => k.isSelected);
+
+    return {
+      success: true,
+      data: {
+        _dashboardPayload: {
+          type: "meeting",
+          title: args.title || `Meeting Prep - ${project.name}`,
+          metrics: [
+            { label: "Job Themes", value: String(themes.length), trend: "stable", color: "#005971" },
+            { label: "Discovery Questions", value: String(questions.length), trend: "stable", color: "#00634F" },
+            { label: "Notes Captured", value: String(notes.length), trend: "stable", color: "#009B77" },
+            { label: "Active KPIs", value: String(selectedKPIs.length), trend: "stable", color: "#A3238E" }
+          ],
+          charts: [],
+          tables: [
+            ...(themes.length > 0 ? [{
+              title: "Key Themes to Discuss",
+              headers: ["Theme", "Priority"],
+              rows: themes.slice(0, 8).map((t: any) => [t.jobName, t.priorityRank ? `#${t.priorityRank}` : "—"])
+            }] : []),
+            ...(selectedKPIs.length > 0 ? [{
+              title: "KPIs to Review",
+              headers: ["KPI", "Baseline", "Target"],
+              rows: selectedKPIs.slice(0, 8).map((k: any) => [k.kpiName, k.baselineValue || "—", k.targetValue || "—"])
+            }] : [])
+          ],
+          actions: [],
+          projectId: args.projectId
+        }
+      }
+    };
+  }
+
+  if (view === "comparison") {
+    if (!args.entityIds || args.entityIds.length < 2) return { success: false, error: "entityIds with at least 2 IDs is required for comparison view" };
+    const entityType = args.entityType || "accounts";
+    
+    if (entityType === "accounts") {
+      const rows: string[][] = [];
+      for (const id of args.entityIds) {
+        const acct = await storage.getAccount(id);
+        if (!acct) continue;
+        const inits = await storage.getInitiativesForAccount(id);
+        rows.push([acct.name, acct.industry || "—", acct.tier || "—", String(inits.length)]);
+      }
+      return {
+        success: true,
+        data: {
+          _dashboardPayload: {
+            type: "accounts",
+            title: args.title || "Account Comparison",
+            metrics: [{ label: "Comparing", value: `${rows.length} accounts`, trend: "stable", color: "#005971" }],
+            charts: [],
+            tables: rows.length > 0 ? [{
+              title: "Side-by-Side Comparison",
+              headers: ["Account", "Industry", "Tier", "Initiatives"],
+              rows
+            }] : [],
+            actions: []
+          }
+        }
+      };
+    }
+    return { success: true, data: { _dashboardPayload: { type: "info_card", title: "Comparison", metrics: [], charts: [], tables: [], actions: [], infoContent: "Comparison view is available for accounts." } } };
+  }
+
+  return { success: false, error: `Unknown view type: ${view}` };
 }
 
 async function navigateTo(args: {

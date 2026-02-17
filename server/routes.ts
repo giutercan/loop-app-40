@@ -11542,7 +11542,7 @@ Respond in JSON format:
       const isCanvasMode = context?.canvasMode === true;
       
       let systemPrompt = isCanvasMode 
-        ? `You are a proactive AI companion for the Korn Ferry Value Lifecycle Platform. You are operating in "Canvas Mode" - a conversational interface where the user interacts with you as their primary way to use the platform.
+        ? `You are a proactive AI companion for the Korn Ferry Value Lifecycle Platform. You are operating in "Canvas Mode" - a split-panel interface. The LEFT panel shows data visualizations. The RIGHT panel (where you are) is the chat. You control BOTH panels.
 
 YOUR ROLE AS A COACH AND ASSISTANT:
 - Be proactive and guide the user through workflows naturally
@@ -11550,6 +11550,34 @@ YOUR ROLE AS A COACH AND ASSISTANT:
 - Ask clarifying questions to understand their goals before acting
 - Provide coaching and recommendations based on best practices
 - Execute actions on their behalf when they confirm
+
+LEFT PANEL CONTROL (CRITICAL):
+You have a tool called "surfaceData" that controls what appears on the left panel. This is your most important tool for data visualization.
+
+RULES FOR THE LEFT PANEL:
+1. ALWAYS call surfaceData when you retrieve or discuss data that should be visualized. The left panel must show data relevant to the current conversation topic.
+2. When the user asks to "show me", "display", "what does X look like", or asks about any data - call surfaceData with the appropriate view type ALONGSIDE any data-retrieval tools.
+3. When you call a data tool (getAccountSummary, listKPIs, listAccounts, etc.), ALSO call surfaceData to update the left panel with the relevant view.
+4. DO NOT call surfaceData when you are asking the user clarifying questions or don't have enough information yet. The left panel should not change while you're gathering requirements.
+5. For AI-generated content (summaries, recommendations in text form), use the "info_card" view with your synthesized content.
+6. NEVER show made-up data. All data comes from the system via surfaceData queries.
+
+AVAILABLE surfaceData VIEWS:
+- "account_detail" (requires accountId) - One account's full health, initiatives, KPIs
+- "account_list" - All accounts with tier/industry breakdown
+- "initiative_detail" (requires projectId) - Initiative phase, KPIs, progress
+- "kpi_health" (requires projectId) - Deep KPI health dashboard with charts
+- "portfolio_overview" - Cross-portfolio metrics and health
+- "meeting_prep" (requires projectId) - Meeting prep context with themes and KPIs
+- "kpi_trends" (requires projectId) - KPI progress over time
+- "comparison" (requires entityIds[] + entityType) - Side-by-side comparison
+- "info_card" - Display your own AI-generated insights or summaries
+
+INFORMATION GATHERING FLOW:
+When a user asks something that requires more context:
+1. Ask your clarifying questions in chat (DO NOT update the left panel yet)
+2. Once you have enough information to act, call the relevant tools + surfaceData together
+3. The left panel should only update when you have real data to show
 
 CAPABILITIES:
 - Create and manage accounts and initiatives
@@ -11562,7 +11590,7 @@ CAPABILITIES:
 WORKFLOW GUIDANCE:
 - When the user mentions a company name, offer to create an account and initiative for them
 - Always use "createInitiativeWithDiscovery" for new initiatives to pre-populate insights
-- After creating something, proactively suggest next steps
+- After creating something, proactively suggest next steps AND update the left panel with the new data
 - When discussing KPIs, offer to show current status or recommend improvements
 - For meeting prep, ask about the meeting type and provide tailored talking points
 
@@ -11571,29 +11599,26 @@ CONFIDENCE SCORING:
 - High Confidence: Based on actual data in the system (KPI actuals, recorded metrics)
 - Medium Confidence: Based on patterns and partial data
 - Low Confidence: Based on general best practices without specific data
-- Example: "[High Confidence] Based on 3 months of KPI data, employee retention is trending 12% above target."
 
 REASONING CHAIN:
 - Briefly explain WHY you are recommending something before stating the recommendation
 - Connect recommendations to data points: "Because [observation], I recommend [action]"
-- When multiple options exist, explain trade-offs concisely
 
 MULTI-STEP WORKFLOW AWARENESS:
 You can orchestrate these multi-step workflows:
-1. New Engagement Setup: createAccount -> createInitiativeWithDiscovery -> recommendKPIs -> prepareMeetingBundle
-2. QBR Preparation: getAccountSummary -> listKPIs -> runQBRPrep -> prepareMeetingBundle
-3. Account Handoff: getAccountSummary -> listKPIs -> runHandoffBundle
-When the user's goal maps to one of these workflows, guide them through the steps proactively.
+1. New Engagement Setup: createAccount -> createInitiativeWithDiscovery -> surfaceData(account_detail) -> recommendKPIs
+2. QBR Preparation: getAccountSummary + surfaceData(account_detail) -> listKPIs + surfaceData(kpi_health)
+3. Account Handoff: getAccountSummary + surfaceData(account_detail) -> runHandoffBundle
 
 IMPACT PREVIEW:
-- Before executing any write or edit action, describe what will happen: "This will create a new account named X with industry Y..."
-- For destructive or significant changes, explicitly state the impact: "This will update the baseline from 50 to 75, which will change the progress calculation for all related KPIs."
+- Before executing any write or edit action, describe what will happen
+- For destructive or significant changes, explicitly state the impact
 
 CONVERSATION STYLE:
 - Be warm and professional, like a helpful colleague
 - Keep responses focused but thorough
 - Use bullet points for lists and recommendations
-- When showing data, summarize the key insights
+- When showing data, summarize key insights and reference the left panel: "I've updated the dashboard to show..."
 - Always end with a clear next step or question
 
 Be the user's trusted partner in managing their client engagements.`
@@ -11750,247 +11775,26 @@ Be concise but helpful. Use the user's context (current account, project, page) 
       
       if (toolResults.length > 0) {
         for (const tr of toolResults) {
-          // Extract navigation command if tool returned one
           if (tr.result.navigationCommand) {
             navigationCommand = tr.result.navigationCommand;
           }
           
-          // Build context updates for canvas mode with server-computed dashboard payloads
-          if (isCanvasMode && tr.result.success && tr.result.data) {
-            const d = tr.result.data;
-            if (tr.toolName === "getAccountSummary" || tr.toolName === "createAccount") {
-              const initiatives = d.initiatives || [];
-              const initiativeCount = Array.isArray(initiatives) ? initiatives.length : 0;
-              const kpiData = d.kpiSummary || d.kpis || {};
-              const onTrack = kpiData.onTrack || 0;
-              const atRisk = kpiData.atRisk || 0;
-              const offTrack = kpiData.offTrack || 0;
-              const noData = kpiData.noData || 0;
-              const totalKpi = onTrack + atRisk + offTrack + noData;
-              contextUpdate = { 
-                type: "account", 
-                data: d,
-                title: d?.name || "Account",
-                dashboard: {
-                  metrics: [
-                    { label: "Initiatives", value: String(initiativeCount), trend: "stable", color: "#005971" },
-                    { label: "KPIs On Track", value: `${onTrack}/${totalKpi}`, trend: onTrack >= offTrack ? "up" : "down", color: "#009B77" },
-                    { label: "At Risk", value: String(atRisk), trend: atRisk > 0 ? "down" : "up", color: "#f59e0b" },
-                    { label: "Off Track", value: String(offTrack), trend: offTrack > 0 ? "down" : "up", color: "#ef4444" }
-                  ],
-                  charts: [
-                    {
-                      id: "account-kpi-health",
-                      type: "doughnut",
-                      title: "KPI Health",
-                      labels: ["On Track", "At Risk", "Off Track", "No Data"],
-                      data: [onTrack, atRisk, offTrack, noData],
-                      colors: ["#009B77", "#f59e0b", "#ef4444", "#929192"]
-                    }
-                  ],
-                  tables: [],
-                  actions: atRisk + offTrack > 0 
-                    ? [{ label: "Review at-risk KPIs", priority: "high" }] 
-                    : [{ label: "All KPIs healthy", priority: "low" }]
-                }
-              };
-            } else if (tr.toolName === "getInitiativeSummary" || tr.toolName === "createInitiative" || tr.toolName === "createInitiativeWithDiscovery") {
-              const phase = d.currentPhase || d.phase || "discovery";
-              const jobThemes = d.jobThemes || [];
-              const kpis = d.kpis || [];
-              contextUpdate = { 
-                type: "initiative", 
-                data: d,
-                title: d?.name || "Initiative",
-                dashboard: {
-                  metrics: [
-                    { label: "Phase", value: phase.charAt(0).toUpperCase() + phase.slice(1), trend: "stable", color: "#00634F" },
-                    { label: "Job Themes", value: String(Array.isArray(jobThemes) ? jobThemes.length : 0), trend: "stable", color: "#005971" },
-                    { label: "KPIs", value: String(Array.isArray(kpis) ? kpis.length : 0), trend: "stable", color: "#009B77" }
-                  ],
-                  charts: [],
-                  tables: [],
-                  actions: [{ label: `Continue ${phase} phase`, priority: "medium" }]
-                }
-              };
-            } else if (tr.toolName === "listKPIs") {
-              const kpiList = Array.isArray(d) ? d : (d.kpis || []);
-              let kOnTrack = 0, kAtRisk = 0, kOffTrack = 0, kNoData = 0;
-              const kpiRows: string[][] = [];
-              for (const k of kpiList) {
-                const status = k.status || k.healthStatus || "no-data";
-                if (status === "on-track") kOnTrack++;
-                else if (status === "at-risk") kAtRisk++;
-                else if (status === "off-track") kOffTrack++;
-                else kNoData++;
-                kpiRows.push([k.kpiName || k.name || "KPI", status, `${k.progressPercent || 0}%`]);
-              }
-              contextUpdate = { 
-                type: "kpis", 
-                data: d,
-                title: "KPIs",
-                dashboard: {
-                  metrics: [
-                    { label: "Total KPIs", value: String(kpiList.length), trend: "stable", color: "#005971" },
-                    { label: "On Track", value: String(kOnTrack), trend: "up", color: "#009B77" },
-                    { label: "At Risk", value: String(kAtRisk), trend: kAtRisk > 0 ? "down" : "up", color: "#f59e0b" },
-                    { label: "Off Track", value: String(kOffTrack), trend: kOffTrack > 0 ? "down" : "up", color: "#ef4444" }
-                  ],
-                  charts: [
-                    {
-                      id: "kpi-status-breakdown",
-                      type: "doughnut",
-                      title: "KPI Status",
-                      labels: ["On Track", "At Risk", "Off Track", "No Data"],
-                      data: [kOnTrack, kAtRisk, kOffTrack, kNoData],
-                      colors: ["#009B77", "#f59e0b", "#ef4444", "#929192"]
-                    }
-                  ],
-                  tables: [
-                    { title: "KPI Overview", headers: ["KPI", "Status", "Progress"], rows: kpiRows.slice(0, 10) }
-                  ],
-                  actions: []
-                }
-              };
-            } else if (tr.toolName === "prepareMeetingBundle") {
-              contextUpdate = { 
-                type: "meeting", 
-                data: d,
-                title: "Meeting Prep",
-                dashboard: {
-                  metrics: [
-                    { label: "Talking Points", value: String((d.talkingPoints || []).length), trend: "stable", color: "#005971" },
-                    { label: "Questions", value: String((d.questions || d.discoveryQuestions || []).length), trend: "stable", color: "#00634F" }
-                  ],
-                  charts: [],
-                  tables: [],
-                  actions: [{ label: "Review talking points before meeting", priority: "high" }]
-                }
-              };
-            } else if (tr.toolName === "listAccounts") {
-              const acctList = Array.isArray(d) ? d : [];
-              const tierCounts: Record<string, number> = {};
-              for (const a of acctList) {
-                const t = a.tier || "unspecified";
-                tierCounts[t] = (tierCounts[t] || 0) + 1;
-              }
-              contextUpdate = { 
-                type: "accounts", 
-                data: d,
-                title: "All Accounts",
-                dashboard: {
-                  metrics: [
-                    { label: "Total Accounts", value: String(acctList.length), trend: "stable", color: "#00634F" }
-                  ],
-                  charts: Object.keys(tierCounts).length > 0 ? [
-                    {
-                      id: "account-tiers",
-                      type: "doughnut",
-                      title: "Account Tiers",
-                      labels: Object.keys(tierCounts).map(t => t.charAt(0).toUpperCase() + t.slice(1)),
-                      data: Object.values(tierCounts),
-                      colors: ["#00634F", "#005971", "#009B77"]
-                    }
-                  ] : [],
-                  tables: [],
-                  actions: []
-                }
-              };
-            } else if (tr.toolName === "listInitiatives") {
-              const initList = Array.isArray(d) ? d : [];
-              const phaseCounts: Record<string, number> = {};
-              for (const init of initList) {
-                const p = init.currentPhase || "discovery";
-                phaseCounts[p] = (phaseCounts[p] || 0) + 1;
-              }
-              contextUpdate = { 
-                type: "initiatives", 
-                data: d,
-                title: "Initiatives",
-                dashboard: {
-                  metrics: [
-                    { label: "Total Initiatives", value: String(initList.length), trend: "stable", color: "#005971" }
-                  ],
-                  charts: Object.keys(phaseCounts).length > 0 ? [
-                    {
-                      id: "initiative-phases",
-                      type: "bar",
-                      title: "By Phase",
-                      labels: Object.keys(phaseCounts).map(p => p.charAt(0).toUpperCase() + p.slice(1)),
-                      data: Object.values(phaseCounts),
-                      colors: ["#005971", "#00634F", "#009B77"]
-                    }
-                  ] : [],
-                  tables: [],
-                  actions: []
-                }
-              };
-            } else if (tr.toolName === "recommendNextAction" || tr.toolName === "recommendKPIs") {
-              const recs = d.recommendations || d;
-              const recList = Array.isArray(recs) ? recs : [];
-              contextUpdate = { 
-                type: "recommendations", 
-                data: d,
-                title: "AI Recommendations",
-                dashboard: {
-                  metrics: [
-                    { label: "Recommendations", value: String(recList.length), trend: "stable", color: "#A3238E" }
-                  ],
-                  charts: [],
-                  tables: recList.length > 0 ? [
-                    {
-                      title: "Recommended Actions",
-                      headers: ["Action", "Priority", "Rationale"],
-                      rows: recList.slice(0, 8).map((r: any) => [
-                        r.title || r.action || r.recommendation || String(r),
-                        r.priority || "medium",
-                        r.rationale || r.reason || ""
-                      ])
-                    }
-                  ] : [],
-                  actions: []
-                }
-              };
-            } else if (tr.toolName === "listJobThemes") {
-              const themes = Array.isArray(d) ? d : [];
-              contextUpdate = { 
-                type: "initiatives", 
-                data: d,
-                title: "Job Themes & Priorities",
-                dashboard: {
-                  metrics: [
-                    { label: "Job Themes", value: String(themes.length), trend: "stable", color: "#005971" }
-                  ],
-                  charts: [],
-                  tables: themes.length > 0 ? [
-                    {
-                      title: "Job Themes",
-                      headers: ["Theme", "Priority", "KPIs"],
-                      rows: themes.slice(0, 10).map((t: any) => [
-                        t.jobName || t.name || "Theme",
-                        t.priorityRank ? `#${t.priorityRank}` : "-",
-                        String(t.kpiCount || 0)
-                      ])
-                    }
-                  ] : [],
-                  actions: []
-                }
-              };
-            } else if (tr.toolName === "editKPI" || tr.toolName === "updateKPI" || tr.toolName === "createKPI") {
-              contextUpdate = { 
-                type: "kpis", 
-                data: Array.isArray(d) ? d : [d],
-                title: "KPI Updated",
-                dashboard: {
-                  metrics: [
-                    { label: "Action", value: tr.toolName === "createKPI" ? "Created" : "Updated", trend: "up", color: "#009B77" }
-                  ],
-                  charts: [],
-                  tables: [],
-                  actions: [{ label: "Verify KPI data is correct", priority: "medium" }]
-                }
-              };
-            }
+          // surfaceData tool produces the definitive dashboard payload
+          if (isCanvasMode && tr.toolName === "surfaceData" && tr.result.success && tr.result.data?._dashboardPayload) {
+            const payload = tr.result.data._dashboardPayload;
+            contextUpdate = {
+              type: payload.type,
+              title: payload.title,
+              dashboard: {
+                metrics: payload.metrics || [],
+                charts: payload.charts || [],
+                tables: payload.tables || [],
+                actions: payload.actions || [],
+              },
+              data: payload,
+              infoContent: payload.infoContent,
+              infoItems: payload.infoItems,
+            };
           }
         }
       }
