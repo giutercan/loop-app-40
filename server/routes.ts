@@ -11771,6 +11771,24 @@ Be concise but helpful. Use the user's context (current account, project, page) 
                 data: tr.result.data,
                 title: "Initiatives"
               };
+            } else if (tr.toolName === "recommendNextAction" || tr.toolName === "recommendKPIs") {
+              contextUpdate = { 
+                type: "recommendations", 
+                data: tr.result.data,
+                title: "AI Recommendations"
+              };
+            } else if (tr.toolName === "listJobThemes") {
+              contextUpdate = { 
+                type: "initiatives", 
+                data: tr.result.data,
+                title: "Job Themes & Priorities"
+              };
+            } else if (tr.toolName === "editKPI" || tr.toolName === "updateKPI" || tr.toolName === "createKPI") {
+              contextUpdate = { 
+                type: "kpis", 
+                data: Array.isArray(tr.result.data) ? tr.result.data : [tr.result.data],
+                title: "KPI Updated"
+              };
             }
           }
         }
@@ -11850,7 +11868,18 @@ Be concise but helpful. Use the user's context (current account, project, page) 
         toolCalls: [{ toolName: action, arguments: payload, result }]
       });
       
-      res.json(result);
+      let contextUpdate: any = null;
+      if (result.success && result.data) {
+        if (action === "createAccount" || action === "editAccount") {
+          contextUpdate = { type: "account", data: result.data, title: result.data?.name || "Account" };
+        } else if (action === "createInitiative" || action === "createInitiativeWithDiscovery") {
+          contextUpdate = { type: "initiative", data: result.data, title: result.data?.name || "Initiative" };
+        } else if (action === "createKPI" || action === "editKPI" || action === "updateKPI") {
+          contextUpdate = { type: "kpis", data: Array.isArray(result.data) ? result.data : [result.data], title: "KPI Updated" };
+        }
+      }
+      
+      res.json({ ...result, contextUpdate });
     } catch (error: any) {
       console.error("Error confirming companion action:", error);
       res.status(500).json({ error: error.message });
