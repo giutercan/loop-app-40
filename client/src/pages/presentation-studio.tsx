@@ -50,6 +50,10 @@ import {
   Maximize2,
   Minimize2,
   WandSparkles,
+  Upload,
+  Palette,
+  Type,
+  LayoutTemplate,
 } from "lucide-react";
 
 type PresentationPurpose = 'customer_engagement' | 'qbr' | 'executive_pitch' | 'discovery_readout' | 'handoff_brief' | 'evidence_review' | 'value_story';
@@ -436,6 +440,20 @@ function SlideFullPreview({ slide, index, template }: { slide: SlideContent; ind
   );
 }
 
+interface BrandTemplate {
+  id: string;
+  name: string;
+  uploadedAt: string;
+  brandKit: {
+    colors: Record<string, string>;
+    fonts: { major: string; minor: string };
+    slideWidth: number;
+    slideHeight: number;
+    layouts: Array<{ name: string; type: string; placeholders: Array<{ type: string; name?: string; x: number; y: number; w: number; h: number }> }>;
+    sampleSlideCount: number;
+  };
+}
+
 export default function PresentationStudioPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -454,6 +472,60 @@ export default function PresentationStudioPage() {
   const [refineInstruction, setRefineInstruction] = useState('');
   const [refiningSlideId, setRefiningSlideId] = useState<string | null>(null);
   const [fillingGapIdx, setFillingGapIdx] = useState<number | null>(null);
+  const [showBrandPanel, setShowBrandPanel] = useState(false);
+  const [uploadingTemplate, setUploadingTemplate] = useState(false);
+  const templateFileRef = useRef<HTMLInputElement>(null);
+
+  const { data: brandTemplates = [], refetch: refetchTemplates } = useQuery<BrandTemplate[]>({
+    queryKey: ['/api/templates'],
+  });
+
+  const { data: activeTemplate, refetch: refetchActiveTemplate } = useQuery<BrandTemplate>({
+    queryKey: ['/api/templates/active'],
+  });
+
+  const handleTemplateUpload = async (file: File) => {
+    if (!file.name.toLowerCase().endsWith('.pptx')) {
+      toast({ title: 'Invalid File', description: 'Please upload a .pptx file.', variant: 'destructive' });
+      return;
+    }
+    setUploadingTemplate(true);
+    try {
+      const formData = new FormData();
+      formData.append('template', file);
+      const res = await fetch('/api/templates/upload', { method: 'POST', body: formData });
+      if (!res.ok) throw new Error('Upload failed');
+      const parsed = await res.json();
+      refetchTemplates();
+      refetchActiveTemplate();
+      toast({ title: 'Template Uploaded', description: `"${parsed.name}" is now your active brand template. ${parsed.brandKit.layouts.length} layouts and ${Object.keys(parsed.brandKit.colors).length} colors extracted.` });
+    } catch {
+      toast({ title: 'Upload Failed', description: 'Could not parse the template file.', variant: 'destructive' });
+    } finally {
+      setUploadingTemplate(false);
+    }
+  };
+
+  const activateTemplate = async (id: string) => {
+    try {
+      await apiRequest('POST', `/api/templates/${id}/activate`, {});
+      refetchActiveTemplate();
+      toast({ title: 'Template Activated', description: 'This brand template will be used for exports.' });
+    } catch {
+      toast({ title: 'Error', description: 'Could not activate template.', variant: 'destructive' });
+    }
+  };
+
+  const removeTemplate = async (id: string) => {
+    try {
+      await apiRequest('DELETE', `/api/templates/${id}`);
+      refetchTemplates();
+      refetchActiveTemplate();
+      toast({ title: 'Template Removed' });
+    } catch {
+      toast({ title: 'Error', description: 'Could not remove template.', variant: 'destructive' });
+    }
+  };
 
   const { data: accounts = [] } = useQuery({ queryKey: ['/api/accounts'] });
   const { data: projects = [] } = useQuery({
@@ -1273,7 +1345,118 @@ export default function PresentationStudioPage() {
                 </Card>
 
                 <Card className="p-4">
-                  <h3 className="text-sm font-semibold text-foreground mb-3">Template</h3>
+                  <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+                    <h3 className="text-sm font-semibold text-foreground">Brand Template</h3>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowBrandPanel(!showBrandPanel)}
+                      data-testid="button-toggle-brand-panel"
+                    >
+                      <Palette className="w-3 h-3 mr-1" />
+                      {showBrandPanel ? 'Hide' : 'Manage'}
+                    </Button>
+                  </div>
+
+                  {activeTemplate && (
+                    <div className="mb-3 p-2 rounded-md border border-[#005971]/20 bg-[#005971]/5">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <LayoutTemplate className="w-3 h-3 text-[#005971]" />
+                        <span className="text-xs font-medium text-[#005971]">{activeTemplate.name}</span>
+                        <Badge variant="secondary" className="text-[9px]">Active</Badge>
+                      </div>
+                      <div className="flex items-center gap-3 text-[10px] text-muted-foreground flex-wrap">
+                        <span className="flex items-center gap-1"><Type className="w-2.5 h-2.5" />{activeTemplate.brandKit.fonts.major}</span>
+                        <span>{activeTemplate.brandKit.layouts.length} layouts</span>
+                        <div className="flex gap-0.5">
+                          {['accent1', 'accent2', 'accent3', 'accent4', 'accent5', 'accent6'].map(key => (
+                            <div
+                              key={key}
+                              className="w-3 h-3 rounded-sm border border-border"
+                              style={{ backgroundColor: `#${activeTemplate.brandKit.colors[key] || '888'}` }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {showBrandPanel && (
+                    <div className="space-y-3 mb-3">
+                      <input
+                        ref={templateFileRef}
+                        type="file"
+                        accept=".pptx"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleTemplateUpload(file);
+                          e.target.value = '';
+                        }}
+                        data-testid="input-template-upload"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => templateFileRef.current?.click()}
+                        disabled={uploadingTemplate}
+                        data-testid="button-upload-template"
+                      >
+                        {uploadingTemplate ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Upload className="w-3 h-3 mr-1" />}
+                        {uploadingTemplate ? 'Parsing...' : 'Upload .pptx Template'}
+                      </Button>
+                      <p className="text-[10px] text-muted-foreground">
+                        Upload your company's PowerPoint template. Colors, fonts, and slide layouts will be extracted automatically.
+                      </p>
+
+                      {brandTemplates.length > 0 && (
+                        <div className="space-y-1.5">
+                          {brandTemplates.map(t => {
+                            const isActive = activeTemplate?.id === t.id;
+                            return (
+                              <div
+                                key={t.id}
+                                className={`flex items-center justify-between gap-2 p-2 rounded-md border text-left transition-colors ${
+                                  isActive ? 'border-[#005971] bg-[#005971]/5' : 'border-border'
+                                }`}
+                                data-testid={`brand-template-${t.id}`}
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <p className={`text-xs font-medium truncate ${isActive ? 'text-[#005971]' : 'text-foreground'}`}>{t.name}</p>
+                                  <p className="text-[10px] text-muted-foreground">{t.brandKit.fonts.major} / {t.brandKit.layouts.length} layouts</p>
+                                </div>
+                                <div className="flex gap-1 shrink-0">
+                                  {!isActive && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => activateTemplate(t.id)}
+                                      data-testid={`button-activate-${t.id}`}
+                                    >
+                                      <Check className="w-3 h-3" />
+                                    </Button>
+                                  )}
+                                  {t.id !== 'default' && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => removeTemplate(t.id)}
+                                      data-testid={`button-remove-${t.id}`}
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <h4 className="text-xs font-medium text-muted-foreground mb-2 mt-2">Slide Style</h4>
                   <div className="grid grid-cols-1 gap-2">
                     {TEMPLATE_OPTIONS.map(opt => {
                       const isSelected = (templateOverride || 'executive_modern') === opt.value;
@@ -1282,7 +1465,7 @@ export default function PresentationStudioPage() {
                           key={opt.value}
                           onClick={() => setTemplateOverride(opt.value)}
                           className={`p-3 rounded-md border text-left transition-colors ${
-                            isSelected ? 'border-[#A3238E] bg-[#A3238E]/5' : 'border-border hover-elevate'
+                            isSelected ? 'border-[#A3238E] bg-[#A3238E]/5' : 'border-border hover:bg-muted/50'
                           }`}
                           data-testid={`template-${opt.value}`}
                         >

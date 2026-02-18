@@ -3,7 +3,9 @@ import { storage } from "./storage";
 import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale, generateStrategicPillars, generateStorySuggestion, generateDiscoveryKpiSuggestions, enrichContactWithAI, openai, generateCompetitiveIntelligence, generateKPIValueCaseRecommendations, generateLiveIntelligence, generateEvidencePackRecommendations, generateItemCoaching, researchMeetingAttendee } from "./ai";
 import { EvidencePackService } from "./services/evidence-pack.service";
 import { generatePresentationPlan, aggregatePresentationData, type PresentationRequest, type TopicCategory } from "./services/presentation-studio.service";
+import { uploadTemplate, getTemplates, getTemplate, getActiveTemplate, setActiveTemplate, deleteTemplate, getActiveBrandKit, mapBrandKitToExportColors, getTemplateLayoutForSlideType } from "./services/template-manager.service";
 import pptxgen from "pptxgenjs";
+import multer from "multer";
 import { z } from "zod";
 import crypto from "crypto";
 import { OUTCOME_JOURNEY_TEMPLATES, type SolutionPatternId } from "@shared/value-frameworks";
@@ -17911,19 +17913,83 @@ Return JSON:
 
   // ─── Presentation Studio Routes ───────────────────────────────────────────────
 
-  const KF_COLORS = {
-    navy: "00173B",
-    forestGreen: "00634F",
-    oceanBlue: "005971",
-    emerald: "009B77",
-    mint: "05C690",
-    lime: "8DC63F",
-    cyan: "00ADBB",
-    purple: "A3238E",
-    gray: "929192",
-    lightGray: "DAD8D6",
-    white: "FFFFFF"
-  };
+  const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+
+  app.get("/api/templates", (_req, res) => {
+    try {
+      res.json(getTemplates());
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/templates/active", (_req, res) => {
+    try {
+      const active = getActiveTemplate();
+      if (!active) return res.status(404).json({ error: "No active template" });
+      res.json(active);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/templates/upload", upload.single("template"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+      if (!req.file.originalname.toLowerCase().endsWith(".pptx")) {
+        return res.status(400).json({ error: "Only .pptx files are supported" });
+      }
+      const parsed = await uploadTemplate(req.file.originalname, req.file.buffer);
+      res.json(parsed);
+    } catch (error: any) {
+      console.error("Error uploading template:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/templates/:id/activate", (req, res) => {
+    try {
+      const success = setActiveTemplate(req.params.id);
+      if (!success) return res.status(404).json({ error: "Template not found" });
+      res.json({ success: true, activeTemplateId: req.params.id });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/templates/:id", (req, res) => {
+    try {
+      if (req.params.id === "default") return res.status(400).json({ error: "Cannot delete the default template" });
+      const success = deleteTemplate(req.params.id);
+      if (!success) return res.status(404).json({ error: "Template not found" });
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  function getKFColors() {
+    const kit = getActiveBrandKit();
+    const mapped = mapBrandKitToExportColors(kit);
+    return {
+      navy: mapped.navy,
+      forestGreen: mapped.forestGreen,
+      oceanBlue: mapped.oceanBlue,
+      emerald: mapped.emerald,
+      mint: mapped.mint,
+      lime: mapped.lime,
+      cyan: mapped.cyan,
+      purple: mapped.purple,
+      gray: mapped.gray,
+      lightGray: mapped.lightGray,
+      white: mapped.white,
+      headerFont: mapped.headerFont,
+      bodyFont: mapped.bodyFont,
+      slideWidth: mapped.slideWidth,
+      slideHeight: mapped.slideHeight,
+    };
+  }
+  const KF_COLORS = getKFColors();
 
   app.post("/api/presentations/plan", async (req, res) => {
     try {
@@ -18080,15 +18146,19 @@ Return a JSON object with:
       }
       const template = plan.recommendedTemplate;
 
+      const colors = getKFColors();
+
       const templateConfig: Record<string, { titleBg: string; accentColor: string; headerColor: string; textColor: string; subtitleColor: string }> = {
-        executive_modern: { titleBg: KF_COLORS.navy, accentColor: KF_COLORS.emerald, headerColor: KF_COLORS.navy, textColor: "333333", subtitleColor: KF_COLORS.gray },
-        data_driven: { titleBg: KF_COLORS.white, accentColor: KF_COLORS.oceanBlue, headerColor: KF_COLORS.oceanBlue, textColor: "333333", subtitleColor: KF_COLORS.gray },
-        visual_narrative: { titleBg: KF_COLORS.forestGreen, accentColor: KF_COLORS.purple, headerColor: KF_COLORS.forestGreen, textColor: "333333", subtitleColor: KF_COLORS.gray },
+        executive_modern: { titleBg: colors.navy, accentColor: colors.emerald, headerColor: colors.navy, textColor: "333333", subtitleColor: colors.gray },
+        data_driven: { titleBg: colors.white, accentColor: colors.oceanBlue, headerColor: colors.oceanBlue, textColor: "333333", subtitleColor: colors.gray },
+        visual_narrative: { titleBg: colors.forestGreen, accentColor: colors.purple, headerColor: colors.forestGreen, textColor: "333333", subtitleColor: colors.gray },
       };
       const config = templateConfig[template] || templateConfig.executive_modern;
 
+      const activeBrandKit = getActiveBrandKit();
+
       const pres = new pptxgen();
-      pres.defineLayout({ name: "KF_WIDE", width: 13.333, height: 7.5 });
+      pres.defineLayout({ name: "KF_WIDE", width: colors.slideWidth, height: colors.slideHeight });
       pres.layout = "KF_WIDE";
       pres.author = "Korn Ferry";
       pres.company = "Korn Ferry";
@@ -18097,19 +18167,26 @@ Return a JSON object with:
       const account = await storage.getAccount(body.accountId);
       const project = await storage.getProject(body.projectId);
 
+      function getLayoutPos(slideType: string, phType: string) {
+        const layout = getTemplateLayoutForSlideType(activeBrandKit, slideType);
+        if (!layout) return null;
+        const ph = layout.placeholders.find(p => p.type === phType);
+        return ph && ph.w > 0 ? { x: ph.x, y: ph.y, w: ph.w, h: ph.h } : null;
+      }
+
       for (let i = 0; i < plan.slides.length; i++) {
         const slideData = plan.slides[i];
         const slide = pres.addSlide();
 
         slide.addText("KORN FERRY", {
-          x: 10.5, y: 0.2, w: 2.5, h: 0.35,
-          fontSize: 10, fontFace: "Arial",
+          x: colors.slideWidth - 2.8, y: 0.2, w: 2.5, h: 0.35,
+          fontSize: 10, fontFace: colors.bodyFont || "Arial",
           color: config.accentColor, bold: true, align: "right",
         });
 
         slide.addText(`${i + 1}`, {
-          x: 6.0, y: 7.0, w: 1.333, h: 0.4,
-          fontSize: 8, fontFace: "Arial",
+          x: (colors.slideWidth - 1.333) / 2, y: colors.slideHeight - 0.5, w: 1.333, h: 0.4,
+          fontSize: 8, fontFace: colors.bodyFont || "Arial",
           color: KF_COLORS.gray, align: "center",
         });
 
@@ -18119,25 +18196,28 @@ Return a JSON object with:
 
         switch (slideData.slideType) {
           case "title": {
+            const titlePos = getLayoutPos("title", "ctrTitle") || { x: 0.8, y: 2.0, w: colors.slideWidth - 1.6, h: 1.5 };
+            const subPos = getLayoutPos("title", "subTitle") || { x: 0.8, y: titlePos.y + titlePos.h + 0.1, w: colors.slideWidth - 1.6, h: 0.8 };
+
             slide.background = { color: config.titleBg };
             const titleColor = config.titleBg === KF_COLORS.white ? config.headerColor : KF_COLORS.white;
             slide.addText(slideData.title, {
-              x: 0.8, y: 2.0, w: 11.7, h: 1.5,
-              fontSize: 36, fontFace: "Arial",
+              x: titlePos.x, y: titlePos.y, w: titlePos.w, h: titlePos.h,
+              fontSize: 36, fontFace: colors.headerFont || colors.bodyFont || "Arial",
               color: titleColor, bold: true, align: "left",
             });
             if (slideData.subtitle) {
               slide.addText(slideData.subtitle, {
-                x: 0.8, y: 3.6, w: 11.7, h: 0.8,
-                fontSize: 18, fontFace: "Arial",
+                x: subPos.x, y: subPos.y, w: subPos.w, h: subPos.h,
+                fontSize: 18, fontFace: colors.bodyFont || "Arial",
                 color: config.titleBg === KF_COLORS.white ? KF_COLORS.gray : KF_COLORS.lightGray,
                 align: "left",
               });
             }
             if (slideData.bodyContent) {
               slide.addText(slideData.bodyContent, {
-                x: 0.8, y: 4.6, w: 11.7, h: 0.6,
-                fontSize: 12, fontFace: "Arial",
+                x: subPos.x, y: subPos.y + subPos.h + 0.2, w: subPos.w, h: 0.6,
+                fontSize: 12, fontFace: colors.bodyFont || "Arial",
                 color: config.titleBg === KF_COLORS.white ? KF_COLORS.gray : KF_COLORS.lightGray,
                 align: "left",
               });
@@ -18146,33 +18226,39 @@ Return a JSON object with:
           }
 
           case "section_divider": {
+            const secLayout = getLayoutPos("section_divider", "title");
+            const secY = secLayout ? secLayout.y : 2.5;
+            const secH = secLayout ? secLayout.h : 2.5;
             slide.addShape(pres.ShapeType.rect, {
-              x: 0, y: 2.5, w: 13.333, h: 2.5,
+              x: 0, y: secY, w: colors.slideWidth, h: secH,
               fill: { color: config.accentColor },
             });
             slide.addText(slideData.title, {
               x: 0.8, y: 2.7, w: 11.7, h: 2.0,
-              fontSize: 30, fontFace: "Arial",
+              fontSize: 30, fontFace: colors.bodyFont || "Arial",
               color: KF_COLORS.white, bold: true, align: "left", valign: "middle",
             });
             break;
           }
 
           case "content": {
+            const contentTitlePos = getLayoutPos("content", "title") || { x: 0.5, y: 0.1, w: colors.slideWidth - 3.8, h: 0.6 };
+            const contentBodyPos = getLayoutPos("content", "body") || { x: 0.8, y: 1.2, w: colors.slideWidth - 1.6, h: 5.0 };
+
             slide.addShape(pres.ShapeType.rect, {
-              x: 0, y: 0, w: 13.333, h: 0.8,
+              x: 0, y: 0, w: colors.slideWidth, h: 0.8,
               fill: { color: config.accentColor },
             });
             slide.addText(slideData.title, {
-              x: 0.5, y: 0.1, w: 9.5, h: 0.6,
-              fontSize: 18, fontFace: "Arial",
+              x: contentTitlePos.x, y: contentTitlePos.y, w: contentTitlePos.w, h: contentTitlePos.h,
+              fontSize: 18, fontFace: colors.headerFont || colors.bodyFont || "Arial",
               color: KF_COLORS.white, bold: true,
             });
-            let yPos = 1.2;
+            let yPos = contentBodyPos.y;
             if (slideData.bodyContent) {
               slide.addText(slideData.bodyContent, {
-                x: 0.8, y: yPos, w: 11.7, h: 1.0,
-                fontSize: 14, fontFace: "Arial",
+                x: contentBodyPos.x, y: yPos, w: contentBodyPos.w, h: 1.0,
+                fontSize: 14, fontFace: colors.bodyFont || "Arial",
                 color: config.textColor, align: "left",
               });
               yPos += 1.2;
@@ -18183,8 +18269,8 @@ Return a JSON object with:
                 options: { bullet: { type: "bullet" as const }, fontSize: 13, color: config.textColor },
               }));
               slide.addText(bullets, {
-                x: 0.8, y: yPos, w: 11.7, h: 5.0,
-                fontFace: "Arial", paraSpaceAfter: 8,
+                x: contentBodyPos.x, y: yPos, w: contentBodyPos.w, h: contentBodyPos.h - (yPos - contentBodyPos.y),
+                fontFace: colors.bodyFont || "Arial", paraSpaceAfter: 8,
               });
             }
             break;
@@ -18192,12 +18278,12 @@ Return a JSON object with:
 
           case "kpi_scorecard": {
             slide.addShape(pres.ShapeType.rect, {
-              x: 0, y: 0, w: 13.333, h: 0.8,
+              x: 0, y: 0, w: colors.slideWidth, h: 0.8,
               fill: { color: config.accentColor },
             });
             slide.addText(slideData.title, {
-              x: 0.5, y: 0.1, w: 9.5, h: 0.6,
-              fontSize: 18, fontFace: "Arial",
+              x: 0.5, y: 0.1, w: colors.slideWidth - 3.8, h: 0.6,
+              fontSize: 18, fontFace: colors.bodyFont || "Arial",
               color: KF_COLORS.white, bold: true,
             });
             if (slideData.metrics?.length) {
@@ -18218,18 +18304,18 @@ Return a JSON object with:
                 });
                 slide.addText(metric.value, {
                   x: xPos, y: yPos + 0.2, w: boxW, h: 0.7,
-                  fontSize: 28, fontFace: "Arial",
+                  fontSize: 28, fontFace: colors.bodyFont || "Arial",
                   color: metric.color?.replace("#", "") || config.accentColor,
                   bold: true, align: "center",
                 });
                 slide.addText(`${trendSymbol}`, {
                   x: xPos, y: yPos + 0.85, w: boxW, h: 0.3,
-                  fontSize: 14, fontFace: "Arial",
+                  fontSize: 14, fontFace: colors.bodyFont || "Arial",
                   color: trendColor, align: "center",
                 });
                 slide.addText(metric.label, {
                   x: xPos, y: yPos + 1.15, w: boxW, h: 0.5,
-                  fontSize: 11, fontFace: "Arial",
+                  fontSize: 11, fontFace: colors.bodyFont || "Arial",
                   color: KF_COLORS.gray, align: "center",
                 });
               });
@@ -18239,12 +18325,12 @@ Return a JSON object with:
 
           case "chart": {
             slide.addShape(pres.ShapeType.rect, {
-              x: 0, y: 0, w: 13.333, h: 0.8,
+              x: 0, y: 0, w: colors.slideWidth, h: 0.8,
               fill: { color: config.accentColor },
             });
             slide.addText(slideData.title, {
-              x: 0.5, y: 0.1, w: 9.5, h: 0.6,
-              fontSize: 18, fontFace: "Arial",
+              x: 0.5, y: 0.1, w: colors.slideWidth - 3.8, h: 0.6,
+              fontSize: 18, fontFace: colors.bodyFont || "Arial",
               color: KF_COLORS.white, bold: true,
             });
             if (slideData.chartData) {
@@ -18271,18 +18357,18 @@ Return a JSON object with:
 
           case "timeline": {
             slide.addShape(pres.ShapeType.rect, {
-              x: 0, y: 0, w: 13.333, h: 0.8,
+              x: 0, y: 0, w: colors.slideWidth, h: 0.8,
               fill: { color: config.accentColor },
             });
             slide.addText(slideData.title, {
               x: 0.5, y: 0.1, w: 9.5, h: 0.6,
-              fontSize: 18, fontFace: "Arial",
+              fontSize: 18, fontFace: colors.bodyFont || "Arial",
               color: KF_COLORS.white, bold: true,
             });
             if (slideData.flowSteps?.length) {
               const stepCount = slideData.flowSteps.length;
               const stepW = Math.min(2.0, 11.0 / stepCount);
-              const startX = (13.333 - stepCount * stepW) / 2;
+              const startX = (colors.slideWidth - stepCount * stepW) / 2;
               slide.addShape(pres.ShapeType.rect, {
                 x: startX, y: 3.5, w: stepCount * stepW, h: 0.05,
                 fill: { color: config.accentColor },
@@ -18295,13 +18381,13 @@ Return a JSON object with:
                 });
                 slide.addText(step.label, {
                   x: xPos - 0.7, y: 2.3, w: 1.7, h: 0.8,
-                  fontSize: 10, fontFace: "Arial",
+                  fontSize: 10, fontFace: colors.bodyFont || "Arial",
                   color: config.headerColor, bold: true, align: "center",
                 });
                 if (step.description) {
                   slide.addText(step.description, {
                     x: xPos - 0.7, y: 3.8, w: 1.7, h: 0.8,
-                    fontSize: 9, fontFace: "Arial",
+                    fontSize: 9, fontFace: colors.bodyFont || "Arial",
                     color: KF_COLORS.gray, align: "center",
                   });
                 }
@@ -18313,12 +18399,12 @@ Return a JSON object with:
           case "quote": {
             slide.background = { color: "F7F7F7" };
             slide.addShape(pres.ShapeType.rect, {
-              x: 0, y: 0, w: 13.333, h: 0.8,
+              x: 0, y: 0, w: colors.slideWidth, h: 0.8,
               fill: { color: config.accentColor },
             });
             slide.addText(slideData.title, {
               x: 0.5, y: 0.1, w: 9.5, h: 0.6,
-              fontSize: 18, fontFace: "Arial",
+              fontSize: 18, fontFace: colors.bodyFont || "Arial",
               color: KF_COLORS.white, bold: true,
             });
             if (slideData.quoteText) {
@@ -18331,7 +18417,7 @@ Return a JSON object with:
             if (slideData.quoteAuthor) {
               slide.addText(`\u2014 ${slideData.quoteAuthor}`, {
                 x: 1.5, y: 5.2, w: 10.3, h: 0.5,
-                fontSize: 14, fontFace: "Arial",
+                fontSize: 14, fontFace: colors.bodyFont || "Arial",
                 color: KF_COLORS.gray, align: "center",
               });
             }
@@ -18340,12 +18426,12 @@ Return a JSON object with:
 
           case "flow_diagram": {
             slide.addShape(pres.ShapeType.rect, {
-              x: 0, y: 0, w: 13.333, h: 0.8,
+              x: 0, y: 0, w: colors.slideWidth, h: 0.8,
               fill: { color: config.accentColor },
             });
             slide.addText(slideData.title, {
               x: 0.5, y: 0.1, w: 9.5, h: 0.6,
-              fontSize: 18, fontFace: "Arial",
+              fontSize: 18, fontFace: colors.bodyFont || "Arial",
               color: KF_COLORS.white, bold: true,
             });
             if (slideData.flowSteps?.length) {
@@ -18353,7 +18439,7 @@ Return a JSON object with:
               const boxW = Math.min(2.2, 10.0 / stepCount);
               const gap = 0.4;
               const totalW = stepCount * boxW + (stepCount - 1) * gap;
-              const startX = (13.333 - totalW) / 2;
+              const startX = (colors.slideWidth - totalW) / 2;
               slideData.flowSteps.forEach((step, idx) => {
                 const xPos = startX + idx * (boxW + gap);
                 slide.addShape(pres.ShapeType.roundRect, {
@@ -18363,20 +18449,20 @@ Return a JSON object with:
                 });
                 slide.addText(step.label, {
                   x: xPos + 0.1, y: 2.7, w: boxW - 0.2, h: 0.6,
-                  fontSize: 12, fontFace: "Arial",
+                  fontSize: 12, fontFace: colors.bodyFont || "Arial",
                   color: KF_COLORS.white, bold: true, align: "center",
                 });
                 if (step.description) {
                   slide.addText(step.description, {
                     x: xPos + 0.1, y: 3.4, w: boxW - 0.2, h: 1.4,
-                    fontSize: 9, fontFace: "Arial",
+                    fontSize: 9, fontFace: colors.bodyFont || "Arial",
                     color: KF_COLORS.lightGray, align: "center", valign: "top",
                   });
                 }
                 if (idx < stepCount - 1) {
                   slide.addText("\u25B6", {
                     x: xPos + boxW + 0.05, y: 3.4, w: 0.3, h: 0.5,
-                    fontSize: 16, fontFace: "Arial",
+                    fontSize: 16, fontFace: colors.bodyFont || "Arial",
                     color: config.accentColor, align: "center",
                   });
                 }
@@ -18387,23 +18473,23 @@ Return a JSON object with:
 
           case "comparison": {
             slide.addShape(pres.ShapeType.rect, {
-              x: 0, y: 0, w: 13.333, h: 0.8,
+              x: 0, y: 0, w: colors.slideWidth, h: 0.8,
               fill: { color: config.accentColor },
             });
             slide.addText(slideData.title, {
               x: 0.5, y: 0.1, w: 9.5, h: 0.6,
-              fontSize: 18, fontFace: "Arial",
+              fontSize: 18, fontFace: colors.bodyFont || "Arial",
               color: KF_COLORS.white, bold: true,
             });
             if (slideData.comparisonItems?.length) {
               slide.addText("Before", {
                 x: 1.5, y: 1.2, w: 4.5, h: 0.5,
-                fontSize: 16, fontFace: "Arial",
+                fontSize: 16, fontFace: colors.bodyFont || "Arial",
                 color: KF_COLORS.gray, bold: true, align: "center",
               });
               slide.addText("After", {
                 x: 7.3, y: 1.2, w: 4.5, h: 0.5,
-                fontSize: 16, fontFace: "Arial",
+                fontSize: 16, fontFace: colors.bodyFont || "Arial",
                 color: config.accentColor, bold: true, align: "center",
               });
               slide.addShape(pres.ShapeType.rect, {
@@ -18414,7 +18500,7 @@ Return a JSON object with:
                 const yPos = 1.9 + idx * 1.3;
                 slide.addText(item.label, {
                   x: 0.5, y: yPos, w: 1.0, h: 1.0,
-                  fontSize: 10, fontFace: "Arial",
+                  fontSize: 10, fontFace: colors.bodyFont || "Arial",
                   color: config.headerColor, bold: true, valign: "middle",
                 });
                 slide.addShape(pres.ShapeType.roundRect, {
@@ -18423,7 +18509,7 @@ Return a JSON object with:
                 });
                 slide.addText(item.before, {
                   x: 1.7, y: yPos + 0.1, w: 4.1, h: 0.8,
-                  fontSize: 11, fontFace: "Arial",
+                  fontSize: 11, fontFace: colors.bodyFont || "Arial",
                   color: config.textColor, valign: "middle",
                 });
                 slide.addShape(pres.ShapeType.roundRect, {
@@ -18432,7 +18518,7 @@ Return a JSON object with:
                 });
                 slide.addText(item.after, {
                   x: 7.5, y: yPos + 0.1, w: 4.1, h: 0.8,
-                  fontSize: 11, fontFace: "Arial",
+                  fontSize: 11, fontFace: colors.bodyFont || "Arial",
                   color: config.textColor, valign: "middle",
                 });
               });
@@ -18442,12 +18528,12 @@ Return a JSON object with:
 
           case "summary": {
             slide.addShape(pres.ShapeType.rect, {
-              x: 0, y: 0, w: 13.333, h: 0.8,
+              x: 0, y: 0, w: colors.slideWidth, h: 0.8,
               fill: { color: config.accentColor },
             });
             slide.addText(slideData.title, {
               x: 0.5, y: 0.1, w: 9.5, h: 0.6,
-              fontSize: 18, fontFace: "Arial",
+              fontSize: 18, fontFace: colors.bodyFont || "Arial",
               color: KF_COLORS.white, bold: true,
             });
             let sumY = 1.4;
@@ -18455,12 +18541,12 @@ Return a JSON object with:
               slideData.bulletPoints.forEach((point) => {
                 slide.addText(`\u2713`, {
                   x: 0.8, y: sumY, w: 0.5, h: 0.5,
-                  fontSize: 16, fontFace: "Arial",
+                  fontSize: 16, fontFace: colors.bodyFont || "Arial",
                   color: KF_COLORS.emerald, bold: true,
                 });
                 slide.addText(point, {
                   x: 1.4, y: sumY, w: 11.0, h: 0.5,
-                  fontSize: 14, fontFace: "Arial",
+                  fontSize: 14, fontFace: colors.bodyFont || "Arial",
                   color: config.textColor,
                 });
                 sumY += 0.7;
@@ -18469,7 +18555,7 @@ Return a JSON object with:
             if (slideData.bodyContent) {
               slide.addText(slideData.bodyContent, {
                 x: 0.8, y: sumY + 0.3, w: 11.7, h: 1.0,
-                fontSize: 12, fontFace: "Arial",
+                fontSize: 12, fontFace: colors.bodyFont || "Arial",
                 color: KF_COLORS.gray, italic: true, align: "left",
               });
             }
@@ -18479,29 +18565,29 @@ Return a JSON object with:
           case "image_feature": {
             slide.background = { color: config.titleBg };
             slide.addShape(pres.ShapeType.rect, {
-              x: 0, y: 0, w: 13.333, h: 7.5,
+              x: 0, y: 0, w: colors.slideWidth, h: 7.5,
               fill: { color: config.titleBg },
             });
             slide.addShape(pres.ShapeType.rect, {
-              x: 0, y: 4.5, w: 13.333, h: 3.0,
+              x: 0, y: 4.5, w: colors.slideWidth, h: 3.0,
               fill: { color: "000000" },
             });
             slide.addText(slideData.title, {
               x: 0.8, y: 4.8, w: 11.7, h: 0.8,
-              fontSize: 22, fontFace: "Arial",
+              fontSize: 22, fontFace: colors.bodyFont || "Arial",
               color: KF_COLORS.white, bold: true,
             });
             if (slideData.bodyContent) {
               slide.addText(slideData.bodyContent, {
                 x: 0.8, y: 5.7, w: 11.7, h: 1.2,
-                fontSize: 13, fontFace: "Arial",
+                fontSize: 13, fontFace: colors.bodyFont || "Arial",
                 color: KF_COLORS.lightGray,
               });
             }
             if (slideData.imageCategory) {
               slide.addText(`[${slideData.imageCategory.toUpperCase()} IMAGE]`, {
                 x: 3.0, y: 1.5, w: 7.3, h: 2.5,
-                fontSize: 14, fontFace: "Arial",
+                fontSize: 14, fontFace: colors.bodyFont || "Arial",
                 color: KF_COLORS.gray, align: "center", valign: "middle",
                 fill: { color: "E8E8E8" },
               });
@@ -18511,18 +18597,18 @@ Return a JSON object with:
 
           default: {
             slide.addShape(pres.ShapeType.rect, {
-              x: 0, y: 0, w: 13.333, h: 0.8,
+              x: 0, y: 0, w: colors.slideWidth, h: 0.8,
               fill: { color: config.accentColor },
             });
             slide.addText(slideData.title, {
               x: 0.5, y: 0.1, w: 9.5, h: 0.6,
-              fontSize: 18, fontFace: "Arial",
+              fontSize: 18, fontFace: colors.bodyFont || "Arial",
               color: KF_COLORS.white, bold: true,
             });
             if (slideData.bodyContent) {
               slide.addText(slideData.bodyContent, {
                 x: 0.8, y: 1.2, w: 11.7, h: 5.0,
-                fontSize: 14, fontFace: "Arial",
+                fontSize: 14, fontFace: colors.bodyFont || "Arial",
                 color: config.textColor,
               });
             }
