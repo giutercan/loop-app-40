@@ -486,7 +486,11 @@ export default function PresentationStudioPage() {
 
   const handleTemplateUpload = async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.pptx')) {
-      toast({ title: 'Invalid File', description: 'Please upload a .pptx file.', variant: 'destructive' });
+      toast({ title: 'Invalid File', description: 'Please upload a .pptx file (PowerPoint format).', variant: 'destructive' });
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      toast({ title: 'File Too Large', description: 'Please upload a template under 50MB.', variant: 'destructive' });
       return;
     }
     setUploadingTemplate(true);
@@ -494,13 +498,16 @@ export default function PresentationStudioPage() {
       const formData = new FormData();
       formData.append('template', file);
       const res = await fetch('/api/templates/upload', { method: 'POST', body: formData });
-      if (!res.ok) throw new Error('Upload failed');
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => null);
+        throw new Error(errBody?.error || `Server error (${res.status})`);
+      }
       const parsed = await res.json();
       refetchTemplates();
       refetchActiveTemplate();
-      toast({ title: 'Template Uploaded', description: `"${parsed.name}" is now your active brand template. ${parsed.brandKit.layouts.length} layouts and ${Object.keys(parsed.brandKit.colors).length} colors extracted.` });
-    } catch {
-      toast({ title: 'Upload Failed', description: 'Could not parse the template file.', variant: 'destructive' });
+      toast({ title: 'Template Uploaded', description: `"${parsed.name}" is now active. ${parsed.brandKit.layouts.length} layouts and ${Object.keys(parsed.brandKit.colors).length} colors extracted.` });
+    } catch (err: any) {
+      toast({ title: 'Upload Failed', description: err?.message || 'Could not parse the template file. Make sure it is a valid .pptx file.', variant: 'destructive' });
     } finally {
       setUploadingTemplate(false);
     }
@@ -1354,7 +1361,7 @@ export default function PresentationStudioPage() {
                       data-testid="button-toggle-brand-panel"
                     >
                       <Palette className="w-3 h-3 mr-1" />
-                      {showBrandPanel ? 'Hide' : 'Manage'}
+                      {showBrandPanel ? 'Hide' : 'Custom'}
                     </Button>
                   </div>
 
@@ -1363,6 +1370,9 @@ export default function PresentationStudioPage() {
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <LayoutTemplate className="w-3 h-3 text-[#005971]" />
                         <span className="text-xs font-medium text-[#005971]">{activeTemplate.name}</span>
+                        {activeTemplate.id === 'default' && (
+                          <Badge variant="secondary" className="text-[9px]">Built-in</Badge>
+                        )}
                         <Badge variant="secondary" className="text-[9px]">Active</Badge>
                       </div>
                       <div className="flex items-center gap-3 text-[10px] text-muted-foreground flex-wrap">
@@ -1381,8 +1391,18 @@ export default function PresentationStudioPage() {
                     </div>
                   )}
 
+                  {!activeTemplate && (
+                    <div className="mb-3 p-2 rounded-md border border-border bg-muted/30">
+                      <p className="text-xs text-muted-foreground">Loading brand template...</p>
+                    </div>
+                  )}
+
                   {showBrandPanel && (
                     <div className="space-y-3 mb-3">
+                      <Separator />
+                      <p className="text-[10px] text-muted-foreground">
+                        The Korn Ferry brand kit is built-in. To use your own company branding, upload a .pptx template below and its colors, fonts, and layouts will be extracted automatically.
+                      </p>
                       <input
                         ref={templateFileRef}
                         type="file"
@@ -1404,11 +1424,8 @@ export default function PresentationStudioPage() {
                         data-testid="button-upload-template"
                       >
                         {uploadingTemplate ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Upload className="w-3 h-3 mr-1" />}
-                        {uploadingTemplate ? 'Parsing...' : 'Upload .pptx Template'}
+                        {uploadingTemplate ? 'Parsing...' : 'Upload Custom .pptx Template'}
                       </Button>
-                      <p className="text-[10px] text-muted-foreground">
-                        Upload your company's PowerPoint template. Colors, fonts, and slide layouts will be extracted automatically.
-                      </p>
 
                       {brandTemplates.length > 0 && (
                         <div className="space-y-1.5">
@@ -1423,7 +1440,11 @@ export default function PresentationStudioPage() {
                                 data-testid={`brand-template-${t.id}`}
                               >
                                 <div className="min-w-0 flex-1">
-                                  <p className={`text-xs font-medium truncate ${isActive ? 'text-[#005971]' : 'text-foreground'}`}>{t.name}</p>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <p className={`text-xs font-medium truncate ${isActive ? 'text-[#005971]' : 'text-foreground'}`}>{t.name}</p>
+                                    {t.id === 'default' && <Badge variant="secondary" className="text-[9px]">Built-in</Badge>}
+                                    {isActive && <Badge variant="secondary" className="text-[9px]">Active</Badge>}
+                                  </div>
                                   <p className="text-[10px] text-muted-foreground">{t.brandKit.fonts.major} / {t.brandKit.layouts.length} layouts</p>
                                 </div>
                                 <div className="flex gap-1 shrink-0">
