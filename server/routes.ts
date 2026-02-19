@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { storage } from "./storage";
 import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale, generateStrategicPillars, generateStorySuggestion, generateDiscoveryKpiSuggestions, enrichContactWithAI, openai, generateCompetitiveIntelligence, generateKPIValueCaseRecommendations, generateLiveIntelligence, generateEvidencePackRecommendations, generateItemCoaching, researchMeetingAttendee } from "./ai";
 import { EvidencePackService } from "./services/evidence-pack.service";
-import { generatePresentationPlan, aggregatePresentationData, getProjectContextSummary, generateCoachRecommendations, type PresentationRequest, type TopicCategory } from "./services/presentation-studio.service";
+import { generatePresentationPlan, aggregatePresentationData, getProjectContextSummary, generateCoachRecommendations, KF_CLIENT_STORIES, getRelevantKFStories, type PresentationRequest, type TopicCategory } from "./services/presentation-studio.service";
 import { uploadTemplate, getTemplates, getTemplate, getActiveTemplate, setActiveTemplate, deleteTemplate, getActiveBrandKit, mapBrandKitToExportColors, getTemplateLayoutForSlideType } from "./services/template-manager.service";
 import pptxgenModule from "pptxgenjs";
 const PptxGenJS = (pptxgenModule as any).default || pptxgenModule;
@@ -18287,6 +18287,15 @@ CRITICAL RULES:
       console.error("Error in coach-iterate:", error);
       res.status(500).json({ error: error.message });
     }
+  });
+
+  app.get("/api/presentations/kf-client-stories", (req, res) => {
+    const industry = req.query.industry as string | undefined;
+    if (industry) {
+      const relevant = getRelevantKFStories(industry);
+      return res.json(relevant);
+    }
+    res.json(KF_CLIENT_STORIES);
   });
 
   app.get("/api/presentations/image-library", (_req, res) => {

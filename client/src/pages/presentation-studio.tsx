@@ -60,6 +60,8 @@ import {
   CircleDot,
   ArrowRight,
   Database,
+  ExternalLink,
+  Building2,
 } from "lucide-react";
 
 type PresentationPurpose = 'customer_engagement' | 'qbr' | 'executive_pitch' | 'discovery_readout' | 'handoff_brief' | 'evidence_review' | 'value_story';
@@ -1864,21 +1866,52 @@ export default function PresentationStudioPage() {
                             <div>
                               <div className="flex items-center gap-1.5 mb-1.5">
                                 <BookOpen className="w-3 h-3 text-purple-600 dark:text-purple-400" />
-                                <p className="text-[10px] font-medium text-muted-foreground">Recommended Success Stories</p>
+                                <p className="text-[10px] font-medium text-muted-foreground">Recommended Client Stories</p>
                               </div>
                               <div className="space-y-1.5">
                                 {coachResult.recommendedStories.map((story: any) => (
-                                  <div key={story.id} className="p-2 rounded-md border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20">
+                                  <div key={story.id} className="p-2 rounded-md border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20" data-testid={`story-card-${story.id}`}>
                                     <div className="flex items-start justify-between gap-2 flex-wrap">
-                                      <p className="text-xs font-medium text-foreground leading-tight">{story.title}</p>
-                                      <div className="flex items-center gap-1 flex-wrap">
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                                          {story.sourceType === 'kf_client_story' && (
+                                            <Badge variant="secondary" className="text-[8px] px-1 py-0 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300">KF Case Study</Badge>
+                                          )}
+                                          {story.company && (
+                                            <span className="flex items-center gap-0.5 text-[9px] text-muted-foreground">
+                                              <Building2 className="w-2.5 h-2.5" />
+                                              {story.company}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <p className="text-xs font-medium text-foreground leading-tight">{story.title}</p>
+                                      </div>
+                                      <div className="flex items-center gap-1 flex-wrap shrink-0">
                                         {story.industry && <Badge variant="outline" className="text-[9px] px-1 py-0">{story.industry}</Badge>}
-                                        {story.capability && <Badge variant="outline" className="text-[9px] px-1 py-0">{story.capability}</Badge>}
                                       </div>
                                     </div>
+                                    {story.capability && (
+                                      <div className="flex items-center gap-1 mt-1 flex-wrap">
+                                        {story.capability.split(', ').slice(0, 3).map((cap: string) => (
+                                          <Badge key={cap} variant="outline" className="text-[8px] px-1 py-0 border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400">{cap}</Badge>
+                                        ))}
+                                      </div>
+                                    )}
                                     {story.challenge && <p className="text-[10px] text-muted-foreground mt-1">{story.challenge}</p>}
                                     {story.results && <p className="text-[10px] text-purple-700 dark:text-purple-300 mt-0.5 font-medium">{story.results}</p>}
                                     <p className="text-[10px] text-purple-600 dark:text-purple-400 mt-1 italic">{story.relevanceReason}</p>
+                                    {story.sourceUrl && (
+                                      <a
+                                        href={story.sourceUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 mt-1.5 text-[10px] text-purple-600 dark:text-purple-400 hover:underline"
+                                        data-testid={`link-story-${story.id}`}
+                                      >
+                                        <ExternalLink className="w-2.5 h-2.5" />
+                                        View full case study on kornferry.com
+                                      </a>
+                                    )}
                                   </div>
                                 ))}
                               </div>

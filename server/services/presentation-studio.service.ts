@@ -139,13 +139,357 @@ export interface ProjectContextSummary {
 }
 
 export interface RecommendedStory {
-  id: number;
+  id: number | string;
   title: string;
   industry: string;
   capability: string;
   challenge: string;
   results: string;
   relevanceReason: string;
+  sourceUrl?: string;
+  sourceType?: 'project' | 'library' | 'kf_client_story';
+  company?: string;
+  imageUrl?: string;
+}
+
+export interface KFClientStory {
+  id: string;
+  title: string;
+  company: string;
+  description: string;
+  industry: string;
+  capabilities: string[];
+  themes: string[];
+  url: string;
+  imageUrl: string;
+  date: string;
+}
+
+export const KF_CLIENT_STORIES: KFClientStory[] = [
+  {
+    id: 'kf-blue-sheet',
+    title: 'How Korn Ferry\'s Iconic Blue Sheet Drives Win Rates and Revenue Predictability',
+    company: 'Korn Ferry (Internal)',
+    description: 'Discover how Korn Ferry\'s Blue Sheet has evolved from a paper-based sales tool into a modern, AI-enabled framework embedded in Korn Ferry Sell.',
+    industry: 'Professional Services',
+    capabilities: ['Sales Transformation', 'AI/Technology', 'Revenue Growth'],
+    themes: ['sales_methodology', 'digital_transformation', 'revenue_predictability', 'win_rates'],
+    url: 'https://www.kornferry.com/insights/featured-topics/sales-transformation/the-blue-sheet-history-and-evolution-of-an-industry-icon',
+    imageUrl: 'https://www.kornferry.com/content/dam/kornferry-v2/featured-topics/sales/BlueSheet_375x300.jpg',
+    date: '2025-09-02',
+  },
+  {
+    id: 'kf-allianz-engagement',
+    title: 'Employee Engagement Success for a Global Insurance Leader',
+    company: 'Allianz',
+    description: 'Using our Korn Ferry Listen technology and consulting expertise, we helped the world\'s largest insurance company enhance team performance.',
+    industry: 'Insurance / Financial Services',
+    capabilities: ['Employee Engagement', 'Listening & Surveys', 'Team Performance'],
+    themes: ['employee_engagement', 'team_performance', 'culture', 'listening_technology'],
+    url: 'https://www.kornferry.com/insights/featured-topics/employee-experience/employee-engagement-success-for-a-global-insurance-leader',
+    imageUrl: 'https://www.kornferry.com/content/dam/kornferry-v2/featured-topics/employee-experience/allianz-375x300.jpg',
+    date: '2025-08-18',
+  },
+  {
+    id: 'kf-western-union-interim',
+    title: 'How Interim Solutions Supported a Global Financial Leader',
+    company: 'Western Union',
+    description: 'Our interim talent solutions helped a leading global financial services firm expand its digital banking platform by recruiting specialized technology experts.',
+    industry: 'Financial Services',
+    capabilities: ['Interim Solutions', 'Digital Transformation', 'Technology Talent'],
+    themes: ['interim_talent', 'digital_banking', 'technology_recruitment', 'specialized_talent'],
+    url: 'https://www.kornferry.com/insights/featured-topics/employee-experience/how-interim-solutions-supported-a-global-financial-leader',
+    imageUrl: 'https://www.kornferry.com/content/dam/kornferry-v2/featured-topics/employee-experience/western-union-375x300.jpg',
+    date: '2025-08-18',
+  },
+  {
+    id: 'kf-brenntag-sales',
+    title: 'Winning Sales Chemistry with a Global Industry Leader',
+    company: 'Brenntag',
+    description: 'How we helped a global leader in chemical and ingredients distribution implement consistent sales processes and drive success.',
+    industry: 'Chemicals / Distribution',
+    capabilities: ['Sales Transformation', 'Process Consistency', 'Sales Culture'],
+    themes: ['sales_process', 'sales_culture', 'global_consistency', 'distribution'],
+    url: 'https://www.kornferry.com/insights/featured-topics/sales-transformation/winning-sales-chemistry-with-a-global-industry-leader',
+    imageUrl: 'https://www.kornferry.com/content/dam/kornferry-v2/featured-topics/sales/Brenntag-375x300.jpg',
+    date: '2025-08-14',
+  },
+  {
+    id: 'kf-massport-workforce',
+    title: 'A High-Flying Partnership to Build a Resilient Workforce',
+    company: 'Massport',
+    description: 'How we helped a prominent state port authority in North America transform its talent and enhance its customer experience.',
+    industry: 'Government / Transportation',
+    capabilities: ['Workforce Transformation', 'Talent Strategy', 'Customer Experience'],
+    themes: ['workforce_resilience', 'talent_transformation', 'customer_experience', 'public_sector'],
+    url: 'https://www.kornferry.com/insights/featured-topics/organizational-transformation/a-high-flying-partnership-to-build-a-resilient-workforce',
+    imageUrl: 'https://www.kornferry.com/content/dam/kornferry-v2/featured-topics/organizational-transformation/massport-375x300.jpg',
+    date: '2025-08-14',
+  },
+  {
+    id: 'kf-lamb-weston-sales',
+    title: 'Delivering a Recipe for Sales Success to a Global Food Supplier',
+    company: 'Lamb Weston',
+    description: 'How we helped a leading global supplier of frozen food products for restaurants and retailers develop a winning strategy for sales transformation.',
+    industry: 'Food & Beverage / CPG',
+    capabilities: ['Sales Transformation', 'Sales Strategy', 'Growth'],
+    themes: ['sales_strategy', 'food_industry', 'global_growth', 'sales_transformation'],
+    url: 'https://www.kornferry.com/insights/featured-topics/sales-transformation/delivering-a-recipe-for-sales-success-to-a-global-food-supplier',
+    imageUrl: 'https://www.kornferry.com/content/dam/kornferry-v2/featured-topics/sales/lamb-weston-375x300.jpg',
+    date: '2025-08-14',
+  },
+  {
+    id: 'kf-asml-talent',
+    title: 'Nurturing Talent Success for a Global Semiconductor Leader',
+    company: 'ASML',
+    description: 'How we enabled a strong talent management structure for a leading global supplier to the semiconductor industry.',
+    industry: 'Technology / Semiconductor',
+    capabilities: ['Talent Management', 'Organizational Structure', 'Workforce Planning'],
+    themes: ['talent_management', 'semiconductor', 'organizational_structure', 'high_tech'],
+    url: 'https://www.kornferry.com/insights/featured-topics/workforce-management/nuturing-talent-success-for-a-global-semiconductor-leader',
+    imageUrl: 'https://www.kornferry.com/content/dam/kornferry-v2/featured-topics/workforce-management/asml-375x300.jpg',
+    date: '2025-08-14',
+  },
+  {
+    id: 'kf-natwest-assess',
+    title: 'Investing in Korn Ferry Assess for Talent Management Solutions',
+    company: 'NatWest',
+    description: 'How we used Korn Ferry Assess products to advance the talent strategy for a UK-based financial institution.',
+    industry: 'Banking / Financial Services',
+    capabilities: ['Assessment', 'Talent Strategy', 'Leadership Development'],
+    themes: ['assessment', 'talent_strategy', 'banking', 'leadership_pipeline'],
+    url: 'https://www.kornferry.com/insights/featured-topics/workforce-management/investing-in-korn-ferry-assess-for-talent-management-solutions',
+    imageUrl: 'https://www.kornferry.com/content/dam/kornferry-v2/featured-topics/workforce-management/Natwest-375x300.jpg',
+    date: '2025-08-07',
+  },
+  {
+    id: 'kf-state-farm-assess',
+    title: 'Ensuring Strong Leadership Talent through Korn Ferry Assess',
+    company: 'State Farm',
+    description: 'How we helped a global mutual insurance company develop its leadership pipeline and improve upon its talent development strategies.',
+    industry: 'Insurance',
+    capabilities: ['Assessment', 'Leadership Development', 'Talent Pipeline'],
+    themes: ['leadership_pipeline', 'talent_development', 'insurance', 'assessment'],
+    url: 'https://www.kornferry.com/insights/featured-topics/workforce-management/ensuring-strong-leadership-talent-through-korn-ferry-assess',
+    imageUrl: 'https://www.kornferry.com/content/dam/kornferry-v2/featured-topics/workforce-management/state-farm-375x300.jpg',
+    date: '2025-08-07',
+  },
+  {
+    id: 'kf-imi-sales',
+    title: 'Engineering a Win for Sales',
+    company: 'IMI',
+    description: 'How we helped a global engineering company improve its sales processes and build a culture of success through Korn Ferry Sell.',
+    industry: 'Engineering / Manufacturing',
+    capabilities: ['Sales Transformation', 'Sales Culture', 'KF Sell'],
+    themes: ['sales_culture', 'engineering', 'sales_process', 'kf_sell'],
+    url: 'https://www.kornferry.com/insights/featured-topics/sales-transformation/engineering-a-win-for-sales',
+    imageUrl: 'https://www.kornferry.com/content/dam/kornferry-v2/featured-topics/sales/imi-375x300.jpg',
+    date: '2025-08-07',
+  },
+  {
+    id: 'kf-clariant-talent',
+    title: 'Korn Ferry Boosts Talent Strategy for Chemicals Company',
+    company: 'Clariant',
+    description: 'How we partnered with a Switzerland-based specialty chemicals company to upgrade its job structure and improve workforce planning.',
+    industry: 'Chemicals',
+    capabilities: ['Job Architecture', 'Workforce Planning', 'Talent Strategy'],
+    themes: ['job_architecture', 'workforce_planning', 'chemicals', 'organizational_design'],
+    url: 'https://www.kornferry.com/insights/featured-topics/organizational-transformation/korn-ferry-digital-boosts-talent-strategy-for-chemicals-company',
+    imageUrl: 'https://www.kornferry.com/content/dam/kornferry-v2/featured-topics/organizational-transformation/clariant-300x375.jpg',
+    date: '2025-08-07',
+  },
+  {
+    id: 'kf-telstra-cx',
+    title: 'Improving Customer Satisfaction at Leading Telecommunications Company',
+    company: 'Telstra',
+    description: 'How we partnered with a leading telecommunications provider in Australia to provide comprehensive customer service training and improve NPS scores.',
+    industry: 'Telecommunications',
+    capabilities: ['Customer Experience', 'Training & Development', 'NPS Improvement'],
+    themes: ['customer_satisfaction', 'nps', 'training', 'telecommunications', 'customer_service'],
+    url: 'https://www.kornferry.com/insights/featured-topics/organizational-transformation/improving-customer-satisfaction-at-leading-telecommunications-company',
+    imageUrl: 'https://www.kornferry.com/content/dam/kornferry-v2/featured-topics/organizational-transformation/telstra-375x300.jpg',
+    date: '2025-07-31',
+  },
+  {
+    id: 'kf-tropicana-talent',
+    title: 'Juicing Up Talent at a Multi-Billion Dollar Beverage Company',
+    company: 'Tropicana',
+    description: 'How we strengthened internal processes, placed critical roles, and optimized operations for a large beverage company.',
+    industry: 'Food & Beverage / CPG',
+    capabilities: ['Talent Acquisition', 'Process Optimization', 'Executive Placement'],
+    themes: ['talent_acquisition', 'operations', 'executive_placement', 'beverage'],
+    url: 'https://www.kornferry.com/insights/featured-topics/talent-recruitment/juicing-up-talent-at-a-multi-billion-dollar-beverage-company',
+    imageUrl: 'https://www.kornferry.com/content/dam/kornferry-v2/featured-topics/talent-recruitment/tropicana-375x300.jpg',
+    date: '2025-07-31',
+  },
+  {
+    id: 'kf-goodyear-ld',
+    title: 'A Major Tire Company Rolls with Korn Ferry',
+    company: 'Goodyear',
+    description: 'How we helped a major North American tire company develop and integrate a global learning and development framework.',
+    industry: 'Manufacturing / Automotive',
+    capabilities: ['Learning & Development', 'Global Framework', 'Organizational Transformation'],
+    themes: ['learning_development', 'global_framework', 'manufacturing', 'capability_building'],
+    url: 'https://www.kornferry.com/insights/featured-topics/organizational-transformation/a-major-tire-company-rolls-with-korn-ferry',
+    imageUrl: 'https://www.kornferry.com/content/dam/kornferry-v2/featured-topics/organizational-transformation/goodyear-375x300.jpg',
+    date: '2025-07-31',
+  },
+  {
+    id: 'kf-sabesp-transformation',
+    title: 'Driving Transformation With a Large Sanitation Company',
+    company: 'Sabesp',
+    description: 'How we partnered with a leading sanitation company in Latin America to strengthen leaders and improve internal alignment.',
+    industry: 'Utilities / Public Sector',
+    capabilities: ['Leadership Development', 'Organizational Alignment', 'Transformation'],
+    themes: ['leadership', 'organizational_alignment', 'transformation', 'latin_america', 'utilities'],
+    url: 'https://www.kornferry.com/insights/featured-topics/organizational-transformation/driving-transformation-with-a-large-sanitation-company',
+    imageUrl: 'https://www.kornferry.com/content/dam/kornferry-v2/featured-topics/organizational-transformation/Sabesp-375x300.jpg',
+    date: '2025-07-31',
+  },
+  {
+    id: 'kf-biopharma-rpo',
+    title: 'The Right Prescription: Building a Global RPO Partnership',
+    company: 'Global Biopharmaceutical Company',
+    description: 'How we partnered with a global biopharmaceutical company to implement a complete recruitment solution and improve talent acquisition processes.',
+    industry: 'Pharmaceuticals / Life Sciences',
+    capabilities: ['RPO', 'Talent Acquisition', 'Recruitment Transformation'],
+    themes: ['rpo', 'recruitment', 'pharma', 'global_talent', 'talent_acquisition'],
+    url: 'https://www.kornferry.com/insights/featured-topics/talent-recruitment/building-a-global-rpo-partnership',
+    imageUrl: 'https://www.kornferry.com/content/dam/kornferry-v2/featured-topics/talent-recruitment/Labs-375x300.jpg',
+    date: '2025-07-23',
+  },
+  {
+    id: 'kf-ai-manufacturing-talent',
+    title: 'Providing Talent Management Solutions at the Speed of AI',
+    company: 'AI-Driven Manufacturing Hub',
+    description: 'How we partnered with a leading AI-driven manufacturing and supply chain hub in Europe to redefine its talent strategy and digitize its HR processes.',
+    industry: 'Manufacturing / Technology',
+    capabilities: ['Talent Strategy', 'HR Digitization', 'AI Integration'],
+    themes: ['ai', 'hr_digitization', 'talent_strategy', 'manufacturing', 'supply_chain'],
+    url: 'https://www.kornferry.com/insights/featured-topics/workforce-management/providing-talent-management-solutions-at-the-speed-of-ai',
+    imageUrl: 'https://www.kornferry.com/content/dam/kornferry-v2/featured-topics/workforce-management/Providing-Talent-Management-Solutions-375x300.jpg',
+    date: '2025-07-22',
+  },
+  {
+    id: 'kf-financial-infra-sell',
+    title: 'How KF Sell Helped a Global Financial Market Leader to Thrive',
+    company: 'Global Financial Market Infrastructure Provider',
+    description: 'How we partnered with a global financial market infrastructure provider to transform its sales organization and drive strategic, sustainable growth.',
+    industry: 'Financial Services',
+    capabilities: ['Sales Transformation', 'KF Sell', 'Strategic Growth'],
+    themes: ['sales_transformation', 'financial_markets', 'sustainable_growth', 'kf_sell'],
+    url: 'https://www.kornferry.com/insights/featured-topics/sales-transformation/how-korn-ferry-sell-helped-a-global-financial-market-leader-to-thrive',
+    imageUrl: 'https://www.kornferry.com/content/dam/kornferry-v2/featured-topics/sales/KF-Sell-Financial-leader-375x300.jpg',
+    date: '2025-07-22',
+  },
+  {
+    id: 'kf-beauty-engagement',
+    title: 'Global Beauty Leader Transforms Employee Experience',
+    company: 'Global Beauty Leader',
+    description: 'We partnered with a global leader in the beauty industry to measure employee engagement and align it with the company culture.',
+    industry: 'Consumer Goods / Beauty',
+    capabilities: ['Employee Engagement', 'Culture Alignment', 'Employee Experience'],
+    themes: ['employee_engagement', 'culture', 'beauty_industry', 'employee_experience'],
+    url: 'https://www.kornferry.com/insights/featured-topics/employee-experience/global-beauty-leader-transforms-employee-experience',
+    imageUrl: 'https://www.kornferry.com/content/dam/kornferry-v2/featured-topics/employee-experience/Transform-Employee-Experience-375x300.jpg',
+    date: '2025-07-21',
+  },
+  {
+    id: 'kf-maersk-talent',
+    title: 'A Talent Management Strategy to Move the World',
+    company: 'Maersk',
+    description: 'Learn how Maersk\'s new human-centric talent management strategy is transforming the organization and opening up new business horizons.',
+    industry: 'Logistics / Transportation',
+    capabilities: ['Talent Management', 'Organizational Transformation', 'Strategy'],
+    themes: ['talent_management', 'human_centric', 'logistics', 'organizational_transformation'],
+    url: 'https://www.kornferry.com/insights/featured-topics/organizational-transformation/a-talent-management-strategy-to-move-the-world',
+    imageUrl: 'https://www.kornferry.com/content/dam/kornferry-v2/featured-topics/business-impact/maersk-client-story-375x300.jpg',
+    date: '2023-12-15',
+  },
+];
+
+export function extractCapabilitiesFromProject(data: AggregatedData): string[] {
+  const caps: string[] = [];
+  if (data.kpis?.length) caps.push('KPI Management', 'Performance Measurement');
+  if (data.valueCases?.length) caps.push('Value Realization');
+  if (data.discoveryQuestions?.length) caps.push('Discovery', 'Consulting');
+  if (data.successStories?.length || data.successStoryLibrary?.length) caps.push('Success Stories');
+  if (data.evidencePack) caps.push('Evidence-Based Consulting');
+  if (data.storyBuilderData) caps.push('Storytelling');
+  if (data.growthAccelerator?.length) caps.push('Sales Transformation', 'Growth Strategy');
+  const account = data.account as any;
+  if (account?.solutionPattern) {
+    const patterns: Record<string, string[]> = {
+      talent_acquisition: ['Talent Acquisition', 'RPO', 'Recruitment'],
+      leadership_development: ['Leadership Development', 'Assessment', 'Coaching'],
+      organizational_transformation: ['Organizational Transformation', 'Change Management'],
+      sales_effectiveness: ['Sales Transformation', 'Sales Culture', 'Revenue Growth'],
+      total_rewards: ['Total Rewards', 'Compensation', 'Benefits'],
+      workforce_transformation: ['Workforce Transformation', 'Workforce Planning'],
+      dei: ['DEI', 'Diversity', 'Inclusion'],
+    };
+    const patternCaps = patterns[account.solutionPattern];
+    if (patternCaps) caps.push(...patternCaps);
+  }
+  return [...new Set(caps)];
+}
+
+export function extractThemesFromProject(data: AggregatedData): string[] {
+  const themes: string[] = [];
+  if (data.kpis?.length) themes.push('performance_measurement', 'kpi_tracking');
+  if (data.valueCases?.length) themes.push('value_realization', 'roi');
+  if (data.discoveryQuestions?.length) themes.push('discovery', 'client_insights');
+  if (data.growthAccelerator?.length) themes.push('sales_transformation', 'growth');
+  if (data.storyBuilderData) themes.push('storytelling', 'narrative');
+  if (data.evidencePack) themes.push('evidence', 'proof_points');
+  const account = data.account as any;
+  if (account?.industry) {
+    const ind = account.industry.toLowerCase();
+    if (ind.includes('financial') || ind.includes('bank') || ind.includes('insurance')) themes.push('financial_services', 'banking');
+    if (ind.includes('tech') || ind.includes('software') || ind.includes('semiconductor')) themes.push('technology', 'digital_transformation');
+    if (ind.includes('manufact') || ind.includes('engineer')) themes.push('manufacturing', 'engineering');
+    if (ind.includes('pharma') || ind.includes('health') || ind.includes('life sci')) themes.push('pharma', 'healthcare');
+    if (ind.includes('food') || ind.includes('beverage') || ind.includes('consumer')) themes.push('food_industry', 'consumer_goods');
+    if (ind.includes('energy') || ind.includes('util')) themes.push('energy', 'utilities');
+    if (ind.includes('telecom')) themes.push('telecommunications');
+    if (ind.includes('transport') || ind.includes('logist')) themes.push('logistics', 'transportation');
+  }
+  return [...new Set(themes)];
+}
+
+export function getRelevantKFStories(industry?: string, capabilities?: string[], themes?: string[]): KFClientStory[] {
+  let scored = KF_CLIENT_STORIES.map(story => {
+    let score = 0;
+    if (industry) {
+      const ind = industry.toLowerCase();
+      if (story.industry.toLowerCase().includes(ind) || ind.includes(story.industry.toLowerCase().split('/')[0].trim())) score += 10;
+      const indWords = ind.split(/[\s\/,]+/);
+      const storyIndWords = story.industry.toLowerCase().split(/[\s\/,]+/);
+      for (const w of indWords) {
+        if (w.length > 3 && storyIndWords.some(sw => sw.includes(w) || w.includes(sw))) score += 3;
+      }
+    }
+    if (capabilities?.length) {
+      for (const cap of capabilities) {
+        const capLower = cap.toLowerCase();
+        for (const sc of story.capabilities) {
+          if (sc.toLowerCase().includes(capLower) || capLower.includes(sc.toLowerCase())) score += 5;
+        }
+      }
+    }
+    if (themes?.length) {
+      for (const theme of themes) {
+        if (story.themes.includes(theme)) score += 4;
+        const themeWords = theme.toLowerCase().split(/[_\s]+/);
+        for (const tw of themeWords) {
+          if (tw.length > 3 && story.themes.some(st => st.includes(tw))) score += 1;
+        }
+      }
+    }
+    return { story, score };
+  });
+  scored.sort((a, b) => b.score - a.score);
+  return scored.filter(s => s.score > 0).slice(0, 8).map(s => s.story);
 }
 
 export interface CoachRecommendation {
@@ -299,6 +643,11 @@ export async function generateCoachRecommendations(
     console.warn("[PresentationStudio] Failed to fetch library stories for coach:", e);
   }
 
+  const projectCapabilities = extractCapabilitiesFromProject(data);
+  const projectThemes = extractThemesFromProject(data);
+  const relevantKFStories = getRelevantKFStories(industry, projectCapabilities, projectThemes);
+  const allKFStories = relevantKFStories.length >= 3 ? relevantKFStories : KF_CLIENT_STORIES.slice(0, 8);
+
   const prompt = `You are a senior Korn Ferry presentation coach. A consultant is preparing a presentation for a client engagement. Based on the project data and the consultant's brief, recommend the best configuration.
 
 === PROJECT DATA ===
@@ -310,6 +659,10 @@ ${data.storyBuilderData ? `Story Builder: Hook: ${(data.storyBuilderData as any)
 
 === SUCCESS STORY LIBRARY (for recommendations) ===
 ${libraryStories.length > 0 ? libraryStories.slice(0, 8).map((s: any, i: number) => `${i + 1}. [ID:${s.id}] "${s.title}" - Industry: ${s.industry || 'N/A'}, Capability: ${s.capabilityName || 'N/A'}, Challenge: ${(s.challenge || '').substring(0, 100)}, Results: ${(s.results || '').substring(0, 100)}`).join('\n') : 'No stories in library yet.'}
+
+=== KORN FERRY CLIENT STORIES (from kornferry.com/about-us/business-impact/client-stories) ===
+These are REAL published Korn Ferry case studies. Recommend the most relevant ones based on the client's industry, engagement purpose, and challenges. Explain WHY each recommended story would strengthen the presentation.
+${allKFStories.map((s, i) => `${i + 1}. [KF:${s.id}] "${s.title}" - Company: ${s.company}, Industry: ${s.industry}, Capabilities: ${s.capabilities.join(', ')}, Description: ${s.description}`).join('\n')}
 
 === DATA AVAILABILITY ===
 Discovery Insights: ${contextSummary.availableData.discoveryInsights.count} items
@@ -357,7 +710,10 @@ Return valid JSON:
   ],
   "estimatedSlides": 12,
   "recommendedStoryIds": [1, 2],
-  "storyRelevanceReasons": { "1": "Why this story is relevant to this engagement" }
+  "storyRelevanceReasons": { "1": "Why this story is relevant to this engagement" },
+  "recommendedKFStories": [
+    { "id": "kf-story-id", "relevanceReason": "2-3 sentences explaining WHY this Korn Ferry client story is relevant to this specific engagement and how it strengthens the presentation" }
+  ]
 }`;
 
   try {
@@ -394,6 +750,27 @@ Return valid JSON:
           challenge: (story.challenge || '').substring(0, 200),
           results: (story.results || '').substring(0, 200),
           relevanceReason: reasons[String(sid)] || 'Relevant to this engagement context.',
+          sourceType: 'library',
+        });
+      }
+    }
+
+    const recKFStories: Array<{ id: string; relevanceReason: string }> = result.recommendedKFStories || [];
+    for (const rec of recKFStories) {
+      const kfStory = KF_CLIENT_STORIES.find(s => s.id === rec.id);
+      if (kfStory) {
+        recommendedStories.push({
+          id: kfStory.id,
+          title: kfStory.title,
+          industry: kfStory.industry,
+          capability: kfStory.capabilities.join(', '),
+          challenge: kfStory.description,
+          results: '',
+          relevanceReason: rec.relevanceReason || 'Relevant Korn Ferry client story for this engagement.',
+          sourceUrl: kfStory.url,
+          sourceType: 'kf_client_story',
+          company: kfStory.company,
+          imageUrl: kfStory.imageUrl,
         });
       }
     }
@@ -457,7 +834,24 @@ function generateFallbackCoachRecommendation(
     gapQuestions: gaps,
     storyAngles: [],
     estimatedSlides: 10 + topics.length,
-    recommendedStories: [],
+    recommendedStories: (() => {
+      const caps = extractCapabilitiesFromProject(data);
+      const themes = extractThemesFromProject(data);
+      const relevant = getRelevantKFStories(data.account?.industry || '', caps, themes);
+      return relevant.slice(0, 3).map(s => ({
+        id: s.id,
+        title: s.title,
+        industry: s.industry,
+        capability: s.capabilities.join(', '),
+        challenge: s.description,
+        results: '',
+        relevanceReason: `Relevant ${s.industry} case study featuring ${s.capabilities[0]} that can strengthen your presentation narrative.`,
+        sourceUrl: s.url,
+        sourceType: 'kf_client_story' as const,
+        company: s.company,
+        imageUrl: s.imageUrl,
+      }));
+    })(),
   };
 }
 
