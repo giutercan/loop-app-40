@@ -1711,7 +1711,7 @@ export default function PresentationStudioPage() {
                   </h4>
                   {activeTemplate && activeTemplate.id !== 'default' && (
                     <p className="text-[10px] text-muted-foreground mb-2">
-                      Your brand template "{activeTemplate.name}" provides colors and fonts. The style below controls content arrangement only.
+                      Your brand template "{activeTemplate.name}" controls layout, design, colors, and fonts. The style below adjusts content tone only.
                     </p>
                   )}
                   <div className="grid grid-cols-1 gap-2">

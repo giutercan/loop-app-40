@@ -3,7 +3,8 @@ import { storage } from "./storage";
 import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale, generateStrategicPillars, generateStorySuggestion, generateDiscoveryKpiSuggestions, enrichContactWithAI, openai, generateCompetitiveIntelligence, generateKPIValueCaseRecommendations, generateLiveIntelligence, generateEvidencePackRecommendations, generateItemCoaching, researchMeetingAttendee } from "./ai";
 import { EvidencePackService } from "./services/evidence-pack.service";
 import { generatePresentationPlan, aggregatePresentationData, getProjectContextSummary, generateCoachRecommendations, KF_CLIENT_STORIES, getRelevantKFStories, savePresentation, getSavedPresentations, getSavedPresentation, deleteSavedPresentation, type PresentationRequest, type TopicCategory } from "./services/presentation-studio.service";
-import { uploadTemplate, getTemplates, getTemplate, getActiveTemplate, setActiveTemplate, deleteTemplate, getActiveBrandKit, mapBrandKitToExportColors, getTemplateLayoutForSlideType } from "./services/template-manager.service";
+import { uploadTemplate, getTemplates, getTemplate, getActiveTemplate, setActiveTemplate, deleteTemplate, getActiveBrandKit, mapBrandKitToExportColors, getTemplateLayoutForSlideType, isCustomBrandTemplate } from "./services/template-manager.service";
+import type { TemplateDecorativeShape, TemplateBackground, TemplateSlideLayout } from "./services/template-parser.service";
 import pptxgenModule from "pptxgenjs";
 const PptxGenJS = (pptxgenModule as any).default || pptxgenModule;
 import multer from "multer";
@@ -18398,7 +18399,7 @@ CRITICAL RULES:
       const template = plan.recommendedTemplate;
 
       const colors = getKFColors();
-      const hasBrandTemplate = activeTempl && activeTempl.id !== 'default';
+      const hasBrandTemplate = isCustomBrandTemplate(activeTempl?.id);
 
       const brandConfig = hasBrandTemplate ? {
         titleBg: activeBrandKit.colors.dk1,
@@ -18432,21 +18433,131 @@ CRITICAL RULES:
         return ph && ph.w > 0 ? { x: ph.x, y: ph.y, w: ph.w, h: ph.h } : null;
       }
 
+      function getFullLayout(slideType: string): TemplateSlideLayout | undefined {
+        return getTemplateLayoutForSlideType(activeBrandKit, slideType);
+      }
+
+      function applyTemplateBackground(slide: any, layout: TemplateSlideLayout | undefined) {
+        const bg = layout?.background || activeBrandKit.masterBackground;
+        if (!bg) return;
+        if (bg.type === "solid" && bg.color) {
+          slide.background = { color: bg.color };
+        } else if (bg.type === "gradient" && bg.gradientStops?.length) {
+          const stops = bg.gradientStops;
+          if (stops.length >= 2) {
+            slide.addShape(pres.ShapeType.rect, {
+              x: 0, y: 0, w: colors.slideWidth, h: colors.slideHeight,
+              fill: {
+                type: "solid",
+                color: stops[0].color,
+              },
+            });
+            const endColor = stops[stops.length - 1].color;
+            const angle = bg.gradientAngle || 0;
+            const isVertical = angle >= 45 && angle < 135;
+            if (isVertical) {
+              slide.addShape(pres.ShapeType.rect, {
+                x: 0, y: colors.slideHeight * 0.5, w: colors.slideWidth, h: colors.slideHeight * 0.5,
+                fill: { color: endColor, transparency: 30 },
+              });
+            } else {
+              slide.addShape(pres.ShapeType.rect, {
+                x: colors.slideWidth * 0.5, y: 0, w: colors.slideWidth * 0.5, h: colors.slideHeight,
+                fill: { color: endColor, transparency: 30 },
+              });
+            }
+          } else {
+            slide.background = { color: stops[0].color };
+          }
+        }
+      }
+
+      function renderDecorativeShapes(slide: any, layout: TemplateSlideLayout | undefined) {
+        const masterShapes = activeBrandKit.masterDecorativeShapes || [];
+        const layoutShapes = layout?.decorativeShapes || [];
+        const allShapes = [...masterShapes, ...layoutShapes];
+
+        for (const shape of allShapes) {
+          const shapeTypeMap: Record<string, string> = {
+            rect: "rect", roundRect: "roundRect", ellipse: "ellipse",
+            line: "line", triangle: "triangle", other: "rect",
+          };
+          const pptxShapeType = (pres.ShapeType as any)[shapeTypeMap[shape.shapeType] || "rect"];
+          if (!pptxShapeType) continue;
+
+          const opts: any = {
+            x: shape.x, y: shape.y, w: shape.w, h: shape.h,
+          };
+          if (shape.fill) {
+            opts.fill = { color: shape.fill.color };
+            if (shape.fill.transparency) opts.fill.transparency = shape.fill.transparency;
+          }
+          if (shape.line) {
+            opts.line = { color: shape.line.color, width: shape.line.width };
+          }
+          if (shape.rectRadius) opts.rectRadius = shape.rectRadius;
+          if (shape.rotation) opts.rotate = shape.rotation;
+
+          try {
+            slide.addShape(pptxShapeType, opts);
+          } catch {}
+        }
+      }
+
+      function addDefaultHeaderBar(slide: any, title: string) {
+        slide.addShape(pres.ShapeType.rect, {
+          x: 0, y: 0, w: colors.slideWidth, h: 0.8,
+          fill: { color: config.accentColor },
+        });
+        slide.addText(title, {
+          x: 0.5, y: 0.1, w: colors.slideWidth - 3.8, h: 0.6,
+          fontSize: 18, fontFace: colors.headerFont || colors.bodyFont || "Arial",
+          color: colors.white, bold: true,
+        });
+      }
+
+      function addBrandTitle(slide: any, title: string, layout: TemplateSlideLayout | undefined) {
+        const titlePh = layout?.placeholders.find(p => p.type === "title");
+        const pos = titlePh && titlePh.w > 0
+          ? { x: titlePh.x, y: titlePh.y, w: titlePh.w, h: titlePh.h }
+          : { x: 0.8, y: 0.3, w: colors.slideWidth - 1.6, h: 0.7 };
+        slide.addText(title, {
+          x: pos.x, y: pos.y, w: pos.w, h: pos.h,
+          fontSize: 20, fontFace: colors.headerFont || colors.bodyFont || "Arial",
+          color: config.headerColor, bold: true,
+        });
+      }
+
+      function getBodyArea(layout: TemplateSlideLayout | undefined, fallback: { x: number; y: number; w: number; h: number }) {
+        const bodyPh = layout?.placeholders.find(p => p.type === "body");
+        return bodyPh && bodyPh.w > 0 ? { x: bodyPh.x, y: bodyPh.y, w: bodyPh.w, h: bodyPh.h } : fallback;
+      }
+
       for (let i = 0; i < plan.slides.length; i++) {
         const slideData = plan.slides[i];
         const slide = pres.addSlide();
+        const slideLayout = getFullLayout(slideData.slideType);
 
-        slide.addText("KORN FERRY", {
-          x: colors.slideWidth - 2.8, y: 0.2, w: 2.5, h: 0.35,
-          fontSize: 10, fontFace: colors.bodyFont || "Arial",
-          color: config.accentColor, bold: true, align: "right",
-        });
+        if (hasBrandTemplate) {
+          applyTemplateBackground(slide, slideLayout);
+          renderDecorativeShapes(slide, slideLayout);
+        }
 
-        slide.addText(`${i + 1}`, {
-          x: (colors.slideWidth - 1.333) / 2, y: colors.slideHeight - 0.5, w: 1.333, h: 0.4,
-          fontSize: 8, fontFace: colors.bodyFont || "Arial",
-          color: colors.gray, align: "center",
-        });
+        if (!hasBrandTemplate) {
+          slide.addText("KORN FERRY", {
+            x: colors.slideWidth - 2.8, y: 0.2, w: 2.5, h: 0.35,
+            fontSize: 10, fontFace: colors.bodyFont || "Arial",
+            color: config.accentColor, bold: true, align: "right",
+          });
+        }
+
+        if (!hasBrandTemplate) {
+          slide.addText(`${i + 1}`, {
+            x: (colors.slideWidth - 1.333) / 2, y: colors.slideHeight - 0.5, w: 1.333, h: 0.4,
+            fontSize: 8, fontFace: colors.bodyFont || "Arial",
+            color: colors.gray, align: "center",
+          });
+        }
 
         if (slideData.speakerNotes) {
           slide.addNotes(slideData.speakerNotes);
@@ -18457,8 +18568,15 @@ CRITICAL RULES:
             const titlePos = getLayoutPos("title", "ctrTitle") || { x: 0.8, y: 2.0, w: colors.slideWidth - 1.6, h: 1.5 };
             const subPos = getLayoutPos("title", "subTitle") || { x: 0.8, y: titlePos.y + titlePos.h + 0.1, w: colors.slideWidth - 1.6, h: 0.8 };
 
-            slide.background = { color: config.titleBg };
-            const titleColor = config.titleBg === colors.white ? config.headerColor : colors.white;
+            if (!hasBrandTemplate) {
+              slide.background = { color: config.titleBg };
+            }
+            const hasDarkBg = hasBrandTemplate
+              ? !!(slideLayout?.background?.color || activeBrandKit.masterBackground?.color)
+              : config.titleBg !== colors.white;
+            const titleColor = hasDarkBg ? colors.white : config.headerColor;
+            const subtitleColor = hasDarkBg ? colors.lightGray : colors.gray;
+
             slide.addText(slideData.title, {
               x: titlePos.x, y: titlePos.y, w: titlePos.w, h: titlePos.h,
               fontSize: 36, fontFace: colors.headerFont || colors.bodyFont || "Arial",
@@ -18468,74 +18586,76 @@ CRITICAL RULES:
               slide.addText(slideData.subtitle, {
                 x: subPos.x, y: subPos.y, w: subPos.w, h: subPos.h,
                 fontSize: 18, fontFace: colors.bodyFont || "Arial",
-                color: config.titleBg === colors.white ? colors.gray : colors.lightGray,
-                align: "left",
+                color: subtitleColor, align: "left",
               });
             }
             if (slideData.bodyContent) {
               slide.addText(slideData.bodyContent, {
                 x: subPos.x, y: subPos.y + subPos.h + 0.2, w: subPos.w, h: 0.6,
                 fontSize: 12, fontFace: colors.bodyFont || "Arial",
-                color: config.titleBg === colors.white ? colors.gray : colors.lightGray,
-                align: "left",
+                color: subtitleColor, align: "left",
               });
             }
             break;
           }
 
           case "section_divider": {
-            const secImgPath = slideData.imageCategory ? getImagePath(slideData.imageCategory) : null;
-            if (secImgPath) {
-              try {
-                slide.addImage({
-                  path: secImgPath,
-                  x: 0, y: 0, w: colors.slideWidth, h: colors.slideHeight,
-                  sizing: { type: "cover", w: colors.slideWidth, h: colors.slideHeight },
-                });
-                slide.addShape(pres.ShapeType.rect, {
-                  x: 0, y: 0, w: colors.slideWidth, h: colors.slideHeight,
-                  fill: { color: config.accentColor.replace('#', ''), transparency: 40 },
-                });
-              } catch {
+            if (!hasBrandTemplate) {
+              const secImgPath = slideData.imageCategory ? getImagePath(slideData.imageCategory) : null;
+              if (secImgPath) {
+                try {
+                  slide.addImage({
+                    path: secImgPath,
+                    x: 0, y: 0, w: colors.slideWidth, h: colors.slideHeight,
+                    sizing: { type: "cover", w: colors.slideWidth, h: colors.slideHeight },
+                  });
+                  slide.addShape(pres.ShapeType.rect, {
+                    x: 0, y: 0, w: colors.slideWidth, h: colors.slideHeight,
+                    fill: { color: config.accentColor.replace('#', ''), transparency: 40 },
+                  });
+                } catch {
+                  slide.addShape(pres.ShapeType.rect, {
+                    x: 0, y: 0, w: colors.slideWidth, h: colors.slideHeight,
+                    fill: { color: config.accentColor },
+                  });
+                }
+              } else {
                 slide.addShape(pres.ShapeType.rect, {
                   x: 0, y: 0, w: colors.slideWidth, h: colors.slideHeight,
                   fill: { color: config.accentColor },
                 });
               }
-            } else {
-              slide.addShape(pres.ShapeType.rect, {
-                x: 0, y: 0, w: colors.slideWidth, h: colors.slideHeight,
-                fill: { color: config.accentColor },
-              });
             }
+
+            const secTitlePos = getLayoutPos("section_divider", "title") || { x: 0.8, y: 2.7, w: 11.7, h: 2.0 };
+            const secSubPos = getLayoutPos("section_divider", "body") || { x: 0.8, y: secTitlePos.y + secTitlePos.h + 0.1, w: 11.7, h: 0.6 };
+            const secTextColor = hasBrandTemplate ? config.headerColor : colors.white;
+            const secSubColor = hasBrandTemplate ? config.subtitleColor : colors.lightGray;
+
             slide.addText(slideData.title, {
-              x: 0.8, y: 2.7, w: 11.7, h: 2.0,
+              x: secTitlePos.x, y: secTitlePos.y, w: secTitlePos.w, h: secTitlePos.h,
               fontSize: 30, fontFace: colors.headerFont || colors.bodyFont || "Arial",
-              color: colors.white, bold: true, align: "left", valign: "middle",
+              color: secTextColor, bold: true, align: "left", valign: "middle",
             });
             if (slideData.subtitle) {
               slide.addText(slideData.subtitle, {
-                x: 0.8, y: 4.8, w: 11.7, h: 0.6,
+                x: secSubPos.x, y: secSubPos.y, w: secSubPos.w, h: secSubPos.h,
                 fontSize: 16, fontFace: colors.bodyFont || "Arial",
-                color: colors.lightGray,
+                color: secSubColor,
               });
             }
             break;
           }
 
           case "content": {
-            const contentTitlePos = getLayoutPos("content", "title") || { x: 0.5, y: 0.1, w: colors.slideWidth - 3.8, h: 0.6 };
-            const contentBodyPos = getLayoutPos("content", "body") || { x: 0.8, y: 1.2, w: colors.slideWidth - 1.6, h: 5.0 };
+            const contentBodyPos = getBodyArea(slideLayout, { x: 0.8, y: 1.2, w: colors.slideWidth - 1.6, h: 5.0 });
 
-            slide.addShape(pres.ShapeType.rect, {
-              x: 0, y: 0, w: colors.slideWidth, h: 0.8,
-              fill: { color: config.accentColor },
-            });
-            slide.addText(slideData.title, {
-              x: contentTitlePos.x, y: contentTitlePos.y, w: contentTitlePos.w, h: contentTitlePos.h,
-              fontSize: 18, fontFace: colors.headerFont || colors.bodyFont || "Arial",
-              color: colors.white, bold: true,
-            });
+            if (hasBrandTemplate) {
+              addBrandTitle(slide, slideData.title, slideLayout);
+            } else {
+              addDefaultHeaderBar(slide, slideData.title);
+            }
+
             let yPos = contentBodyPos.y;
             if (slideData.bodyContent) {
               slide.addText(slideData.bodyContent, {
@@ -18559,23 +18679,20 @@ CRITICAL RULES:
           }
 
           case "kpi_scorecard": {
-            slide.addShape(pres.ShapeType.rect, {
-              x: 0, y: 0, w: colors.slideWidth, h: 0.8,
-              fill: { color: config.accentColor },
-            });
-            slide.addText(slideData.title, {
-              x: 0.5, y: 0.1, w: colors.slideWidth - 3.8, h: 0.6,
-              fontSize: 18, fontFace: colors.bodyFont || "Arial",
-              color: colors.white, bold: true,
-            });
+            if (hasBrandTemplate) {
+              addBrandTitle(slide, slideData.title, slideLayout);
+            } else {
+              addDefaultHeaderBar(slide, slideData.title);
+            }
             if (slideData.metrics?.length) {
+              const bodyArea = getBodyArea(slideLayout, { x: 1.0, y: 1.3, w: 11.0, h: 5.0 });
               const cols = Math.min(slideData.metrics.length, 4);
-              const boxW = 11.0 / cols;
+              const boxW = bodyArea.w / cols - 0.2;
               slideData.metrics.forEach((metric, idx) => {
                 const col = idx % cols;
                 const row = Math.floor(idx / cols);
-                const xPos = 1.0 + col * (boxW + 0.2);
-                const yPos = 1.3 + row * 2.2;
+                const xPos = bodyArea.x + col * (boxW + 0.2);
+                const yPos = bodyArea.y + row * 2.2;
                 const trendSymbol = metric.trend === "up" ? "\u25B2" : metric.trend === "down" ? "\u25BC" : "\u25CF";
                 const trendColor = metric.trend === "up" ? colors.emerald : metric.trend === "down" ? "CC3333" : colors.gray;
                 slide.addShape(pres.ShapeType.roundRect, {
@@ -18606,15 +18723,11 @@ CRITICAL RULES:
           }
 
           case "chart": {
-            slide.addShape(pres.ShapeType.rect, {
-              x: 0, y: 0, w: colors.slideWidth, h: 0.8,
-              fill: { color: config.accentColor },
-            });
-            slide.addText(slideData.title, {
-              x: 0.5, y: 0.1, w: colors.slideWidth - 3.8, h: 0.6,
-              fontSize: 18, fontFace: colors.bodyFont || "Arial",
-              color: colors.white, bold: true,
-            });
+            if (hasBrandTemplate) {
+              addBrandTitle(slide, slideData.title, slideLayout);
+            } else {
+              addDefaultHeaderBar(slide, slideData.title);
+            }
             if (slideData.chartData) {
               const chartTypeMap: Record<string, pptxgen.CHART_NAME> = {
                 bar: pres.ChartType.bar,
@@ -18625,10 +18738,11 @@ CRITICAL RULES:
               const chartType = chartTypeMap[slideData.chartData.type] || pres.ChartType.bar;
               const chartColors = slideData.chartData.colors?.map(c => c.replace("#", "")) ||
                 [colors.emerald, colors.oceanBlue, colors.cyan, colors.lime, colors.purple, colors.mint];
+              const bodyArea = getBodyArea(slideLayout, { x: 1.0, y: 1.2, w: 11.0, h: 5.5 });
               slide.addChart(chartType, [
                 { name: slideData.title, labels: slideData.chartData.labels, values: slideData.chartData.data },
               ], {
-                x: 1.0, y: 1.2, w: 11.0, h: 5.5,
+                x: bodyArea.x, y: bodyArea.y, w: bodyArea.w, h: bodyArea.h,
                 showLegend: true, legendPos: "b",
                 chartColors: chartColors,
                 showValue: true,
@@ -18638,37 +18752,35 @@ CRITICAL RULES:
           }
 
           case "timeline": {
-            slide.addShape(pres.ShapeType.rect, {
-              x: 0, y: 0, w: colors.slideWidth, h: 0.8,
-              fill: { color: config.accentColor },
-            });
-            slide.addText(slideData.title, {
-              x: 0.5, y: 0.1, w: 9.5, h: 0.6,
-              fontSize: 18, fontFace: colors.bodyFont || "Arial",
-              color: colors.white, bold: true,
-            });
+            if (hasBrandTemplate) {
+              addBrandTitle(slide, slideData.title, slideLayout);
+            } else {
+              addDefaultHeaderBar(slide, slideData.title);
+            }
             if (slideData.flowSteps?.length) {
+              const bodyArea = getBodyArea(slideLayout, { x: 0.8, y: 1.2, w: colors.slideWidth - 1.6, h: 5.5 });
               const stepCount = slideData.flowSteps.length;
-              const stepW = Math.min(2.0, 11.0 / stepCount);
-              const startX = (colors.slideWidth - stepCount * stepW) / 2;
+              const stepW = Math.min(2.0, bodyArea.w / stepCount);
+              const startX = bodyArea.x + (bodyArea.w - stepCount * stepW) / 2;
+              const lineY = bodyArea.y + bodyArea.h * 0.45;
               slide.addShape(pres.ShapeType.rect, {
-                x: startX, y: 3.5, w: stepCount * stepW, h: 0.05,
+                x: startX, y: lineY, w: stepCount * stepW, h: 0.05,
                 fill: { color: config.accentColor },
               });
               slideData.flowSteps.forEach((step, idx) => {
                 const xPos = startX + idx * stepW + stepW / 2 - 0.15;
                 slide.addShape(pres.ShapeType.ellipse, {
-                  x: xPos, y: 3.3, w: 0.3, h: 0.3,
+                  x: xPos, y: lineY - 0.15, w: 0.3, h: 0.3,
                   fill: { color: config.accentColor },
                 });
                 slide.addText(step.label, {
-                  x: xPos - 0.7, y: 2.3, w: 1.7, h: 0.8,
+                  x: xPos - 0.7, y: lineY - 1.2, w: 1.7, h: 0.8,
                   fontSize: 10, fontFace: colors.bodyFont || "Arial",
                   color: config.headerColor, bold: true, align: "center",
                 });
                 if (step.description) {
                   slide.addText(step.description, {
-                    x: xPos - 0.7, y: 3.8, w: 1.7, h: 0.8,
+                    x: xPos - 0.7, y: lineY + 0.3, w: 1.7, h: 0.8,
                     fontSize: 9, fontFace: colors.bodyFont || "Arial",
                     color: colors.gray, align: "center",
                   });
@@ -18679,20 +18791,17 @@ CRITICAL RULES:
           }
 
           case "quote": {
-            slide.background = { color: "F7F7F7" };
-            slide.addShape(pres.ShapeType.rect, {
-              x: 0, y: 0, w: colors.slideWidth, h: 0.8,
-              fill: { color: config.accentColor },
-            });
-            slide.addText(slideData.title, {
-              x: 0.5, y: 0.1, w: 9.5, h: 0.6,
-              fontSize: 18, fontFace: colors.bodyFont || "Arial",
-              color: colors.white, bold: true,
-            });
+            if (!hasBrandTemplate) {
+              slide.background = { color: "F7F7F7" };
+              addDefaultHeaderBar(slide, slideData.title);
+            } else {
+              addBrandTitle(slide, slideData.title, slideLayout);
+            }
             if (slideData.quoteText) {
+              const bodyArea = getBodyArea(slideLayout, { x: 1.5, y: 1.5, w: 10.3, h: 3.5 });
               slide.addText(`\u201C${slideData.quoteText}\u201D`, {
-                x: 1.5, y: 1.5, w: 10.3, h: 3.5,
-                fontSize: 22, fontFace: "Georgia",
+                x: bodyArea.x, y: bodyArea.y, w: bodyArea.w, h: bodyArea.h,
+                fontSize: 22, fontFace: colors.headerFont || "Georgia",
                 color: config.headerColor, italic: true, align: "center", valign: "middle",
               });
             }
@@ -18707,43 +18816,41 @@ CRITICAL RULES:
           }
 
           case "flow_diagram": {
-            slide.addShape(pres.ShapeType.rect, {
-              x: 0, y: 0, w: colors.slideWidth, h: 0.8,
-              fill: { color: config.accentColor },
-            });
-            slide.addText(slideData.title, {
-              x: 0.5, y: 0.1, w: 9.5, h: 0.6,
-              fontSize: 18, fontFace: colors.bodyFont || "Arial",
-              color: colors.white, bold: true,
-            });
+            if (hasBrandTemplate) {
+              addBrandTitle(slide, slideData.title, slideLayout);
+            } else {
+              addDefaultHeaderBar(slide, slideData.title);
+            }
             if (slideData.flowSteps?.length) {
+              const bodyArea = getBodyArea(slideLayout, { x: 0.8, y: 1.2, w: colors.slideWidth - 1.6, h: 5.5 });
               const stepCount = slideData.flowSteps.length;
-              const boxW = Math.min(2.2, 10.0 / stepCount);
+              const boxW = Math.min(2.2, bodyArea.w / stepCount - 0.4);
               const gap = 0.4;
               const totalW = stepCount * boxW + (stepCount - 1) * gap;
-              const startX = (colors.slideWidth - totalW) / 2;
+              const startX = bodyArea.x + (bodyArea.w - totalW) / 2;
+              const boxY = bodyArea.y + (bodyArea.h - 2.5) / 2;
               slideData.flowSteps.forEach((step, idx) => {
                 const xPos = startX + idx * (boxW + gap);
                 slide.addShape(pres.ShapeType.roundRect, {
-                  x: xPos, y: 2.5, w: boxW, h: 2.5,
+                  x: xPos, y: boxY, w: boxW, h: 2.5,
                   fill: { color: config.accentColor },
                   rectRadius: 0.1,
                 });
                 slide.addText(step.label, {
-                  x: xPos + 0.1, y: 2.7, w: boxW - 0.2, h: 0.6,
+                  x: xPos + 0.1, y: boxY + 0.2, w: boxW - 0.2, h: 0.6,
                   fontSize: 12, fontFace: colors.bodyFont || "Arial",
                   color: colors.white, bold: true, align: "center",
                 });
                 if (step.description) {
                   slide.addText(step.description, {
-                    x: xPos + 0.1, y: 3.4, w: boxW - 0.2, h: 1.4,
+                    x: xPos + 0.1, y: boxY + 0.9, w: boxW - 0.2, h: 1.4,
                     fontSize: 9, fontFace: colors.bodyFont || "Arial",
                     color: colors.lightGray, align: "center", valign: "top",
                   });
                 }
                 if (idx < stepCount - 1) {
                   slide.addText("\u25B6", {
-                    x: xPos + boxW + 0.05, y: 3.4, w: 0.3, h: 0.5,
+                    x: xPos + boxW + 0.05, y: boxY + 0.9, w: 0.3, h: 0.5,
                     fontSize: 16, fontFace: colors.bodyFont || "Arial",
                     color: config.accentColor, align: "center",
                   });
@@ -18754,52 +18861,53 @@ CRITICAL RULES:
           }
 
           case "comparison": {
-            slide.addShape(pres.ShapeType.rect, {
-              x: 0, y: 0, w: colors.slideWidth, h: 0.8,
-              fill: { color: config.accentColor },
-            });
-            slide.addText(slideData.title, {
-              x: 0.5, y: 0.1, w: 9.5, h: 0.6,
-              fontSize: 18, fontFace: colors.bodyFont || "Arial",
-              color: colors.white, bold: true,
-            });
+            if (hasBrandTemplate) {
+              addBrandTitle(slide, slideData.title, slideLayout);
+            } else {
+              addDefaultHeaderBar(slide, slideData.title);
+            }
             if (slideData.comparisonItems?.length) {
+              const bodyArea = getBodyArea(slideLayout, { x: 0.5, y: 1.2, w: 12.3, h: 5.5 });
+              const halfW = (bodyArea.w - 0.5) / 2;
+              const leftX = bodyArea.x;
+              const rightX = bodyArea.x + halfW + 0.5;
+
               slide.addText("Before", {
-                x: 1.5, y: 1.2, w: 4.5, h: 0.5,
+                x: leftX + 1.0, y: bodyArea.y, w: halfW - 1.0, h: 0.5,
                 fontSize: 16, fontFace: colors.bodyFont || "Arial",
                 color: colors.gray, bold: true, align: "center",
               });
               slide.addText("After", {
-                x: 7.3, y: 1.2, w: 4.5, h: 0.5,
+                x: rightX, y: bodyArea.y, w: halfW, h: 0.5,
                 fontSize: 16, fontFace: colors.bodyFont || "Arial",
                 color: config.accentColor, bold: true, align: "center",
               });
               slide.addShape(pres.ShapeType.rect, {
-                x: 6.5, y: 1.2, w: 0.03, h: 5.5,
+                x: leftX + halfW + 0.2, y: bodyArea.y, w: 0.03, h: bodyArea.h,
                 fill: { color: colors.lightGray },
               });
               slideData.comparisonItems.forEach((item, idx) => {
-                const yPos = 1.9 + idx * 1.3;
+                const yPos = bodyArea.y + 0.7 + idx * 1.3;
                 slide.addText(item.label, {
-                  x: 0.5, y: yPos, w: 1.0, h: 1.0,
+                  x: leftX, y: yPos, w: 1.0, h: 1.0,
                   fontSize: 10, fontFace: colors.bodyFont || "Arial",
                   color: config.headerColor, bold: true, valign: "middle",
                 });
                 slide.addShape(pres.ShapeType.roundRect, {
-                  x: 1.5, y: yPos, w: 4.5, h: 1.0,
+                  x: leftX + 1.0, y: yPos, w: halfW - 1.0, h: 1.0,
                   fill: { color: "FFF3F3" }, rectRadius: 0.05,
                 });
                 slide.addText(item.before, {
-                  x: 1.7, y: yPos + 0.1, w: 4.1, h: 0.8,
+                  x: leftX + 1.2, y: yPos + 0.1, w: halfW - 1.4, h: 0.8,
                   fontSize: 11, fontFace: colors.bodyFont || "Arial",
                   color: config.textColor, valign: "middle",
                 });
                 slide.addShape(pres.ShapeType.roundRect, {
-                  x: 7.3, y: yPos, w: 4.5, h: 1.0,
+                  x: rightX, y: yPos, w: halfW, h: 1.0,
                   fill: { color: "F0FFF5" }, rectRadius: 0.05,
                 });
                 slide.addText(item.after, {
-                  x: 7.5, y: yPos + 0.1, w: 4.1, h: 0.8,
+                  x: rightX + 0.2, y: yPos + 0.1, w: halfW - 0.4, h: 0.8,
                   fontSize: 11, fontFace: colors.bodyFont || "Arial",
                   color: config.textColor, valign: "middle",
                 });
@@ -18809,25 +18917,22 @@ CRITICAL RULES:
           }
 
           case "summary": {
-            slide.addShape(pres.ShapeType.rect, {
-              x: 0, y: 0, w: colors.slideWidth, h: 0.8,
-              fill: { color: config.accentColor },
-            });
-            slide.addText(slideData.title, {
-              x: 0.5, y: 0.1, w: 9.5, h: 0.6,
-              fontSize: 18, fontFace: colors.bodyFont || "Arial",
-              color: colors.white, bold: true,
-            });
-            let sumY = 1.4;
+            if (hasBrandTemplate) {
+              addBrandTitle(slide, slideData.title, slideLayout);
+            } else {
+              addDefaultHeaderBar(slide, slideData.title);
+            }
+            const sumBodyArea = getBodyArea(slideLayout, { x: 0.8, y: 1.4, w: 11.7, h: 5.0 });
+            let sumY = sumBodyArea.y;
             if (slideData.bulletPoints?.length) {
               slideData.bulletPoints.forEach((point) => {
                 slide.addText(`\u2713`, {
-                  x: 0.8, y: sumY, w: 0.5, h: 0.5,
+                  x: sumBodyArea.x, y: sumY, w: 0.5, h: 0.5,
                   fontSize: 16, fontFace: colors.bodyFont || "Arial",
                   color: colors.emerald, bold: true,
                 });
                 slide.addText(point, {
-                  x: 1.4, y: sumY, w: 11.0, h: 0.5,
+                  x: sumBodyArea.x + 0.6, y: sumY, w: sumBodyArea.w - 0.6, h: 0.5,
                   fontSize: 14, fontFace: colors.bodyFont || "Arial",
                   color: config.textColor,
                 });
@@ -18836,7 +18941,7 @@ CRITICAL RULES:
             }
             if (slideData.bodyContent) {
               slide.addText(slideData.bodyContent, {
-                x: 0.8, y: sumY + 0.3, w: 11.7, h: 1.0,
+                x: sumBodyArea.x, y: sumY + 0.3, w: sumBodyArea.w, h: 1.0,
                 fontSize: 12, fontFace: colors.bodyFont || "Arial",
                 color: colors.gray, italic: true, align: "left",
               });
@@ -18845,61 +18950,63 @@ CRITICAL RULES:
           }
 
           case "image_feature": {
-            const imgPath = slideData.imageCategory ? getImagePath(slideData.imageCategory) : null;
-
-            if (imgPath) {
-              try {
-                slide.addImage({
-                  path: imgPath,
-                  x: 0, y: 0, w: colors.slideWidth, h: colors.slideHeight,
-                  sizing: { type: "cover", w: colors.slideWidth, h: colors.slideHeight },
-                });
-                slide.addShape(pres.ShapeType.rect, {
-                  x: 0, y: 0, w: colors.slideWidth, h: colors.slideHeight,
-                  fill: { color: "000000", transparency: 50 },
-                });
-              } catch {
+            if (!hasBrandTemplate) {
+              const imgPath = slideData.imageCategory ? getImagePath(slideData.imageCategory) : null;
+              if (imgPath) {
+                try {
+                  slide.addImage({
+                    path: imgPath,
+                    x: 0, y: 0, w: colors.slideWidth, h: colors.slideHeight,
+                    sizing: { type: "cover", w: colors.slideWidth, h: colors.slideHeight },
+                  });
+                  slide.addShape(pres.ShapeType.rect, {
+                    x: 0, y: 0, w: colors.slideWidth, h: colors.slideHeight,
+                    fill: { color: "000000", transparency: 50 },
+                  });
+                } catch {
+                  slide.background = { color: config.titleBg };
+                }
+              } else {
                 slide.background = { color: config.titleBg };
               }
-            } else {
-              slide.background = { color: config.titleBg };
             }
 
+            const imgTitlePos = getLayoutPos("image_feature", "title") || getLayoutPos("content", "title") || { x: 0.8, y: 2.5, w: 11.7, h: 1.0 };
+            const imgTextColor = hasBrandTemplate ? config.headerColor : colors.white;
+            const imgSubColor = hasBrandTemplate ? config.subtitleColor : colors.lightGray;
+
             slide.addText(slideData.title, {
-              x: 0.8, y: 2.5, w: 11.7, h: 1.0,
+              x: imgTitlePos.x, y: imgTitlePos.y, w: imgTitlePos.w, h: imgTitlePos.h,
               fontSize: 28, fontFace: colors.headerFont || colors.bodyFont || "Arial",
-              color: colors.white, bold: true,
+              color: imgTextColor, bold: true,
             });
             if (slideData.subtitle) {
               slide.addText(slideData.subtitle, {
-                x: 0.8, y: 3.6, w: 11.7, h: 0.6,
+                x: imgTitlePos.x, y: imgTitlePos.y + imgTitlePos.h + 0.1, w: imgTitlePos.w, h: 0.6,
                 fontSize: 16, fontFace: colors.bodyFont || "Arial",
-                color: colors.lightGray,
+                color: imgSubColor,
               });
             }
             if (slideData.bodyContent) {
               slide.addText(slideData.bodyContent, {
-                x: 0.8, y: 4.5, w: 11.7, h: 2.0,
+                x: imgTitlePos.x, y: imgTitlePos.y + imgTitlePos.h + 0.8, w: imgTitlePos.w, h: 2.0,
                 fontSize: 14, fontFace: colors.bodyFont || "Arial",
-                color: colors.lightGray,
+                color: imgSubColor,
               });
             }
             break;
           }
 
           default: {
-            slide.addShape(pres.ShapeType.rect, {
-              x: 0, y: 0, w: colors.slideWidth, h: 0.8,
-              fill: { color: config.accentColor },
-            });
-            slide.addText(slideData.title, {
-              x: 0.5, y: 0.1, w: 9.5, h: 0.6,
-              fontSize: 18, fontFace: colors.bodyFont || "Arial",
-              color: colors.white, bold: true,
-            });
+            if (hasBrandTemplate) {
+              addBrandTitle(slide, slideData.title, slideLayout);
+            } else {
+              addDefaultHeaderBar(slide, slideData.title);
+            }
             if (slideData.bodyContent) {
+              const defBodyArea = getBodyArea(slideLayout, { x: 0.8, y: 1.2, w: 11.7, h: 5.0 });
               slide.addText(slideData.bodyContent, {
-                x: 0.8, y: 1.2, w: 11.7, h: 5.0,
+                x: defBodyArea.x, y: defBodyArea.y, w: defBodyArea.w, h: defBodyArea.h,
                 fontSize: 14, fontFace: colors.bodyFont || "Arial",
                 color: config.textColor,
               });

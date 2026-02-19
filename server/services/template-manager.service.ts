@@ -1,4 +1,4 @@
-import { parseTemplateFromBuffer, type TemplateBrandKit, type ParsedTemplate } from "./template-parser.service";
+import { parseTemplateFromBuffer, type TemplateBrandKit, type ParsedTemplate, type TemplateSlideLayout } from "./template-parser.service";
 
 const templates = new Map<string, ParsedTemplate>();
 
@@ -33,6 +33,7 @@ const DEFAULT_KORN_FERRY_BRAND_KIT: TemplateBrandKit = {
         { type: "ctrTitle", name: "Title", x: 0.8, y: 2.0, w: 11.7, h: 1.5 },
         { type: "subTitle", name: "Subtitle", x: 0.8, y: 3.6, w: 11.7, h: 0.8 },
       ],
+      decorativeShapes: [],
     },
     {
       name: "Title and Content",
@@ -41,6 +42,7 @@ const DEFAULT_KORN_FERRY_BRAND_KIT: TemplateBrandKit = {
         { type: "title", name: "Title", x: 0.8, y: 0.4, w: 11.7, h: 0.8 },
         { type: "body", name: "Content", x: 0.8, y: 1.4, w: 11.7, h: 5.4 },
       ],
+      decorativeShapes: [],
     },
     {
       name: "Two Content",
@@ -50,6 +52,7 @@ const DEFAULT_KORN_FERRY_BRAND_KIT: TemplateBrandKit = {
         { type: "body", idx: "1", name: "Left Content", x: 0.8, y: 1.4, w: 5.6, h: 5.4 },
         { type: "body", idx: "2", name: "Right Content", x: 6.6, y: 1.4, w: 5.6, h: 5.4 },
       ],
+      decorativeShapes: [],
     },
     {
       name: "Section Header",
@@ -58,13 +61,16 @@ const DEFAULT_KORN_FERRY_BRAND_KIT: TemplateBrandKit = {
         { type: "title", name: "Section Title", x: 0.8, y: 2.5, w: 11.7, h: 1.0 },
         { type: "body", name: "Description", x: 0.8, y: 3.6, w: 11.7, h: 0.8 },
       ],
+      decorativeShapes: [],
     },
     {
       name: "Blank",
       type: "blank",
       placeholders: [],
+      decorativeShapes: [],
     },
   ],
+  masterDecorativeShapes: [],
   sampleSlideCount: 0,
 };
 
@@ -180,7 +186,7 @@ export function mapBrandKitToExportColors(brandKit: TemplateBrandKit): {
 export function getTemplateLayoutForSlideType(
   brandKit: TemplateBrandKit,
   slideType: string
-): { placeholders: Array<{ type: string; name: string; x: number; y: number; w: number; h: number }> } | undefined {
+): TemplateSlideLayout | undefined {
   const typeMap: Record<string, string> = {
     title: "title",
     section_divider: "section_divider",
@@ -199,4 +205,8 @@ export function getTemplateLayoutForSlideType(
   const layout = brandKit.layouts.find(l => l.type === layoutType);
   if (!layout) return brandKit.layouts.find(l => l.type === "content");
   return layout;
+}
+
+export function isCustomBrandTemplate(templateId: string | undefined): boolean {
+  return !!templateId && templateId !== "default";
 }
