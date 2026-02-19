@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { storage } from "./storage";
 import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale, generateStrategicPillars, generateStorySuggestion, generateDiscoveryKpiSuggestions, enrichContactWithAI, openai, generateCompetitiveIntelligence, generateKPIValueCaseRecommendations, generateLiveIntelligence, generateEvidencePackRecommendations, generateItemCoaching, researchMeetingAttendee } from "./ai";
 import { EvidencePackService } from "./services/evidence-pack.service";
-import { generatePresentationPlan, aggregatePresentationData, type PresentationRequest, type TopicCategory } from "./services/presentation-studio.service";
+import { generatePresentationPlan, aggregatePresentationData, getProjectContextSummary, generateCoachRecommendations, type PresentationRequest, type TopicCategory } from "./services/presentation-studio.service";
 import { uploadTemplate, getTemplates, getTemplate, getActiveTemplate, setActiveTemplate, deleteTemplate, getActiveBrandKit, mapBrandKitToExportColors, getTemplateLayoutForSlideType } from "./services/template-manager.service";
 import pptxgen from "pptxgenjs";
 import multer from "multer";
@@ -17990,6 +17990,40 @@ Return JSON:
     };
   }
   const KF_COLORS = getKFColors();
+
+  app.get("/api/presentations/project-context/:accountId/:projectId", async (req, res) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const projectId = parseInt(req.params.projectId);
+      if (isNaN(accountId) || isNaN(projectId)) {
+        return res.status(400).json({ error: "Invalid accountId or projectId" });
+      }
+      const context = await getProjectContextSummary(accountId, projectId);
+      res.json(context);
+    } catch (error: any) {
+      console.error("Error fetching project context:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/presentations/coach", async (req, res) => {
+    try {
+      const { accountId, projectId, userBrief, additionalMaterials } = req.body;
+      if (!accountId || !projectId) {
+        return res.status(400).json({ error: "Missing required fields: accountId, projectId" });
+      }
+      const recommendation = await generateCoachRecommendations(
+        accountId,
+        projectId,
+        userBrief || '',
+        additionalMaterials || undefined
+      );
+      res.json(recommendation);
+    } catch (error: any) {
+      console.error("Error generating coach recommendations:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 
   app.post("/api/presentations/plan", async (req, res) => {
     try {

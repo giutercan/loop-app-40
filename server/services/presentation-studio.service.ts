@@ -18,6 +18,9 @@ export interface PresentationRequest {
   templateOverride?: PresentationTemplate;
   customTitle?: string;
   customSubtitle?: string;
+  userBrief?: string;
+  additionalMaterials?: string;
+  gapAnswers?: Array<{ question: string; answer: string }>;
 }
 
 export interface SlideContent {
@@ -105,6 +108,295 @@ interface AggregatedData {
   greenSheetData: any;
   narrativeCanvas: any;
   storyBuilderData: any;
+}
+
+export interface ProjectContextSummary {
+  projectName: string;
+  companyName: string;
+  accountName: string;
+  phase: string;
+  sector: string;
+  discoveryCompleted: boolean;
+  availableData: {
+    discoveryInsights: { count: number; sample: string[] };
+    kpis: { count: number; sample: string[] };
+    valueCases: { count: number; sample: string[] };
+    evidencePack: { count: number; quality: string };
+    successStories: { count: number; sample: string[] };
+    greenSheet: { available: boolean; objective: string };
+    narrativeCanvas: { available: boolean; keyMessage: string };
+    storyBuilder: { available: boolean; hook: string };
+    growthAccelerator: { count: number };
+    competitiveLandscape: { available: boolean };
+  };
+  totalDataPoints: number;
+}
+
+export interface CoachRecommendation {
+  purpose: PresentationPurpose;
+  purposeReason: string;
+  audience: PresentationAudience;
+  audienceReason: string;
+  suggestedTopics: Array<{ topic: TopicCategory; reason: string; priority: 'must_include' | 'recommended' | 'optional' }>;
+  template: PresentationTemplate;
+  templateReason: string;
+  suggestedTitle: string;
+  narrativeArc: string;
+  gapQuestions: Array<{ question: string; context: string; field: string }>;
+  storyAngles: Array<{ angle: string; source: string }>;
+  estimatedSlides: number;
+}
+
+export async function getProjectContextSummary(
+  accountId: number,
+  projectId: number
+): Promise<ProjectContextSummary> {
+  const allTopics: TopicCategory[] = [
+    'discovery_insights', 'stakeholder_priorities', 'kpi_commitments',
+    'alignment_progress', 'value_realization', 'evidence_pack',
+    'success_stories', 'green_sheet_objectives', 'growth_accelerator',
+    'competitive_landscape'
+  ];
+  const data = await aggregatePresentationData(accountId, projectId, allTopics);
+
+  const discoveryAnswered = (data.discoveryQuestions || []).filter((q: any) => q.answer);
+  const greenSheet = data.greenSheetData;
+  const narrative = data.narrativeCanvas as any;
+  const story = data.storyBuilderData as any;
+
+  let totalDataPoints = 0;
+
+  const discoveryInsights = {
+    count: discoveryAnswered.length + (data.headlines || []).length,
+    sample: discoveryAnswered.slice(0, 3).map((q: any) => q.question),
+  };
+  totalDataPoints += discoveryInsights.count;
+
+  const kpis = {
+    count: (data.kpiCommitments || []).length,
+    sample: (data.kpiCommitments || []).slice(0, 3).map((k: any) => k.commitmentTitle || k.name || 'KPI'),
+  };
+  totalDataPoints += kpis.count;
+
+  const valueCases = {
+    count: (data.valueCases || []).length,
+    sample: (data.valueCases || []).slice(0, 3).map((vc: any) => vc.title || 'Value Case'),
+  };
+  totalDataPoints += valueCases.count;
+
+  const evidencePack = {
+    count: (data.evidencePackItems || []).length,
+    quality: data.evidencePack?.qualityScore ? `${data.evidencePack.qualityScore}/100` : 'N/A',
+  };
+  totalDataPoints += evidencePack.count;
+
+  const successStories = {
+    count: (data.successStories || []).length + (data.successStoryLibrary || []).length,
+    sample: (data.successStories || []).slice(0, 2).map((s: any) => s.title || 'Story'),
+  };
+  totalDataPoints += successStories.count;
+
+  const greenSheetSummary = {
+    available: !!greenSheet?.callPlanner?.objective,
+    objective: greenSheet?.callPlanner?.objective || '',
+  };
+  if (greenSheetSummary.available) totalDataPoints++;
+
+  const narrativeCanvasSummary = {
+    available: !!narrative?.keyMessage,
+    keyMessage: narrative?.keyMessage || '',
+  };
+  if (narrativeCanvasSummary.available) totalDataPoints++;
+
+  const storyBuilderSummary = {
+    available: !!story?.before?.startingHook,
+    hook: story?.before?.startingHook || '',
+  };
+  if (storyBuilderSummary.available) totalDataPoints++;
+
+  const growthAccelerator = {
+    count: (data.growthAcceleratorCanvases || []).length,
+  };
+  totalDataPoints += growthAccelerator.count;
+
+  const competitiveLandscape = {
+    available: !!(data.blueSheet?.data as any)?.competitions?.length,
+  };
+  if (competitiveLandscape.available) totalDataPoints++;
+
+  return {
+    projectName: data.project?.name || 'Unknown',
+    companyName: data.project?.companyName || '',
+    accountName: data.account?.name || '',
+    phase: data.project?.currentPhase || 'discovery',
+    sector: data.project?.sector || data.account?.industry || '',
+    discoveryCompleted: !!data.project?.discoveryCompleted,
+    availableData: {
+      discoveryInsights,
+      kpis,
+      valueCases,
+      evidencePack,
+      successStories,
+      greenSheet: greenSheetSummary,
+      narrativeCanvas: narrativeCanvasSummary,
+      storyBuilder: storyBuilderSummary,
+      growthAccelerator,
+      competitiveLandscape,
+    },
+    totalDataPoints,
+  };
+}
+
+export async function generateCoachRecommendations(
+  accountId: number,
+  projectId: number,
+  userContext: string,
+  additionalMaterials?: string
+): Promise<CoachRecommendation> {
+  const allTopics: TopicCategory[] = [
+    'discovery_insights', 'stakeholder_priorities', 'kpi_commitments',
+    'alignment_progress', 'value_realization', 'evidence_pack',
+    'success_stories', 'green_sheet_objectives', 'growth_accelerator',
+    'competitive_landscape'
+  ];
+  const data = await aggregatePresentationData(accountId, projectId, allTopics);
+  const dataSummary = summarizeDataForPrompt(data, allTopics);
+  const contextSummary = await getProjectContextSummary(accountId, projectId);
+
+  const prompt = `You are a senior Korn Ferry presentation coach. A consultant is preparing a presentation for a client engagement. Based on the project data and the consultant's brief, recommend the best configuration.
+
+=== PROJECT DATA ===
+${dataSummary}
+
+=== STORYTELLING ASSETS ===
+${data.narrativeCanvas ? `Narrative Canvas: Opener: ${(data.narrativeCanvas as any).opener || 'N/A'}, Key Message: ${(data.narrativeCanvas as any).keyMessage || 'N/A'}, Proof Point: ${(data.narrativeCanvas as any).proofPoint || 'N/A'}, Call to Action: ${(data.narrativeCanvas as any).callToAction || 'N/A'}` : 'No narrative canvas available.'}
+${data.storyBuilderData ? `Story Builder: Hook: ${(data.storyBuilderData as any).before?.startingHook || 'N/A'}, Hero: ${(data.storyBuilderData as any).before?.heroCharacter || 'N/A'}, Turning Point: ${(data.storyBuilderData as any).during?.turningPoint || 'N/A'}, Single Message: ${(data.storyBuilderData as any).before?.singleMessage || 'N/A'}` : 'No story builder data.'}
+
+=== DATA AVAILABILITY ===
+Discovery Insights: ${contextSummary.availableData.discoveryInsights.count} items
+KPIs: ${contextSummary.availableData.kpis.count} items
+Value Cases: ${contextSummary.availableData.valueCases.count} items
+Evidence Pack: ${contextSummary.availableData.evidencePack.count} items (quality: ${contextSummary.availableData.evidencePack.quality})
+Success Stories: ${contextSummary.availableData.successStories.count} items
+Green Sheet: ${contextSummary.availableData.greenSheet.available ? 'Available' : 'Missing'}
+Narrative Canvas: ${contextSummary.availableData.narrativeCanvas.available ? 'Available' : 'Missing'}
+Story Builder: ${contextSummary.availableData.storyBuilder.available ? 'Available' : 'Missing'}
+Growth Accelerator: ${contextSummary.availableData.growthAccelerator.count} canvases
+Competitive Landscape: ${contextSummary.availableData.competitiveLandscape.available ? 'Available' : 'Missing'}
+Project Phase: ${contextSummary.phase}
+
+=== CONSULTANT'S BRIEF ===
+${userContext || 'No specific brief provided.'}
+
+${additionalMaterials ? `=== ADDITIONAL MATERIALS ===\n${additionalMaterials}` : ''}
+
+=== YOUR TASK ===
+Recommend the optimal presentation configuration. For each recommendation, explain WHY based on the data.
+
+Identify GAPS: If critical data is missing for the recommended approach, generate specific questions to ask the consultant. Focus on what would make the presentation stronger.
+
+Identify STORY ANGLES: Based on available storytelling assets (narrative canvas, story builder, success stories), suggest 2-3 compelling narrative angles.
+
+Return valid JSON:
+{
+  "purpose": "customer_engagement|qbr|executive_pitch|discovery_readout|handoff_brief|evidence_review|value_story",
+  "purposeReason": "1-2 sentences explaining why this purpose fits",
+  "audience": "c_suite|client_sponsor|delivery_team|board|internal_review|buying_committee",
+  "audienceReason": "1-2 sentences explaining the audience recommendation",
+  "suggestedTopics": [
+    { "topic": "<topic_id>", "reason": "why include this", "priority": "must_include|recommended|optional" }
+  ],
+  "template": "executive_modern|data_driven|visual_narrative",
+  "templateReason": "why this template style",
+  "suggestedTitle": "A compelling presentation title",
+  "narrativeArc": "Brief description of the recommended story flow",
+  "gapQuestions": [
+    { "question": "What specific question to ask", "context": "Why this matters", "field": "what data area this fills" }
+  ],
+  "storyAngles": [
+    { "angle": "Description of the narrative angle", "source": "What data it draws from" }
+  ],
+  "estimatedSlides": 12
+}`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: "You are a Korn Ferry senior presentation coach. You analyze project data and consultant context to recommend optimal presentation configurations. Always respond with valid JSON."
+        },
+        { role: "user", content: prompt }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.7,
+      max_tokens: 3000,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error("Empty AI response");
+
+    const result = JSON.parse(content);
+    return {
+      purpose: result.purpose || 'customer_engagement',
+      purposeReason: result.purposeReason || '',
+      audience: result.audience || 'client_sponsor',
+      audienceReason: result.audienceReason || '',
+      suggestedTopics: result.suggestedTopics || [],
+      template: result.template || 'visual_narrative',
+      templateReason: result.templateReason || '',
+      suggestedTitle: result.suggestedTitle || '',
+      narrativeArc: result.narrativeArc || '',
+      gapQuestions: result.gapQuestions || [],
+      storyAngles: result.storyAngles || [],
+      estimatedSlides: result.estimatedSlides || 12,
+    };
+  } catch (error) {
+    console.error("[PresentationStudio] Coach AI failed:", error);
+    return generateFallbackCoachRecommendation(data, contextSummary, userContext);
+  }
+}
+
+function generateFallbackCoachRecommendation(
+  data: AggregatedData,
+  context: ProjectContextSummary,
+  _userContext: string
+): CoachRecommendation {
+  const hasKpis = context.availableData.kpis.count > 0;
+  const hasEvidence = context.availableData.evidencePack.count > 0;
+  const hasDiscovery = context.availableData.discoveryInsights.count > 0;
+
+  const purpose: PresentationPurpose = context.phase === 'discovery' ? 'discovery_readout'
+    : hasEvidence ? 'evidence_review'
+    : hasKpis ? 'qbr'
+    : 'customer_engagement';
+
+  const topics: Array<{ topic: TopicCategory; reason: string; priority: 'must_include' | 'recommended' | 'optional' }> = [];
+  if (hasDiscovery) topics.push({ topic: 'discovery_insights', reason: 'Key findings from research', priority: 'must_include' });
+  if (hasKpis) topics.push({ topic: 'kpi_commitments', reason: 'Show measurable commitments', priority: 'must_include' });
+  if (hasEvidence) topics.push({ topic: 'evidence_pack', reason: 'Proof of value delivered', priority: 'recommended' });
+  if (context.availableData.successStories.count > 0) topics.push({ topic: 'success_stories', reason: 'Social proof and credibility', priority: 'recommended' });
+  if (context.availableData.greenSheet.available) topics.push({ topic: 'green_sheet_objectives', reason: 'Meeting objectives alignment', priority: 'recommended' });
+
+  const gaps: Array<{ question: string; context: string; field: string }> = [];
+  if (!hasKpis) gaps.push({ question: 'What KPIs or outcomes have you committed to with this client?', context: 'Without KPIs, the presentation lacks measurable proof points.', field: 'kpis' });
+  if (!context.availableData.greenSheet.available) gaps.push({ question: 'What is the primary objective for this meeting?', context: 'A clear objective helps shape the narrative arc.', field: 'green_sheet' });
+
+  return {
+    purpose,
+    purposeReason: `Based on the ${context.phase} phase and ${context.totalDataPoints} data points available.`,
+    audience: 'client_sponsor',
+    audienceReason: 'Default audience. Please adjust based on who will be in the room.',
+    suggestedTopics: topics,
+    template: hasKpis ? 'data_driven' : 'visual_narrative',
+    templateReason: hasKpis ? 'Data available to support a metrics-heavy approach.' : 'Narrative approach recommended until more data is available.',
+    suggestedTitle: `${context.accountName} - ${context.projectName}`,
+    narrativeArc: 'Context → Insights → Opportunities → Approach → Next Steps',
+    gapQuestions: gaps,
+    storyAngles: [],
+    estimatedSlides: 10 + topics.length,
+  };
 }
 
 export async function aggregatePresentationData(
@@ -466,6 +758,16 @@ CONTEXT:
 - Account: ${data.account?.name || 'Unknown'}
 - Custom Title: ${request.customTitle || 'auto-generate'}
 - Custom Subtitle: ${request.customSubtitle || 'auto-generate'}
+
+${request.userBrief ? `CONSULTANT'S BRIEF:\n${request.userBrief}\n` : ''}
+${request.additionalMaterials ? `ADDITIONAL CONTEXT/MATERIALS:\n${request.additionalMaterials}\n` : ''}
+${request.gapAnswers?.length ? `CONSULTANT'S ANSWERS TO GAP QUESTIONS:\n${request.gapAnswers.map(ga => `Q: ${ga.question}\nA: ${ga.answer}`).join('\n')}\n` : ''}
+
+STORYTELLING ASSETS:
+${data.narrativeCanvas ? `Narrative Canvas: Opener: ${(data.narrativeCanvas as any).opener || 'N/A'}, Key Message: ${(data.narrativeCanvas as any).keyMessage || 'N/A'}, Proof Point: ${(data.narrativeCanvas as any).proofPoint || 'N/A'}, CTA: ${(data.narrativeCanvas as any).callToAction || 'N/A'}` : 'No narrative canvas.'}
+${data.storyBuilderData ? `Story Builder: Hook: ${(data.storyBuilderData as any).before?.startingHook || 'N/A'}, Hero: ${(data.storyBuilderData as any).before?.heroCharacter || 'N/A'}, Turning Point: ${(data.storyBuilderData as any).during?.turningPoint || 'N/A'}, Single Message: ${(data.storyBuilderData as any).before?.singleMessage || 'N/A'}` : 'No story builder.'}
+
+STORYTELLING INSTRUCTIONS: If Narrative Canvas or Story Builder data is available, weave it into the slide narrative. Use the opener for early slides, the key message/proof points for the middle, and the call to action for the summary/closing slides. Create a compelling arc that mirrors the story structure.
 
 AVAILABLE DATA:
 ${dataSummary}

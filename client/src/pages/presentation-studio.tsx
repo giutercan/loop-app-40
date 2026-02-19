@@ -54,6 +54,12 @@ import {
   Palette,
   Type,
   LayoutTemplate,
+  Compass,
+  HelpCircle,
+  BookText,
+  CircleDot,
+  ArrowRight,
+  Database,
 } from "lucide-react";
 
 type PresentationPurpose = 'customer_engagement' | 'qbr' | 'executive_pitch' | 'discovery_readout' | 'handoff_brief' | 'evidence_review' | 'value_story';
@@ -475,6 +481,10 @@ export default function PresentationStudioPage() {
   const [showBrandPanel, setShowBrandPanel] = useState(false);
   const [uploadingTemplate, setUploadingTemplate] = useState(false);
   const templateFileRef = useRef<HTMLInputElement>(null);
+  const [userBrief, setUserBrief] = useState('');
+  const [additionalMaterials, setAdditionalMaterials] = useState('');
+  const [coachResult, setCoachResult] = useState<any>(null);
+  const [gapAnswers, setGapAnswers] = useState<Record<number, string>>({});
 
   const { data: brandTemplates = [], refetch: refetchTemplates } = useQuery<BrandTemplate[]>({
     queryKey: ['/api/templates'],
@@ -534,6 +544,40 @@ export default function PresentationStudioPage() {
     }
   };
 
+  const { data: projectContext, isLoading: isLoadingContext } = useQuery({
+    queryKey: ['/api/presentations/project-context', selectedAccountId, selectedProjectId],
+    enabled: !!selectedAccountId && !!selectedProjectId,
+  });
+
+  const coachMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/presentations/coach', {
+        accountId: selectedAccountId,
+        projectId: selectedProjectId,
+        userBrief: userBrief || undefined,
+        additionalMaterials: additionalMaterials || undefined,
+      });
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      setCoachResult(data);
+      if (data.purpose) setPurpose(data.purpose);
+      if (data.audience) setAudience(data.audience);
+      if (data.suggestedTopics?.length) {
+        const mustInclude = data.suggestedTopics
+          .filter((t: any) => t.priority === 'must_include' || t.priority === 'recommended')
+          .map((t: any) => t.topic);
+        setSelectedTopics(mustInclude);
+      }
+      if (data.template) setTemplateOverride(data.template);
+      if (data.suggestedTitle) setCustomTitle(data.suggestedTitle);
+      toast({ title: 'AI Coach Ready', description: 'Recommendations applied. Review and adjust before generating.' });
+    },
+    onError: () => {
+      toast({ title: 'Coach Error', description: 'Could not generate recommendations. Please configure manually.', variant: 'destructive' });
+    },
+  });
+
   const { data: accounts = [] } = useQuery({ queryKey: ['/api/accounts'] });
   const { data: projects = [] } = useQuery({
     queryKey: ['/api/projects'],
@@ -567,15 +611,26 @@ export default function PresentationStudioPage() {
     setSelectedTopics([]);
     setPlan(null);
     setStep('configure');
+    setCoachResult(null);
+    setGapAnswers({});
   }, [selectedProjectId]);
 
   const generateMutation = useMutation({
     mutationFn: async () => {
+      const gapAnswersList = Object.entries(gapAnswers)
+        .filter(([, answer]) => answer.trim())
+        .map(([idx, answer]) => ({
+          question: coachResult?.gapQuestions?.[Number(idx)]?.question || '',
+          answer,
+        }));
       const res = await apiRequest('POST', '/api/presentations/plan', {
         accountId: selectedAccountId, projectId: selectedProjectId,
         purpose, audience, selectedTopics,
         templateOverride: templateOverride || undefined,
         customTitle: customTitle || undefined,
+        userBrief: userBrief || undefined,
+        additionalMaterials: additionalMaterials || undefined,
+        gapAnswers: gapAnswersList.length > 0 ? gapAnswersList : undefined,
       });
       return res.json();
     },
@@ -1524,41 +1579,258 @@ export default function PresentationStudioPage() {
 
           <div className="lg:col-span-3">
             <ScrollArea className="h-[calc(100vh-120px)]">
-              <Card className="p-6">
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 rounded-full bg-[#005971]/10 flex items-center justify-center mx-auto mb-4">
-                    <Presentation className="w-8 h-8 text-[#005971]" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-foreground mb-2">Build Your Presentation</h3>
-                  <p className="text-sm text-muted-foreground max-w-md mx-auto mb-6">
-                    Select an account, project, and topics. AI will generate a full slide deck that you can then review, edit, refine, and export.
-                  </p>
-                  <Separator className="my-6" />
-                  <div className="text-left max-w-sm mx-auto space-y-3">
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">What you can do</h4>
-                    <div className="flex items-start gap-2">
-                      <Sparkles className="w-3 h-3 text-[#A3238E] mt-1 shrink-0" />
-                      <p className="text-xs text-muted-foreground">AI generates complete slide content from your project data</p>
+              <div className="space-y-4 pr-2">
+                {selectedAccountId && selectedProjectId && projectContext ? (
+                  <>
+                    <Card className="p-4">
+                      <div className="flex items-center gap-2 mb-3 flex-wrap">
+                        <Database className="w-4 h-4 text-[#005971]" />
+                        <h3 className="text-sm font-semibold text-foreground">Project Data Available</h3>
+                        <Badge variant="secondary" className="text-[10px]">{(projectContext as any).totalDataPoints} data points</Badge>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 mb-3">
+                        <div className="text-xs text-muted-foreground">
+                          <span className="font-medium text-foreground">{(projectContext as any).accountName}</span>
+                          {(projectContext as any).sector && <> / {(projectContext as any).sector}</>}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Phase: <span className="font-medium text-foreground capitalize">{(projectContext as any).phase}</span>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {[
+                          { label: 'Discovery', count: (projectContext as any).availableData?.discoveryInsights?.count || 0, icon: Search },
+                          { label: 'KPIs', count: (projectContext as any).availableData?.kpis?.count || 0, icon: Target },
+                          { label: 'Value Cases', count: (projectContext as any).availableData?.valueCases?.count || 0, icon: TrendingUp },
+                          { label: 'Evidence', count: (projectContext as any).availableData?.evidencePack?.count || 0, icon: Shield },
+                          { label: 'Stories', count: (projectContext as any).availableData?.successStories?.count || 0, icon: BookOpen },
+                          { label: 'Growth Accel.', count: (projectContext as any).availableData?.growthAccelerator?.count || 0, icon: Zap },
+                        ].map(item => {
+                          const ItemIcon = item.icon;
+                          return (
+                            <div key={item.label} className={`flex items-center gap-2 p-2 rounded-md border ${item.count > 0 ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20' : 'border-border bg-muted/30'}`}>
+                              <ItemIcon className={`w-3 h-3 shrink-0 ${item.count > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`} />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-[10px] text-muted-foreground leading-tight">{item.label}</p>
+                                <p className={`text-xs font-semibold ${item.count > 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-muted-foreground'}`}>{item.count}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 mt-2">
+                        {[
+                          { label: 'Green Sheet', available: (projectContext as any).availableData?.greenSheet?.available },
+                          { label: 'Narrative', available: (projectContext as any).availableData?.narrativeCanvas?.available },
+                          { label: 'Story Builder', available: (projectContext as any).availableData?.storyBuilder?.available },
+                        ].map(item => (
+                          <div key={item.label} className={`flex items-center gap-1.5 p-1.5 rounded-md border text-center ${item.available ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20' : 'border-border bg-muted/30'}`}>
+                            {item.available ? <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" /> : <CircleDot className="w-3 h-3 text-muted-foreground shrink-0" />}
+                            <span className="text-[10px] text-muted-foreground truncate">{item.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </Card>
+
+                    <Card className="p-4">
+                      <div className="flex items-center gap-2 mb-3 flex-wrap">
+                        <Brain className="w-4 h-4 text-[#A3238E]" />
+                        <h3 className="text-sm font-semibold text-foreground">AI Coach</h3>
+                      </div>
+                      <div className="space-y-3">
+                        <div>
+                          <Label htmlFor="user-brief" className="text-xs text-muted-foreground mb-1 block">Your Brief</Label>
+                          <Textarea
+                            id="user-brief"
+                            placeholder="Describe what this presentation should accomplish, e.g. 'QBR for Q1 showing progress on talent retention KPIs, need to address the CEO's concerns about leadership pipeline...'"
+                            value={userBrief}
+                            onChange={(e) => setUserBrief(e.target.value)}
+                            className="resize-none text-sm"
+                            rows={3}
+                            data-testid="input-user-brief"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="additional-materials" className="text-xs text-muted-foreground mb-1 block">Additional Context (optional)</Label>
+                          <Textarea
+                            id="additional-materials"
+                            placeholder="Paste notes, email excerpts, meeting minutes, or any additional materials to inform the presentation..."
+                            value={additionalMaterials}
+                            onChange={(e) => setAdditionalMaterials(e.target.value)}
+                            className="resize-none text-sm"
+                            rows={2}
+                            data-testid="input-additional-materials"
+                          />
+                        </div>
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => coachMutation.mutate()}
+                          disabled={coachMutation.isPending}
+                          data-testid="button-coach"
+                        >
+                          {coachMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Compass className="w-4 h-4 mr-2" />}
+                          {coachMutation.isPending ? 'Analyzing...' : 'Get AI Coach Recommendations'}
+                        </Button>
+                      </div>
+                    </Card>
+
+                    {coachResult && (
+                      <Card className="p-4">
+                        <div className="flex items-center gap-2 mb-3 flex-wrap">
+                          <Sparkles className="w-4 h-4 text-[#A3238E]" />
+                          <h3 className="text-sm font-semibold text-foreground">Coach Recommendations</h3>
+                          <Badge variant="secondary" className="text-[10px]">Applied</Badge>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="p-2 rounded-md border border-border bg-muted/30">
+                              <p className="text-[10px] text-muted-foreground">Purpose</p>
+                              <p className="text-xs font-medium text-foreground">{PURPOSE_OPTIONS.find(o => o.value === coachResult.purpose)?.label || coachResult.purpose}</p>
+                              <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{coachResult.purposeReason}</p>
+                            </div>
+                            <div className="p-2 rounded-md border border-border bg-muted/30">
+                              <p className="text-[10px] text-muted-foreground">Audience</p>
+                              <p className="text-xs font-medium text-foreground">{AUDIENCE_OPTIONS.find(o => o.value === coachResult.audience)?.label || coachResult.audience}</p>
+                              <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{coachResult.audienceReason}</p>
+                            </div>
+                          </div>
+
+                          {coachResult.suggestedTitle && (
+                            <div className="p-2 rounded-md border border-[#005971]/20 bg-[#005971]/5">
+                              <p className="text-[10px] text-muted-foreground">Suggested Title</p>
+                              <p className="text-xs font-medium text-[#005971]">{coachResult.suggestedTitle}</p>
+                            </div>
+                          )}
+
+                          {coachResult.narrativeArc && (
+                            <div className="p-2 rounded-md border border-[#A3238E]/20 bg-[#A3238E]/5">
+                              <div className="flex items-center gap-1.5 mb-1">
+                                <BookText className="w-3 h-3 text-[#A3238E]" />
+                                <p className="text-[10px] font-medium text-[#A3238E]">Narrative Arc</p>
+                              </div>
+                              <p className="text-xs text-foreground/80 leading-relaxed">{coachResult.narrativeArc}</p>
+                            </div>
+                          )}
+
+                          {coachResult.suggestedTopics?.length > 0 && (
+                            <div>
+                              <p className="text-[10px] font-medium text-muted-foreground mb-1.5">Suggested Topics</p>
+                              <div className="space-y-1">
+                                {coachResult.suggestedTopics.map((t: any, i: number) => (
+                                  <div key={i} className="flex items-start gap-2 p-1.5 rounded-md border border-border">
+                                    <Badge variant="secondary" className={`text-[9px] shrink-0 ${t.priority === 'must_include' ? 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300' : t.priority === 'recommended' ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300' : ''}`}>
+                                      {t.priority === 'must_include' ? 'Must' : t.priority === 'recommended' ? 'Rec.' : 'Opt.'}
+                                    </Badge>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-xs font-medium text-foreground">{getTopicLabel(t.topic)}</p>
+                                      <p className="text-[10px] text-muted-foreground leading-tight">{t.reason}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {coachResult.storyAngles?.length > 0 && (
+                            <div>
+                              <div className="flex items-center gap-1.5 mb-1.5">
+                                <BookText className="w-3 h-3 text-[#00634F]" />
+                                <p className="text-[10px] font-medium text-muted-foreground">Story Angles</p>
+                              </div>
+                              <div className="space-y-1.5">
+                                {coachResult.storyAngles.map((sa: any, i: number) => (
+                                  <div key={i} className="flex items-start gap-2 p-2 rounded-md border border-[#00634F]/20 bg-[#00634F]/5">
+                                    <ArrowRight className="w-3 h-3 text-[#00634F] mt-0.5 shrink-0" />
+                                    <div className="min-w-0">
+                                      <p className="text-xs text-foreground leading-tight">{sa.angle}</p>
+                                      <p className="text-[10px] text-muted-foreground mt-0.5">Source: {sa.source}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {coachResult.gapQuestions?.length > 0 && (
+                            <div>
+                              <div className="flex items-center gap-1.5 mb-1.5">
+                                <HelpCircle className="w-3 h-3 text-amber-500" />
+                                <p className="text-[10px] font-medium text-muted-foreground">Missing Information</p>
+                              </div>
+                              <div className="space-y-2">
+                                {coachResult.gapQuestions.map((gq: any, i: number) => (
+                                  <div key={i} className="p-2 rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+                                    <p className="text-xs font-medium text-amber-800 dark:text-amber-300 mb-0.5">{gq.question}</p>
+                                    <p className="text-[10px] text-amber-600 dark:text-amber-400 mb-1.5">{gq.context}</p>
+                                    <Input
+                                      placeholder="Your answer (optional, enhances the presentation)..."
+                                      value={gapAnswers[i] || ''}
+                                      onChange={(e) => setGapAnswers(prev => ({ ...prev, [i]: e.target.value }))}
+                                      className="text-xs"
+                                      data-testid={`input-gap-answer-${i}`}
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 border">
+                            <Presentation className="w-3 h-3 text-muted-foreground shrink-0" />
+                            <p className="text-[10px] text-muted-foreground">
+                              Est. {coachResult.estimatedSlides || 12} slides · {TEMPLATE_OPTIONS.find(t => t.value === coachResult.template)?.label || 'Visual Narrative'} style
+                            </p>
+                          </div>
+                        </div>
+                      </Card>
+                    )}
+                  </>
+                ) : selectedAccountId && selectedProjectId && isLoadingContext ? (
+                  <Card className="p-6">
+                    <div className="flex items-center justify-center gap-2 py-8">
+                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">Loading project data...</p>
                     </div>
-                    <div className="flex items-start gap-2">
-                      <Pencil className="w-3 h-3 text-[#005971] mt-1 shrink-0" />
-                      <p className="text-xs text-muted-foreground">Edit any slide directly - titles, content, bullets, speaker notes</p>
+                  </Card>
+                ) : (
+                  <Card className="p-6">
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 rounded-full bg-[#005971]/10 flex items-center justify-center mx-auto mb-4">
+                        <Presentation className="w-8 h-8 text-[#005971]" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-foreground mb-2">Build Your Presentation</h3>
+                      <p className="text-sm text-muted-foreground max-w-md mx-auto mb-6">
+                        Select an account and project to see available data, then use AI Coach to configure your presentation automatically.
+                      </p>
+                      <Separator className="my-6" />
+                      <div className="text-left max-w-sm mx-auto space-y-3">
+                        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">How it works</h4>
+                        <div className="flex items-start gap-2">
+                          <Database className="w-3 h-3 text-[#005971] mt-1 shrink-0" />
+                          <p className="text-xs text-muted-foreground">Select an account and project to see what data is available</p>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <Brain className="w-3 h-3 text-[#A3238E] mt-1 shrink-0" />
+                          <p className="text-xs text-muted-foreground">AI Coach analyzes your data, recommends purpose, audience, and topics</p>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <HelpCircle className="w-3 h-3 text-amber-500 mt-1 shrink-0" />
+                          <p className="text-xs text-muted-foreground">Coach identifies gaps and asks for missing information to strengthen the deck</p>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <BookText className="w-3 h-3 text-[#00634F] mt-1 shrink-0" />
+                          <p className="text-xs text-muted-foreground">Storytelling assets from Narrative Canvas and Story Builder are woven into slides</p>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <Download className="w-3 h-3 text-[#00634F] mt-1 shrink-0" />
+                          <p className="text-xs text-muted-foreground">Export as a branded PowerPoint using your active brand template</p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-start gap-2">
-                      <WandSparkles className="w-3 h-3 text-[#009B77] mt-1 shrink-0" />
-                      <p className="text-xs text-muted-foreground">Ask AI to refine individual slides with natural language instructions</p>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <Lightbulb className="w-3 h-3 text-amber-500 mt-1 shrink-0" />
-                      <p className="text-xs text-muted-foreground">Act on coaching recommendations - AI fills gaps automatically</p>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <Download className="w-3 h-3 text-[#00634F] mt-1 shrink-0" />
-                      <p className="text-xs text-muted-foreground">Export your final deck as a branded PowerPoint file</p>
-                    </div>
-                  </div>
-                </div>
-              </Card>
+                  </Card>
+                )}
+              </div>
             </ScrollArea>
           </div>
         </div>
