@@ -1278,8 +1278,9 @@ CRITICAL DESIGN PRINCIPLES:
 9. Quote slides should feature client-relevant quotes or powerful value statements
 10. Include bodyContent AND bulletPoints AND metrics on content slides where relevant - pack value into every slide
 11. Speaker notes should be detailed talking points (2-3 sentences), not one-liners
-12. EVIDENCE SLIDES: If evidence pack data is provided, create dedicated slides that quote the EXACT claims and supporting evidence. Use the real evidence text, not summaries or paraphrases. Each evidence slide should reference the specific claim, its phase (leading/mid-loop/lagging), and confidence level.
-13. SUCCESS STORY SLIDES: If success stories are provided, create at least one dedicated slide per story using the EXACT title, challenge, solution, and results from the data. Include the client name, industry, and specific metrics. Do NOT create generic "success" slides.
+12. talkTrack: For EVERY slide, generate a detailed talk track script (4-8 sentences). This is the presenter's verbatim script - what they would actually say out loud. Include: opening transition from previous slide, key points to emphasize, specific data callouts, audience engagement cues (e.g., "pause here for questions"), and a transition sentence to the next slide. Make it conversational and confident, as if a senior Korn Ferry consultant is presenting. This is different from speakerNotes which are brief reminders.
+13. EVIDENCE SLIDES: If evidence pack data is provided, create dedicated slides that quote the EXACT claims and supporting evidence. Use the real evidence text, not summaries or paraphrases. Each evidence slide should reference the specific claim, its phase (leading/mid-loop/lagging), and confidence level.
+14. SUCCESS STORY SLIDES: If success stories are provided, create at least one dedicated slide per story using the EXACT title, challenge, solution, and results from the data. Include the client name, industry, and specific metrics. Do NOT create generic "success" slides.
 
 TEMPLATE GUIDELINES:
 - executive_modern: 10-12 slides. Lead with bold metrics. Use kpi_scorecard + image_feature + comparison heavily. Every slide must have either metrics or a chart.
@@ -1319,7 +1320,7 @@ SLIDE TYPE REQUIREMENTS:
 - summary: Must have title + 3-5 bulletPoints with specific next steps + optional metrics
 - image_feature: Must have title + subtitle + bodyContent + imageCategory
 
-Return ONLY valid JSON with a "slides" array. Each slide must have: id (e.g. "slide-1"), slideType, title, topicSource, speakerNotes. Include all relevant optional fields to make slides data-rich.`;
+Return ONLY valid JSON with a "slides" array. Each slide must have: id (e.g. "slide-1"), slideType, title, topicSource, speakerNotes, talkTrack. Include all relevant optional fields to make slides data-rich.`;
 
 
   try {
@@ -1369,6 +1370,7 @@ Return ONLY valid JSON with a "slides" array. Each slide must have: id (e.g. "sl
       comparisonItems: slide.comparisonItems,
       coachingTip: slide.coachingTip,
       speakerNotes: slide.speakerNotes,
+      talkTrack: slide.talkTrack,
       topicSource: slide.topicSource || request.selectedTopics[0] || 'discovery_insights',
     }));
   } catch (error) {

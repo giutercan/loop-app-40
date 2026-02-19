@@ -18290,7 +18290,7 @@ CRITICAL RULES:
 - Return EXACTLY ${slides.length} slides in the same order
 - Each slide MUST keep its original "id" field unchanged
 - Keep the same topicSource and slideType for each slide
-- Only modify text content (title, subtitle, bodyContent, bulletPoints, speakerNotes, quoteText, etc.)
+- Only modify text content (title, subtitle, bodyContent, bulletPoints, speakerNotes, talkTrack, quoteText, etc.)
 - Do NOT change slide structure, metrics data, or comparison items unless directly relevant to the coaching direction
 - Apply the coaching direction holistically across the presentation narrative`
           }
@@ -18559,8 +18559,12 @@ CRITICAL RULES:
           });
         }
 
-        if (slideData.speakerNotes) {
-          slide.addNotes(slideData.speakerNotes);
+        const notesText = [
+          slideData.talkTrack ? `TALK TRACK:\n${slideData.talkTrack}` : '',
+          slideData.speakerNotes ? `SPEAKER NOTES:\n${slideData.speakerNotes}` : '',
+        ].filter(Boolean).join('\n\n');
+        if (notesText) {
+          slide.addNotes(notesText);
         }
 
         switch (slideData.slideType) {
@@ -18570,6 +18574,10 @@ CRITICAL RULES:
 
             if (!hasBrandTemplate) {
               slide.background = { color: config.titleBg };
+              slide.addShape(pres.ShapeType.rect, {
+                x: colors.slideWidth * 0.5, y: 0, w: colors.slideWidth * 0.5, h: colors.slideHeight,
+                fill: { color: config.accentColor.replace('#', ''), transparency: 80 },
+              });
             }
             const hasDarkBg = hasBrandTemplate
               ? !!(slideLayout?.background?.color || activeBrandKit.masterBackground?.color)
@@ -18611,7 +18619,7 @@ CRITICAL RULES:
                   });
                   slide.addShape(pres.ShapeType.rect, {
                     x: 0, y: 0, w: colors.slideWidth, h: colors.slideHeight,
-                    fill: { color: config.accentColor.replace('#', ''), transparency: 40 },
+                    fill: { color: "000000", transparency: 50 },
                   });
                 } catch {
                   slide.addShape(pres.ShapeType.rect, {
@@ -19026,6 +19034,464 @@ CRITICAL RULES:
       res.send(Buffer.from(pptxBuffer as ArrayBuffer));
     } catch (error: any) {
       console.error("Error exporting presentation:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/presentations/export-pdf", async (req, res) => {
+    try {
+      const { slides: providedSlides } = req.body;
+      const body = req.body as any;
+      if (!providedSlides?.length) {
+        return res.status(400).json({ error: "No slides to export" });
+      }
+
+      const PDFDocument = (await import("pdfkit")).default;
+
+      const activeBrandKit = getActiveBrandKit();
+      const hasBrandTemplate = isCustomBrandTemplate();
+
+      const KF_COLORS_PDF = (() => {
+        const bk = activeBrandKit;
+        return {
+          navy: bk.colors.dk1 || "00173B",
+          forestGreen: bk.colors.accent3 || "00634F",
+          oceanBlue: bk.colors.accent2 || "005971",
+          emerald: bk.colors.accent1 || "009B77",
+          mint: bk.colors.accent4 || "05C690",
+          lime: bk.colors.accent5 || "8DC63F",
+          cyan: bk.colors.accent6 || "00ADBB",
+          purple: bk.colors.dk2 || "A3238E",
+          gray: "666666",
+          lightGray: "CCCCCC",
+          white: "FFFFFF",
+          headerFont: bk.fonts.major,
+          bodyFont: bk.fonts.minor,
+        };
+      })();
+
+      const TEMPLATE_COLORS_MAP: Record<string, any> = {
+        executive_modern: {
+          bg: KF_COLORS_PDF.navy,
+          headerBg: KF_COLORS_PDF.navy,
+          accent: KF_COLORS_PDF.emerald,
+          headerColor: KF_COLORS_PDF.navy,
+          textColor: "333333",
+          subtitleColor: KF_COLORS_PDF.gray,
+          titleBg: KF_COLORS_PDF.navy,
+        },
+        data_driven: {
+          bg: KF_COLORS_PDF.oceanBlue,
+          headerBg: KF_COLORS_PDF.oceanBlue,
+          accent: KF_COLORS_PDF.cyan,
+          headerColor: KF_COLORS_PDF.oceanBlue,
+          textColor: "333333",
+          subtitleColor: KF_COLORS_PDF.gray,
+          titleBg: KF_COLORS_PDF.oceanBlue,
+        },
+        visual_narrative: {
+          bg: KF_COLORS_PDF.forestGreen,
+          headerBg: KF_COLORS_PDF.forestGreen,
+          accent: KF_COLORS_PDF.mint,
+          headerColor: KF_COLORS_PDF.forestGreen,
+          textColor: "333333",
+          subtitleColor: KF_COLORS_PDF.gray,
+          titleBg: KF_COLORS_PDF.forestGreen,
+        },
+      };
+
+      const template = body.templateOverride || 'executive_modern';
+      const config = TEMPLATE_COLORS_MAP[template] || TEMPLATE_COLORS_MAP.executive_modern;
+
+      function hexToRgb(hex: string): [number, number, number] {
+        const h = hex.replace('#', '');
+        return [parseInt(h.substring(0, 2), 16), parseInt(h.substring(2, 4), 16), parseInt(h.substring(4, 6), 16)];
+      }
+
+      const slideW = 792;
+      const slideH = 446;
+      const margin = 36;
+
+      const doc = new PDFDocument({
+        size: [slideW, slideH],
+        margins: { top: 0, bottom: 0, left: 0, right: 0 },
+        autoFirstPage: false,
+      });
+
+      const chunks: Buffer[] = [];
+      doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+
+      const pdfReady = new Promise<Buffer>((resolve, reject) => {
+        doc.on('end', () => resolve(Buffer.concat(chunks)));
+        doc.on('error', reject);
+      });
+
+      for (let i = 0; i < providedSlides.length; i++) {
+        const slideData = providedSlides[i];
+        doc.addPage({ size: [slideW, slideH], margins: { top: 0, bottom: 0, left: 0, right: 0 } });
+
+        const isTitle = slideData.slideType === 'title' || slideData.slideType === 'section_divider' || slideData.slideType === 'image_feature';
+
+        if (isTitle) {
+          doc.rect(0, 0, slideW, slideH).fill(`#${config.bg}`);
+
+          const hasSlideImage = (slideData.slideType === 'image_feature' || slideData.slideType === 'section_divider') && slideData.imageCategory;
+          let imageEmbedded = false;
+          if (hasSlideImage) {
+            const imgDir = path.join(process.cwd(), 'public', 'images', 'presentation-library');
+            const imgFile = `${slideData.imageCategory}-1.jpg`;
+            const imgFullPath = path.join(imgDir, imgFile);
+            if (fs.existsSync(imgFullPath)) {
+              try {
+                doc.image(imgFullPath, 0, 0, { width: slideW, height: slideH, cover: [slideW, slideH] });
+                imageEmbedded = true;
+              } catch {}
+            }
+          }
+
+          if (imageEmbedded) {
+            doc.save();
+            doc.rect(0, 0, slideW, slideH);
+            doc.fillColor('black').opacity(0.5).fill();
+            doc.restore();
+            doc.opacity(1);
+          } else if (slideData.slideType === 'title') {
+            doc.save();
+            doc.rect(slideW * 0.5, 0, slideW * 0.5, slideH);
+            doc.fillColor(`#${config.accent}`).opacity(0.2).fill();
+            doc.restore();
+            doc.opacity(1);
+          }
+
+          const accentBarY = slideH * 0.42;
+          doc.rect(margin, accentBarY, 48, 3).fill(`#${config.accent}`);
+
+          doc.font('Helvetica-Bold').fontSize(24).fillColor('#FFFFFF');
+          doc.text(slideData.title || '', margin, accentBarY + 12, { width: slideW - margin * 2 });
+
+          if (slideData.subtitle) {
+            doc.font('Helvetica').fontSize(13).fillColor('#FFFFFF');
+            doc.opacity(0.7);
+            const titleHeight = doc.heightOfString(slideData.title || '', { width: slideW - margin * 2 });
+            doc.text(slideData.subtitle, margin, accentBarY + 12 + titleHeight + 8, { width: slideW - margin * 2 });
+            doc.opacity(1);
+          }
+
+          if (slideData.bodyContent) {
+            doc.font('Helvetica').fontSize(9).fillColor('#FFFFFF');
+            doc.opacity(0.4);
+            doc.text(slideData.bodyContent, margin, slideH - 50, { width: slideW - margin * 2 });
+            doc.opacity(1);
+          }
+
+          doc.font('Helvetica').fontSize(7).fillColor('#FFFFFF');
+          doc.opacity(0.3);
+          doc.text(`${i + 1}`, margin, slideH - 20);
+          doc.opacity(1);
+        } else {
+          doc.rect(0, 0, slideW, slideH).fill('#FFFFFF');
+
+          const headerH = slideH * 0.08;
+          doc.rect(0, 0, slideW, headerH).fill(`#${config.headerBg}`);
+          doc.font('Helvetica-Bold').fontSize(11).fillColor('#FFFFFF');
+          doc.text(slideData.title || '', margin, (headerH - 11) / 2, { width: slideW - margin * 2 - 30 });
+
+          doc.font('Helvetica').fontSize(7).fillColor('rgba(255,255,255,0.5)');
+          doc.text(`${i + 1}`, slideW - margin - 15, (headerH - 7) / 2, { width: 15, align: 'right' });
+
+          const contentY = headerH + 12;
+          const contentH = slideH - contentY - 12;
+
+          switch (slideData.slideType) {
+            case 'kpi_scorecard': {
+              if (slideData.metrics?.length) {
+                const cols = Math.min(slideData.metrics.length, 4);
+                const cardW = (slideW - margin * 2 - (cols - 1) * 10) / cols;
+                const cardH = 90;
+                slideData.metrics.slice(0, 8).forEach((m: any, mi: number) => {
+                  const col = mi % cols;
+                  const row = Math.floor(mi / cols);
+                  const cx = margin + col * (cardW + 10);
+                  const cy = contentY + row * (cardH + 10);
+                  const mColor = (m.color || config.accent).replace('#', '');
+
+                  doc.roundedRect(cx, cy, cardW, cardH, 4).lineWidth(1).strokeColor(`#${KF_COLORS_PDF.lightGray}`).fillAndStroke('#F5F5F5', `#${KF_COLORS_PDF.lightGray}`);
+                  doc.rect(cx, cy, 3, cardH).fill(`#${mColor}`);
+
+                  doc.font('Helvetica-Bold').fontSize(20).fillColor(`#${mColor}`);
+                  doc.text(m.value || '', cx + 8, cy + 12, { width: cardW - 16, align: 'center' });
+
+                  if (m.trend) {
+                    const trendSymbol = m.trend === 'up' ? '\u25B2' : m.trend === 'down' ? '\u25BC' : '\u25CF';
+                    const trendColor = m.trend === 'up' ? KF_COLORS_PDF.emerald : m.trend === 'down' ? 'CC3333' : KF_COLORS_PDF.gray;
+                    doc.font('Helvetica').fontSize(10).fillColor(`#${trendColor}`);
+                    doc.text(trendSymbol, cx + 8, cy + 42, { width: cardW - 16, align: 'center' });
+                  }
+
+                  doc.font('Helvetica').fontSize(8).fillColor(`#${KF_COLORS_PDF.gray}`);
+                  doc.text(m.label || '', cx + 8, cy + 60, { width: cardW - 16, align: 'center' });
+                });
+              }
+              break;
+            }
+
+            case 'content':
+            case 'summary': {
+              let yPos = contentY;
+              if (slideData.bodyContent) {
+                doc.font('Helvetica').fontSize(10).fillColor(`#${config.textColor}`);
+                doc.text(slideData.bodyContent, margin, yPos, { width: slideW - margin * 2 });
+                yPos += doc.heightOfString(slideData.bodyContent, { width: slideW - margin * 2 }) + 8;
+              }
+
+              const hasBullets = slideData.bulletPoints?.length > 0;
+              const hasMetrics = slideData.metrics?.length > 0;
+              const bulletW = hasMetrics ? (slideW - margin * 2) * 0.55 : slideW - margin * 2;
+              const metricsX = margin + bulletW + 10;
+              const metricsW = slideW - margin * 2 - bulletW - 10;
+
+              if (hasBullets) {
+                slideData.bulletPoints.slice(0, 6).forEach((bp: string) => {
+                  doc.circle(margin + 4, yPos + 5, 3).fill(`#${config.accent}`);
+                  doc.font('Helvetica').fontSize(9).fillColor(`#${config.textColor}`);
+                  doc.text(bp, margin + 14, yPos, { width: bulletW - 14 });
+                  yPos += doc.heightOfString(bp, { width: bulletW - 14 }) + 4;
+                });
+              }
+
+              if (hasMetrics) {
+                let metricY = contentY + (slideData.bodyContent ? doc.heightOfString(slideData.bodyContent, { width: slideW - margin * 2 }) + 8 : 0);
+                slideData.metrics.slice(0, 4).forEach((m: any) => {
+                  const mColor = (m.color || config.accent).replace('#', '');
+                  doc.roundedRect(metricsX, metricY, metricsW, 35, 3).fill(`#${mColor}0D`);
+                  doc.font('Helvetica-Bold').fontSize(14).fillColor(`#${mColor}`);
+                  doc.text(m.value, metricsX + 8, metricY + 4, { width: metricsW - 16 });
+                  doc.font('Helvetica').fontSize(7).fillColor(`#${KF_COLORS_PDF.gray}`);
+                  doc.text(m.label, metricsX + 8, metricY + 22, { width: metricsW - 16 });
+                  metricY += 42;
+                });
+              }
+
+              if (slideData.slideType === 'summary' && hasBullets) {
+                let sumY = contentY;
+                slideData.bulletPoints.slice(0, 6).forEach((bp: string) => {
+                  doc.font('Helvetica-Bold').fontSize(12).fillColor(`#${KF_COLORS_PDF.emerald}`);
+                  doc.text('\u2713', margin, sumY, { width: 18 });
+                  doc.font('Helvetica').fontSize(10).fillColor(`#${config.textColor}`);
+                  doc.text(bp, margin + 22, sumY, { width: slideW - margin * 2 - 22 });
+                  sumY += doc.heightOfString(bp, { width: slideW - margin * 2 - 22 }) + 6;
+                });
+              }
+              break;
+            }
+
+            case 'quote': {
+              const quoteY = contentY + contentH * 0.2;
+              doc.font('Helvetica').fontSize(32).fillColor(`#${config.accent}44`);
+              doc.text('\u201C', slideW / 2 - 10, quoteY - 20, { width: 40, align: 'center' });
+
+              if (slideData.quoteText) {
+                doc.font('Helvetica-Oblique').fontSize(14).fillColor('#444444');
+                doc.text(slideData.quoteText, margin + 40, quoteY + 15, { width: slideW - margin * 2 - 80, align: 'center' });
+              }
+              if (slideData.quoteAuthor) {
+                const qHeight = doc.heightOfString(slideData.quoteText || '', { width: slideW - margin * 2 - 80 });
+                doc.rect(slideW / 2 - 20, quoteY + 20 + qHeight + 8, 40, 1).fill(`#${config.accent}`);
+                doc.font('Helvetica-Bold').fontSize(9).fillColor(`#${config.accent}`);
+                doc.text(`\u2014 ${slideData.quoteAuthor}`, margin + 40, quoteY + 20 + qHeight + 16, { width: slideW - margin * 2 - 80, align: 'center' });
+              }
+              break;
+            }
+
+            case 'comparison': {
+              if (slideData.comparisonItems?.length) {
+                const colW = (slideW - margin * 2 - 20) / 3;
+                let cy = contentY;
+                doc.font('Helvetica-Bold').fontSize(8).fillColor(`#${KF_COLORS_PDF.gray}`);
+                doc.text('', margin, cy, { width: colW });
+                doc.fillColor('#CC3333').text('Before', margin + colW + 10, cy, { width: colW, align: 'center' });
+                doc.fillColor(`#${config.accent}`).text('After', margin + colW * 2 + 20, cy, { width: colW, align: 'center' });
+                cy += 18;
+
+                slideData.comparisonItems.slice(0, 6).forEach((item: any) => {
+                  doc.font('Helvetica-Bold').fontSize(9).fillColor(`#${config.textColor}`);
+                  doc.text(item.label, margin, cy + 4, { width: colW });
+
+                  doc.roundedRect(margin + colW + 10, cy, colW, 22, 3).fill('#FEF2F2');
+                  doc.font('Helvetica').fontSize(8).fillColor('#CC3333');
+                  doc.text(item.before, margin + colW + 14, cy + 5, { width: colW - 8, align: 'center' });
+
+                  doc.roundedRect(margin + colW * 2 + 20, cy, colW, 22, 3).fill(`#${config.accent}0D`);
+                  doc.font('Helvetica').fontSize(8).fillColor(`#${config.accent}`);
+                  doc.text(item.after, margin + colW * 2 + 24, cy + 5, { width: colW - 8, align: 'center' });
+
+                  cy += 30;
+                });
+              }
+              break;
+            }
+
+            case 'flow_diagram':
+            case 'timeline': {
+              if (slideData.flowSteps?.length) {
+                const stepCount = slideData.flowSteps.length;
+                const stepW = Math.min(120, (slideW - margin * 2 - (stepCount - 1) * 20) / stepCount);
+                const totalW = stepCount * stepW + (stepCount - 1) * 20;
+                const startX = margin + (slideW - margin * 2 - totalW) / 2;
+
+                if (slideData.slideType === 'timeline') {
+                  const lineY = contentY + contentH * 0.45;
+                  doc.rect(startX, lineY, totalW, 2).fill(`#${config.accent}`);
+
+                  slideData.flowSteps.forEach((step: any, si: number) => {
+                    const sx = startX + si * (stepW + 20) + stepW / 2;
+                    doc.circle(sx, lineY + 1, 6).fill(`#${config.accent}`);
+
+                    doc.font('Helvetica-Bold').fontSize(8).fillColor(`#${config.headerColor}`);
+                    doc.text(step.label, sx - stepW / 2, lineY - 35, { width: stepW, align: 'center' });
+
+                    if (step.description) {
+                      doc.font('Helvetica').fontSize(7).fillColor(`#${KF_COLORS_PDF.gray}`);
+                      doc.text(step.description, sx - stepW / 2, lineY + 14, { width: stepW, align: 'center' });
+                    }
+                  });
+                } else {
+                  const boxH = contentH * 0.6;
+                  const boxY = contentY + (contentH - boxH) / 2;
+                  slideData.flowSteps.forEach((step: any, si: number) => {
+                    const sx = startX + si * (stepW + 20);
+                    doc.roundedRect(sx, boxY, stepW, boxH, 4).fill(`#${config.accent}`);
+                    doc.rect(sx, boxY, stepW, 2).fill(`#${config.accent}`);
+
+                    doc.font('Helvetica-Bold').fontSize(9).fillColor('#FFFFFF');
+                    doc.text(step.label, sx + 6, boxY + 10, { width: stepW - 12, align: 'center' });
+
+                    if (step.description) {
+                      doc.font('Helvetica').fontSize(7).fillColor('#DDDDDD');
+                      doc.text(step.description, sx + 6, boxY + 30, { width: stepW - 12, align: 'center' });
+                    }
+
+                    if (si < stepCount - 1) {
+                      doc.font('Helvetica').fontSize(14).fillColor(`#${config.accent}`);
+                      doc.text('\u25B6', sx + stepW + 2, boxY + boxH / 2 - 7, { width: 16, align: 'center' });
+                    }
+                  });
+                }
+              }
+              break;
+            }
+
+            case 'chart': {
+              if (slideData.chartData) {
+                const chartX = margin + 20;
+                const chartW = slideW - margin * 2 - 40;
+                const chartH = contentH - 30;
+                const chartY = contentY + 10;
+
+                const labels = slideData.chartData.labels || [];
+                const data = slideData.chartData.data || [];
+                const maxVal = Math.max(...data, 1);
+
+                if (slideData.chartData.type === 'bar' || !slideData.chartData.type) {
+                  const barW = Math.min(40, (chartW - labels.length * 4) / labels.length);
+                  const totalBarsW = labels.length * barW + (labels.length - 1) * 4;
+                  const bStartX = chartX + (chartW - totalBarsW) / 2;
+
+                  data.forEach((val: number, di: number) => {
+                    const barH = (val / maxVal) * (chartH - 20);
+                    const bx = bStartX + di * (barW + 4);
+                    const by = chartY + chartH - barH;
+                    const chartColors = slideData.chartData.colors || [`#${KF_COLORS_PDF.emerald}`, `#${KF_COLORS_PDF.oceanBlue}`, `#${KF_COLORS_PDF.cyan}`, `#${KF_COLORS_PDF.lime}`, `#${KF_COLORS_PDF.purple}`, `#${KF_COLORS_PDF.mint}`];
+                    const color = (chartColors[di % chartColors.length] || `#${KF_COLORS_PDF.emerald}`).replace('#', '');
+                    doc.roundedRect(bx, by, barW, barH, 2).fill(`#${color}`);
+
+                    doc.font('Helvetica').fontSize(6).fillColor(`#${KF_COLORS_PDF.gray}`);
+                    doc.text(labels[di] || '', bx - 5, chartY + chartH + 4, { width: barW + 10, align: 'center' });
+
+                    doc.font('Helvetica-Bold').fontSize(7).fillColor(`#${color}`);
+                    doc.text(String(val), bx, by - 12, { width: barW, align: 'center' });
+                  });
+                } else if (slideData.chartData.type === 'pie' || slideData.chartData.type === 'doughnut') {
+                  const centerX = chartX + chartW / 2;
+                  const centerY = chartY + chartH / 2;
+                  const radius = Math.min(chartW, chartH) / 2 - 20;
+                  const total = data.reduce((s: number, v: number) => s + v, 0) || 1;
+                  const chartColors = slideData.chartData.colors || [`#${KF_COLORS_PDF.emerald}`, `#${KF_COLORS_PDF.oceanBlue}`, `#${KF_COLORS_PDF.cyan}`, `#${KF_COLORS_PDF.lime}`, `#${KF_COLORS_PDF.purple}`, `#${KF_COLORS_PDF.mint}`];
+
+                  let legendY = chartY + 10;
+                  data.forEach((val: number, di: number) => {
+                    const color = (chartColors[di % chartColors.length] || `#${KF_COLORS_PDF.emerald}`).replace('#', '');
+                    const pct = Math.round((val / total) * 100);
+                    doc.roundedRect(chartX, legendY, 8, 8, 1).fill(`#${color}`);
+                    doc.font('Helvetica').fontSize(7).fillColor(`#${config.textColor}`);
+                    doc.text(`${labels[di] || ''} (${pct}%)`, chartX + 12, legendY, { width: chartW / 3 });
+                    legendY += 14;
+                  });
+
+                  doc.font('Helvetica').fontSize(10).fillColor(`#${KF_COLORS_PDF.gray}`);
+                  doc.text('[Chart visualization - see PPTX for interactive charts]', centerX - 100, centerY - 5, { width: 200, align: 'center' });
+                } else {
+                  doc.font('Helvetica').fontSize(10).fillColor(`#${KF_COLORS_PDF.gray}`);
+                  doc.text('[Chart visualization - see PPTX for interactive charts]', chartX, chartY + chartH / 2 - 5, { width: chartW, align: 'center' });
+                }
+              }
+              break;
+            }
+
+            default: {
+              let yPos = contentY;
+              if (slideData.bodyContent) {
+                doc.font('Helvetica').fontSize(10).fillColor(`#${config.textColor}`);
+                doc.text(slideData.bodyContent, margin, yPos, { width: slideW - margin * 2 });
+                yPos += doc.heightOfString(slideData.bodyContent, { width: slideW - margin * 2 }) + 8;
+              }
+              if (slideData.bulletPoints?.length) {
+                slideData.bulletPoints.slice(0, 6).forEach((bp: string) => {
+                  doc.circle(margin + 4, yPos + 5, 3).fill(`#${config.accent}`);
+                  doc.font('Helvetica').fontSize(9).fillColor(`#${config.textColor}`);
+                  doc.text(bp, margin + 14, yPos, { width: slideW - margin * 2 - 14 });
+                  yPos += doc.heightOfString(bp, { width: slideW - margin * 2 - 14 }) + 4;
+                });
+              }
+              break;
+            }
+          }
+        }
+
+        if (slideData.talkTrack) {
+          doc.addPage({ size: [slideW, slideH], margins: { top: 0, bottom: 0, left: 0, right: 0 } });
+          doc.rect(0, 0, slideW, slideH).fill('#FAFAFA');
+
+          doc.font('Helvetica-Bold').fontSize(10).fillColor(`#${config.headerColor}`);
+          doc.text(`Talk Track - Slide ${i + 1}: ${slideData.title}`, margin, margin, { width: slideW - margin * 2 });
+
+          doc.rect(margin, margin + 18, slideW - margin * 2, 1).fill(`#${config.accent}`);
+
+          doc.font('Helvetica').fontSize(10).fillColor('#333333');
+          doc.text(slideData.talkTrack, margin, margin + 28, { width: slideW - margin * 2, lineGap: 4 });
+
+          if (slideData.speakerNotes) {
+            const talkH = doc.heightOfString(slideData.talkTrack, { width: slideW - margin * 2, lineGap: 4 });
+            const notesY = margin + 28 + talkH + 16;
+            doc.font('Helvetica-Bold').fontSize(8).fillColor(`#${KF_COLORS_PDF.gray}`);
+            doc.text('Speaker Notes:', margin, notesY);
+            doc.font('Helvetica').fontSize(8).fillColor(`#${KF_COLORS_PDF.gray}`);
+            doc.text(slideData.speakerNotes, margin, notesY + 14, { width: slideW - margin * 2 });
+          }
+        }
+      }
+
+      doc.end();
+      const pdfBuffer = await pdfReady;
+
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${body.customTitle || 'Korn_Ferry_Presentation'}.pdf"`,
+        'Content-Length': pdfBuffer.length.toString(),
+      });
+      res.send(pdfBuffer);
+    } catch (error: any) {
+      console.error("Error exporting PDF:", error);
       res.status(500).json({ error: error.message });
     }
   });

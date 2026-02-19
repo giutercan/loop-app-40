@@ -66,6 +66,8 @@ import {
   FolderOpen,
   History,
   RotateCcw,
+  Mic,
+  FileJson,
 } from "lucide-react";
 
 type PresentationPurpose = 'customer_engagement' | 'qbr' | 'executive_pitch' | 'discovery_readout' | 'handoff_brief' | 'evidence_review' | 'value_story';
@@ -95,6 +97,7 @@ interface SlideContent {
   imageCategory?: string;
   coachingTip?: string;
   speakerNotes?: string;
+  talkTrack?: string;
   topicSource: TopicCategory;
   flowSteps?: Array<{ label: string; description?: string }>;
   comparisonItems?: Array<{ label: string; before: string; after: string }>;
@@ -863,6 +866,86 @@ export default function PresentationStudioPage() {
     },
   });
 
+  const pdfExportMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/presentations/export-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          accountId: selectedAccountId,
+          projectId: selectedProjectId,
+          purpose, audience, selectedTopics,
+          templateOverride: templateOverride || plan?.recommendedTemplate || undefined,
+          customTitle: customTitle || undefined,
+          slides: plan?.slides || [],
+        }),
+      });
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(errText || 'PDF export failed');
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${customTitle || 'Korn_Ferry_Presentation'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    },
+    onSuccess: () => {
+      toast({ title: 'PDF Export Complete', description: 'Your presentation PDF has been downloaded.' });
+    },
+    onError: (err: any) => {
+      toast({ title: 'PDF Export Failed', description: err.message || 'Could not export PDF.', variant: 'destructive' });
+    },
+  });
+
+  function exportAsJSON() {
+    if (!plan) return;
+    const exportData = {
+      title: customTitle || 'Korn Ferry Presentation',
+      purpose,
+      audience,
+      template: templateOverride || plan.recommendedTemplate,
+      narrativeFlow: plan.narrativeFlow,
+      estimatedDuration: plan.estimatedDuration,
+      templateRationale: plan.templateRationale,
+      exportedAt: new Date().toISOString(),
+      slides: plan.slides.map(s => ({
+        id: s.id,
+        slideType: s.slideType,
+        title: s.title,
+        subtitle: s.subtitle,
+        bodyContent: s.bodyContent,
+        bulletPoints: s.bulletPoints,
+        metrics: s.metrics,
+        quoteText: s.quoteText,
+        quoteAuthor: s.quoteAuthor,
+        imageCategory: s.imageCategory,
+        talkTrack: s.talkTrack,
+        speakerNotes: s.speakerNotes,
+        flowSteps: s.flowSteps,
+        comparisonItems: s.comparisonItems,
+        chartData: s.chartData,
+        topicSource: s.topicSource,
+      })),
+      coaching: plan.coaching,
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${customTitle || 'Korn_Ferry_Presentation'}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast({ title: 'JSON Exported', description: 'Presentation data downloaded as JSON.' });
+  }
+
   function toggleTopic(topicId: TopicCategory) {
     setSelectedTopics(prev =>
       prev.includes(topicId) ? prev.filter(t => t !== topicId) : [...prev, topicId]
@@ -941,6 +1024,14 @@ export default function PresentationStudioPage() {
               <Button onClick={() => exportMutation.mutate()} disabled={exportMutation.isPending} data-testid="button-export-pptx">
                 {exportMutation.isPending ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Download className="w-4 h-4 mr-1.5" />}
                 Export PPTX
+              </Button>
+              <Button variant="outline" onClick={() => pdfExportMutation.mutate()} disabled={pdfExportMutation.isPending} data-testid="button-export-pdf">
+                {pdfExportMutation.isPending ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <FileText className="w-4 h-4 mr-1.5" />}
+                Export PDF
+              </Button>
+              <Button variant="outline" onClick={exportAsJSON} data-testid="button-export-json">
+                <FileJson className="w-4 h-4 mr-1.5" />
+                Export JSON
               </Button>
             </div>
           </div>
@@ -1230,7 +1321,21 @@ export default function PresentationStudioPage() {
                               </div>
                             )}
                             <div>
-                              <Label className="text-xs text-muted-foreground">Speaker Notes</Label>
+                              <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                <Mic className="w-3 h-3" />
+                                Talk Track (Presenter Script)
+                              </Label>
+                              <Textarea
+                                value={slide.talkTrack || ''}
+                                onChange={e => updateSlide(idx, { talkTrack: e.target.value })}
+                                placeholder="What to say when presenting this slide..."
+                                className="resize-none text-sm"
+                                rows={4}
+                                data-testid={`input-slide-talktrack-${idx}`}
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-muted-foreground">Speaker Notes (Brief Reminders)</Label>
                               <Textarea
                                 value={slide.speakerNotes || ''}
                                 onChange={e => updateSlide(idx, { speakerNotes: e.target.value })}
@@ -1423,6 +1528,14 @@ export default function PresentationStudioPage() {
                   Next <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
               </div>
+              {plan.slides[fullScreenSlide].talkTrack && (
+                <div className="mt-2 p-3 rounded bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                  <p className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-1 flex items-center gap-1.5">
+                    <Mic className="w-3 h-3" /> Talk Track
+                  </p>
+                  <p className="text-sm text-foreground">{plan.slides[fullScreenSlide].talkTrack}</p>
+                </div>
+              )}
               {plan.slides[fullScreenSlide].speakerNotes && (
                 <div className="mt-2 p-3 rounded bg-muted/50 border">
                   <p className="text-xs font-medium text-muted-foreground mb-1">Speaker Notes</p>
