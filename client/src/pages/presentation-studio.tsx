@@ -65,6 +65,7 @@ import {
   Clock,
   FolderOpen,
   History,
+  RotateCcw,
 } from "lucide-react";
 
 type PresentationPurpose = 'customer_engagement' | 'qbr' | 'executive_pitch' | 'discovery_readout' | 'handoff_brief' | 'evidence_review' | 'value_story';
@@ -529,6 +530,20 @@ export default function PresentationStudioPage() {
     },
   });
 
+  function clearAndStartNew() {
+    setPlan(null);
+    setStep('configure');
+    setCoachResult(null);
+    setGapAnswers({});
+    setSelectedTopics([]);
+    setPurpose('customer_engagement');
+    setAudience('c_suite');
+    setTemplateOverride(null);
+    setCustomTitle('');
+    setEditingSlideIndex(null);
+    toast({ title: 'Workspace Cleared', description: 'Ready to create a new presentation.' });
+  }
+
   function loadSavedPresentation(saved: typeof savedPresentations[0]) {
     setSelectedAccountId(saved.accountId);
     setSelectedProjectId(saved.projectId);
@@ -915,6 +930,10 @@ export default function PresentationStudioPage() {
               </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
+              <Button variant="outline" onClick={clearAndStartNew} data-testid="button-clear-start-new">
+                <RotateCcw className="w-4 h-4 mr-1.5" />
+                Clear & Start New
+              </Button>
               <Button variant="outline" onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending} data-testid="button-regenerate">
                 {generateMutation.isPending ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <RefreshCcw className="w-4 h-4 mr-1.5" />}
                 Regenerate

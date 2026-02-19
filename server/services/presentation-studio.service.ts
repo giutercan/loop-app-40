@@ -1176,30 +1176,36 @@ function summarizeDataForPrompt(data: AggregatedData, topics: TopicCategory[]): 
     }
   }
 
-  if (topics.includes('evidence_pack') && data.evidencePackItems.length > 0) {
-    const itemSummary = data.evidencePackItems.slice(0, 8).map((item: any) =>
-      `- [${item.itemType || 'N/A'}] ${item.claim || 'N/A'} | Evidence: ${item.evidence?.substring(0, 100) || 'N/A'} | Phase: ${item.phase || 'N/A'} | Confidence: ${item.confidence || 'N/A'}`
-    ).join('\n');
-    sections.push(`EVIDENCE PACK (${data.evidencePackItems.length} items, Quality Score: ${data.evidencePack?.qualityScore || 'N/A'}):\n${itemSummary}`);
+  if (topics.includes('evidence_pack')) {
+    if (data.evidencePackItems.length > 0) {
+      const itemSummary = data.evidencePackItems.slice(0, 12).map((item: any) =>
+        `- [${item.itemType || 'N/A'}] Claim: "${item.claim || 'N/A'}" | Supporting Evidence: "${item.evidence?.substring(0, 200) || 'N/A'}" | Phase: ${item.phase || 'N/A'} | Confidence: ${item.confidence || 'N/A'} | Source: ${item.source || 'N/A'}`
+      ).join('\n');
+      sections.push(`EVIDENCE PACK (${data.evidencePackItems.length} items, Quality Score: ${data.evidencePack?.qualityScore || 'N/A'}):\n${itemSummary}\n\nIMPORTANT: You MUST use these specific evidence items verbatim in your slides. Create dedicated evidence slides that quote the exact claims and supporting evidence above. Do NOT generate generic evidence - use the real data provided.`);
+    } else {
+      sections.push(`EVIDENCE PACK: No evidence items found for this project. Create slides that acknowledge evidence collection is in progress and recommend gathering leading, mid-loop, and lagging indicators.`);
+    }
   }
 
   if (topics.includes('success_stories')) {
     const stories: string[] = [];
     if (data.successStories.length > 0) {
       const projectStories = data.successStories.slice(0, 5).map((s: any) =>
-        `- [Project] ${s.title}: Category: ${s.category || 'N/A'} | Industry: ${s.industry || 'N/A'} | Capability: ${s.capabilityName || 'N/A'} | Relevance: ${s.relevanceReason || 'N/A'} | Excerpt: ${s.excerpt || 'N/A'}`
+        `- [Project Story] "${s.title}": Category: ${s.category || 'N/A'} | Industry: ${s.industry || 'N/A'} | Capability: ${s.capabilityName || 'N/A'} | Relevance: ${s.relevanceReason || 'N/A'} | Client: ${s.clientName || 'N/A'} | Excerpt: "${s.excerpt || s.description || 'N/A'}"`
       ).join('\n');
       stories.push(projectStories);
     }
     if (data.successStoryLibrary.length > 0) {
       const libraryStories = data.successStoryLibrary.slice(0, 5).map((s: any) =>
-        `- [Library] ${s.title}: Challenge: ${s.challenge || 'N/A'} | Solution: ${s.solution || 'N/A'} | Results: ${s.results || 'N/A'} | Metrics: ${s.metrics || 'N/A'} | Industry: ${s.industry || 'N/A'} | Capability: ${s.capabilityName || 'N/A'} | Timeframe: ${s.timeframeMonths ? s.timeframeMonths + ' months' : 'N/A'}`
+        `- [Library Story] "${s.title}": Challenge: "${s.challenge || 'N/A'}" | Solution: "${s.solution || 'N/A'}" | Results: "${s.results || 'N/A'}" | Metrics: "${s.metrics || 'N/A'}" | Industry: ${s.industry || 'N/A'} | Capability: ${s.capabilityName || 'N/A'} | Client: ${s.clientName || 'N/A'} | Timeframe: ${s.timeframeMonths ? s.timeframeMonths + ' months' : 'N/A'}`
       ).join('\n');
       stories.push(libraryStories);
     }
     const totalCount = data.successStories.length + data.successStoryLibrary.length;
     if (totalCount > 0) {
-      sections.push(`SUCCESS STORIES (${totalCount} total - ${data.successStories.length} project-specific, ${data.successStoryLibrary.length} from library):\n${stories.join('\n')}`);
+      sections.push(`SUCCESS STORIES (${totalCount} total - ${data.successStories.length} project-specific, ${data.successStoryLibrary.length} from library):\n${stories.join('\n')}\n\nIMPORTANT: You MUST incorporate these success stories into dedicated slides. Quote the real titles, challenges, solutions, and results. Create at least one slide per success story with specific details - do NOT generate generic success content.`);
+    } else {
+      sections.push(`SUCCESS STORIES: No success stories found for this project or in the library. Create a slide recommending the team document early wins and client testimonials to build the success story portfolio.`);
     }
   }
 
@@ -1262,7 +1268,7 @@ ${dataSummary}
 
 CRITICAL DESIGN PRINCIPLES:
 1. EVERY SLIDE must contain substantial, specific content - NO generic placeholder text
-2. Use REAL numbers, names, and data from the available data above
+2. Use REAL numbers, names, and data from the available data above - NEVER invent data that isn't provided
 3. VARY slide types extensively - mix kpi_scorecard, chart, flow_diagram, comparison, quote, content, image_feature
 4. Each kpi_scorecard slide should have 3-6 metrics with specific values and trend indicators
 5. Each chart slide must have chartData with real labels and realistic data values (3-8 data points)
@@ -1272,6 +1278,8 @@ CRITICAL DESIGN PRINCIPLES:
 9. Quote slides should feature client-relevant quotes or powerful value statements
 10. Include bodyContent AND bulletPoints AND metrics on content slides where relevant - pack value into every slide
 11. Speaker notes should be detailed talking points (2-3 sentences), not one-liners
+12. EVIDENCE SLIDES: If evidence pack data is provided, create dedicated slides that quote the EXACT claims and supporting evidence. Use the real evidence text, not summaries or paraphrases. Each evidence slide should reference the specific claim, its phase (leading/mid-loop/lagging), and confidence level.
+13. SUCCESS STORY SLIDES: If success stories are provided, create at least one dedicated slide per story using the EXACT title, challenge, solution, and results from the data. Include the client name, industry, and specific metrics. Do NOT create generic "success" slides.
 
 TEMPLATE GUIDELINES:
 - executive_modern: 10-12 slides. Lead with bold metrics. Use kpi_scorecard + image_feature + comparison heavily. Every slide must have either metrics or a chart.

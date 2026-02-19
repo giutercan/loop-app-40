@@ -17999,8 +17999,6 @@ Return JSON:
       slideHeight: mapped.slideHeight,
     };
   }
-  const KF_COLORS = getKFColors();
-
   app.get("/api/presentations/project-context/:accountId/:projectId", async (req, res) => {
     try {
       const accountId = parseInt(req.params.accountId);
@@ -18447,7 +18445,7 @@ CRITICAL RULES:
         slide.addText(`${i + 1}`, {
           x: (colors.slideWidth - 1.333) / 2, y: colors.slideHeight - 0.5, w: 1.333, h: 0.4,
           fontSize: 8, fontFace: colors.bodyFont || "Arial",
-          color: KF_COLORS.gray, align: "center",
+          color: colors.gray, align: "center",
         });
 
         if (slideData.speakerNotes) {
@@ -18460,7 +18458,7 @@ CRITICAL RULES:
             const subPos = getLayoutPos("title", "subTitle") || { x: 0.8, y: titlePos.y + titlePos.h + 0.1, w: colors.slideWidth - 1.6, h: 0.8 };
 
             slide.background = { color: config.titleBg };
-            const titleColor = config.titleBg === KF_COLORS.white ? config.headerColor : KF_COLORS.white;
+            const titleColor = config.titleBg === colors.white ? config.headerColor : colors.white;
             slide.addText(slideData.title, {
               x: titlePos.x, y: titlePos.y, w: titlePos.w, h: titlePos.h,
               fontSize: 36, fontFace: colors.headerFont || colors.bodyFont || "Arial",
@@ -18470,7 +18468,7 @@ CRITICAL RULES:
               slide.addText(slideData.subtitle, {
                 x: subPos.x, y: subPos.y, w: subPos.w, h: subPos.h,
                 fontSize: 18, fontFace: colors.bodyFont || "Arial",
-                color: config.titleBg === KF_COLORS.white ? KF_COLORS.gray : KF_COLORS.lightGray,
+                color: config.titleBg === colors.white ? colors.gray : colors.lightGray,
                 align: "left",
               });
             }
@@ -18478,7 +18476,7 @@ CRITICAL RULES:
               slide.addText(slideData.bodyContent, {
                 x: subPos.x, y: subPos.y + subPos.h + 0.2, w: subPos.w, h: 0.6,
                 fontSize: 12, fontFace: colors.bodyFont || "Arial",
-                color: config.titleBg === KF_COLORS.white ? KF_COLORS.gray : KF_COLORS.lightGray,
+                color: config.titleBg === colors.white ? colors.gray : colors.lightGray,
                 align: "left",
               });
             }
@@ -18513,13 +18511,13 @@ CRITICAL RULES:
             slide.addText(slideData.title, {
               x: 0.8, y: 2.7, w: 11.7, h: 2.0,
               fontSize: 30, fontFace: colors.headerFont || colors.bodyFont || "Arial",
-              color: KF_COLORS.white, bold: true, align: "left", valign: "middle",
+              color: colors.white, bold: true, align: "left", valign: "middle",
             });
             if (slideData.subtitle) {
               slide.addText(slideData.subtitle, {
                 x: 0.8, y: 4.8, w: 11.7, h: 0.6,
                 fontSize: 16, fontFace: colors.bodyFont || "Arial",
-                color: KF_COLORS.lightGray,
+                color: colors.lightGray,
               });
             }
             break;
@@ -18536,7 +18534,7 @@ CRITICAL RULES:
             slide.addText(slideData.title, {
               x: contentTitlePos.x, y: contentTitlePos.y, w: contentTitlePos.w, h: contentTitlePos.h,
               fontSize: 18, fontFace: colors.headerFont || colors.bodyFont || "Arial",
-              color: KF_COLORS.white, bold: true,
+              color: colors.white, bold: true,
             });
             let yPos = contentBodyPos.y;
             if (slideData.bodyContent) {
@@ -18568,7 +18566,7 @@ CRITICAL RULES:
             slide.addText(slideData.title, {
               x: 0.5, y: 0.1, w: colors.slideWidth - 3.8, h: 0.6,
               fontSize: 18, fontFace: colors.bodyFont || "Arial",
-              color: KF_COLORS.white, bold: true,
+              color: colors.white, bold: true,
             });
             if (slideData.metrics?.length) {
               const cols = Math.min(slideData.metrics.length, 4);
@@ -18579,12 +18577,12 @@ CRITICAL RULES:
                 const xPos = 1.0 + col * (boxW + 0.2);
                 const yPos = 1.3 + row * 2.2;
                 const trendSymbol = metric.trend === "up" ? "\u25B2" : metric.trend === "down" ? "\u25BC" : "\u25CF";
-                const trendColor = metric.trend === "up" ? KF_COLORS.emerald : metric.trend === "down" ? "CC3333" : KF_COLORS.gray;
+                const trendColor = metric.trend === "up" ? colors.emerald : metric.trend === "down" ? "CC3333" : colors.gray;
                 slide.addShape(pres.ShapeType.roundRect, {
                   x: xPos, y: yPos, w: boxW, h: 1.8,
                   fill: { color: "F5F5F5" },
                   rectRadius: 0.1,
-                  line: { color: KF_COLORS.lightGray, width: 1 },
+                  line: { color: colors.lightGray, width: 1 },
                 });
                 slide.addText(metric.value, {
                   x: xPos, y: yPos + 0.2, w: boxW, h: 0.7,
@@ -18600,7 +18598,7 @@ CRITICAL RULES:
                 slide.addText(metric.label, {
                   x: xPos, y: yPos + 1.15, w: boxW, h: 0.5,
                   fontSize: 11, fontFace: colors.bodyFont || "Arial",
-                  color: KF_COLORS.gray, align: "center",
+                  color: colors.gray, align: "center",
                 });
               });
             }
@@ -18615,7 +18613,7 @@ CRITICAL RULES:
             slide.addText(slideData.title, {
               x: 0.5, y: 0.1, w: colors.slideWidth - 3.8, h: 0.6,
               fontSize: 18, fontFace: colors.bodyFont || "Arial",
-              color: KF_COLORS.white, bold: true,
+              color: colors.white, bold: true,
             });
             if (slideData.chartData) {
               const chartTypeMap: Record<string, pptxgen.CHART_NAME> = {
@@ -18626,7 +18624,7 @@ CRITICAL RULES:
               };
               const chartType = chartTypeMap[slideData.chartData.type] || pres.ChartType.bar;
               const chartColors = slideData.chartData.colors?.map(c => c.replace("#", "")) ||
-                [KF_COLORS.emerald, KF_COLORS.oceanBlue, KF_COLORS.cyan, KF_COLORS.lime, KF_COLORS.purple, KF_COLORS.mint];
+                [colors.emerald, colors.oceanBlue, colors.cyan, colors.lime, colors.purple, colors.mint];
               slide.addChart(chartType, [
                 { name: slideData.title, labels: slideData.chartData.labels, values: slideData.chartData.data },
               ], {
@@ -18647,7 +18645,7 @@ CRITICAL RULES:
             slide.addText(slideData.title, {
               x: 0.5, y: 0.1, w: 9.5, h: 0.6,
               fontSize: 18, fontFace: colors.bodyFont || "Arial",
-              color: KF_COLORS.white, bold: true,
+              color: colors.white, bold: true,
             });
             if (slideData.flowSteps?.length) {
               const stepCount = slideData.flowSteps.length;
@@ -18672,7 +18670,7 @@ CRITICAL RULES:
                   slide.addText(step.description, {
                     x: xPos - 0.7, y: 3.8, w: 1.7, h: 0.8,
                     fontSize: 9, fontFace: colors.bodyFont || "Arial",
-                    color: KF_COLORS.gray, align: "center",
+                    color: colors.gray, align: "center",
                   });
                 }
               });
@@ -18689,7 +18687,7 @@ CRITICAL RULES:
             slide.addText(slideData.title, {
               x: 0.5, y: 0.1, w: 9.5, h: 0.6,
               fontSize: 18, fontFace: colors.bodyFont || "Arial",
-              color: KF_COLORS.white, bold: true,
+              color: colors.white, bold: true,
             });
             if (slideData.quoteText) {
               slide.addText(`\u201C${slideData.quoteText}\u201D`, {
@@ -18702,7 +18700,7 @@ CRITICAL RULES:
               slide.addText(`\u2014 ${slideData.quoteAuthor}`, {
                 x: 1.5, y: 5.2, w: 10.3, h: 0.5,
                 fontSize: 14, fontFace: colors.bodyFont || "Arial",
-                color: KF_COLORS.gray, align: "center",
+                color: colors.gray, align: "center",
               });
             }
             break;
@@ -18716,7 +18714,7 @@ CRITICAL RULES:
             slide.addText(slideData.title, {
               x: 0.5, y: 0.1, w: 9.5, h: 0.6,
               fontSize: 18, fontFace: colors.bodyFont || "Arial",
-              color: KF_COLORS.white, bold: true,
+              color: colors.white, bold: true,
             });
             if (slideData.flowSteps?.length) {
               const stepCount = slideData.flowSteps.length;
@@ -18734,13 +18732,13 @@ CRITICAL RULES:
                 slide.addText(step.label, {
                   x: xPos + 0.1, y: 2.7, w: boxW - 0.2, h: 0.6,
                   fontSize: 12, fontFace: colors.bodyFont || "Arial",
-                  color: KF_COLORS.white, bold: true, align: "center",
+                  color: colors.white, bold: true, align: "center",
                 });
                 if (step.description) {
                   slide.addText(step.description, {
                     x: xPos + 0.1, y: 3.4, w: boxW - 0.2, h: 1.4,
                     fontSize: 9, fontFace: colors.bodyFont || "Arial",
-                    color: KF_COLORS.lightGray, align: "center", valign: "top",
+                    color: colors.lightGray, align: "center", valign: "top",
                   });
                 }
                 if (idx < stepCount - 1) {
@@ -18763,13 +18761,13 @@ CRITICAL RULES:
             slide.addText(slideData.title, {
               x: 0.5, y: 0.1, w: 9.5, h: 0.6,
               fontSize: 18, fontFace: colors.bodyFont || "Arial",
-              color: KF_COLORS.white, bold: true,
+              color: colors.white, bold: true,
             });
             if (slideData.comparisonItems?.length) {
               slide.addText("Before", {
                 x: 1.5, y: 1.2, w: 4.5, h: 0.5,
                 fontSize: 16, fontFace: colors.bodyFont || "Arial",
-                color: KF_COLORS.gray, bold: true, align: "center",
+                color: colors.gray, bold: true, align: "center",
               });
               slide.addText("After", {
                 x: 7.3, y: 1.2, w: 4.5, h: 0.5,
@@ -18778,7 +18776,7 @@ CRITICAL RULES:
               });
               slide.addShape(pres.ShapeType.rect, {
                 x: 6.5, y: 1.2, w: 0.03, h: 5.5,
-                fill: { color: KF_COLORS.lightGray },
+                fill: { color: colors.lightGray },
               });
               slideData.comparisonItems.forEach((item, idx) => {
                 const yPos = 1.9 + idx * 1.3;
@@ -18818,7 +18816,7 @@ CRITICAL RULES:
             slide.addText(slideData.title, {
               x: 0.5, y: 0.1, w: 9.5, h: 0.6,
               fontSize: 18, fontFace: colors.bodyFont || "Arial",
-              color: KF_COLORS.white, bold: true,
+              color: colors.white, bold: true,
             });
             let sumY = 1.4;
             if (slideData.bulletPoints?.length) {
@@ -18826,7 +18824,7 @@ CRITICAL RULES:
                 slide.addText(`\u2713`, {
                   x: 0.8, y: sumY, w: 0.5, h: 0.5,
                   fontSize: 16, fontFace: colors.bodyFont || "Arial",
-                  color: KF_COLORS.emerald, bold: true,
+                  color: colors.emerald, bold: true,
                 });
                 slide.addText(point, {
                   x: 1.4, y: sumY, w: 11.0, h: 0.5,
@@ -18840,7 +18838,7 @@ CRITICAL RULES:
               slide.addText(slideData.bodyContent, {
                 x: 0.8, y: sumY + 0.3, w: 11.7, h: 1.0,
                 fontSize: 12, fontFace: colors.bodyFont || "Arial",
-                color: KF_COLORS.gray, italic: true, align: "left",
+                color: colors.gray, italic: true, align: "left",
               });
             }
             break;
@@ -18870,20 +18868,20 @@ CRITICAL RULES:
             slide.addText(slideData.title, {
               x: 0.8, y: 2.5, w: 11.7, h: 1.0,
               fontSize: 28, fontFace: colors.headerFont || colors.bodyFont || "Arial",
-              color: KF_COLORS.white, bold: true,
+              color: colors.white, bold: true,
             });
             if (slideData.subtitle) {
               slide.addText(slideData.subtitle, {
                 x: 0.8, y: 3.6, w: 11.7, h: 0.6,
                 fontSize: 16, fontFace: colors.bodyFont || "Arial",
-                color: KF_COLORS.lightGray,
+                color: colors.lightGray,
               });
             }
             if (slideData.bodyContent) {
               slide.addText(slideData.bodyContent, {
                 x: 0.8, y: 4.5, w: 11.7, h: 2.0,
                 fontSize: 14, fontFace: colors.bodyFont || "Arial",
-                color: KF_COLORS.lightGray,
+                color: colors.lightGray,
               });
             }
             break;
@@ -18897,7 +18895,7 @@ CRITICAL RULES:
             slide.addText(slideData.title, {
               x: 0.5, y: 0.1, w: 9.5, h: 0.6,
               fontSize: 18, fontFace: colors.bodyFont || "Arial",
-              color: KF_COLORS.white, bold: true,
+              color: colors.white, bold: true,
             });
             if (slideData.bodyContent) {
               slide.addText(slideData.bodyContent, {
