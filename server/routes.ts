@@ -4,7 +4,8 @@ import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFr
 import { EvidencePackService } from "./services/evidence-pack.service";
 import { generatePresentationPlan, aggregatePresentationData, getProjectContextSummary, generateCoachRecommendations, type PresentationRequest, type TopicCategory } from "./services/presentation-studio.service";
 import { uploadTemplate, getTemplates, getTemplate, getActiveTemplate, setActiveTemplate, deleteTemplate, getActiveBrandKit, mapBrandKitToExportColors, getTemplateLayoutForSlideType } from "./services/template-manager.service";
-import pptxgen from "pptxgenjs";
+import pptxgenModule from "pptxgenjs";
+const PptxGenJS = (pptxgenModule as any).default || pptxgenModule;
 import multer from "multer";
 import { z } from "zod";
 import crypto from "crypto";
@@ -17935,15 +17936,22 @@ Return JSON:
 
   app.post("/api/templates/upload", upload.single("template"), async (req, res) => {
     try {
-      if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+      if (!req.file) return res.status(400).json({ error: "No file uploaded. Please select a .pptx file." });
       if (!req.file.originalname.toLowerCase().endsWith(".pptx")) {
-        return res.status(400).json({ error: "Only .pptx files are supported" });
+        return res.status(400).json({ error: "Only .pptx files are supported. Please upload a PowerPoint file." });
+      }
+      if (req.file.size < 100) {
+        return res.status(400).json({ error: "File appears to be empty or corrupted. Please upload a valid .pptx file." });
       }
       const parsed = await uploadTemplate(req.file.originalname, req.file.buffer);
       res.json(parsed);
     } catch (error: any) {
       console.error("Error uploading template:", error);
-      res.status(500).json({ error: error.message });
+      const msg = error.message || "Unknown error";
+      if (msg.includes("Corrupted zip") || msg.includes("End of data")) {
+        return res.status(400).json({ error: "The file could not be read as a valid PowerPoint (.pptx) file. Please make sure it is a genuine .pptx file and not corrupted." });
+      }
+      res.status(500).json({ error: msg });
     }
   });
 
@@ -18104,16 +18112,13 @@ Return the updated slide as a JSON object with the same structure. Keep the same
 
       const data = await aggregatePresentationData(accountId, projectId, [coaching.relatedTopic || 'discovery_insights']);
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "system",
-            content: "You are a Korn Ferry presentation expert. You address gaps identified in coaching recommendations by generating or improving slide content. Always respond with valid JSON."
-          },
-          {
-            role: "user",
-            content: `A coaching recommendation identified a gap in the presentation. Generate content to address it.
+      const isGap = coaching.type === 'gap';
+      const systemPrompt = isGap
+        ? "You are a Korn Ferry presentation expert. You address gaps identified in coaching recommendations by generating or improving slide content. Always respond with valid JSON."
+        : "You are a Korn Ferry presentation expert. You apply coaching recommendations to improve existing slide content or add new content. Always respond with valid JSON.";
+
+      const userPrompt = isGap
+        ? `A coaching recommendation identified a gap in the presentation. Generate content to address it.
 
 GAP/RECOMMENDATION:
 - Type: ${coaching.type}
@@ -18133,7 +18138,35 @@ Return a JSON object with:
   "modifications": [ { "slideId": "...", "changes": { ... } } ],
   "explanation": "What was done to address the gap"
 }`
-          }
+        : `Apply this coaching recommendation to the presentation. Improve existing content or add new content as needed.
+
+COACHING RECOMMENDATION:
+- Type: ${coaching.type}
+- Title: ${coaching.title}
+- Description: ${coaching.description}
+- Advice: ${coaching.actionableAdvice}
+- Related Topic: ${coaching.relatedTopic || 'N/A'}
+- Priority: ${coaching.priority || 'medium'}
+
+CURRENT SLIDES (${slides?.length || 0} total):
+${(slides || []).map((s: any, i: number) => `${i + 1}. [${s.id}] (${s.slideType}) "${s.title}"`).join('\n')}
+
+PURPOSE: ${purpose || 'customer_engagement'}
+AUDIENCE: ${audience || 'client_sponsor'}
+
+Return a JSON object with:
+{
+  "action": "add_slide" | "modify_existing",
+  "slide": { ... complete slide object if adding a new slide ... },
+  "modifications": [ { "slideId": "...", "changes": { "title": "...", "bodyContent": "...", "bulletPoints": [...] } } ],
+  "explanation": "What was done to apply the recommendation"
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
         ],
         response_format: { type: "json_object" },
         temperature: 0.7,
@@ -18157,6 +18190,87 @@ Return a JSON object with:
       res.json(result);
     } catch (error: any) {
       console.error("Error filling gap:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/presentations/coach-iterate", async (req, res) => {
+    try {
+      const { instruction, slides, accountId, projectId, purpose, audience } = req.body;
+      if (!instruction || !slides || !Array.isArray(slides)) {
+        return res.status(400).json({ error: "Missing required fields: instruction, slides" });
+      }
+
+      const slideIds = slides.map((s: any) => s.id);
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "You are a Korn Ferry presentation coach. You apply a coaching direction across all slides of a presentation, modifying titles, body content, bullet points, speaker notes, and other text to align with the direction. Always respond with valid JSON."
+          },
+          {
+            role: "user",
+            content: `Apply this coaching direction across all ${slides.length} slides of a presentation.
+
+COACHING DIRECTION: ${instruction}
+
+CONTEXT:
+- Purpose: ${purpose || 'customer_engagement'}
+- Audience: ${audience || 'client_sponsor'}
+- Total slides: ${slides.length}
+
+CURRENT SLIDES:
+${JSON.stringify(slides, null, 2)}
+
+Return a JSON object with:
+{
+  "slides": [ ... array of EXACTLY ${slides.length} updated slide objects, same order as input ... ],
+  "summary": "Brief description of what was changed across slides"
+}
+
+CRITICAL RULES:
+- Return EXACTLY ${slides.length} slides in the same order
+- Each slide MUST keep its original "id" field unchanged
+- Keep the same topicSource and slideType for each slide
+- Only modify text content (title, subtitle, bodyContent, bulletPoints, speakerNotes, quoteText, etc.)
+- Do NOT change slide structure, metrics data, or comparison items unless directly relevant to the coaching direction
+- Apply the coaching direction holistically across the presentation narrative`
+          }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+        max_tokens: 8000,
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        return res.status(500).json({ error: "Empty AI response" });
+      }
+
+      let result;
+      try {
+        result = JSON.parse(content);
+      } catch {
+        return res.status(500).json({ error: "AI returned invalid JSON. Please try again." });
+      }
+
+      if (!result.slides || !Array.isArray(result.slides)) {
+        return res.status(500).json({ error: "AI response missing slides array" });
+      }
+
+      if (result.slides.length !== slides.length) {
+        const reordered = slides.map((orig: any) => {
+          const match = result.slides.find((s: any) => s.id === orig.id);
+          return match || orig;
+        });
+        result.slides = reordered;
+      }
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error in coach-iterate:", error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -18191,7 +18305,7 @@ Return a JSON object with:
 
       const activeBrandKit = getActiveBrandKit();
 
-      const pres = new pptxgen();
+      const pres = new PptxGenJS();
       pres.defineLayout({ name: "KF_WIDE", width: colors.slideWidth, height: colors.slideHeight });
       pres.layout = "KF_WIDE";
       pres.author = "Korn Ferry";

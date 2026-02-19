@@ -132,6 +132,16 @@ export interface ProjectContextSummary {
   totalDataPoints: number;
 }
 
+export interface RecommendedStory {
+  id: number;
+  title: string;
+  industry: string;
+  capability: string;
+  challenge: string;
+  results: string;
+  relevanceReason: string;
+}
+
 export interface CoachRecommendation {
   purpose: PresentationPurpose;
   purposeReason: string;
@@ -145,6 +155,7 @@ export interface CoachRecommendation {
   gapQuestions: Array<{ question: string; context: string; field: string }>;
   storyAngles: Array<{ angle: string; source: string }>;
   estimatedSlides: number;
+  recommendedStories: RecommendedStory[];
 }
 
 export async function getProjectContextSummary(
@@ -263,6 +274,25 @@ export async function generateCoachRecommendations(
   const dataSummary = summarizeDataForPrompt(data, allTopics);
   const contextSummary = await getProjectContextSummary(accountId, projectId);
 
+  const industry = data.account?.industry || '';
+  let libraryStories: any[] = [];
+  try {
+    libraryStories = await storage.getSuccessStoryLibrary({
+      industry: industry || undefined,
+      approvalStatus: 'approved',
+    });
+    if (libraryStories.length < 3 && industry) {
+      const allApproved = await storage.getSuccessStoryLibrary({ approvalStatus: 'approved' });
+      const existing = new Set(libraryStories.map((s: any) => s.id));
+      for (const s of allApproved) {
+        if (!existing.has(s.id)) libraryStories.push(s);
+        if (libraryStories.length >= 10) break;
+      }
+    }
+  } catch (e) {
+    console.warn("[PresentationStudio] Failed to fetch library stories for coach:", e);
+  }
+
   const prompt = `You are a senior Korn Ferry presentation coach. A consultant is preparing a presentation for a client engagement. Based on the project data and the consultant's brief, recommend the best configuration.
 
 === PROJECT DATA ===
@@ -271,6 +301,9 @@ ${dataSummary}
 === STORYTELLING ASSETS ===
 ${data.narrativeCanvas ? `Narrative Canvas: Opener: ${(data.narrativeCanvas as any).opener || 'N/A'}, Key Message: ${(data.narrativeCanvas as any).keyMessage || 'N/A'}, Proof Point: ${(data.narrativeCanvas as any).proofPoint || 'N/A'}, Call to Action: ${(data.narrativeCanvas as any).callToAction || 'N/A'}` : 'No narrative canvas available.'}
 ${data.storyBuilderData ? `Story Builder: Hook: ${(data.storyBuilderData as any).before?.startingHook || 'N/A'}, Hero: ${(data.storyBuilderData as any).before?.heroCharacter || 'N/A'}, Turning Point: ${(data.storyBuilderData as any).during?.turningPoint || 'N/A'}, Single Message: ${(data.storyBuilderData as any).before?.singleMessage || 'N/A'}` : 'No story builder data.'}
+
+=== SUCCESS STORY LIBRARY (for recommendations) ===
+${libraryStories.length > 0 ? libraryStories.slice(0, 8).map((s: any, i: number) => `${i + 1}. [ID:${s.id}] "${s.title}" - Industry: ${s.industry || 'N/A'}, Capability: ${s.capabilityName || 'N/A'}, Challenge: ${(s.challenge || '').substring(0, 100)}, Results: ${(s.results || '').substring(0, 100)}`).join('\n') : 'No stories in library yet.'}
 
 === DATA AVAILABILITY ===
 Discovery Insights: ${contextSummary.availableData.discoveryInsights.count} items
@@ -316,7 +349,9 @@ Return valid JSON:
   "storyAngles": [
     { "angle": "Description of the narrative angle", "source": "What data it draws from" }
   ],
-  "estimatedSlides": 12
+  "estimatedSlides": 12,
+  "recommendedStoryIds": [1, 2],
+  "storyRelevanceReasons": { "1": "Why this story is relevant to this engagement" }
 }`;
 
   try {
@@ -338,6 +373,25 @@ Return valid JSON:
     if (!content) throw new Error("Empty AI response");
 
     const result = JSON.parse(content);
+
+    const recommendedStories: RecommendedStory[] = [];
+    const recIds: number[] = result.recommendedStoryIds || [];
+    const reasons: Record<string, string> = result.storyRelevanceReasons || {};
+    for (const sid of recIds) {
+      const story = libraryStories.find((s: any) => s.id === sid);
+      if (story) {
+        recommendedStories.push({
+          id: story.id,
+          title: story.title || 'Untitled Story',
+          industry: story.industry || '',
+          capability: story.capabilityName || '',
+          challenge: (story.challenge || '').substring(0, 200),
+          results: (story.results || '').substring(0, 200),
+          relevanceReason: reasons[String(sid)] || 'Relevant to this engagement context.',
+        });
+      }
+    }
+
     return {
       purpose: result.purpose || 'customer_engagement',
       purposeReason: result.purposeReason || '',
@@ -351,6 +405,7 @@ Return valid JSON:
       gapQuestions: result.gapQuestions || [],
       storyAngles: result.storyAngles || [],
       estimatedSlides: result.estimatedSlides || 12,
+      recommendedStories,
     };
   } catch (error) {
     console.error("[PresentationStudio] Coach AI failed:", error);
@@ -396,6 +451,7 @@ function generateFallbackCoachRecommendation(
     gapQuestions: gaps,
     storyAngles: [],
     estimatedSlides: 10 + topics.length,
+    recommendedStories: [],
   };
 }
 

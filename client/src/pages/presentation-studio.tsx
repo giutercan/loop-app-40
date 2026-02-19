@@ -476,6 +476,8 @@ export default function PresentationStudioPage() {
   const [editingSlideIndex, setEditingSlideIndex] = useState<number | null>(null);
   const [fullScreenSlide, setFullScreenSlide] = useState<number | null>(null);
   const [refineInstruction, setRefineInstruction] = useState('');
+  const [coachingPrompt, setCoachingPrompt] = useState('');
+  const [isCoachingAll, setIsCoachingAll] = useState(false);
   const [refiningSlideId, setRefiningSlideId] = useState<string | null>(null);
   const [fillingGapIdx, setFillingGapIdx] = useState<number | null>(null);
   const [showBrandPanel, setShowBrandPanel] = useState(false);
@@ -702,11 +704,44 @@ export default function PresentationStudioPage() {
 
       setPlan({ ...plan, slides: newSlides });
       setFillingGapIdx(null);
-      toast({ title: 'Gap Addressed', description: data.explanation || 'Content has been added to address the coaching recommendation.' });
+      toast({ title: 'Coaching Applied', description: data.explanation || 'Content has been updated based on the recommendation.' });
     },
     onError: () => {
       setFillingGapIdx(null);
-      toast({ title: 'Could Not Fill Gap', description: 'Please try again or manually edit the slides.', variant: 'destructive' });
+      toast({ title: 'Could Not Apply', description: 'Please try again or manually edit the slides.', variant: 'destructive' });
+    },
+  });
+
+  const coachAllMutation = useMutation({
+    mutationFn: async (instruction: string) => {
+      const res = await apiRequest('POST', '/api/presentations/coach-iterate', {
+        instruction,
+        slides: plan?.slides || [],
+        accountId: selectedAccountId,
+        projectId: selectedProjectId,
+        purpose,
+        audience,
+      });
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      if (!plan) return;
+      if (data.slides && Array.isArray(data.slides)) {
+        const updatedSlides = plan.slides.map((s, i) => {
+          const byId = data.slides.find((u: any) => u.id === s.id);
+          const updated = byId || data.slides[i];
+          if (!updated) return s;
+          return { ...s, ...updated, id: s.id, topicSource: s.topicSource };
+        });
+        setPlan({ ...plan, slides: updatedSlides });
+      }
+      setCoachingPrompt('');
+      setIsCoachingAll(false);
+      toast({ title: 'Coaching Applied', description: data.summary || 'All slides have been updated based on your coaching direction.' });
+    },
+    onError: () => {
+      setIsCoachingAll(false);
+      toast({ title: 'Coaching Failed', description: 'Could not apply coaching to slides. Please try again.', variant: 'destructive' });
     },
   });
 
@@ -1196,26 +1231,24 @@ export default function PresentationStudioPage() {
                               </div>
                               <p className="text-[11px] text-muted-foreground mt-1">{item.description}</p>
                               <p className="text-[11px] mt-1 font-medium text-foreground/80">{item.actionableAdvice}</p>
-                              {isGap && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="mt-2 text-xs"
-                                  onClick={() => {
-                                    setFillingGapIdx(idx);
-                                    fillGapMutation.mutate(item);
-                                  }}
-                                  disabled={fillGapMutation.isPending && fillingGapIdx === idx}
-                                  data-testid={`button-fill-gap-${idx}`}
-                                >
-                                  {fillGapMutation.isPending && fillingGapIdx === idx ? (
-                                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                                  ) : (
-                                    <WandSparkles className="w-3 h-3 mr-1" />
-                                  )}
-                                  Fix with AI
-                                </Button>
-                              )}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="mt-2 text-xs"
+                                onClick={() => {
+                                  setFillingGapIdx(idx);
+                                  fillGapMutation.mutate(item);
+                                }}
+                                disabled={fillGapMutation.isPending && fillingGapIdx === idx}
+                                data-testid={`button-apply-coaching-${idx}`}
+                              >
+                                {fillGapMutation.isPending && fillingGapIdx === idx ? (
+                                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                ) : (
+                                  <WandSparkles className="w-3 h-3 mr-1" />
+                                )}
+                                {isGap ? 'Fix with AI' : 'Apply to Slides'}
+                              </Button>
                             </div>
                           </div>
                         </div>
@@ -1228,6 +1261,57 @@ export default function PresentationStudioPage() {
               <Card className="p-4">
                 <h3 className="text-sm font-semibold text-foreground mb-2">Template Rationale</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">{plan.templateRationale}</p>
+              </Card>
+
+              <Card className="p-4">
+                <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-[#A3238E]" />
+                  Coaching Prompt
+                </h3>
+                <p className="text-[10px] text-muted-foreground mb-2">Give directions to refine all slides at once. For example: "Make the tone more executive", "Add more data points", "Emphasize ROI".</p>
+                <Textarea
+                  placeholder="Enter coaching direction..."
+                  value={coachingPrompt}
+                  onChange={e => setCoachingPrompt(e.target.value)}
+                  className="resize-none text-sm mb-2"
+                  rows={3}
+                  data-testid="input-coaching-prompt"
+                />
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      if (coachingPrompt.trim()) {
+                        setIsCoachingAll(true);
+                        coachAllMutation.mutate(coachingPrompt.trim());
+                      }
+                    }}
+                    disabled={!coachingPrompt.trim() || coachAllMutation.isPending}
+                    data-testid="button-apply-coaching"
+                  >
+                    {coachAllMutation.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
+                    Apply to All Slides
+                  </Button>
+                </div>
+                <div className="flex gap-1.5 mt-2 flex-wrap">
+                  {['More executive tone', 'Add ROI emphasis', 'Simplify language', 'Strengthen storytelling'].map(suggestion => (
+                    <Button
+                      key={suggestion}
+                      variant="outline"
+                      size="sm"
+                      className="text-[10px]"
+                      onClick={() => {
+                        setCoachingPrompt(suggestion);
+                        setIsCoachingAll(true);
+                        coachAllMutation.mutate(suggestion);
+                      }}
+                      disabled={coachAllMutation.isPending}
+                      data-testid={`button-coaching-quick-${suggestion.toLowerCase().replace(/\s+/g, '-')}`}
+                    >
+                      {suggestion}
+                    </Button>
+                  ))}
+                </div>
               </Card>
             </div>
           </div>
@@ -1746,6 +1830,31 @@ export default function PresentationStudioPage() {
                                       <p className="text-xs text-foreground leading-tight">{sa.angle}</p>
                                       <p className="text-[10px] text-muted-foreground mt-0.5">Source: {sa.source}</p>
                                     </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {coachResult.recommendedStories?.length > 0 && (
+                            <div>
+                              <div className="flex items-center gap-1.5 mb-1.5">
+                                <BookOpen className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                                <p className="text-[10px] font-medium text-muted-foreground">Recommended Success Stories</p>
+                              </div>
+                              <div className="space-y-1.5">
+                                {coachResult.recommendedStories.map((story: any) => (
+                                  <div key={story.id} className="p-2 rounded-md border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20">
+                                    <div className="flex items-start justify-between gap-2 flex-wrap">
+                                      <p className="text-xs font-medium text-foreground leading-tight">{story.title}</p>
+                                      <div className="flex items-center gap-1 flex-wrap">
+                                        {story.industry && <Badge variant="outline" className="text-[9px] px-1 py-0">{story.industry}</Badge>}
+                                        {story.capability && <Badge variant="outline" className="text-[9px] px-1 py-0">{story.capability}</Badge>}
+                                      </div>
+                                    </div>
+                                    {story.challenge && <p className="text-[10px] text-muted-foreground mt-1">{story.challenge}</p>}
+                                    {story.results && <p className="text-[10px] text-purple-700 dark:text-purple-300 mt-0.5 font-medium">{story.results}</p>}
+                                    <p className="text-[10px] text-purple-600 dark:text-purple-400 mt-1 italic">{story.relevanceReason}</p>
                                   </div>
                                 ))}
                               </div>
