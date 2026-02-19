@@ -19063,59 +19063,53 @@ CRITICAL RULES:
       const PDFDocument = (await import("pdfkit")).default;
 
       const activeBrandKit = getActiveBrandKit();
-      const hasBrandTemplate = isCustomBrandTemplate();
+      const activeTempl = getActiveTemplate();
+      const hasBrandTemplate = isCustomBrandTemplate(activeTempl?.id);
 
-      const KF_COLORS_PDF = (() => {
-        const bk = activeBrandKit;
-        return {
-          navy: bk.colors.dk1 || "00173B",
-          forestGreen: bk.colors.accent3 || "00634F",
-          oceanBlue: bk.colors.accent2 || "005971",
-          emerald: bk.colors.accent1 || "009B77",
-          mint: bk.colors.accent4 || "05C690",
-          lime: bk.colors.accent5 || "8DC63F",
-          cyan: bk.colors.accent6 || "00ADBB",
-          purple: bk.colors.dk2 || "A3238E",
-          gray: "666666",
-          lightGray: "CCCCCC",
-          white: "FFFFFF",
-          headerFont: bk.fonts.major,
-          bodyFont: bk.fonts.minor,
-        };
-      })();
-
-      const TEMPLATE_COLORS_MAP: Record<string, any> = {
-        executive_modern: {
-          bg: KF_COLORS_PDF.navy,
-          headerBg: KF_COLORS_PDF.navy,
-          accent: KF_COLORS_PDF.emerald,
-          headerColor: KF_COLORS_PDF.navy,
-          textColor: "333333",
-          subtitleColor: KF_COLORS_PDF.gray,
-          titleBg: KF_COLORS_PDF.navy,
-        },
-        data_driven: {
-          bg: KF_COLORS_PDF.oceanBlue,
-          headerBg: KF_COLORS_PDF.oceanBlue,
-          accent: KF_COLORS_PDF.cyan,
-          headerColor: KF_COLORS_PDF.oceanBlue,
-          textColor: "333333",
-          subtitleColor: KF_COLORS_PDF.gray,
-          titleBg: KF_COLORS_PDF.oceanBlue,
-        },
-        visual_narrative: {
-          bg: KF_COLORS_PDF.forestGreen,
-          headerBg: KF_COLORS_PDF.forestGreen,
-          accent: KF_COLORS_PDF.mint,
-          headerColor: KF_COLORS_PDF.forestGreen,
-          textColor: "333333",
-          subtitleColor: KF_COLORS_PDF.gray,
-          titleBg: KF_COLORS_PDF.forestGreen,
-        },
+      const bk = activeBrandKit;
+      const mappedColors = mapBrandKitToExportColors(bk);
+      const KF_COLORS_PDF = {
+        navy: mappedColors.navy,
+        forestGreen: mappedColors.forestGreen,
+        oceanBlue: mappedColors.oceanBlue,
+        emerald: mappedColors.emerald,
+        mint: mappedColors.mint,
+        lime: mappedColors.lime,
+        cyan: mappedColors.cyan,
+        purple: mappedColors.purple,
+        gray: mappedColors.gray,
+        lightGray: mappedColors.lightGray,
+        white: mappedColors.white,
+        headerFont: mappedColors.headerFont,
+        bodyFont: mappedColors.bodyFont,
       };
 
       const template = body.templateOverride || 'executive_modern';
-      const config = TEMPLATE_COLORS_MAP[template] || TEMPLATE_COLORS_MAP.executive_modern;
+      const config = hasBrandTemplate ? {
+        bg: bk.colors.dk1,
+        headerBg: bk.colors.dk1,
+        accent: bk.colors.accent1,
+        headerColor: bk.colors.dk1,
+        textColor: bk.colors.dk2 || "333333",
+        subtitleColor: bk.colors.accent3 || "666666",
+        titleBg: bk.colors.dk1,
+      } : (() => {
+        const TEMPLATE_COLORS_MAP: Record<string, any> = {
+          executive_modern: {
+            bg: KF_COLORS_PDF.navy, headerBg: KF_COLORS_PDF.navy, accent: KF_COLORS_PDF.emerald,
+            headerColor: KF_COLORS_PDF.navy, textColor: "333333", subtitleColor: KF_COLORS_PDF.gray, titleBg: KF_COLORS_PDF.navy,
+          },
+          data_driven: {
+            bg: KF_COLORS_PDF.oceanBlue, headerBg: KF_COLORS_PDF.oceanBlue, accent: KF_COLORS_PDF.cyan,
+            headerColor: KF_COLORS_PDF.oceanBlue, textColor: "333333", subtitleColor: KF_COLORS_PDF.gray, titleBg: KF_COLORS_PDF.oceanBlue,
+          },
+          visual_narrative: {
+            bg: KF_COLORS_PDF.forestGreen, headerBg: KF_COLORS_PDF.forestGreen, accent: KF_COLORS_PDF.mint,
+            headerColor: KF_COLORS_PDF.forestGreen, textColor: "333333", subtitleColor: KF_COLORS_PDF.gray, titleBg: KF_COLORS_PDF.forestGreen,
+          },
+        };
+        return TEMPLATE_COLORS_MAP[template] || TEMPLATE_COLORS_MAP.executive_modern;
+      })();
 
       function hexToRgb(hex: string): [number, number, number] {
         const h = hex.replace('#', '');

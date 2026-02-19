@@ -201,11 +201,44 @@ function getTopicLabel(topic: TopicCategory): string {
   return TOPIC_DEFINITIONS.find(t => t.id === topic)?.label || topic;
 }
 
-const TEMPLATE_COLORS: Record<PresentationTemplate, { bg: string; accent: string; headerBg: string; headerText: string }> = {
-  executive_modern: { bg: '#00173B', accent: '#009B77', headerBg: '#00173B', headerText: '#ffffff' },
-  data_driven: { bg: '#ffffff', accent: '#005971', headerBg: '#005971', headerText: '#ffffff' },
-  visual_narrative: { bg: '#00634F', accent: '#A3238E', headerBg: '#00634F', headerText: '#ffffff' },
+const DEFAULT_TEMPLATE_COLORS: Record<PresentationTemplate, { bg: string; accent: string; headerBg: string; headerText: string; bodyFont: string; headerFont: string }> = {
+  executive_modern: { bg: '#00173B', accent: '#009B77', headerBg: '#00173B', headerText: '#ffffff', bodyFont: 'Arial', headerFont: 'Arial' },
+  data_driven: { bg: '#ffffff', accent: '#005971', headerBg: '#005971', headerText: '#ffffff', bodyFont: 'Arial', headerFont: 'Arial' },
+  visual_narrative: { bg: '#00634F', accent: '#A3238E', headerBg: '#00634F', headerText: '#ffffff', bodyFont: 'Arial', headerFont: 'Arial' },
 };
+
+function brandKitToPreviewColors(brandKit: any): { bg: string; accent: string; headerBg: string; headerText: string; bodyFont: string; headerFont: string; masterBgGradient?: string } {
+  const dk1 = brandKit?.colors?.dk1 || '00173B';
+  const accent1 = brandKit?.colors?.accent1 || '005971';
+  const lt1 = brandKit?.colors?.lt1 || 'FFFFFF';
+  const masterBgColor = brandKit?.masterBackgroundColor;
+  const masterBg = brandKit?.masterBackground;
+
+  let bgColor = `#${dk1}`;
+  let masterBgGradient: string | undefined;
+
+  if (masterBgColor) {
+    bgColor = `#${masterBgColor}`;
+  } else if (masterBg?.type === 'solid' && masterBg?.color) {
+    bgColor = `#${masterBg.color}`;
+  }
+
+  if (masterBg?.type === 'gradient' && masterBg?.gradientStops?.length >= 2) {
+    const angle = masterBg.gradientAngle || 0;
+    const stops = masterBg.gradientStops.map((s: any) => `#${s.color} ${s.position}%`).join(', ');
+    masterBgGradient = `linear-gradient(${angle}deg, ${stops})`;
+  }
+
+  return {
+    bg: bgColor,
+    accent: `#${accent1}`,
+    headerBg: `#${dk1}`,
+    headerText: `#${lt1}`,
+    bodyFont: brandKit?.fonts?.minor || 'Arial',
+    headerFont: brandKit?.fonts?.major || 'Arial',
+    masterBgGradient,
+  };
+}
 
 function MiniBarChart({ chartData, colors: templateColors }: { chartData: any; colors: any }) {
   if (!chartData?.data || !chartData?.labels) return null;
@@ -293,8 +326,8 @@ function TrendArrow({ trend }: { trend?: string }) {
   return null;
 }
 
-function SlideFullPreview({ slide, index, template }: { slide: SlideContent; index: number; template: PresentationTemplate }) {
-  const colors = TEMPLATE_COLORS[template];
+function SlideFullPreview({ slide, index, template, brandColors }: { slide: SlideContent; index: number; template: PresentationTemplate; brandColors?: { bg: string; accent: string; headerBg: string; headerText: string; bodyFont: string; headerFont: string; masterBgGradient?: string } }) {
+  const colors = brandColors || DEFAULT_TEMPLATE_COLORS[template];
   const isTitle = slide.slideType === 'title' || slide.slideType === 'section_divider' || slide.slideType === 'image_feature';
   const hasImage = (slide.slideType === 'image_feature' || slide.slideType === 'section_divider') && slide.imageCategory;
   const imageUrl = hasImage ? `/images/presentation-library/${slide.imageCategory}-1.jpg` : null;
@@ -314,30 +347,30 @@ function SlideFullPreview({ slide, index, template }: { slide: SlideContent; ind
         </>
       )}
       {isTitle && !hasImage && (
-        <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${colors.bg} 0%, ${colors.accent}33 100%)` }} />
+        <div className="absolute inset-0" style={{ background: ('masterBgGradient' in colors && colors.masterBgGradient) || `linear-gradient(135deg, ${colors.bg} 0%, ${colors.accent}33 100%)` }} />
       )}
 
       {!isTitle && (
         <div className="h-[8%] flex items-center justify-between px-[4%]" style={{ backgroundColor: colors.headerBg }}>
-          <span className="text-white font-semibold text-[clamp(7px,1.1vw,13px)] truncate">{slide.title}</span>
+          <span className="text-white font-semibold text-[clamp(7px,1.1vw,13px)] truncate" style={{ fontFamily: colors.headerFont }}>{slide.title}</span>
           <span className="text-white/50 text-[clamp(5px,0.5vw,7px)] shrink-0 ml-2">{index + 1}</span>
         </div>
       )}
 
-      <div className={`${isTitle ? 'h-full' : 'h-[92%]'} p-[4%] flex flex-col relative`}>
+      <div className={`${isTitle ? 'h-full' : 'h-[92%]'} p-[4%] flex flex-col relative`} style={{ fontFamily: colors.bodyFont }}>
         {isTitle && (
           <div className="flex-1 flex flex-col justify-center relative z-10">
             <div className="w-12 h-[2px] mb-3" style={{ backgroundColor: colors.accent }} />
-            <p className="font-bold text-[clamp(14px,2.2vw,28px)] leading-tight text-white">
+            <p className="font-bold text-[clamp(14px,2.2vw,28px)] leading-tight text-white" style={{ fontFamily: colors.headerFont }}>
               {slide.title}
             </p>
             {slide.subtitle && (
-              <p className="mt-2 text-[clamp(8px,1.1vw,14px)] text-white/70 leading-snug">
+              <p className="mt-2 text-[clamp(8px,1.1vw,14px)] text-white/70 leading-snug" style={{ fontFamily: colors.bodyFont }}>
                 {slide.subtitle}
               </p>
             )}
             {slide.bodyContent && (
-              <p className="mt-3 text-[clamp(6px,0.8vw,10px)] text-white/40">
+              <p className="mt-3 text-[clamp(6px,0.8vw,10px)] text-white/40" style={{ fontFamily: colors.bodyFont }}>
                 {slide.bodyContent}
               </p>
             )}
@@ -491,6 +524,8 @@ interface BrandTemplate {
     slideWidth: number;
     slideHeight: number;
     layouts: Array<{ name: string; type: string; placeholders: Array<{ type: string; name?: string; x: number; y: number; w: number; h: number }> }>;
+    masterBackgroundColor?: string;
+    masterBackground?: { type: string; color?: string; gradientStops?: Array<{ color: string; position: number }>; gradientDirection?: string; gradientAngle?: number };
     sampleSlideCount: number;
   };
 }
@@ -1056,6 +1091,10 @@ export default function PresentationStudioPage() {
 
   const currentTemplate = templateOverride || plan?.recommendedTemplate || 'executive_modern';
 
+  const previewBrandColors = activeTemplate && activeTemplate.id !== 'default'
+    ? brandKitToPreviewColors(activeTemplate.brandKit)
+    : undefined;
+
   if (step === 'priorities' && priorityAdvice) {
     const IMPACT_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
       high: { label: 'High Impact', color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
@@ -1338,7 +1377,7 @@ export default function PresentationStudioPage() {
 
                         <div className="p-4">
                           <div className="max-w-lg mx-auto">
-                            <SlideFullPreview slide={slide} index={idx} template={currentTemplate} />
+                            <SlideFullPreview slide={slide} index={idx} template={currentTemplate} brandColors={previewBrandColors} />
                           </div>
                         </div>
 
@@ -1774,7 +1813,7 @@ export default function PresentationStudioPage() {
                 </DialogTitle>
               </DialogHeader>
               <div className="py-4">
-                <SlideFullPreview slide={plan.slides[fullScreenSlide]} index={fullScreenSlide} template={currentTemplate} />
+                <SlideFullPreview slide={plan.slides[fullScreenSlide]} index={fullScreenSlide} template={currentTemplate} brandColors={previewBrandColors} />
               </div>
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <Button variant="outline" size="sm" onClick={() => setFullScreenSlide(Math.max(0, fullScreenSlide - 1))} disabled={fullScreenSlide === 0} data-testid="button-fullscreen-prev">

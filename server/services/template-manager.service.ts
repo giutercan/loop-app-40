@@ -101,12 +101,19 @@ export async function uploadTemplate(fileName: string, fileBuffer: Buffer): Prom
     name: cleanName,
     uploadedAt: new Date().toISOString(),
     brandKit,
+    rawFileBase64: fileBuffer.toString("base64"),
   };
 
   templates.set(id, parsed);
   activeTemplateId = id;
 
   return parsed;
+}
+
+export function getActiveTemplateBuffer(): Buffer | null {
+  const active = getActiveTemplate();
+  if (!active || active.id === "default" || !active.rawFileBase64) return null;
+  return Buffer.from(active.rawFileBase64, "base64");
 }
 
 export function getTemplates(): ParsedTemplate[] {
