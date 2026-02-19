@@ -41,6 +41,24 @@ export type PresentationTemplate = 'executive_modern' | 'data_driven' | 'visual_
 
 export type TopicCategory = 'discovery_insights' | 'stakeholder_priorities' | 'kpi_commitments' | 'alignment_progress' | 'value_realization' | 'evidence_pack' | 'success_stories' | 'green_sheet_objectives' | 'growth_accelerator' | 'competitive_landscape';
 
+export interface AudiencePriority {
+  id: string;
+  title: string;
+  description: string;
+  recommendation: string;
+  rationale: string;
+  impact: 'high' | 'medium' | 'low';
+  dataSupport: 'strong' | 'moderate' | 'weak';
+  relatedTopics: TopicCategory[];
+}
+
+export interface AudiencePriorityAdvice {
+  top3: AudiencePriority[];
+  alternatives: AudiencePriority[];
+  audienceInsight: string;
+  winningStrategy: string;
+}
+
 export interface PresentationRequest {
   accountId: number;
   projectId: number;
@@ -53,6 +71,7 @@ export interface PresentationRequest {
   userBrief?: string;
   additionalMaterials?: string;
   gapAnswers?: Array<{ question: string; answer: string }>;
+  audiencePriorities?: AudiencePriority[];
   brandTemplate?: {
     name: string;
     colors: Record<string, string>;
@@ -1253,6 +1272,9 @@ CONTEXT:
 - Custom Title: ${request.customTitle || 'auto-generate'}
 - Custom Subtitle: ${request.customSubtitle || 'auto-generate'}
 
+${request.audiencePriorities?.length ? `AUDIENCE PRIORITIES (User-confirmed — these are the TOP things this audience cares about. Structure the entire narrative around these priorities):
+${request.audiencePriorities.map((p, i) => `${i + 1}. ${p.title}: ${p.description}\n   Recommendation: ${p.recommendation}`).join('\n')}
+IMPORTANT: These priorities should drive the slide structure, data emphasis, and narrative arc. Each priority should be clearly addressed in at least 1-2 slides.\n` : ''}
 ${request.userBrief ? `CONSULTANT'S BRIEF:\n${request.userBrief}\n` : ''}
 ${request.additionalMaterials ? `ADDITIONAL CONTEXT/MATERIALS:\n${request.additionalMaterials}\n` : ''}
 ${request.gapAnswers?.length ? `CONSULTANT'S ANSWERS TO GAP QUESTIONS:\n${request.gapAnswers.map(ga => `Q: ${ga.question}\nA: ${ga.answer}`).join('\n')}\n` : ''}
@@ -1853,6 +1875,103 @@ export function generateCoaching(
   coaching.push(templateTips[selectedTemplate]);
 
   return coaching;
+}
+
+export async function generateAudiencePriorities(
+  accountId: number,
+  projectId: number,
+  purpose: PresentationPurpose,
+  audience: PresentationAudience,
+  selectedTopics: TopicCategory[]
+): Promise<AudiencePriorityAdvice> {
+  const aggregatedData = await aggregatePresentationData(accountId, projectId, selectedTopics);
+  const dataSummary = summarizeDataForPrompt(aggregatedData, selectedTopics);
+  const audienceContext = AUDIENCE_CONTEXT[audience];
+  const purposeContext = PURPOSE_CONTEXT[purpose];
+
+  const prompt = `You are a senior Korn Ferry presentation strategist and audience psychologist. Your job is to identify what THIS specific audience will care about MOST in this presentation — and coach the consultant on how to frame the conversation for maximum impact.
+
+CONTEXT:
+- Account: ${aggregatedData.account?.name || 'Unknown'} (${aggregatedData.account?.industry || 'Unknown industry'})
+- Purpose: ${purpose} - ${purposeContext}
+- Audience: ${audience} - ${audienceContext}
+- Selected Topics: ${selectedTopics.join(', ')}
+
+AVAILABLE DATA:
+${dataSummary}
+
+TASK: Analyze this specific situation and return a JSON object with:
+
+1. "top3" - The TOP 3 things this audience will care about most. These are not generic — they should reflect what matters given THIS account's data, THIS purpose, and THIS audience type. For each:
+   - "id": unique identifier (e.g., "roi-evidence")
+   - "title": Concise priority name (3-6 words)
+   - "description": What the audience is thinking/feeling about this (2-3 sentences, written from audience's perspective)
+   - "recommendation": Specific tactical advice on how to address this in the presentation (2-3 sentences, actionable)
+   - "rationale": Why this priority matters for moving the conversation forward (1-2 sentences)
+   - "impact": "high" | "medium" | "low" — how much this will influence the audience's decision
+   - "dataSupport": "strong" | "moderate" | "weak" — how well the available data supports this priority
+   - "relatedTopics": which of the selected topics connect to this priority
+
+2. "alternatives" - 5-6 alternative priorities the consultant could swap in. Same structure as top3 items.
+
+3. "audienceInsight" - A 2-3 sentence psychological profile of what THIS audience type typically needs to feel confident and move forward. What's their unspoken concern?
+
+4. "winningStrategy" - A 2-3 sentence description of the ideal narrative strategy to win this audience over, given the available data and purpose. What's the story arc that will resonate?
+
+IMPORTANT: Be specific to the data available. If there are strong KPIs, emphasize evidence. If discovery is early, emphasize vision and methodology. If competitive landscape is present, address positioning. Never be generic — reference actual data points, KPI names, or evidence items where possible.
+
+Return ONLY valid JSON.`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: "You are a Korn Ferry audience analysis expert. You deeply understand what different executive audiences care about and how to frame presentations for maximum impact. Always respond with valid JSON." },
+        { role: "user", content: prompt }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.7,
+      max_tokens: 4000,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error("Empty AI response");
+
+    const result = JSON.parse(content);
+
+    const mapPriority = (p: any, idx: number): AudiencePriority => ({
+      id: p.id || `priority-${idx}`,
+      title: p.title || 'Untitled Priority',
+      description: p.description || '',
+      recommendation: p.recommendation || '',
+      rationale: p.rationale || '',
+      impact: p.impact || 'medium',
+      dataSupport: p.dataSupport || 'moderate',
+      relatedTopics: (p.relatedTopics || []).filter((t: string) => selectedTopics.includes(t as TopicCategory)),
+    });
+
+    return {
+      top3: (result.top3 || []).slice(0, 3).map(mapPriority),
+      alternatives: (result.alternatives || []).slice(0, 8).map(mapPriority),
+      audienceInsight: result.audienceInsight || '',
+      winningStrategy: result.winningStrategy || '',
+    };
+  } catch (error: any) {
+    console.error("[PresentationStudio] Audience priorities generation failed:", error);
+    return {
+      top3: [
+        { id: 'roi-impact', title: 'ROI & Business Impact', description: 'The audience wants to see measurable return on investment and clear business outcomes.', recommendation: 'Lead with quantified results and before/after comparisons.', rationale: 'Decision-makers need evidence that investment is paying off.', impact: 'high', dataSupport: 'moderate', relatedTopics: [] },
+        { id: 'strategic-alignment', title: 'Strategic Alignment', description: 'They need to see how this work connects to their broader organizational strategy.', recommendation: 'Map your findings to their stated strategic priorities.', rationale: 'Ensures continued executive sponsorship and budget.', impact: 'high', dataSupport: 'moderate', relatedTopics: [] },
+        { id: 'next-steps', title: 'Clear Next Steps', description: 'The audience wants to know what happens next and what decisions they need to make.', recommendation: 'End with 2-3 specific, time-bound action items.', rationale: 'Moves the conversation forward and demonstrates momentum.', impact: 'medium', dataSupport: 'strong', relatedTopics: [] },
+      ],
+      alternatives: [
+        { id: 'risk-mitigation', title: 'Risk Mitigation', description: 'What risks exist and how are they being managed?', recommendation: 'Address risks head-on with mitigation plans.', rationale: 'Builds trust through transparency.', impact: 'medium', dataSupport: 'moderate', relatedTopics: [] },
+        { id: 'competitive-edge', title: 'Competitive Differentiation', description: 'How does this create competitive advantage?', recommendation: 'Position outcomes against market benchmarks.', rationale: 'Justifies investment in competitive context.', impact: 'medium', dataSupport: 'weak', relatedTopics: [] },
+      ],
+      audienceInsight: 'This audience needs confidence that the engagement is on track and delivering measurable value.',
+      winningStrategy: 'Lead with evidence, anchor to strategic goals, and close with clear momentum toward the next milestone.',
+    };
+  }
 }
 
 export async function generatePresentationPlan(

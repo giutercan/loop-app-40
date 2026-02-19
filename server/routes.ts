@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { storage } from "./storage";
 import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale, generateStrategicPillars, generateStorySuggestion, generateDiscoveryKpiSuggestions, enrichContactWithAI, openai, generateCompetitiveIntelligence, generateKPIValueCaseRecommendations, generateLiveIntelligence, generateEvidencePackRecommendations, generateItemCoaching, researchMeetingAttendee } from "./ai";
 import { EvidencePackService } from "./services/evidence-pack.service";
-import { generatePresentationPlan, aggregatePresentationData, getProjectContextSummary, generateCoachRecommendations, KF_CLIENT_STORIES, getRelevantKFStories, savePresentation, getSavedPresentations, getSavedPresentation, deleteSavedPresentation, type PresentationRequest, type TopicCategory } from "./services/presentation-studio.service";
+import { generatePresentationPlan, generateAudiencePriorities, aggregatePresentationData, getProjectContextSummary, generateCoachRecommendations, KF_CLIENT_STORIES, getRelevantKFStories, savePresentation, getSavedPresentations, getSavedPresentation, deleteSavedPresentation, type PresentationRequest, type TopicCategory, type AudiencePriorityAdvice } from "./services/presentation-studio.service";
 import { uploadTemplate, getTemplates, getTemplate, getActiveTemplate, setActiveTemplate, deleteTemplate, getActiveBrandKit, mapBrandKitToExportColors, getTemplateLayoutForSlideType, isCustomBrandTemplate } from "./services/template-manager.service";
 import type { TemplateDecorativeShape, TemplateBackground, TemplateSlideLayout } from "./services/template-parser.service";
 import pptxgenModule from "pptxgenjs";
@@ -18030,6 +18030,20 @@ Return JSON:
       res.json(recommendation);
     } catch (error: any) {
       console.error("Error generating coach recommendations:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/presentations/audience-priorities", async (req, res) => {
+    try {
+      const { accountId, projectId, purpose, audience, selectedTopics } = req.body;
+      if (!accountId || !projectId || !purpose || !audience || !selectedTopics?.length) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      const priorities = await generateAudiencePriorities(accountId, projectId, purpose, audience, selectedTopics);
+      res.json(priorities);
+    } catch (error: any) {
+      console.error("Error generating audience priorities:", error);
       res.status(500).json({ error: error.message });
     }
   });

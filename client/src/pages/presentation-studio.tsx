@@ -113,6 +113,24 @@ interface CoachingRecommendation {
   relatedTopic?: TopicCategory;
 }
 
+interface AudiencePriority {
+  id: string;
+  title: string;
+  description: string;
+  recommendation: string;
+  rationale: string;
+  impact: 'high' | 'medium' | 'low';
+  dataSupport: 'strong' | 'moderate' | 'weak';
+  relatedTopics: TopicCategory[];
+}
+
+interface AudiencePriorityAdvice {
+  top3: AudiencePriority[];
+  alternatives: AudiencePriority[];
+  audienceInsight: string;
+  winningStrategy: string;
+}
+
 interface PresentationPlan {
   recommendedTemplate: PresentationTemplate;
   templateRationale: string;
@@ -489,7 +507,9 @@ export default function PresentationStudioPage() {
   const [templateOverride, setTemplateOverride] = useState<PresentationTemplate | null>(null);
   const [customTitle, setCustomTitle] = useState('');
   const [plan, setPlan] = useState<PresentationPlan | null>(null);
-  const [step, setStep] = useState<'configure' | 'review'>('configure');
+  const [step, setStep] = useState<'configure' | 'priorities' | 'review'>('configure');
+  const [priorityAdvice, setPriorityAdvice] = useState<AudiencePriorityAdvice | null>(null);
+  const [selectedPriorities, setSelectedPriorities] = useState<AudiencePriority[]>([]);
   const [editingSlideIndex, setEditingSlideIndex] = useState<number | null>(null);
   const [fullScreenSlide, setFullScreenSlide] = useState<number | null>(null);
   const [refineInstruction, setRefineInstruction] = useState('');
@@ -544,6 +564,8 @@ export default function PresentationStudioPage() {
     setTemplateOverride(null);
     setCustomTitle('');
     setEditingSlideIndex(null);
+    setPriorityAdvice(null);
+    setSelectedPriorities([]);
     toast({ title: 'Workspace Cleared', description: 'Ready to create a new presentation.' });
   }
 
@@ -700,6 +722,44 @@ export default function PresentationStudioPage() {
     }
   }, [topicsData]);
 
+  const prioritiesMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/presentations/audience-priorities', {
+        accountId: selectedAccountId, projectId: selectedProjectId,
+        purpose, audience, selectedTopics,
+      });
+      return res.json();
+    },
+    onSuccess: (data: AudiencePriorityAdvice) => {
+      setPriorityAdvice(data);
+      setSelectedPriorities(data.top3.slice(0, 3));
+      setStep('priorities');
+    },
+    onError: () => {
+      toast({ title: 'Could not analyze audience', description: 'Proceeding with default generation.', variant: 'destructive' });
+      setSelectedPriorities([]);
+      setPriorityAdvice(null);
+      generateMutation.mutate();
+    },
+  });
+
+  function swapPriority(removeIdx: number, newPriority: AudiencePriority) {
+    setSelectedPriorities(prev => {
+      const next = [...prev];
+      next[removeIdx] = newPriority;
+      return next;
+    });
+  }
+
+  function movePriority(fromIdx: number, toIdx: number) {
+    setSelectedPriorities(prev => {
+      const next = [...prev];
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      return next;
+    });
+  }
+
   const generateMutation = useMutation({
     mutationFn: async () => {
       const gapAnswersList = Object.entries(gapAnswers)
@@ -716,6 +776,7 @@ export default function PresentationStudioPage() {
         userBrief: userBrief || undefined,
         additionalMaterials: additionalMaterials || undefined,
         gapAnswers: gapAnswersList.length > 0 ? gapAnswersList : undefined,
+        audiencePriorities: selectedPriorities.length > 0 ? selectedPriorities : undefined,
       });
       return res.json();
     },
@@ -994,6 +1055,202 @@ export default function PresentationStudioPage() {
   }
 
   const currentTemplate = templateOverride || plan?.recommendedTemplate || 'executive_modern';
+
+  if (step === 'priorities' && priorityAdvice) {
+    const IMPACT_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+      high: { label: 'High Impact', color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
+      medium: { label: 'Medium Impact', color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30' },
+      low: { label: 'Low Impact', color: 'text-gray-600 dark:text-gray-400', bg: 'bg-gray-50 dark:bg-gray-900/30' },
+    };
+    const DATA_SUPPORT_CONFIG: Record<string, { label: string; color: string }> = {
+      strong: { label: 'Strong Data', color: 'text-emerald-600 dark:text-emerald-400' },
+      moderate: { label: 'Moderate Data', color: 'text-amber-600 dark:text-amber-400' },
+      weak: { label: 'Weak Data', color: 'text-red-600 dark:text-red-400' },
+    };
+
+    const availableAlternatives = priorityAdvice.alternatives.filter(
+      alt => !selectedPriorities.some(sp => sp.id === alt.id)
+    );
+
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="border-b bg-background sticky top-0 z-40">
+          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3 flex-wrap">
+              <Button variant="ghost" size="icon" onClick={() => setStep('configure')} data-testid="button-back-from-priorities">
+                <ArrowLeft className="w-4 h-4" />
+              </Button>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Target className="w-5 h-5 text-[#009B77]" />
+                  <h1 className="text-lg font-semibold text-foreground">Audience Priority Advisor</h1>
+                </div>
+                <p className="text-xs text-muted-foreground">What will your audience care about most?</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button variant="outline" size="sm" onClick={() => { setSelectedPriorities([]); generateMutation.mutate(); }} disabled={generateMutation.isPending} data-testid="button-skip-priorities">
+                Skip
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => generateMutation.mutate()}
+                disabled={generateMutation.isPending}
+                data-testid="button-generate-with-priorities"
+              >
+                {generateMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                {generateMutation.isPending ? 'Generating...' : 'Generate with These Priorities'}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-6xl mx-auto px-4 py-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              <Card className="p-4">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <Brain className="w-4 h-4 text-[#005971]" />
+                  <h3 className="text-sm font-semibold text-foreground">Audience Insight</h3>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed">{priorityAdvice.audienceInsight}</p>
+              </Card>
+
+              <div>
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
+                  <h3 className="text-sm font-semibold text-foreground">Your Top 3 Priorities</h3>
+                  <Badge variant="secondary" className="text-[10px]">{selectedPriorities.length} selected</Badge>
+                </div>
+                <div className="space-y-3">
+                  {selectedPriorities.map((priority, idx) => (
+                    <Card key={priority.id} className="p-4 border-[#009B77]/20 bg-[#009B77]/3">
+                      <div className="flex items-start gap-3">
+                        <div className="flex flex-col items-center gap-1 pt-1 shrink-0">
+                          <span className="w-6 h-6 rounded-full bg-[#009B77] text-white flex items-center justify-center text-xs font-bold">{idx + 1}</span>
+                          {idx > 0 && (
+                            <button onClick={() => movePriority(idx, idx - 1)} className="text-muted-foreground hover:text-foreground" data-testid={`button-move-up-${idx}`}>
+                              <ChevronLeft className="w-3.5 h-3.5 rotate-90" />
+                            </button>
+                          )}
+                          {idx < selectedPriorities.length - 1 && (
+                            <button onClick={() => movePriority(idx, idx + 1)} className="text-muted-foreground hover:text-foreground" data-testid={`button-move-down-${idx}`}>
+                              <ChevronRight className="w-3.5 h-3.5 rotate-90" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <h4 className="text-sm font-semibold text-foreground">{priority.title}</h4>
+                            <Badge variant="secondary" className={`text-[9px] ${IMPACT_CONFIG[priority.impact]?.bg} ${IMPACT_CONFIG[priority.impact]?.color}`}>
+                              {IMPACT_CONFIG[priority.impact]?.label}
+                            </Badge>
+                            <Badge variant="secondary" className={`text-[9px] ${DATA_SUPPORT_CONFIG[priority.dataSupport]?.color}`}>
+                              {DATA_SUPPORT_CONFIG[priority.dataSupport]?.label}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mb-2 leading-relaxed">{priority.description}</p>
+                          <div className="p-2.5 rounded-md bg-[#009B77]/5 border border-[#009B77]/10">
+                            <div className="flex items-start gap-1.5">
+                              <Lightbulb className="w-3.5 h-3.5 text-[#009B77] mt-0.5 shrink-0" />
+                              <p className="text-xs text-foreground leading-relaxed">{priority.recommendation}</p>
+                            </div>
+                          </div>
+                          {priority.rationale && (
+                            <p className="text-[10px] text-muted-foreground mt-1.5 italic">{priority.rationale}</p>
+                          )}
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={() => {
+                          const removed = selectedPriorities[idx];
+                          setSelectedPriorities(prev => prev.filter((_, i) => i !== idx));
+                          if (removed && !priorityAdvice.alternatives.some(a => a.id === removed.id)) {
+                            setPriorityAdvice(prev => prev ? { ...prev, alternatives: [...prev.alternatives, removed] } : prev);
+                          }
+                        }} data-testid={`button-remove-priority-${idx}`}>
+                          <X className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                  {selectedPriorities.length === 0 && (
+                    <Card className="p-6 text-center">
+                      <p className="text-sm text-muted-foreground">No priorities selected. Add from the alternatives list or re-analyze.</p>
+                    </Card>
+                  )}
+                </div>
+              </div>
+
+              <Card className="p-4">
+                <div className="flex items-start gap-2">
+                  <Compass className="w-4 h-4 text-[#A3238E] mt-0.5 shrink-0" />
+                  <div>
+                    <h4 className="text-sm font-semibold text-foreground mb-1">Winning Strategy</h4>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{priorityAdvice.winningStrategy}</p>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            <div className="space-y-4">
+              <Card className="p-4">
+                <h3 className="text-sm font-semibold text-foreground mb-3">Alternative Priorities</h3>
+                <p className="text-[10px] text-muted-foreground mb-3">Click to add to your Top 3, or swap with an existing priority.</p>
+                <div className="space-y-2">
+                  {availableAlternatives.map((alt) => (
+                    <button
+                      key={alt.id}
+                      className="w-full text-left p-3 rounded-md border border-border hover-elevate transition-colors"
+                      onClick={() => {
+                        if (selectedPriorities.length < 3) {
+                          setSelectedPriorities(prev => [...prev, alt]);
+                        } else {
+                          swapPriority(2, alt);
+                          toast({ title: 'Swapped Priority', description: `Replaced #3 with "${alt.title}".` });
+                        }
+                      }}
+                      data-testid={`button-add-alt-${alt.id}`}
+                    >
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="text-xs font-medium text-foreground">{alt.title}</span>
+                        <Badge variant="secondary" className={`text-[9px] ${IMPACT_CONFIG[alt.impact]?.bg} ${IMPACT_CONFIG[alt.impact]?.color}`}>
+                          {IMPACT_CONFIG[alt.impact]?.label}
+                        </Badge>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground line-clamp-2">{alt.description}</p>
+                      <div className="flex items-center gap-1 mt-1.5">
+                        <Plus className="w-3 h-3 text-[#009B77]" />
+                        <span className="text-[10px] text-[#009B77] font-medium">
+                          {selectedPriorities.length < 3 ? 'Add to Top 3' : 'Swap with #3'}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                  {availableAlternatives.length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-2">All alternatives are in your Top 3.</p>
+                  )}
+                </div>
+              </Card>
+
+              <Card className="p-4">
+                <h4 className="text-xs font-semibold text-muted-foreground mb-2">Quick Actions</h4>
+                <div className="space-y-2">
+                  <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => {
+                    setSelectedPriorities(priorityAdvice.top3.slice(0, 3));
+                  }} data-testid="button-reset-priorities">
+                    <RotateCcw className="w-3 h-3 mr-2" />
+                    Reset to AI Recommendations
+                  </Button>
+                  <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => prioritiesMutation.mutate()} disabled={prioritiesMutation.isPending} data-testid="button-reanalyze">
+                    {prioritiesMutation.isPending ? <Loader2 className="w-3 h-3 mr-2 animate-spin" /> : <RefreshCcw className="w-3 h-3 mr-2" />}
+                    Re-analyze Audience
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (step === 'review' && plan) {
     return (
@@ -1860,12 +2117,12 @@ export default function PresentationStudioPage() {
                 <Button
                   className="w-full"
                   size="lg"
-                  onClick={() => generateMutation.mutate()}
-                  disabled={selectedTopics.length === 0 || !selectedProjectId || generateMutation.isPending}
-                  data-testid="button-generate"
+                  onClick={() => prioritiesMutation.mutate()}
+                  disabled={selectedTopics.length === 0 || !selectedProjectId || prioritiesMutation.isPending}
+                  data-testid="button-analyze-audience"
                 >
-                  {generateMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
-                  {generateMutation.isPending ? 'Generating...' : 'Generate Presentation'}
+                  {prioritiesMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Target className="w-4 h-4 mr-2" />}
+                  {prioritiesMutation.isPending ? 'Analyzing Audience...' : 'Analyze Audience & Continue'}
                 </Button>
               </div>
             </ScrollArea>
