@@ -21,6 +21,12 @@ export interface PresentationRequest {
   userBrief?: string;
   additionalMaterials?: string;
   gapAnswers?: Array<{ question: string; answer: string }>;
+  brandTemplate?: {
+    name: string;
+    colors: Record<string, string>;
+    fonts: { major: string; minor: string };
+    layouts: Array<{ name: string; type: string }>;
+  };
 }
 
 export interface SlideContent {
@@ -849,10 +855,22 @@ TEMPLATE GUIDELINES:
 IMAGE CATEGORIES (assign to image_feature and section_divider slides):
 - 'professional', 'teamwork', 'technology', 'leadership', 'cityscape', 'innovation'
 
-BRAND COLORS (REQUIRED for chart colors and metric colors - assign specific colors):
+${request.brandTemplate ? `BRAND TEMPLATE: "${request.brandTemplate.name}"
+- Fonts: Heading="${request.brandTemplate.fonts.major}", Body="${request.brandTemplate.fonts.minor}"
+- Brand Colors: ${Object.entries(request.brandTemplate.colors).map(([k, v]) => `${k}: "#${v}"`).join(', ')}
+- Available Layouts: ${request.brandTemplate.layouts.map(l => l.name).join(', ')}
+Use these brand colors for charts, metrics, and visual elements. Prioritize accent1 and accent2 for primary chart colors.` : `BRAND COLORS (REQUIRED for chart colors and metric colors - assign specific colors):
 - Navy: "#00173B", Forest Green: "#00634F", Ocean Blue: "#005971"
 - Emerald: "#009B77" (for positive/success), Mint: "#05C690" (highlights)
-- Lime: "#8DC63F" (growth), Cyan: "#00ADBB" (info), Purple: "#A3238E" (premium)
+- Lime: "#8DC63F" (growth), Cyan: "#00ADBB" (info), Purple: "#A3238E" (premium)`}
+
+IMAGE LIBRARY: When creating image_feature slides, reference available branded images using these categories:
+- 'professional' - business professional headshots and office settings
+- 'teamwork' - collaborative team scenes
+- 'technology' - digital transformation and tech innovation
+- 'leadership' - executive leadership and boardroom
+- 'cityscape' - corporate skylines and modern architecture
+- 'innovation' - creative thinking and breakthrough moments
 
 SLIDE TYPE REQUIREMENTS:
 - title: Must have title, subtitle, and bodyContent with date/context

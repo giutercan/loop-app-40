@@ -7,6 +7,8 @@ import { uploadTemplate, getTemplates, getTemplate, getActiveTemplate, setActive
 import pptxgenModule from "pptxgenjs";
 const PptxGenJS = (pptxgenModule as any).default || pptxgenModule;
 import multer from "multer";
+import fs from "fs";
+import path from "path";
 import { z } from "zod";
 import crypto from "crypto";
 import { OUTCOME_JOURNEY_TEMPLATES, type SolutionPatternId } from "@shared/value-frameworks";
@@ -18039,6 +18041,18 @@ Return JSON:
       if (!body.accountId || !body.projectId || !body.purpose || !body.audience || !body.selectedTopics?.length) {
         return res.status(400).json({ error: "Missing required fields: accountId, projectId, purpose, audience, selectedTopics" });
       }
+
+      const activeBrandKit = getActiveBrandKit();
+      const activeTempl = getActiveTemplate();
+      if (activeTempl && activeTempl.id !== 'default') {
+        body.brandTemplate = {
+          name: activeTempl.name,
+          colors: activeBrandKit.colors,
+          fonts: activeBrandKit.fonts,
+          layouts: activeBrandKit.layouts.map(l => ({ name: l.name, type: l.type })),
+        };
+      }
+
       const plan = await generatePresentationPlan(body);
       res.json(plan);
     } catch (error: any) {
@@ -18275,12 +18289,51 @@ CRITICAL RULES:
     }
   });
 
+  app.get("/api/presentations/image-library", (_req, res) => {
+    const categories = Object.entries(IMAGE_LIBRARY).map(([category, files]) => ({
+      category,
+      images: files.map(f => ({
+        filename: f,
+        url: `/images/presentation-library/${f}`,
+      })),
+    }));
+    res.json(categories);
+  });
+
+  const IMAGE_LIBRARY: Record<string, string[]> = {
+    professional: ['professional-1.jpg', 'professional-2.jpg', 'professional-3.jpg'],
+    teamwork: ['teamwork-1.jpg', 'teamwork-2.jpg'],
+    technology: ['technology-1.jpg', 'technology-2.jpg'],
+    leadership: ['leadership-1.jpg', 'leadership-2.jpg', 'leadership-3.jpg'],
+    cityscape: ['cityscape-1.jpg', 'cityscape-2.png'],
+    innovation: ['innovation-1.jpg', 'innovation-2.jpg'],
+  };
+
+  function getImagePath(category: string): string | null {
+    const images = IMAGE_LIBRARY[category] || IMAGE_LIBRARY['professional'];
+    if (!images || images.length === 0) return null;
+    const selected = images[Math.floor(Math.random() * images.length)];
+    const fullPath = path.join(process.cwd(), 'public', 'images', 'presentation-library', selected);
+    return fs.existsSync(fullPath) ? fullPath : null;
+  }
+
   app.post("/api/presentations/export", async (req, res) => {
     try {
       const { slides: providedSlides, plan: providedPlan, ...requestBody } = req.body;
       const body = requestBody as PresentationRequest;
       if (!body.accountId || !body.projectId || !body.purpose || !body.audience || !body.selectedTopics?.length) {
         return res.status(400).json({ error: "Missing required fields: accountId, projectId, purpose, audience, selectedTopics" });
+      }
+
+      const activeBrandKit = getActiveBrandKit();
+      const activeTempl = getActiveTemplate();
+      if (activeTempl && activeTempl.id !== 'default') {
+        body.brandTemplate = {
+          name: activeTempl.name,
+          colors: activeBrandKit.colors,
+          fonts: activeBrandKit.fonts,
+          layouts: activeBrandKit.layouts.map(l => ({ name: l.name, type: l.type })),
+        };
       }
 
       let plan;
@@ -18302,8 +18355,6 @@ CRITICAL RULES:
         visual_narrative: { titleBg: colors.forestGreen, accentColor: colors.purple, headerColor: colors.forestGreen, textColor: "333333", subtitleColor: colors.gray },
       };
       const config = templateConfig[template] || templateConfig.executive_modern;
-
-      const activeBrandKit = getActiveBrandKit();
 
       const pres = new PptxGenJS();
       pres.defineLayout({ name: "KF_WIDE", width: colors.slideWidth, height: colors.slideHeight });
@@ -18374,18 +18425,42 @@ CRITICAL RULES:
           }
 
           case "section_divider": {
-            const secLayout = getLayoutPos("section_divider", "title");
-            const secY = secLayout ? secLayout.y : 2.5;
-            const secH = secLayout ? secLayout.h : 2.5;
-            slide.addShape(pres.ShapeType.rect, {
-              x: 0, y: secY, w: colors.slideWidth, h: secH,
-              fill: { color: config.accentColor },
-            });
+            const secImgPath = slideData.imageCategory ? getImagePath(slideData.imageCategory) : null;
+            if (secImgPath) {
+              try {
+                slide.addImage({
+                  path: secImgPath,
+                  x: 0, y: 0, w: colors.slideWidth, h: colors.slideHeight,
+                  sizing: { type: "cover", w: colors.slideWidth, h: colors.slideHeight },
+                });
+                slide.addShape(pres.ShapeType.rect, {
+                  x: 0, y: 0, w: colors.slideWidth, h: colors.slideHeight,
+                  fill: { color: config.accentColor.replace('#', ''), transparency: 40 },
+                });
+              } catch {
+                slide.addShape(pres.ShapeType.rect, {
+                  x: 0, y: 0, w: colors.slideWidth, h: colors.slideHeight,
+                  fill: { color: config.accentColor },
+                });
+              }
+            } else {
+              slide.addShape(pres.ShapeType.rect, {
+                x: 0, y: 0, w: colors.slideWidth, h: colors.slideHeight,
+                fill: { color: config.accentColor },
+              });
+            }
             slide.addText(slideData.title, {
               x: 0.8, y: 2.7, w: 11.7, h: 2.0,
-              fontSize: 30, fontFace: colors.bodyFont || "Arial",
+              fontSize: 30, fontFace: colors.headerFont || colors.bodyFont || "Arial",
               color: KF_COLORS.white, bold: true, align: "left", valign: "middle",
             });
+            if (slideData.subtitle) {
+              slide.addText(slideData.subtitle, {
+                x: 0.8, y: 4.8, w: 11.7, h: 0.6,
+                fontSize: 16, fontFace: colors.bodyFont || "Arial",
+                color: KF_COLORS.lightGray,
+              });
+            }
             break;
           }
 
@@ -18711,33 +18786,43 @@ CRITICAL RULES:
           }
 
           case "image_feature": {
-            slide.background = { color: config.titleBg };
-            slide.addShape(pres.ShapeType.rect, {
-              x: 0, y: 0, w: colors.slideWidth, h: 7.5,
-              fill: { color: config.titleBg },
-            });
-            slide.addShape(pres.ShapeType.rect, {
-              x: 0, y: 4.5, w: colors.slideWidth, h: 3.0,
-              fill: { color: "000000" },
-            });
+            const imgPath = slideData.imageCategory ? getImagePath(slideData.imageCategory) : null;
+
+            if (imgPath) {
+              try {
+                slide.addImage({
+                  path: imgPath,
+                  x: 0, y: 0, w: colors.slideWidth, h: colors.slideHeight,
+                  sizing: { type: "cover", w: colors.slideWidth, h: colors.slideHeight },
+                });
+                slide.addShape(pres.ShapeType.rect, {
+                  x: 0, y: 0, w: colors.slideWidth, h: colors.slideHeight,
+                  fill: { color: "000000", transparency: 50 },
+                });
+              } catch {
+                slide.background = { color: config.titleBg };
+              }
+            } else {
+              slide.background = { color: config.titleBg };
+            }
+
             slide.addText(slideData.title, {
-              x: 0.8, y: 4.8, w: 11.7, h: 0.8,
-              fontSize: 22, fontFace: colors.bodyFont || "Arial",
+              x: 0.8, y: 2.5, w: 11.7, h: 1.0,
+              fontSize: 28, fontFace: colors.headerFont || colors.bodyFont || "Arial",
               color: KF_COLORS.white, bold: true,
             });
-            if (slideData.bodyContent) {
-              slide.addText(slideData.bodyContent, {
-                x: 0.8, y: 5.7, w: 11.7, h: 1.2,
-                fontSize: 13, fontFace: colors.bodyFont || "Arial",
+            if (slideData.subtitle) {
+              slide.addText(slideData.subtitle, {
+                x: 0.8, y: 3.6, w: 11.7, h: 0.6,
+                fontSize: 16, fontFace: colors.bodyFont || "Arial",
                 color: KF_COLORS.lightGray,
               });
             }
-            if (slideData.imageCategory) {
-              slide.addText(`[${slideData.imageCategory.toUpperCase()} IMAGE]`, {
-                x: 3.0, y: 1.5, w: 7.3, h: 2.5,
+            if (slideData.bodyContent) {
+              slide.addText(slideData.bodyContent, {
+                x: 0.8, y: 4.5, w: 11.7, h: 2.0,
                 fontSize: 14, fontFace: colors.bodyFont || "Arial",
-                color: KF_COLORS.gray, align: "center", valign: "middle",
-                fill: { color: "E8E8E8" },
+                color: KF_COLORS.lightGray,
               });
             }
             break;
@@ -18782,60 +18867,81 @@ CRITICAL RULES:
   app.get("/api/presentations/topics/:projectId", async (req, res) => {
     try {
       const projectId = parseInt(req.params.projectId);
-      const topics: Record<string, { available: boolean; label: string }> = {};
+      const topics: Record<string, { available: boolean; label: string; dataPoints: number; description: string }> = {};
 
       try {
         const headlines = await storage.getHeadlines(projectId);
         const valueCases = await storage.getValueCases(projectId);
-        topics.discovery_insights = { available: headlines.length > 0 || valueCases.length > 0, label: "Discovery Insights" };
-      } catch { topics.discovery_insights = { available: false, label: "Discovery Insights" }; }
+        const questions = await storage.getDiscoveryQuestions(projectId);
+        const answeredQuestions = questions.filter((q: any) => q.answer);
+        const dp = answeredQuestions.length + headlines.length + valueCases.length;
+        topics.discovery_insights = { available: dp > 0, label: "Discovery Insights", dataPoints: dp, description: dp > 0 ? `${answeredQuestions.length} answered questions, ${headlines.length} headlines, ${valueCases.length} value cases` : 'No discovery data yet' };
+      } catch { topics.discovery_insights = { available: false, label: "Discovery Insights", dataPoints: 0, description: 'No discovery data yet' }; }
 
       try {
         const project = await storage.getProject(projectId);
         const greenSheet = project?.greenSheetData as any;
-        topics.stakeholder_priorities = { available: !!greenSheet?.meetingContact, label: "Stakeholder Priorities" };
-      } catch { topics.stakeholder_priorities = { available: false, label: "Stakeholder Priorities" }; }
+        const blueSheet = await storage.getBlueSheet(projectId);
+        const hasGS = !!greenSheet?.meetingContact;
+        const hasBS = !!(blueSheet?.data as any)?.buyingInfluences?.length;
+        const dp = (hasGS ? 1 : 0) + (hasBS ? (blueSheet?.data as any)?.buyingInfluences?.length || 1 : 0);
+        topics.stakeholder_priorities = { available: hasGS || hasBS, label: "Stakeholder Priorities", dataPoints: dp, description: hasGS || hasBS ? `${hasGS ? 'Green sheet contact' : ''}${hasGS && hasBS ? ', ' : ''}${hasBS ? 'Blue sheet influences' : ''}` : 'No stakeholder data' };
+      } catch { topics.stakeholder_priorities = { available: false, label: "Stakeholder Priorities", dataPoints: 0, description: 'No stakeholder data' }; }
 
       try {
         const commitments = await storage.getKpiCommitments(projectId);
-        topics.kpi_commitments = { available: commitments.length > 0, label: "KPI Commitments" };
-      } catch { topics.kpi_commitments = { available: false, label: "KPI Commitments" }; }
+        topics.kpi_commitments = { available: commitments.length > 0, label: "KPI Commitments", dataPoints: commitments.length, description: commitments.length > 0 ? `${commitments.length} KPI commitments tracked` : 'No KPIs defined' };
+      } catch { topics.kpi_commitments = { available: false, label: "KPI Commitments", dataPoints: 0, description: 'No KPIs defined' }; }
 
       try {
         const pack = await storage.getEvidencePackByProject(projectId);
-        topics.evidence_pack = { available: !!pack, label: "Evidence Pack" };
-      } catch { topics.evidence_pack = { available: false, label: "Evidence Pack" }; }
+        let itemCount = 0;
+        if (pack) {
+          try { const items = await storage.getEvidencePackItems(pack.id); itemCount = items.length; } catch {}
+        }
+        topics.evidence_pack = { available: !!pack, label: "Evidence Pack", dataPoints: itemCount, description: pack ? `${itemCount} evidence items collected` : 'No evidence pack' };
+      } catch { topics.evidence_pack = { available: false, label: "Evidence Pack", dataPoints: 0, description: 'No evidence pack' }; }
 
       try {
         const stories = await storage.getSuccessStories(projectId);
-        topics.success_stories = { available: stories.length > 0, label: "Success Stories" };
-      } catch { topics.success_stories = { available: false, label: "Success Stories" }; }
+        topics.success_stories = { available: stories.length > 0, label: "Success Stories", dataPoints: stories.length, description: stories.length > 0 ? `${stories.length} success stories` : 'No success stories' };
+      } catch { topics.success_stories = { available: false, label: "Success Stories", dataPoints: 0, description: 'No success stories' }; }
 
       try {
         const project = await storage.getProject(projectId);
-        topics.green_sheet_objectives = { available: !!project?.greenSheetData, label: "Green Sheet Objectives" };
-      } catch { topics.green_sheet_objectives = { available: false, label: "Green Sheet Objectives" }; }
+        const gs = project?.greenSheetData as any;
+        const hasObjective = !!gs?.callObjective || !!gs?.callPlanner;
+        const hasNarrative = !!project?.narrativeCanvas;
+        const dp = (hasObjective ? 1 : 0) + (hasNarrative ? 1 : 0);
+        topics.green_sheet_objectives = { available: !!gs, label: "Green Sheet Objectives", dataPoints: dp, description: gs ? `Meeting objectives${hasNarrative ? ' + narrative canvas' : ''}` : 'No green sheet' };
+      } catch { topics.green_sheet_objectives = { available: false, label: "Green Sheet Objectives", dataPoints: 0, description: 'No green sheet' }; }
 
       try {
         const canvases = await storage.getGrowthAcceleratorCanvases(projectId);
-        topics.growth_accelerator = { available: canvases.length > 0, label: "Growth Accelerator" };
-      } catch { topics.growth_accelerator = { available: false, label: "Growth Accelerator" }; }
+        topics.growth_accelerator = { available: canvases.length > 0, label: "Growth Accelerator", dataPoints: canvases.length, description: canvases.length > 0 ? `${canvases.length} growth canvases` : 'No growth accelerator data' };
+      } catch { topics.growth_accelerator = { available: false, label: "Growth Accelerator", dataPoints: 0, description: 'No growth accelerator data' }; }
 
       try {
         const blueSheet = await storage.getBlueSheet(projectId);
         const bsData = blueSheet?.data as any;
-        topics.competitive_landscape = { available: !!bsData?.competitions?.length, label: "Competitive Landscape" };
-      } catch { topics.competitive_landscape = { available: false, label: "Competitive Landscape" }; }
+        const compCount = bsData?.competitions?.length || 0;
+        topics.competitive_landscape = { available: compCount > 0, label: "Competitive Landscape", dataPoints: compCount, description: compCount > 0 ? `${compCount} competitors tracked` : 'No competitive data' };
+      } catch { topics.competitive_landscape = { available: false, label: "Competitive Landscape", dataPoints: 0, description: 'No competitive data' }; }
 
       try {
         const pillars = await storage.getStrategicPillars(projectId);
-        topics.alignment_progress = { available: pillars.length > 0, label: "Alignment Progress" };
-      } catch { topics.alignment_progress = { available: false, label: "Alignment Progress" }; }
+        const valueCases = await storage.getValueCases(projectId);
+        const dp = pillars.length + valueCases.length;
+        topics.alignment_progress = { available: dp > 0, label: "Alignment Progress", dataPoints: dp, description: dp > 0 ? `${pillars.length} pillars, ${valueCases.length} value cases` : 'No alignment data' };
+      } catch { topics.alignment_progress = { available: false, label: "Alignment Progress", dataPoints: 0, description: 'No alignment data' }; }
 
       try {
-        const metrics = await storage.getProjectValueMetrics(projectId);
-        topics.value_realization = { available: !!metrics, label: "Value Realization" };
-      } catch { topics.value_realization = { available: false, label: "Value Realization" }; }
+        const commitments = await storage.getKpiCommitments(projectId);
+        const withBaselines = commitments.filter((k: any) => k.baselineValue);
+        const withTargets = commitments.filter((k: any) => k.targetValue);
+        const dp = withBaselines.length + withTargets.length;
+        topics.value_realization = { available: dp > 0, label: "Value Realization", dataPoints: dp, description: dp > 0 ? `${withBaselines.length} baselines, ${withTargets.length} targets set` : 'No value realization metrics' };
+      } catch { topics.value_realization = { available: false, label: "Value Realization", dataPoints: 0, description: 'No value realization metrics' }; }
 
       res.json(topics);
     } catch (error: any) {

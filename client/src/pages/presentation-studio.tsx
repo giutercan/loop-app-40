@@ -269,6 +269,8 @@ function TrendArrow({ trend }: { trend?: string }) {
 function SlideFullPreview({ slide, index, template }: { slide: SlideContent; index: number; template: PresentationTemplate }) {
   const colors = TEMPLATE_COLORS[template];
   const isTitle = slide.slideType === 'title' || slide.slideType === 'section_divider' || slide.slideType === 'image_feature';
+  const hasImage = (slide.slideType === 'image_feature' || slide.slideType === 'section_divider') && slide.imageCategory;
+  const imageUrl = hasImage ? `/images/presentation-library/${slide.imageCategory}-1.jpg` : null;
 
   return (
     <div
@@ -278,7 +280,13 @@ function SlideFullPreview({ slide, index, template }: { slide: SlideContent; ind
         boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
       }}
     >
-      {isTitle && (
+      {hasImage && imageUrl && (
+        <>
+          <img src={imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+          <div className="absolute inset-0 bg-black/50" />
+        </>
+      )}
+      {isTitle && !hasImage && (
         <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${colors.bg} 0%, ${colors.accent}33 100%)` }} />
       )}
 
@@ -596,7 +604,7 @@ export default function PresentationStudioPage() {
       ? (topicsData as Record<string, any>)[td.id]
       : null;
     return {
-      id: td.id, label: td.label, description: '', icon: td.icon,
+      id: td.id, label: td.label, description: topicData?.description || '', icon: td.icon,
       available: topicData?.available ?? false,
       dataPoints: topicData?.dataPoints ?? 0,
     };
@@ -616,6 +624,17 @@ export default function PresentationStudioPage() {
     setCoachResult(null);
     setGapAnswers({});
   }, [selectedProjectId]);
+
+  useEffect(() => {
+    if (topicsData && typeof topicsData === 'object' && selectedTopics.length === 0 && !coachResult) {
+      const autoSelected = Object.entries(topicsData as Record<string, any>)
+        .filter(([, val]) => val?.available && val?.dataPoints > 0)
+        .map(([key]) => key as TopicCategory);
+      if (autoSelected.length > 0) {
+        setSelectedTopics(autoSelected);
+      }
+    }
+  }, [topicsData]);
 
   const generateMutation = useMutation({
     mutationFn: async () => {
@@ -1475,14 +1494,19 @@ export default function PresentationStudioPage() {
                         >
                           <Checkbox checked={isChecked} onCheckedChange={() => toggleTopic(topic.id)} data-testid={`checkbox-topic-${topic.id}`} />
                           <TopicIcon className={`w-4 h-4 shrink-0 ${isChecked ? 'text-[#009B77]' : 'text-muted-foreground'}`} />
-                          <span className="text-sm text-foreground flex-1">{topic.label}</span>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm text-foreground block">{topic.label}</span>
+                            {topic.description && (
+                              <span className="text-[10px] text-muted-foreground block truncate">{topic.description}</span>
+                            )}
+                          </div>
                           {topic.available ? (
-                            <Badge variant="secondary" className="text-[10px] bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300">
+                            <Badge variant="secondary" className="text-[10px] bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 shrink-0">
                               <CheckCircle2 className="w-3 h-3 mr-0.5" />
                               {topic.dataPoints}
                             </Badge>
                           ) : (
-                            <Badge variant="secondary" className="text-[10px] text-muted-foreground">No data</Badge>
+                            <Badge variant="secondary" className="text-[10px] text-muted-foreground shrink-0">No data</Badge>
                           )}
                         </label>
                       );
