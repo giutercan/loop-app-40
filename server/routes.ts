@@ -534,6 +534,8 @@ async function calculateKPIStatus(projectId: number, storage: typeof import("./s
 }
 
 export function registerRoutes(app: Express) {
+  let globalPresentationHistory: any[] = [];
+
   // Projects
   app.get("/api/projects", async (req, res) => {
     try {
@@ -18171,6 +18173,466 @@ Return the updated slide as a JSON object with the same structure. Keep the same
       console.error("Error refining slide:", error);
       res.status(500).json({ error: error.message });
     }
+  });
+
+  app.post("/api/presentations/readiness-score", async (req, res) => {
+    try {
+      const { slides, purpose, audience, audiencePriorities, accountName, projectName } = req.body;
+      if (!slides?.length) {
+        return res.status(400).json({ error: "No slides to evaluate" });
+      }
+
+      const slideSummary = slides.map((s: any, i: number) => `Slide ${i + 1} (${s.slideType}): "${s.title}" - ${(s.bulletPoints || []).join('; ').substring(0, 200)}`).join('\n');
+      const priorityContext = audiencePriorities?.length
+        ? `\nAUDIENCE PRIORITIES (top ${audiencePriorities.length}):\n${audiencePriorities.map((p: any, i: number) => `${i + 1}. ${p.priority} - ${p.rationale}`).join('\n')}`
+        : '';
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are a Korn Ferry presentation coach evaluating deck readiness for client delivery. Score presentations across 5 dimensions and provide actionable improvement suggestions. Be honest and constructive — sellers rely on your coaching to win deals.`
+          },
+          {
+            role: "user",
+            content: `Evaluate this presentation for client readiness.
+
+CONTEXT:
+- Account: ${accountName || 'Unknown'}
+- Project: ${projectName || 'Unknown'}
+- Purpose: ${purpose || 'customer_engagement'}
+- Target Audience: ${audience || 'client_sponsor'}
+${priorityContext}
+
+SLIDES (${slides.length} total):
+${slideSummary}
+
+Score each dimension 0-20 (total = 100). For each dimension, provide a brief assessment and specific improvement tips. Also provide per-slide suggestions for the weakest slides (up to 5).
+
+Return JSON:
+{
+  "overallScore": number (0-100),
+  "verdict": "ready" | "needs_work" | "not_ready",
+  "summary": "2-3 sentence overall assessment",
+  "dimensions": [
+    {
+      "name": "Narrative Flow",
+      "score": number (0-20),
+      "assessment": "brief assessment",
+      "tips": ["tip1", "tip2"]
+    },
+    {
+      "name": "Audience Alignment",
+      "score": number (0-20),
+      "assessment": "brief assessment",
+      "tips": ["tip1", "tip2"]
+    },
+    {
+      "name": "Data & Evidence",
+      "score": number (0-20),
+      "assessment": "brief assessment",
+      "tips": ["tip1", "tip2"]
+    },
+    {
+      "name": "Call to Action",
+      "score": number (0-20),
+      "assessment": "brief assessment",
+      "tips": ["tip1", "tip2"]
+    },
+    {
+      "name": "Completeness",
+      "score": number (0-20),
+      "assessment": "brief assessment",
+      "tips": ["tip1", "tip2"]
+    }
+  ],
+  "slideImprovements": [
+    {
+      "slideIndex": number,
+      "slideTitle": "string",
+      "issue": "what's weak",
+      "suggestion": "how to fix"
+    }
+  ],
+  "strengthHighlights": ["strength1", "strength2"],
+  "estimatedDeliveryMinutes": number
+}`
+          }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.6,
+        max_tokens: 3000,
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        return res.status(500).json({ error: "Empty AI response" });
+      }
+
+      const scorecard = JSON.parse(content);
+      res.json(scorecard);
+    } catch (error: any) {
+      console.error("Error generating readiness score:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/presentations/refine-slide-quick", async (req, res) => {
+    try {
+      const { slide, action, allSlides, purpose, audience, customInstruction } = req.body;
+      if (!slide || !action) {
+        return res.status(400).json({ error: "Missing required fields: slide, action" });
+      }
+
+      const narrativeContext = allSlides?.length
+        ? `\nFULL DECK CONTEXT (${allSlides.length} slides):\n${allSlides.map((s: any, i: number) => `${i + 1}. ${s.title} (${s.slideType})`).join('\n')}`
+        : '';
+
+      const actionPrompts: Record<string, string> = {
+        'make_compelling': 'Make this slide significantly more compelling and persuasive. Strengthen the language, add power words, sharpen the value proposition, and make the audience feel urgency to act.',
+        'simplify_csuite': 'Simplify this slide for a C-suite audience. Remove jargon, focus on business outcomes and ROI, use crisp executive language. Keep it to 3-4 key points maximum.',
+        'add_data': 'Enhance this slide with specific data points, metrics, benchmarks, and quantitative evidence. Reference industry statistics, Korn Ferry research, or market data where appropriate.',
+        'add_competitor': 'Add competitive differentiation to this slide. Highlight what makes Korn Ferry\'s approach unique compared to competitors. Include differentiating capabilities and proof points.',
+        'shorten': 'Make this slide significantly more concise. Cut unnecessary words, combine redundant points, and distill to the essential message.',
+        'storytelling': 'Reframe this slide using storytelling techniques. Add a narrative arc, client scenario, or relatable example that brings the point to life.',
+        'custom': customInstruction || 'Improve this slide based on best practices.',
+      };
+
+      const prompt = actionPrompts[action] || actionPrompts.custom;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are a Korn Ferry presentation expert coach. You refine individual slides to make them more effective for client delivery. Preserve the slide structure (id, slideType, topicSource) but improve the content. Return only the updated slide as valid JSON.`
+          },
+          {
+            role: "user",
+            content: `Refine this slide with the following action: ${action}
+
+INSTRUCTION: ${prompt}
+
+CURRENT SLIDE:
+${JSON.stringify(slide, null, 2)}
+
+CONTEXT:
+- Purpose: ${purpose || 'customer_engagement'}
+- Audience: ${audience || 'client_sponsor'}
+${narrativeContext}
+
+Return the complete updated slide as JSON. Keep id, slideType, topicSource unchanged. Update title, bulletPoints, talkTrack, speakerNotes, chartData, and any other content fields as needed.`
+          }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+        max_tokens: 2000,
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        return res.status(500).json({ error: "Empty AI response" });
+      }
+
+      let refined;
+      try {
+        refined = JSON.parse(content);
+      } catch {
+        return res.status(500).json({ error: "AI returned invalid JSON" });
+      }
+      if (!refined.title && !refined.slideType) {
+        return res.json({ ...slide, ...refined });
+      }
+      res.json(refined);
+    } catch (error: any) {
+      console.error("Error in quick refine:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/presentations/rehearsal-feedback", async (req, res) => {
+    try {
+      const { slides, talkingPoints, audience, purpose, audiencePriorities, timeSpentSeconds } = req.body;
+      if (!slides?.length || !talkingPoints) {
+        return res.status(400).json({ error: "Missing slides or talking points" });
+      }
+
+      const slideSummary = slides.map((s: any, i: number) => `Slide ${i + 1}: "${s.title}" | Talk Track: ${s.talkTrack || 'None'}`).join('\n');
+      const priorityText = audiencePriorities?.length
+        ? audiencePriorities.map((p: any, i: number) => `${i + 1}. ${p.priority}`).join(', ')
+        : 'Not specified';
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are a Korn Ferry presentation delivery coach. You evaluate a seller's rehearsal notes against the deck content and audience priorities. Provide specific, actionable coaching to improve their delivery.`
+          },
+          {
+            role: "user",
+            content: `Evaluate this presentation rehearsal.
+
+DECK (${slides.length} slides):
+${slideSummary}
+
+SELLER'S TALKING POINTS / REHEARSAL NOTES:
+${typeof talkingPoints === 'string' ? talkingPoints : JSON.stringify(talkingPoints)}
+
+AUDIENCE: ${audience || 'client_sponsor'}
+PURPOSE: ${purpose || 'customer_engagement'}
+AUDIENCE PRIORITIES: ${priorityText}
+TIME SPENT: ${timeSpentSeconds ? Math.round(timeSpentSeconds / 60) + ' minutes' : 'Unknown'}
+
+Return JSON:
+{
+  "overallGrade": "A" | "B" | "C" | "D",
+  "deliveryScore": number (0-100),
+  "summary": "2-3 sentence coaching summary",
+  "strengths": ["strength1", "strength2"],
+  "improvements": ["improvement1", "improvement2"],
+  "priorityCoverage": {
+    "covered": ["priority that was well addressed"],
+    "missed": ["priority that was not addressed"],
+    "coveragePercent": number
+  },
+  "timingAdvice": "advice on pacing",
+  "slideSpecificCoaching": [
+    {
+      "slideIndex": number,
+      "slideTitle": "string",
+      "coaching": "specific coaching for this slide"
+    }
+  ],
+  "suggestedOpeningLine": "a strong opening line suggestion",
+  "suggestedClosingLine": "a strong closing/CTA line suggestion"
+}`
+          }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.6,
+        max_tokens: 3000,
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        return res.status(500).json({ error: "Empty AI response" });
+      }
+
+      const feedback = JSON.parse(content);
+      res.json(feedback);
+    } catch (error: any) {
+      console.error("Error generating rehearsal feedback:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/presentations/battle-slide", async (req, res) => {
+    try {
+      const { competitorName, accountId, projectId, purpose, audience, existingSlides } = req.body;
+      if (!competitorName) {
+        return res.status(400).json({ error: "Missing competitor name" });
+      }
+
+      let competitiveIntel = '';
+      try {
+        const perplexityApiKey = process.env.PERPLEXITY_API_KEY;
+        if (perplexityApiKey) {
+          const perplexityRes = await fetch('https://api.perplexity.ai/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${perplexityApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'llama-3.1-sonar-small-128k-online',
+              messages: [
+                { role: 'user', content: `Compare Korn Ferry vs ${competitorName} in management consulting, leadership development, and talent management. Focus on: key differentiators, strengths/weaknesses, recent wins, market positioning, and pricing approach. Be specific and factual.` }
+              ],
+              max_tokens: 1500,
+            }),
+          });
+          if (perplexityRes.ok) {
+            const perplexityData = await perplexityRes.json() as any;
+            competitiveIntel = perplexityData.choices?.[0]?.message?.content || '';
+          }
+        }
+      } catch (e) {
+        console.log("Perplexity intel fetch failed, proceeding with GPT knowledge:", e);
+      }
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are a Korn Ferry competitive intelligence expert. Generate a compelling battle card slide that positions Korn Ferry favorably against a competitor. Be factual, professional, and focused on genuine differentiators.`
+          },
+          {
+            role: "user",
+            content: `Generate a competitive battle slide: Korn Ferry vs ${competitorName}.
+
+${competitiveIntel ? `REAL-TIME COMPETITIVE INTELLIGENCE:\n${competitiveIntel}\n` : ''}
+PURPOSE: ${purpose || 'customer_engagement'}
+AUDIENCE: ${audience || 'client_sponsor'}
+
+Return a slide JSON object:
+{
+  "id": "battle_${Date.now()}",
+  "slideType": "content",
+  "title": "Why Korn Ferry vs ${competitorName}",
+  "bulletPoints": ["4-6 compelling differentiators with specific proof points"],
+  "talkTrack": "4-6 sentence presenter script for this competitive slide",
+  "speakerNotes": "2-3 brief presenter reminders",
+  "topicSource": "competitive_intelligence",
+  "chartData": {
+    "type": "comparison",
+    "labels": ["Capability 1", "Capability 2", "Capability 3", "Capability 4"],
+    "data": [scores for Korn Ferry 1-10],
+    "compareData": [scores for competitor 1-10],
+    "compareLabel": "${competitorName}"
+  }
+}`
+          }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+        max_tokens: 2000,
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        return res.status(500).json({ error: "Empty AI response" });
+      }
+
+      const battleSlide = JSON.parse(content);
+      if (!battleSlide.id) battleSlide.id = `battle_${Date.now()}`;
+      if (!battleSlide.slideType) battleSlide.slideType = 'content';
+      res.json(battleSlide);
+    } catch (error: any) {
+      console.error("Error generating battle slide:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/presentations/deal-context/:accountId/:projectId", async (req, res) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const projectId = parseInt(req.params.projectId);
+      const account = await storage.getAccount(accountId);
+      const project = await storage.getProject(projectId);
+      if (!account || !project) {
+        return res.status(404).json({ error: "Account or project not found" });
+      }
+
+      const discoveryNotes = await storage.getDiscoveryNotes(projectId);
+      const jobThemes = await storage.getJobThemes(projectId);
+      const successStories = await storage.getSuccessStories(projectId);
+      const discoveryQuestions = await storage.getDiscoveryQuestions(projectId);
+
+      const dealContext = {
+        account: {
+          name: account.name,
+          industry: account.industry,
+          revenue: account.revenue,
+          employees: account.employees,
+          description: account.description,
+        },
+        project: {
+          name: project.name,
+          phase: project.phase,
+          status: project.status,
+          dealValue: (project as any).dealValue || (project as any).contractValue || null,
+          startDate: project.startDate,
+        },
+        jobThemeCount: jobThemes.length,
+        jobThemes: jobThemes.slice(0, 5).map((t: any) => ({
+          name: t.name || t.theme,
+          priority: t.priority,
+          category: t.category,
+        })),
+        discoveryHighlights: discoveryNotes ? (discoveryNotes as any).content?.substring(0, 500) : null,
+        questionsAsked: discoveryQuestions.length,
+        successStoryCount: successStories.length,
+        contextSummary: `${account.name} is a ${account.industry || 'company'} with ${account.employees || 'unknown'} employees. The "${project.name}" engagement is in ${project.phase || 'Discovery'} phase. ${jobThemes.length} job themes identified. ${successStories.length} success stories captured.`,
+      };
+
+      res.json(dealContext);
+    } catch (error: any) {
+      console.error("Error fetching deal context:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/presentations/save", async (req, res) => {
+    try {
+      const { accountId, projectId, title, purpose, audience, slides, template, audiencePriorities, narrativeFlow, coaching, readinessScore, outcome } = req.body;
+      if (!slides?.length) return res.status(400).json({ error: "No slides to save" });
+      const id = `pres_${Date.now()}_${Math.random().toString(36).substr(2,6)}`;
+      const saved = {
+        id, accountId, projectId, title: title || 'Untitled Presentation',
+        purpose, audience, slideCount: slides.length, template,
+        audiencePriorities, narrativeFlow, coaching,
+        readinessScore: readinessScore?.overallScore || null,
+        outcome: outcome || null,
+        status: 'draft' as string,
+        approvalStatus: null as string | null,
+        approvalComments: [] as Array<{author: string; text: string; timestamp: string}>,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        slides,
+      };
+      if (!globalPresentationHistory) globalPresentationHistory = [];
+      globalPresentationHistory.unshift(saved);
+      res.json(saved);
+    } catch (error: any) {
+      console.error("Error saving presentation:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/presentations/history", (req, res) => {
+    const accountId = req.query.accountId ? Number(req.query.accountId) : undefined;
+    let history = globalPresentationHistory || [];
+    if (accountId) history = history.filter((p: any) => p.accountId === accountId);
+    res.json(history.map((p: any) => ({ ...p, slides: undefined })));
+  });
+
+  app.get("/api/presentations/history/:id", (req, res) => {
+    const pres = (globalPresentationHistory || []).find((p: any) => p.id === req.params.id);
+    if (!pres) return res.status(404).json({ error: "Not found" });
+    res.json(pres);
+  });
+
+  app.post("/api/presentations/history/:id/outcome", (req, res) => {
+    const pres = (globalPresentationHistory || []).find((p: any) => p.id === req.params.id);
+    if (!pres) return res.status(404).json({ error: "Not found" });
+    pres.outcome = req.body.outcome;
+    pres.updatedAt = new Date().toISOString();
+    res.json(pres);
+  });
+
+  app.post("/api/presentations/history/:id/approval", (req, res) => {
+    const pres = (globalPresentationHistory || []).find((p: any) => p.id === req.params.id);
+    if (!pres) return res.status(404).json({ error: "Not found" });
+    const { action, comment, author } = req.body;
+    if (action === 'submit') {
+      pres.approvalStatus = 'pending';
+      pres.status = 'submitted';
+    } else if (action === 'approve') {
+      pres.approvalStatus = 'approved';
+      pres.status = 'approved';
+    } else if (action === 'reject') {
+      pres.approvalStatus = 'rejected';
+      pres.status = 'needs_revision';
+    }
+    if (comment) {
+      pres.approvalComments = pres.approvalComments || [];
+      pres.approvalComments.push({ author: author || 'Coach', text: comment, timestamp: new Date().toISOString() });
+    }
+    pres.updatedAt = new Date().toISOString();
+    res.json(pres);
   });
 
   app.post("/api/presentations/fill-gap", async (req, res) => {

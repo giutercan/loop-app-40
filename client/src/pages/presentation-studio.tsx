@@ -68,6 +68,20 @@ import {
   RotateCcw,
   Mic,
   FileJson,
+  Award,
+  Swords,
+  PlayCircle,
+  Gauge,
+  Trophy,
+  ThumbsUp,
+  ThumbsDown,
+  CircleAlert,
+  ListChecks,
+  Save,
+  Briefcase,
+  CheckCircle,
+  XCircle,
+  MessageCircle,
 } from "lucide-react";
 
 type PresentationPurpose = 'customer_engagement' | 'qbr' | 'executive_pitch' | 'discovery_readout' | 'handoff_brief' | 'evidence_review' | 'value_story';
@@ -559,6 +573,22 @@ export default function PresentationStudioPage() {
   const [additionalMaterials, setAdditionalMaterials] = useState('');
   const [coachResult, setCoachResult] = useState<any>(null);
   const [gapAnswers, setGapAnswers] = useState<Record<number, string>>({});
+  const [readinessScore, setReadinessScore] = useState<any>(null);
+  const [showReadiness, setShowReadiness] = useState(false);
+  const [showRehearsalMode, setShowRehearsalMode] = useState(false);
+  const [rehearsalNotes, setRehearsalNotes] = useState('');
+  const [rehearsalFeedback, setRehearsalFeedback] = useState<any>(null);
+  const [rehearsalSlideIndex, setRehearsalSlideIndex] = useState(0);
+  const [rehearsalStartTime, setRehearsalStartTime] = useState<number | null>(null);
+  const [showBattleSlideDialog, setShowBattleSlideDialog] = useState(false);
+  const [competitorName, setCompetitorName] = useState('');
+  const [quickRefineSlideId, setQuickRefineSlideId] = useState<string | null>(null);
+  const [showHistoryPanel, setShowHistoryPanel] = useState(false);
+  const [dealContext, setDealContext] = useState<any>(null);
+  const [showDealContext, setShowDealContext] = useState(false);
+  const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
+  const [approvalComment, setApprovalComment] = useState('');
+  const [outcomeValue, setOutcomeValue] = useState('');
 
   const { data: brandTemplates = [], refetch: refetchTemplates } = useQuery<BrandTemplate[]>({
     queryKey: ['/api/templates'],
@@ -588,6 +618,73 @@ export default function PresentationStudioPage() {
     },
   });
 
+  const { data: presentationHistory = [], refetch: refetchHistory } = useQuery<any[]>({
+    queryKey: ['/api/presentations/history'],
+  });
+
+  const saveToHistoryMutation = useMutation({
+    mutationFn: async () => {
+      if (!plan) return;
+      const res = await apiRequest('POST', '/api/presentations/save', {
+        accountId: selectedAccountId,
+        projectId: selectedProjectId,
+        title: plan.title || customTitle || 'Untitled Presentation',
+        purpose, audience,
+        slides: plan.slides,
+        template: plan.template,
+        audiencePriorities: selectedPriorities,
+        narrativeFlow: plan.narrativeFlow,
+        coaching: plan.coaching,
+        readinessScore: readinessScore,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/presentations/history'] });
+      toast({ title: 'Saved to History', description: 'Presentation saved for tracking and approval.' });
+    },
+  });
+
+  const approvalMutation = useMutation({
+    mutationFn: async ({ id, action, comment }: { id: string; action: string; comment?: string }) => {
+      const res = await apiRequest('POST', `/api/presentations/history/${id}/approval`, {
+        action, comment, author: 'Current User',
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/presentations/history'] });
+      setApprovalComment('');
+      toast({ title: 'Status Updated', description: 'Approval status has been updated.' });
+    },
+  });
+
+  const outcomeMutation = useMutation({
+    mutationFn: async ({ id, outcome }: { id: string; outcome: string }) => {
+      const res = await apiRequest('POST', `/api/presentations/history/${id}/outcome`, { outcome });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/presentations/history'] });
+      setOutcomeValue('');
+      toast({ title: 'Outcome Recorded', description: 'Deal outcome has been saved.' });
+    },
+  });
+
+  const fetchDealContext = async () => {
+    if (!selectedAccountId || !selectedProjectId) return;
+    try {
+      const res = await fetch(`/api/presentations/deal-context/${selectedAccountId}/${selectedProjectId}`);
+      if (res.ok) {
+        const ctx = await res.json();
+        setDealContext(ctx);
+        setShowDealContext(true);
+      }
+    } catch (e) {
+      console.error("Error fetching deal context:", e);
+    }
+  };
+
   function clearAndStartNew() {
     setPlan(null);
     setStep('configure');
@@ -601,6 +698,7 @@ export default function PresentationStudioPage() {
     setEditingSlideIndex(null);
     setPriorityAdvice(null);
     setSelectedPriorities([]);
+    setDealContext(null);
     toast({ title: 'Workspace Cleared', description: 'Ready to create a new presentation.' });
   }
 
@@ -846,6 +944,97 @@ export default function PresentationStudioPage() {
     },
     onError: () => {
       toast({ title: 'Refinement Failed', description: 'Could not refine the slide. Please try again.', variant: 'destructive' });
+    },
+  });
+
+  const readinessMutation = useMutation({
+    mutationFn: async () => {
+      if (!plan) throw new Error('No plan');
+      const account = accounts?.find((a: any) => a.id === selectedAccountId);
+      const project = projects?.find((p: any) => p.id === selectedProjectId);
+      const res = await apiRequest('POST', '/api/presentations/readiness-score', {
+        slides: plan.slides, purpose, audience,
+        audiencePriorities: selectedPriorities,
+        accountName: account?.name, projectName: project?.name,
+      });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setReadinessScore(data);
+      setShowReadiness(true);
+    },
+    onError: () => {
+      toast({ title: 'Readiness Check Failed', description: 'Could not evaluate the presentation. Please try again.', variant: 'destructive' });
+    },
+  });
+
+  const quickRefineMutation = useMutation({
+    mutationFn: async ({ slide, action, customInstruction }: { slide: SlideContent; action: string; customInstruction?: string }) => {
+      const res = await apiRequest('POST', '/api/presentations/refine-slide-quick', {
+        slide, action, customInstruction, allSlides: plan?.slides, purpose, audience,
+      });
+      return res.json();
+    },
+    onSuccess: (data: SlideContent, variables) => {
+      if (!plan) return;
+      const idx = plan.slides.findIndex(s => s.id === variables.slide.id);
+      if (idx === -1) return;
+      const newSlides = [...plan.slides];
+      newSlides[idx] = { ...newSlides[idx], ...data, id: newSlides[idx].id, topicSource: newSlides[idx].topicSource };
+      setPlan({ ...plan, slides: newSlides });
+      setQuickRefineSlideId(null);
+      toast({ title: 'Slide Refined', description: `Applied "${variables.action.replace(/_/g, ' ')}" refinement.` });
+    },
+    onError: () => {
+      toast({ title: 'Refinement Failed', description: 'Could not refine the slide.', variant: 'destructive' });
+    },
+  });
+
+  const rehearsalMutation = useMutation({
+    mutationFn: async () => {
+      if (!plan) throw new Error('No plan');
+      const timeSpent = rehearsalStartTime ? (Date.now() - rehearsalStartTime) / 1000 : undefined;
+      const res = await apiRequest('POST', '/api/presentations/rehearsal-feedback', {
+        slides: plan.slides, talkingPoints: rehearsalNotes,
+        audience, purpose, audiencePriorities: selectedPriorities,
+        timeSpentSeconds: timeSpent,
+      });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setRehearsalFeedback(data);
+    },
+    onError: () => {
+      toast({ title: 'Feedback Failed', description: 'Could not generate rehearsal feedback.', variant: 'destructive' });
+    },
+  });
+
+  const battleSlideMutation = useMutation({
+    mutationFn: async () => {
+      if (!competitorName.trim()) throw new Error('No competitor');
+      const res = await apiRequest('POST', '/api/presentations/battle-slide', {
+        competitorName: competitorName.trim(),
+        accountId: selectedAccountId, projectId: selectedProjectId,
+        purpose, audience, existingSlides: plan?.slides,
+      });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      if (!plan) return;
+      const newSlides = [...plan.slides];
+      const summaryIdx = newSlides.findIndex(s => s.slideType === 'summary');
+      if (summaryIdx >= 0) {
+        newSlides.splice(summaryIdx, 0, data);
+      } else {
+        newSlides.push(data);
+      }
+      setPlan({ ...plan, slides: newSlides });
+      setShowBattleSlideDialog(false);
+      setCompetitorName('');
+      toast({ title: 'Battle Slide Added', description: `Competitive slide vs ${data.title?.split('vs')[1]?.trim() || 'competitor'} added to your deck.` });
+    },
+    onError: () => {
+      toast({ title: 'Generation Failed', description: 'Could not generate the battle slide.', variant: 'destructive' });
     },
   });
 
@@ -1313,6 +1502,35 @@ export default function PresentationStudioPage() {
                 <RotateCcw className="w-4 h-4 mr-1.5" />
                 Clear & Start New
               </Button>
+              <Button variant="outline" onClick={() => readinessMutation.mutate()} disabled={readinessMutation.isPending} data-testid="button-readiness-check">
+                {readinessMutation.isPending ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Gauge className="w-4 h-4 mr-1.5" />}
+                Check Readiness
+              </Button>
+              <Button variant="outline" onClick={() => { setShowRehearsalMode(true); setRehearsalSlideIndex(0); setRehearsalNotes(''); setRehearsalFeedback(null); setRehearsalStartTime(Date.now()); }} data-testid="button-rehearsal">
+                <PlayCircle className="w-4 h-4 mr-1.5" />
+                Rehearse
+              </Button>
+              <Button variant="outline" onClick={() => setShowBattleSlideDialog(true)} data-testid="button-battle-slide">
+                <Swords className="w-4 h-4 mr-1.5" />
+                Battle Slide
+              </Button>
+              <Button variant="outline" onClick={() => saveToHistoryMutation.mutate()} disabled={saveToHistoryMutation.isPending} data-testid="button-save-history">
+                {saveToHistoryMutation.isPending ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Save className="w-4 h-4 mr-1.5" />}
+                Save
+              </Button>
+              {selectedAccountId && selectedProjectId && (
+                <Button variant="outline" onClick={fetchDealContext} data-testid="button-deal-context">
+                  <Briefcase className="w-4 h-4 mr-1.5" />
+                  Deal Context
+                </Button>
+              )}
+              <Button variant="outline" onClick={() => setShowHistoryPanel(true)} data-testid="button-history">
+                <History className="w-4 h-4 mr-1.5" />
+                History
+                {presentationHistory.length > 0 && (
+                  <Badge variant="secondary" className="ml-1 text-xs">{presentationHistory.length}</Badge>
+                )}
+              </Button>
               <Button variant="outline" onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending} data-testid="button-regenerate">
                 {generateMutation.isPending ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <RefreshCcw className="w-4 h-4 mr-1.5" />}
                 Regenerate
@@ -1387,9 +1605,32 @@ export default function PresentationStudioPage() {
                               <WandSparkles className="w-4 h-4 text-[#A3238E]" />
                               <span className="text-sm font-medium text-foreground">AI Refinement</span>
                             </div>
+                            <div className="grid grid-cols-3 gap-1.5 mb-3">
+                              {[
+                                { action: 'make_compelling', label: 'Make Compelling', icon: Sparkles },
+                                { action: 'simplify_csuite', label: 'Simplify for C-Suite', icon: Users },
+                                { action: 'add_data', label: 'Add Data Support', icon: BarChart3 },
+                                { action: 'add_competitor', label: 'Add Differentiators', icon: Swords },
+                                { action: 'shorten', label: 'Make Concise', icon: ListChecks },
+                                { action: 'storytelling', label: 'Add Storytelling', icon: BookOpen },
+                              ].map(({ action, label, icon: Icon }) => (
+                                <Button
+                                  key={action}
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-xs justify-start"
+                                  onClick={() => { setQuickRefineSlideId(slide.id); quickRefineMutation.mutate({ slide, action }); }}
+                                  disabled={quickRefineMutation.isPending}
+                                  data-testid={`button-quick-action-${action}-${idx}`}
+                                >
+                                  {quickRefineMutation.isPending && quickRefineSlideId === slide.id ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Icon className="w-3 h-3 mr-1" />}
+                                  {label}
+                                </Button>
+                              ))}
+                            </div>
                             <div className="flex gap-2">
                               <Input
-                                placeholder="e.g., Make the title more impactful, add a client quote, simplify the bullets..."
+                                placeholder="Or type custom instructions..."
                                 value={refineInstruction}
                                 onChange={e => setRefineInstruction(e.target.value)}
                                 onKeyDown={e => {
@@ -1408,24 +1649,7 @@ export default function PresentationStudioPage() {
                                 {refineMutation.isPending && refiningSlideId === slide.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                               </Button>
                             </div>
-                            <div className="flex gap-2 mt-2 flex-wrap">
-                              {['Make more concise', 'Add data points', 'Stronger call to action', 'Add client quote'].map(suggestion => (
-                                <Button
-                                  key={suggestion}
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-xs"
-                                  onClick={() => {
-                                    setRefineInstruction(suggestion);
-                                    refineMutation.mutate({ slide, instruction: suggestion });
-                                  }}
-                                  disabled={refineMutation.isPending}
-                                  data-testid={`button-quick-refine-${suggestion.toLowerCase().replace(/\s+/g, '-')}`}
-                                >
-                                  {suggestion}
-                                </Button>
-                              ))}
-                            </div>
+                            
                           </div>
                         )}
 
@@ -1841,6 +2065,508 @@ export default function PresentationStudioPage() {
             </DialogContent>
           </Dialog>
         )}
+
+        {showReadiness && readinessScore && (
+          <Dialog open={showReadiness} onOpenChange={setShowReadiness}>
+            <DialogContent className="max-w-2xl w-[90vw] max-h-[85vh] overflow-y-auto" data-testid="dialog-readiness">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 flex-wrap">
+                  <Gauge className="w-5 h-5 text-[#005971]" />
+                  Presentation Readiness
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="flex items-center gap-6 flex-wrap">
+                  <div className="relative w-24 h-24">
+                    <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                      <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" className="text-muted/30" strokeWidth="8" />
+                      <circle cx="50" cy="50" r="40" fill="none"
+                        stroke={readinessScore.overallScore >= 75 ? '#009B77' : readinessScore.overallScore >= 50 ? '#F59E0B' : '#EF4444'}
+                        strokeWidth="8" strokeLinecap="round"
+                        strokeDasharray={`${(readinessScore.overallScore / 100) * 251.2} 251.2`}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-2xl font-bold text-foreground">{readinessScore.overallScore}</span>
+                      <span className="text-[10px] text-muted-foreground">/100</span>
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <Badge variant={readinessScore.verdict === 'ready' ? 'default' : readinessScore.verdict === 'needs_work' ? 'secondary' : 'destructive'} className="mb-2">
+                      {readinessScore.verdict === 'ready' ? 'Ready to Present' : readinessScore.verdict === 'needs_work' ? 'Needs Work' : 'Not Ready'}
+                    </Badge>
+                    <p className="text-sm text-muted-foreground">{readinessScore.summary}</p>
+                    {readinessScore.estimatedDeliveryMinutes && (
+                      <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1"><Clock className="w-3 h-3" /> Est. {readinessScore.estimatedDeliveryMinutes} min delivery</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-5 gap-2">
+                  {readinessScore.dimensions?.map((dim: any) => (
+                    <div key={dim.name} className="p-2 rounded-md border text-center">
+                      <div className="text-lg font-bold" style={{ color: dim.score >= 15 ? '#009B77' : dim.score >= 10 ? '#F59E0B' : '#EF4444' }}>
+                        {dim.score}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground leading-tight">{dim.name}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {readinessScore.dimensions?.map((dim: any) => (
+                  <div key={dim.name} className="p-3 rounded-md border">
+                    <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+                      <span className="text-sm font-medium text-foreground">{dim.name}</span>
+                      <Badge variant="outline" className="text-xs">{dim.score}/20</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-2">{dim.assessment}</p>
+                    {dim.tips?.length > 0 && (
+                      <div className="space-y-1">
+                        {dim.tips.map((tip: string, ti: number) => (
+                          <div key={ti} className="flex items-start gap-1.5">
+                            <ArrowRight className="w-3 h-3 text-[#005971] mt-0.5 shrink-0" />
+                            <span className="text-xs text-foreground">{tip}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {readinessScore.strengthHighlights?.length > 0 && (
+                  <div className="p-3 rounded-md border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30">
+                    <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300 mb-1 flex items-center gap-1"><Trophy className="w-3 h-3" /> Strengths</p>
+                    {readinessScore.strengthHighlights.map((s: string, si: number) => (
+                      <p key={si} className="text-xs text-foreground ml-4">{s}</p>
+                    ))}
+                  </div>
+                )}
+
+                {readinessScore.slideImprovements?.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium text-foreground mb-2 flex items-center gap-1.5"><CircleAlert className="w-4 h-4 text-amber-500" /> Slide-Specific Improvements</p>
+                    <div className="space-y-2">
+                      {readinessScore.slideImprovements.map((imp: any, ii: number) => (
+                        <div key={ii} className="p-2 rounded border flex items-start gap-2">
+                          <span className="text-xs font-mono text-muted-foreground shrink-0">#{(imp.slideIndex || 0) + 1}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-foreground">{imp.slideTitle}</p>
+                            <p className="text-[11px] text-muted-foreground">{imp.issue}</p>
+                            <p className="text-[11px] text-[#005971] dark:text-[#00ADBB] mt-0.5">{imp.suggestion}</p>
+                          </div>
+                          <Button variant="ghost" size="icon" onClick={() => {
+                            setShowReadiness(false);
+                            const slideIdx = imp.slideIndex || 0;
+                            if (plan?.slides[slideIdx]) {
+                              setRefiningSlideId(plan.slides[slideIdx].id);
+                              setRefineInstruction(imp.suggestion);
+                            }
+                          }} data-testid={`button-fix-slide-${ii}`}>
+                            <WandSparkles className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {showRehearsalMode && plan && (
+          <Dialog open={showRehearsalMode} onOpenChange={(v) => { if (!v) setShowRehearsalMode(false); }}>
+            <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto" data-testid="dialog-rehearsal">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 flex-wrap">
+                  <PlayCircle className="w-5 h-5 text-[#A3238E]" />
+                  Rehearsal Mode
+                  {rehearsalStartTime && (
+                    <Badge variant="outline" className="text-xs ml-2">
+                      <Clock className="w-3 h-3 mr-1" />
+                      Started {Math.round((Date.now() - rehearsalStartTime) / 60000)} min ago
+                    </Badge>
+                  )}
+                </DialogTitle>
+              </DialogHeader>
+              {!rehearsalFeedback ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <div className="aspect-[16/9] mb-3">
+                        <SlideFullPreview slide={plan.slides[rehearsalSlideIndex]} index={rehearsalSlideIndex} template={currentTemplate} brandColors={previewBrandColors} />
+                      </div>
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <Button variant="outline" size="sm" onClick={() => setRehearsalSlideIndex(Math.max(0, rehearsalSlideIndex - 1))} disabled={rehearsalSlideIndex === 0} data-testid="button-rehearsal-prev">
+                          <ChevronLeft className="w-4 h-4" />
+                        </Button>
+                        <span className="text-sm text-muted-foreground">{rehearsalSlideIndex + 1} / {plan.slides.length}</span>
+                        <Button variant="outline" size="sm" onClick={() => setRehearsalSlideIndex(Math.min(plan.slides.length - 1, rehearsalSlideIndex + 1))} disabled={rehearsalSlideIndex === plan.slides.length - 1} data-testid="button-rehearsal-next">
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      {plan.slides[rehearsalSlideIndex].talkTrack && (
+                        <div className="mt-2 p-2 rounded bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                          <p className="text-[10px] font-medium text-blue-700 dark:text-blue-300 mb-0.5">Reference Talk Track</p>
+                          <p className="text-xs text-foreground">{plan.slides[rehearsalSlideIndex].talkTrack}</p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col">
+                      <Label className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                        <Mic className="w-4 h-4 text-[#005971]" />
+                        Your Talking Points
+                      </Label>
+                      <p className="text-xs text-muted-foreground mb-2">Type what you would say when presenting. Walk through all slides, then get AI coaching.</p>
+                      <Textarea
+                        placeholder="Type your talking points here as you go through each slide..."
+                        value={rehearsalNotes}
+                        onChange={e => setRehearsalNotes(e.target.value)}
+                        className="flex-1 resize-none text-sm min-h-[200px]"
+                        data-testid="textarea-rehearsal-notes"
+                      />
+                      <Button
+                        className="mt-3 w-full"
+                        onClick={() => rehearsalMutation.mutate()}
+                        disabled={!rehearsalNotes.trim() || rehearsalMutation.isPending}
+                        data-testid="button-get-feedback"
+                      >
+                        {rehearsalMutation.isPending ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Award className="w-4 h-4 mr-1.5" />}
+                        Get AI Coaching Feedback
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <div className="text-center">
+                      <div className={`text-4xl font-bold ${rehearsalFeedback.overallGrade === 'A' ? 'text-emerald-600' : rehearsalFeedback.overallGrade === 'B' ? 'text-blue-600' : rehearsalFeedback.overallGrade === 'C' ? 'text-amber-600' : 'text-red-600'}`}>
+                        {rehearsalFeedback.overallGrade}
+                      </div>
+                      <p className="text-xs text-muted-foreground">Grade</p>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-foreground">{rehearsalFeedback.summary}</p>
+                      {rehearsalFeedback.timingAdvice && (
+                        <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1"><Clock className="w-3 h-3" /> {rehearsalFeedback.timingAdvice}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {rehearsalFeedback.priorityCoverage && (
+                    <div className="p-3 rounded-md border">
+                      <p className="text-xs font-medium text-foreground mb-1">Audience Priority Coverage: {rehearsalFeedback.priorityCoverage.coveragePercent}%</p>
+                      <div className="w-full bg-muted rounded-full h-2 mb-2">
+                        <div className="bg-[#009B77] h-2 rounded-full" style={{ width: `${rehearsalFeedback.priorityCoverage.coveragePercent || 0}%` }} />
+                      </div>
+                      {rehearsalFeedback.priorityCoverage.missed?.length > 0 && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400">Missed: {rehearsalFeedback.priorityCoverage.missed.join(', ')}</p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-md border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30">
+                      <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300 mb-1 flex items-center gap-1"><ThumbsUp className="w-3 h-3" /> Strengths</p>
+                      {rehearsalFeedback.strengths?.map((s: string, i: number) => (
+                        <p key={i} className="text-xs text-foreground">{s}</p>
+                      ))}
+                    </div>
+                    <div className="p-3 rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30">
+                      <p className="text-xs font-medium text-amber-700 dark:text-amber-300 mb-1 flex items-center gap-1"><ThumbsDown className="w-3 h-3" /> Improvements</p>
+                      {rehearsalFeedback.improvements?.map((s: string, i: number) => (
+                        <p key={i} className="text-xs text-foreground">{s}</p>
+                      ))}
+                    </div>
+                  </div>
+
+                  {rehearsalFeedback.suggestedOpeningLine && (
+                    <div className="p-3 rounded-md border bg-[#005971]/5">
+                      <p className="text-xs font-medium text-[#005971] dark:text-[#00ADBB] mb-0.5">Suggested Opening</p>
+                      <p className="text-sm text-foreground italic">"{rehearsalFeedback.suggestedOpeningLine}"</p>
+                    </div>
+                  )}
+                  {rehearsalFeedback.suggestedClosingLine && (
+                    <div className="p-3 rounded-md border bg-[#A3238E]/5">
+                      <p className="text-xs font-medium text-[#A3238E] mb-0.5">Suggested Close / CTA</p>
+                      <p className="text-sm text-foreground italic">"{rehearsalFeedback.suggestedClosingLine}"</p>
+                    </div>
+                  )}
+
+                  {rehearsalFeedback.slideSpecificCoaching?.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-foreground mb-2">Per-Slide Coaching</p>
+                      <div className="space-y-2">
+                        {rehearsalFeedback.slideSpecificCoaching.map((sc: any, i: number) => (
+                          <div key={i} className="p-2 rounded border flex items-start gap-2">
+                            <span className="text-xs font-mono text-muted-foreground shrink-0">#{(sc.slideIndex || 0) + 1}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-foreground">{sc.slideTitle}</p>
+                              <p className="text-xs text-muted-foreground">{sc.coaching}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <Button variant="outline" className="w-full" onClick={() => { setRehearsalFeedback(null); setRehearsalNotes(''); setRehearsalStartTime(Date.now()); }} data-testid="button-rehearse-again">
+                    <RotateCcw className="w-4 h-4 mr-1.5" />
+                    Practice Again
+                  </Button>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {showBattleSlideDialog && (
+          <Dialog open={showBattleSlideDialog} onOpenChange={setShowBattleSlideDialog}>
+            <DialogContent className="max-w-md" data-testid="dialog-battle-slide">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 flex-wrap">
+                  <Swords className="w-5 h-5 text-[#A3238E]" />
+                  Add Competitive Battle Slide
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">Enter a competitor name to generate a "Why Korn Ferry" comparison slide with real-time competitive intelligence.</p>
+                <Input
+                  placeholder="e.g., McKinsey, Deloitte, Mercer, Heidrick..."
+                  value={competitorName}
+                  onChange={e => setCompetitorName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && competitorName.trim()) battleSlideMutation.mutate(); }}
+                  data-testid="input-competitor-name"
+                />
+                <div className="flex gap-1.5 flex-wrap">
+                  {['McKinsey', 'Deloitte', 'Mercer', 'Heidrick & Struggles', 'Spencer Stuart', 'Egon Zehnder'].map(name => (
+                    <Button key={name} variant="outline" size="sm" className="text-xs" onClick={() => setCompetitorName(name)} data-testid={`button-competitor-${name.toLowerCase().replace(/\s+/g, '-')}`}>
+                      {name}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowBattleSlideDialog(false)} data-testid="button-cancel-battle">Cancel</Button>
+                <Button onClick={() => battleSlideMutation.mutate()} disabled={!competitorName.trim() || battleSlideMutation.isPending} data-testid="button-generate-battle">
+                  {battleSlideMutation.isPending ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Swords className="w-4 h-4 mr-1.5" />}
+                  Generate Battle Slide
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {showHistoryPanel && (
+          <Dialog open={showHistoryPanel} onOpenChange={setShowHistoryPanel}>
+            <DialogContent className="max-w-3xl w-[90vw] max-h-[85vh] overflow-y-auto" data-testid="dialog-history">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 flex-wrap">
+                  <History className="w-5 h-5 text-[#005971]" />
+                  Presentation History
+                  <Badge variant="secondary" className="text-xs">{presentationHistory.length} presentations</Badge>
+                </DialogTitle>
+              </DialogHeader>
+              {presentationHistory.length === 0 ? (
+                <div className="text-center py-8">
+                  <History className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No presentations saved yet. Generate a presentation and click "Save" to track it here.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {presentationHistory.map((pres: any) => (
+                    <Card key={pres.id} className="p-3">
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className="text-sm font-medium text-foreground truncate">{pres.title || 'Untitled'}</span>
+                            {pres.approvalStatus && (
+                              <Badge
+                                variant={pres.approvalStatus === 'approved' ? 'default' : pres.approvalStatus === 'pending' ? 'secondary' : 'destructive'}
+                                className="text-xs"
+                              >
+                                {pres.approvalStatus === 'approved' && <CheckCircle className="w-3 h-3 mr-0.5" />}
+                                {pres.approvalStatus === 'rejected' && <XCircle className="w-3 h-3 mr-0.5" />}
+                                {pres.approvalStatus === 'pending' && <Clock className="w-3 h-3 mr-0.5" />}
+                                {pres.approvalStatus}
+                              </Badge>
+                            )}
+                            {pres.readinessScore && (
+                              <Badge variant="outline" className="text-xs">
+                                <Gauge className="w-3 h-3 mr-0.5" />
+                                {pres.readinessScore}/100
+                              </Badge>
+                            )}
+                            {pres.outcome && (
+                              <Badge variant="outline" className="text-xs text-emerald-600">
+                                <Trophy className="w-3 h-3 mr-0.5" />
+                                {pres.outcome}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                            <span>{pres.audience}</span>
+                            <span>{pres.slideCount} slides</span>
+                            <span>{new Date(pres.createdAt).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {!pres.approvalStatus && (
+                            <Button variant="outline" size="sm" onClick={() => approvalMutation.mutate({ id: pres.id, action: 'submit' })} data-testid={`button-submit-approval-${pres.id}`}>
+                              <Send className="w-3 h-3 mr-1" />
+                              Submit
+                            </Button>
+                          )}
+                          {pres.approvalStatus === 'pending' && (
+                            <>
+                              <Button variant="outline" size="sm" className="text-emerald-600" onClick={() => approvalMutation.mutate({ id: pres.id, action: 'approve' })} data-testid={`button-approve-${pres.id}`}>
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                Approve
+                              </Button>
+                              <Button variant="outline" size="sm" className="text-red-600" onClick={() => {
+                                setSelectedHistoryId(pres.id);
+                              }} data-testid={`button-reject-${pres.id}`}>
+                                <XCircle className="w-3 h-3 mr-1" />
+                                Reject
+                              </Button>
+                            </>
+                          )}
+                          {!pres.outcome && (
+                            <Button variant="ghost" size="icon" onClick={() => {
+                              setSelectedHistoryId(pres.id);
+                              setOutcomeValue('');
+                            }} data-testid={`button-outcome-${pres.id}`}>
+                              <Trophy className="w-3 h-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+
+                      {selectedHistoryId === pres.id && !pres.outcome && (
+                        <div className="mt-2 p-2 rounded border flex items-center gap-2 flex-wrap">
+                          <Select value={outcomeValue} onValueChange={setOutcomeValue}>
+                            <SelectTrigger className="flex-1" data-testid="select-outcome">
+                              <SelectValue placeholder="Select outcome..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="won">Won</SelectItem>
+                              <SelectItem value="lost">Lost</SelectItem>
+                              <SelectItem value="deferred">Deferred</SelectItem>
+                              <SelectItem value="expanded">Expanded</SelectItem>
+                              <SelectItem value="renewed">Renewed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button size="sm" onClick={() => { outcomeMutation.mutate({ id: pres.id, outcome: outcomeValue }); setSelectedHistoryId(null); }} disabled={!outcomeValue} data-testid="button-save-outcome">
+                            Save
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => setSelectedHistoryId(null)} data-testid="button-cancel-outcome">Cancel</Button>
+                        </div>
+                      )}
+
+                      {selectedHistoryId === pres.id && pres.approvalStatus === 'pending' && (
+                        <div className="mt-2 p-2 rounded border space-y-2">
+                          <Textarea
+                            placeholder="Add rejection comment..."
+                            value={approvalComment}
+                            onChange={e => setApprovalComment(e.target.value)}
+                            className="text-sm min-h-[60px]"
+                            data-testid="textarea-rejection-comment"
+                          />
+                          <div className="flex gap-2 flex-wrap">
+                            <Button size="sm" variant="destructive" onClick={() => {
+                              approvalMutation.mutate({ id: pres.id, action: 'reject', comment: approvalComment });
+                              setSelectedHistoryId(null);
+                            }} data-testid="button-confirm-reject">
+                              Reject with Comment
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedHistoryId(null)} data-testid="button-cancel-reject">Cancel</Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {pres.approvalComments?.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {pres.approvalComments.map((c: any, ci: number) => (
+                            <div key={ci} className="flex items-start gap-1.5 text-xs">
+                              <MessageCircle className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
+                              <span className="text-muted-foreground"><strong>{c.author}</strong>: {c.text}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {showDealContext && dealContext && (
+          <Dialog open={showDealContext} onOpenChange={setShowDealContext}>
+            <DialogContent className="max-w-lg" data-testid="dialog-deal-context">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 flex-wrap">
+                  <Briefcase className="w-5 h-5 text-[#005971]" />
+                  Deal Context
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <Card className="p-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Account</p>
+                  <p className="text-sm font-medium text-foreground">{dealContext.account?.name}</p>
+                  <div className="flex gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                    {dealContext.account?.industry && <span>{dealContext.account.industry}</span>}
+                    {dealContext.account?.employees && <span>{dealContext.account.employees} employees</span>}
+                    {dealContext.account?.revenue && <span>Rev: {dealContext.account.revenue}</span>}
+                  </div>
+                </Card>
+                <Card className="p-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Engagement</p>
+                  <p className="text-sm font-medium text-foreground">{dealContext.project?.name}</p>
+                  <div className="flex gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                    <Badge variant="outline" className="text-xs">{dealContext.project?.phase || 'Discovery'}</Badge>
+                    {dealContext.project?.dealValue && <span>Value: ${dealContext.project.dealValue.toLocaleString()}</span>}
+                  </div>
+                </Card>
+                <div className="grid grid-cols-3 gap-2">
+                  <Card className="p-2 text-center">
+                    <p className="text-lg font-bold text-foreground">{dealContext.jobThemeCount || 0}</p>
+                    <p className="text-[10px] text-muted-foreground">Job Themes</p>
+                  </Card>
+                  <Card className="p-2 text-center">
+                    <p className="text-lg font-bold text-foreground">{dealContext.questionsAsked || 0}</p>
+                    <p className="text-[10px] text-muted-foreground">Questions</p>
+                  </Card>
+                  <Card className="p-2 text-center">
+                    <p className="text-lg font-bold text-foreground">{dealContext.successStoryCount || 0}</p>
+                    <p className="text-[10px] text-muted-foreground">Stories</p>
+                  </Card>
+                </div>
+                {dealContext.jobThemes?.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Key Themes</p>
+                    <div className="flex gap-1 flex-wrap">
+                      {dealContext.jobThemes.map((t: any, i: number) => (
+                        <Badge key={i} variant="outline" className="text-xs">{t.name || t.theme}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {dealContext.discoveryHighlights && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Discovery Notes</p>
+                    <p className="text-xs text-foreground line-clamp-4">{dealContext.discoveryHighlights}</p>
+                  </div>
+                )}
+                <div className="p-2 rounded bg-[#005971]/5 border border-[#005971]/10">
+                  <p className="text-xs text-foreground">{dealContext.contextSummary}</p>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
     );
   }
@@ -2115,32 +2841,47 @@ export default function PresentationStudioPage() {
                     </div>
                   )}
 
-                  <h4 className="text-xs font-medium text-muted-foreground mb-2 mt-2">
-                    Content Style {activeTemplate && activeTemplate.id !== 'default' ? '(Layout & Tone)' : '(Slide Style)'}
-                  </h4>
-                  {activeTemplate && activeTemplate.id !== 'default' && (
-                    <p className="text-[10px] text-muted-foreground mb-2">
-                      Your brand template "{activeTemplate.name}" controls layout, design, colors, and fonts. The style below adjusts content tone only.
-                    </p>
+                  {activeTemplate && activeTemplate.id !== 'default' ? (
+                    <div className="mt-2 p-3 rounded-md border border-[#A3238E]/30 bg-[#A3238E]/5">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <Palette className="w-4 h-4 text-[#A3238E]" />
+                        <span className="text-sm font-medium text-foreground">Brand Template Active</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        "{activeTemplate.name}" controls all visual branding — colors, fonts, backgrounds, and layouts. Content tone is driven by your audience and purpose selections above.
+                      </p>
+                      <div className="flex gap-2 mt-2 flex-wrap">
+                        {Object.entries(activeTemplate.brandKit.colors).slice(0, 6).map(([key, val]) => (
+                          <div key={key} className="flex items-center gap-1">
+                            <div className="w-3 h-3 rounded-full border border-border" style={{ backgroundColor: `#${val}` }} />
+                            <span className="text-[10px] text-muted-foreground">{key}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <h4 className="text-xs font-medium text-muted-foreground mb-2 mt-2">Slide Style</h4>
+                      <div className="grid grid-cols-1 gap-2">
+                        {TEMPLATE_OPTIONS.map(opt => {
+                          const isSelected = (templateOverride || 'executive_modern') === opt.value;
+                          return (
+                            <button
+                              key={opt.value}
+                              onClick={() => setTemplateOverride(opt.value)}
+                              className={`p-3 rounded-md border text-left transition-colors ${
+                                isSelected ? 'border-[#A3238E] bg-[#A3238E]/5' : 'border-border hover:bg-muted/50'
+                              }`}
+                              data-testid={`template-${opt.value}`}
+                            >
+                              <p className={`text-sm font-medium ${isSelected ? 'text-[#A3238E]' : 'text-foreground'}`}>{opt.label}</p>
+                              <p className="text-xs text-muted-foreground">{opt.description}</p>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
                   )}
-                  <div className="grid grid-cols-1 gap-2">
-                    {TEMPLATE_OPTIONS.map(opt => {
-                      const isSelected = (templateOverride || 'executive_modern') === opt.value;
-                      return (
-                        <button
-                          key={opt.value}
-                          onClick={() => setTemplateOverride(opt.value)}
-                          className={`p-3 rounded-md border text-left transition-colors ${
-                            isSelected ? 'border-[#A3238E] bg-[#A3238E]/5' : 'border-border hover:bg-muted/50'
-                          }`}
-                          data-testid={`template-${opt.value}`}
-                        >
-                          <p className={`text-sm font-medium ${isSelected ? 'text-[#A3238E]' : 'text-foreground'}`}>{opt.label}</p>
-                          <p className="text-xs text-muted-foreground">{opt.description}</p>
-                        </button>
-                      );
-                    })}
-                  </div>
                 </Card>
 
                 <Card className="p-4">
