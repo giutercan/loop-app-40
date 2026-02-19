@@ -1,5 +1,37 @@
 import { storage } from "../storage";
 import { openai } from "../ai";
+import type { SavedPresentation } from "@shared/schema";
+
+const savedPresentations: SavedPresentation[] = [];
+let nextPresentationId = 1;
+
+export function savePresentation(presentation: Omit<SavedPresentation, 'id' | 'createdAt'>): SavedPresentation {
+  const saved: SavedPresentation = {
+    ...presentation,
+    id: `pres-${nextPresentationId++}`,
+    createdAt: new Date().toISOString(),
+  };
+  savedPresentations.unshift(saved);
+  return saved;
+}
+
+export function getSavedPresentations(accountId?: number, projectId?: number): SavedPresentation[] {
+  let results = [...savedPresentations];
+  if (accountId) results = results.filter(p => p.accountId === accountId);
+  if (projectId) results = results.filter(p => p.projectId === projectId);
+  return results;
+}
+
+export function getSavedPresentation(id: string): SavedPresentation | undefined {
+  return savedPresentations.find(p => p.id === id);
+}
+
+export function deleteSavedPresentation(id: string): boolean {
+  const idx = savedPresentations.findIndex(p => p.id === id);
+  if (idx === -1) return false;
+  savedPresentations.splice(idx, 1);
+  return true;
+}
 
 export type PresentationPurpose = 'customer_engagement' | 'qbr' | 'executive_pitch' | 'discovery_readout' | 'handoff_brief' | 'evidence_review' | 'value_story';
 
@@ -1249,11 +1281,12 @@ TEMPLATE GUIDELINES:
 IMAGE CATEGORIES (assign to image_feature and section_divider slides):
 - 'professional', 'teamwork', 'technology', 'leadership', 'cityscape', 'innovation'
 
-${request.brandTemplate ? `BRAND TEMPLATE: "${request.brandTemplate.name}"
+${request.brandTemplate ? `BRAND TEMPLATE (PRIMARY - takes priority over slide style):
+Template Name: "${request.brandTemplate.name}"
 - Fonts: Heading="${request.brandTemplate.fonts.major}", Body="${request.brandTemplate.fonts.minor}"
 - Brand Colors: ${Object.entries(request.brandTemplate.colors).map(([k, v]) => `${k}: "#${v}"`).join(', ')}
 - Available Layouts: ${request.brandTemplate.layouts.map(l => l.name).join(', ')}
-Use these brand colors for charts, metrics, and visual elements. Prioritize accent1 and accent2 for primary chart colors.` : `BRAND COLORS (REQUIRED for chart colors and metric colors - assign specific colors):
+IMPORTANT: The uploaded brand template defines the visual identity. Use ONLY these brand colors for charts, metrics, and visual elements. The slide style (${template}) controls content arrangement and tone, NOT colors or fonts. Prioritize accent1 and accent2 for primary chart colors, accent3-accent6 for secondary elements.` : `BRAND COLORS (REQUIRED for chart colors and metric colors - assign specific colors):
 - Navy: "#00173B", Forest Green: "#00634F", Ocean Blue: "#005971"
 - Emerald: "#009B77" (for positive/success), Mint: "#05C690" (highlights)
 - Lime: "#8DC63F" (growth), Cyan: "#00ADBB" (info), Purple: "#A3238E" (premium)`}

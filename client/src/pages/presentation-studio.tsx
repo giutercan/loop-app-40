@@ -62,6 +62,9 @@ import {
   Database,
   ExternalLink,
   Building2,
+  Clock,
+  FolderOpen,
+  History,
 } from "lucide-react";
 
 type PresentationPurpose = 'customer_engagement' | 'qbr' | 'executive_pitch' | 'discovery_readout' | 'handoff_brief' | 'evidence_review' | 'value_story';
@@ -506,6 +509,47 @@ export default function PresentationStudioPage() {
     queryKey: ['/api/templates/active'],
   });
 
+  const { data: savedPresentations = [], refetch: refetchSaved } = useQuery<Array<{
+    id: string; accountId: number; projectId: number; accountName: string;
+    projectName: string; title: string;
+    purpose: string; audience: string; template: string; slideCount: number;
+    topics: string[]; slides: any[]; coaching: any[]; narrativeFlow: string;
+    estimatedDuration: string; brandTemplateName?: string; createdAt: string;
+  }>>({
+    queryKey: ['/api/presentations/saved'],
+  });
+
+  const deleteSavedMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest('DELETE', `/api/presentations/saved/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/presentations/saved'] });
+      toast({ title: 'Deleted', description: 'Presentation removed from history.' });
+    },
+  });
+
+  function loadSavedPresentation(saved: typeof savedPresentations[0]) {
+    setSelectedAccountId(saved.accountId);
+    setSelectedProjectId(saved.projectId);
+    setPurpose(saved.purpose as PresentationPurpose);
+    setAudience(saved.audience as PresentationAudience);
+    setTemplateOverride(saved.template as PresentationTemplate);
+    setCustomTitle(saved.title);
+    setSelectedTopics(saved.topics as TopicCategory[]);
+    setPlan({
+      recommendedTemplate: saved.template as PresentationTemplate,
+      templateRationale: '',
+      slides: saved.slides,
+      coaching: saved.coaching || [],
+      dataCompleteness: {} as any,
+      narrativeFlow: saved.narrativeFlow,
+      estimatedDuration: saved.estimatedDuration,
+    });
+    setStep('review');
+    toast({ title: 'Presentation Loaded', description: `"${saved.title}" loaded with ${saved.slideCount} slides.` });
+  }
+
   const handleTemplateUpload = async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.pptx')) {
       toast({ title: 'Invalid File', description: 'Please upload a .pptx file (PowerPoint format).', variant: 'destructive' });
@@ -660,6 +704,7 @@ export default function PresentationStudioPage() {
     onSuccess: (data: PresentationPlan) => {
       setPlan(data);
       setStep('review');
+      queryClient.invalidateQueries({ queryKey: ['/api/presentations/saved'] });
       toast({ title: 'Presentation Generated', description: `${data.slides.length} slides created with AI-powered content.` });
     },
     onError: () => {
@@ -1642,7 +1687,14 @@ export default function PresentationStudioPage() {
                     </div>
                   )}
 
-                  <h4 className="text-xs font-medium text-muted-foreground mb-2 mt-2">Slide Style</h4>
+                  <h4 className="text-xs font-medium text-muted-foreground mb-2 mt-2">
+                    Content Style {activeTemplate && activeTemplate.id !== 'default' ? '(Layout & Tone)' : '(Slide Style)'}
+                  </h4>
+                  {activeTemplate && activeTemplate.id !== 'default' && (
+                    <p className="text-[10px] text-muted-foreground mb-2">
+                      Your brand template "{activeTemplate.name}" provides colors and fonts. The style below controls content arrangement only.
+                    </p>
+                  )}
                   <div className="grid grid-cols-1 gap-2">
                     {TEMPLATE_OPTIONS.map(opt => {
                       const isSelected = (templateOverride || 'executive_modern') === opt.value;
@@ -1993,6 +2045,75 @@ export default function PresentationStudioPage() {
                           <p className="text-xs text-muted-foreground">Export as a branded PowerPoint using your active brand template</p>
                         </div>
                       </div>
+                    </div>
+                  </Card>
+                )}
+
+                {savedPresentations.length > 0 && (
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 mb-3 flex-wrap">
+                      <History className="w-4 h-4 text-[#005971]" />
+                      <h3 className="text-sm font-semibold text-foreground">Presentation History</h3>
+                      <Badge variant="secondary" className="text-[10px]">{savedPresentations.length}</Badge>
+                    </div>
+                    <div className="space-y-2">
+                      {savedPresentations.slice(0, 10).map(saved => (
+                        <div
+                          key={saved.id}
+                          className="flex items-center justify-between gap-2 p-2.5 rounded-md border border-border hover-elevate"
+                          data-testid={`saved-presentation-${saved.id}`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-medium text-foreground truncate">{saved.title}</p>
+                            <p className="text-[10px] text-muted-foreground truncate mt-0.5">{saved.accountName} / {saved.projectName}</p>
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                <Layers className="w-2.5 h-2.5" />
+                                {saved.slideCount} slides
+                              </span>
+                              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                <Clock className="w-2.5 h-2.5" />
+                                {new Date(saved.createdAt).toLocaleDateString()}
+                              </span>
+                              {saved.brandTemplateName && (
+                                <Badge variant="secondary" className="text-[9px]">{saved.brandTemplateName}</Badge>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => loadSavedPresentation(saved)}
+                              title="Open & edit"
+                              data-testid={`button-load-${saved.id}`}
+                            >
+                              <FolderOpen className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                loadSavedPresentation(saved);
+                                setTimeout(() => exportMutation.mutate(), 500);
+                              }}
+                              title="Download PPTX"
+                              data-testid={`button-download-${saved.id}`}
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => deleteSavedMutation.mutate(saved.id)}
+                              title="Delete"
+                              data-testid={`button-delete-${saved.id}`}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </Card>
                 )}

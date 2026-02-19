@@ -4460,3 +4460,23 @@ export const insertGaSuccessMetricsSchema = createInsertSchema(gaSuccessMetrics)
 });
 export type InsertGaSuccessMetrics = z.infer<typeof insertGaSuccessMetricsSchema>;
 export type GaSuccessMetrics = typeof gaSuccessMetrics.$inferSelect;
+
+export interface SavedPresentation {
+  id: string;
+  accountId: number;
+  projectId: number;
+  accountName: string;
+  projectName: string;
+  title: string;
+  purpose: string;
+  audience: string;
+  template: string;
+  slideCount: number;
+  topics: string[];
+  slides: any[];
+  coaching: any[];
+  narrativeFlow: string;
+  estimatedDuration: string;
+  brandTemplateName?: string;
+  createdAt: string;
+}

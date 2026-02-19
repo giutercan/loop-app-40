@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { storage } from "./storage";
 import { researchCompany, followUpResearch, generateDiscoveryQuestions, enrichFromNotes, generateSuccessStoryRecommendations, generateBusinessReviewAgenda, generateIndustryBenchmark, generateValueCaseRecommendations, generateKPIRecommendations, generateKPIRationale, generateStrategicPillars, generateStorySuggestion, generateDiscoveryKpiSuggestions, enrichContactWithAI, openai, generateCompetitiveIntelligence, generateKPIValueCaseRecommendations, generateLiveIntelligence, generateEvidencePackRecommendations, generateItemCoaching, researchMeetingAttendee } from "./ai";
 import { EvidencePackService } from "./services/evidence-pack.service";
-import { generatePresentationPlan, aggregatePresentationData, getProjectContextSummary, generateCoachRecommendations, KF_CLIENT_STORIES, getRelevantKFStories, type PresentationRequest, type TopicCategory } from "./services/presentation-studio.service";
+import { generatePresentationPlan, aggregatePresentationData, getProjectContextSummary, generateCoachRecommendations, KF_CLIENT_STORIES, getRelevantKFStories, savePresentation, getSavedPresentations, getSavedPresentation, deleteSavedPresentation, type PresentationRequest, type TopicCategory } from "./services/presentation-studio.service";
 import { uploadTemplate, getTemplates, getTemplate, getActiveTemplate, setActiveTemplate, deleteTemplate, getActiveBrandKit, mapBrandKitToExportColors, getTemplateLayoutForSlideType } from "./services/template-manager.service";
 import pptxgenModule from "pptxgenjs";
 const PptxGenJS = (pptxgenModule as any).default || pptxgenModule;
@@ -18054,11 +18054,54 @@ Return JSON:
       }
 
       const plan = await generatePresentationPlan(body);
-      res.json(plan);
+
+      const account = await storage.getAccount(body.accountId);
+      const project = await storage.getProject(body.projectId);
+      const activeTempl2 = getActiveTemplate();
+      const accountName = account?.name || 'Account';
+      const projectName = project?.name || 'Project';
+      const saved = savePresentation({
+        accountId: body.accountId,
+        projectId: body.projectId,
+        accountName,
+        projectName,
+        title: body.customTitle || `${accountName} - ${projectName}`,
+        purpose: body.purpose,
+        audience: body.audience,
+        template: plan.recommendedTemplate,
+        slideCount: plan.slides.length,
+        topics: body.selectedTopics,
+        slides: plan.slides,
+        coaching: plan.coaching,
+        narrativeFlow: plan.narrativeFlow,
+        estimatedDuration: plan.estimatedDuration,
+        brandTemplateName: (activeTempl2 && activeTempl2.id !== 'default') ? activeTempl2.name : undefined,
+      });
+
+      res.json({ ...plan, savedId: saved.id });
     } catch (error: any) {
       console.error("Error generating presentation plan:", error);
       res.status(500).json({ error: error.message });
     }
+  });
+
+  app.get("/api/presentations/saved", (req, res) => {
+    const accountId = req.query.accountId ? parseInt(req.query.accountId as string) : undefined;
+    const projectId = req.query.projectId ? parseInt(req.query.projectId as string) : undefined;
+    const presentations = getSavedPresentations(accountId, projectId);
+    res.json(presentations);
+  });
+
+  app.get("/api/presentations/saved/:id", (req, res) => {
+    const presentation = getSavedPresentation(req.params.id);
+    if (!presentation) return res.status(404).json({ error: "Presentation not found" });
+    res.json(presentation);
+  });
+
+  app.delete("/api/presentations/saved/:id", (req, res) => {
+    const deleted = deleteSavedPresentation(req.params.id);
+    if (!deleted) return res.status(404).json({ error: "Presentation not found" });
+    res.json({ success: true });
   });
 
   app.post("/api/presentations/refine-slide", async (req, res) => {
@@ -18357,13 +18400,22 @@ CRITICAL RULES:
       const template = plan.recommendedTemplate;
 
       const colors = getKFColors();
+      const hasBrandTemplate = activeTempl && activeTempl.id !== 'default';
 
-      const templateConfig: Record<string, { titleBg: string; accentColor: string; headerColor: string; textColor: string; subtitleColor: string }> = {
+      const brandConfig = hasBrandTemplate ? {
+        titleBg: activeBrandKit.colors.dk1,
+        accentColor: activeBrandKit.colors.accent1,
+        headerColor: activeBrandKit.colors.dk1,
+        textColor: activeBrandKit.colors.dk2 || "333333",
+        subtitleColor: activeBrandKit.colors.accent3 || activeBrandKit.colors.lt2 || "666666",
+      } : null;
+
+      const styleConfig: Record<string, { titleBg: string; accentColor: string; headerColor: string; textColor: string; subtitleColor: string }> = {
         executive_modern: { titleBg: colors.navy, accentColor: colors.emerald, headerColor: colors.navy, textColor: "333333", subtitleColor: colors.gray },
         data_driven: { titleBg: colors.white, accentColor: colors.oceanBlue, headerColor: colors.oceanBlue, textColor: "333333", subtitleColor: colors.gray },
         visual_narrative: { titleBg: colors.forestGreen, accentColor: colors.purple, headerColor: colors.forestGreen, textColor: "333333", subtitleColor: colors.gray },
       };
-      const config = templateConfig[template] || templateConfig.executive_modern;
+      const config = brandConfig || styleConfig[template] || styleConfig.executive_modern;
 
       const pres = new PptxGenJS();
       pres.defineLayout({ name: "KF_WIDE", width: colors.slideWidth, height: colors.slideHeight });
