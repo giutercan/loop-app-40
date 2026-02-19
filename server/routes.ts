@@ -19084,7 +19084,7 @@ CRITICAL RULES:
           }
 
           case "section_divider": {
-            if (!hasBrandTemplate) {
+            {
               const secImgPath = slideData.imageCategory ? getImagePath(slideData.imageCategory) : null;
               if (secImgPath) {
                 try {
@@ -19103,7 +19103,7 @@ CRITICAL RULES:
                     fill: { color: config.accentColor },
                   });
                 }
-              } else {
+              } else if (!hasBrandTemplate) {
                 slide.addShape(pres.ShapeType.rect, {
                   x: 0, y: 0, w: colors.slideWidth, h: colors.slideHeight,
                   fill: { color: config.accentColor },
@@ -19434,7 +19434,7 @@ CRITICAL RULES:
           }
 
           case "image_feature": {
-            if (!hasBrandTemplate) {
+            {
               const imgPath = slideData.imageCategory ? getImagePath(slideData.imageCategory) : null;
               if (imgPath) {
                 try {
@@ -19448,9 +19448,9 @@ CRITICAL RULES:
                     fill: { color: "000000", transparency: 50 },
                   });
                 } catch {
-                  slide.background = { color: config.titleBg };
+                  if (!hasBrandTemplate) slide.background = { color: config.titleBg };
                 }
-              } else {
+              } else if (!hasBrandTemplate) {
                 slide.background = { color: config.titleBg };
               }
             }

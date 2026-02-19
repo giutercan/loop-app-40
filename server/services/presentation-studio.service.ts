@@ -72,6 +72,7 @@ export interface PresentationRequest {
   additionalMaterials?: string;
   gapAnswers?: Array<{ question: string; answer: string }>;
   audiencePriorities?: AudiencePriority[];
+  customTopics?: Array<{ id: string; label: string; description: string; reason: string }>;
   brandTemplate?: {
     name: string;
     colors: Record<string, string>;
@@ -557,6 +558,7 @@ export interface CoachRecommendation {
   storyAngles: Array<{ angle: string; source: string }>;
   estimatedSlides: number;
   recommendedStories: RecommendedStory[];
+  customTopics?: Array<{ id: string; label: string; description: string; reason: string }>;
 }
 
 export async function getProjectContextSummary(
@@ -740,6 +742,8 @@ Identify GAPS: If critical data is missing for the recommended approach, generat
 
 Identify STORY ANGLES: Based on available storytelling assets (narrative canvas, story builder, success stories), suggest 2-3 compelling narrative angles.
 
+SUGGEST CUSTOM TOPICS: Beyond the standard 10 topic categories, identify 2-4 context-specific custom topics that would strengthen this presentation based on the unique aspects of this engagement (e.g., "Digital Transformation ROI", "Leadership Bench Strength", "Talent Pipeline Velocity", "Culture Integration Playbook"). These should be highly specific to the client's situation and industry. Include them in customTopics array with a unique id (snake_case), a short label, description, and reason.
+
 Return valid JSON:
 {
   "purpose": "customer_engagement|qbr|executive_pitch|discovery_readout|handoff_brief|evidence_review|value_story",
@@ -748,6 +752,9 @@ Return valid JSON:
   "audienceReason": "1-2 sentences explaining the audience recommendation",
   "suggestedTopics": [
     { "topic": "<topic_id>", "reason": "why include this", "priority": "must_include|recommended|optional" }
+  ],
+  "customTopics": [
+    { "id": "custom_topic_id", "label": "Short label (2-4 words)", "description": "What this topic covers", "reason": "Why this context-specific topic strengthens the presentation" }
   ],
   "template": "executive_modern|data_driven|visual_narrative",
   "templateReason": "why this template style",
@@ -840,6 +847,7 @@ Return valid JSON:
       storyAngles: result.storyAngles || [],
       estimatedSlides: result.estimatedSlides || 12,
       recommendedStories,
+      customTopics: result.customTopics || [],
     };
   } catch (error) {
     console.error("[PresentationStudio] Coach AI failed:", error);
@@ -1278,7 +1286,7 @@ IMPORTANT: These priorities should drive the slide structure, data emphasis, and
 ${request.userBrief ? `CONSULTANT'S BRIEF:\n${request.userBrief}\n` : ''}
 ${request.additionalMaterials ? `ADDITIONAL CONTEXT/MATERIALS:\n${request.additionalMaterials}\n` : ''}
 ${request.gapAnswers?.length ? `CONSULTANT'S ANSWERS TO GAP QUESTIONS:\n${request.gapAnswers.map(ga => `Q: ${ga.question}\nA: ${ga.answer}`).join('\n')}\n` : ''}
-
+${request.customTopics?.length ? `CUSTOM TOPICS (AI-suggested engagement-specific topics — create 1-2 dedicated slides for each):\n${request.customTopics.map((ct, i) => `${i + 1}. "${ct.label}" - ${ct.description} (Reason: ${ct.reason})`).join('\n')}\nIMPORTANT: These custom topics represent unique aspects of this engagement. Integrate them naturally into the presentation flow and create specific content slides for each.\n` : ''}
 STORYTELLING ASSETS:
 ${data.narrativeCanvas ? `Narrative Canvas: Opener: ${(data.narrativeCanvas as any).opener || 'N/A'}, Key Message: ${(data.narrativeCanvas as any).keyMessage || 'N/A'}, Proof Point: ${(data.narrativeCanvas as any).proofPoint || 'N/A'}, CTA: ${(data.narrativeCanvas as any).callToAction || 'N/A'}` : 'No narrative canvas.'}
 ${data.storyBuilderData ? `Story Builder: Hook: ${(data.storyBuilderData as any).before?.startingHook || 'N/A'}, Hero: ${(data.storyBuilderData as any).before?.heroCharacter || 'N/A'}, Turning Point: ${(data.storyBuilderData as any).during?.turningPoint || 'N/A'}, Single Message: ${(data.storyBuilderData as any).before?.singleMessage || 'N/A'}` : 'No story builder.'}

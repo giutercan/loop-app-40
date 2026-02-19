@@ -573,6 +573,7 @@ export default function PresentationStudioPage() {
   const [additionalMaterials, setAdditionalMaterials] = useState('');
   const [coachResult, setCoachResult] = useState<any>(null);
   const [gapAnswers, setGapAnswers] = useState<Record<number, string>>({});
+  const [selectedCustomTopics, setSelectedCustomTopics] = useState<string[]>([]);
   const [readinessScore, setReadinessScore] = useState<any>(null);
   const [showReadiness, setShowReadiness] = useState(false);
   const [showRehearsalMode, setShowRehearsalMode] = useState(false);
@@ -793,10 +794,16 @@ export default function PresentationStudioPage() {
       if (data.purpose) setPurpose(data.purpose);
       if (data.audience) setAudience(data.audience);
       if (data.suggestedTopics?.length) {
+        const availableIds = topicsData ? Object.entries(topicsData as Record<string, any>)
+          .filter(([, val]) => val?.available)
+          .map(([key]) => key) : [];
         const mustInclude = data.suggestedTopics
           .filter((t: any) => t.priority === 'must_include' || t.priority === 'recommended')
-          .map((t: any) => t.topic);
-        setSelectedTopics(mustInclude);
+          .map((t: any) => t.topic)
+          .filter((t: string) => availableIds.length === 0 || availableIds.includes(t));
+        if (mustInclude.length > 0) {
+          setSelectedTopics(mustInclude);
+        }
       }
       if (data.template) setTemplateOverride(data.template);
       if (data.suggestedTitle) setCustomTitle(data.suggestedTitle);
@@ -842,6 +849,7 @@ export default function PresentationStudioPage() {
     setStep('configure');
     setCoachResult(null);
     setGapAnswers({});
+    setSelectedCustomTopics([]);
   }, [selectedProjectId]);
 
   useEffect(() => {
@@ -901,6 +909,9 @@ export default function PresentationStudioPage() {
           question: coachResult?.gapQuestions?.[Number(idx)]?.question || '',
           answer,
         }));
+      const customTopicDetails = selectedCustomTopics.length > 0 && coachResult?.customTopics
+        ? coachResult.customTopics.filter((ct: any) => selectedCustomTopics.includes(ct.id))
+        : undefined;
       const res = await apiRequest('POST', '/api/presentations/plan', {
         accountId: selectedAccountId, projectId: selectedProjectId,
         purpose, audience, selectedTopics,
@@ -910,6 +921,7 @@ export default function PresentationStudioPage() {
         additionalMaterials: additionalMaterials || undefined,
         gapAnswers: gapAnswersList.length > 0 ? gapAnswersList : undefined,
         audiencePriorities: selectedPriorities.length > 0 ? selectedPriorities : undefined,
+        customTopics: customTopicDetails,
       });
       return res.json();
     },
@@ -2712,6 +2724,39 @@ export default function PresentationStudioPage() {
                         </label>
                       );
                     })}
+                    {coachResult?.customTopics?.length > 0 && (
+                      <>
+                        <div className="border-t border-dashed border-[#A3238E]/20 pt-2 mt-2">
+                          <p className="text-[10px] font-medium text-[#A3238E] mb-1.5">AI-Suggested Custom Topics</p>
+                        </div>
+                        {coachResult.customTopics.map((ct: any) => {
+                          const isChecked = selectedCustomTopics.includes(ct.id);
+                          return (
+                            <label
+                              key={ct.id}
+                              className={`flex items-center gap-3 p-2.5 rounded-md border cursor-pointer transition-colors ${
+                                isChecked ? 'border-[#A3238E] bg-[#A3238E]/5' : 'border-dashed border-border hover-elevate'
+                              }`}
+                              data-testid={`topic-custom-${ct.id}`}
+                            >
+                              <Checkbox
+                                checked={isChecked}
+                                onCheckedChange={() => setSelectedCustomTopics(prev =>
+                                  prev.includes(ct.id) ? prev.filter((t: string) => t !== ct.id) : [...prev, ct.id]
+                                )}
+                                data-testid={`checkbox-custom-topic-${ct.id}`}
+                              />
+                              <Sparkles className={`w-4 h-4 shrink-0 ${isChecked ? 'text-[#A3238E]' : 'text-muted-foreground'}`} />
+                              <div className="flex-1 min-w-0">
+                                <span className="text-sm text-foreground block">{ct.label}</span>
+                                <span className="text-[10px] text-muted-foreground block truncate">{ct.description}</span>
+                              </div>
+                              <Badge variant="secondary" className="text-[9px] shrink-0 bg-[#A3238E]/10 text-[#A3238E]">Custom</Badge>
+                            </label>
+                          );
+                        })}
+                      </>
+                    )}
                   </div>
                 </Card>
 
@@ -3056,6 +3101,25 @@ export default function PresentationStudioPage() {
                                     <div className="min-w-0 flex-1">
                                       <p className="text-xs font-medium text-foreground">{getTopicLabel(t.topic)}</p>
                                       <p className="text-[10px] text-muted-foreground leading-tight">{t.reason}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {coachResult.customTopics?.length > 0 && (
+                            <div>
+                              <p className="text-[10px] font-medium text-muted-foreground mb-1.5">AI-Suggested Custom Topics</p>
+                              <div className="space-y-1">
+                                {coachResult.customTopics.map((ct: any, i: number) => (
+                                  <div key={i} className="flex items-start gap-2 p-1.5 rounded-md border border-dashed border-[#A3238E]/30 bg-[#A3238E]/5 dark:bg-[#A3238E]/10">
+                                    <Badge variant="secondary" className="text-[9px] shrink-0 bg-[#A3238E]/10 dark:bg-[#A3238E]/20 text-[#A3238E]">
+                                      Custom
+                                    </Badge>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-xs font-medium text-foreground">{ct.label}</p>
+                                      <p className="text-[10px] text-muted-foreground leading-tight">{ct.reason}</p>
                                     </div>
                                   </div>
                                 ))}

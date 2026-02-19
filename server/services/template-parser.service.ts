@@ -361,7 +361,20 @@ function classifyLayout(name: string, placeholders: TemplatePlaceholder[]): stri
 }
 
 export async function parseTemplateFromBuffer(buffer: Buffer, fileName: string): Promise<TemplateBrandKit> {
-  const zip = await JSZip.loadAsync(buffer);
+  let zip: JSZip;
+  try {
+    zip = await JSZip.loadAsync(buffer);
+  } catch (e: any) {
+    throw new Error(`Could not open the file as a valid .pptx archive. The file may be corrupted or not a genuine PowerPoint file. (${e.message})`);
+  }
+
+  const presFile = zip.file("ppt/presentation.xml");
+  if (!presFile) {
+    const hasPptFolder = Object.keys(zip.files).some(f => f.startsWith("ppt/"));
+    if (!hasPptFolder) {
+      throw new Error("This file does not appear to be a PowerPoint (.pptx) file. It may be a different file type renamed with a .pptx extension.");
+    }
+  }
 
   let colors: TemplateBrandKit["colors"] = {
     dk1: "000000", lt1: "FFFFFF", dk2: "44546A", lt2: "E7E6E6",
@@ -371,16 +384,20 @@ export async function parseTemplateFromBuffer(buffer: Buffer, fileName: string):
   };
   let fonts: TemplateBrandKit["fonts"] = { major: "Arial", minor: "Arial" };
 
-  const themeFile = zip.file(/ppt\/theme\/theme1\.xml/i)[0];
+  const themeFiles = zip.file(/ppt\/theme\/theme\d*\.xml/i);
+  const themeFile = themeFiles[0];
   if (themeFile) {
-    const themeXml = await themeFile.async("string");
-    colors = extractThemeColors(themeXml);
-    fonts = extractThemeFonts(themeXml);
+    try {
+      const themeXml = await themeFile.async("string");
+      colors = extractThemeColors(themeXml);
+      fonts = extractThemeFonts(themeXml);
+    } catch (e) {
+      console.warn("Warning: could not parse theme XML, using defaults");
+    }
   }
 
   let slideWidth = 13.333;
   let slideHeight = 7.5;
-  const presFile = zip.file("ppt/presentation.xml");
   if (presFile) {
     const presXml = await presFile.async("string");
     const size = extractSlideSize(presXml);
@@ -406,13 +423,17 @@ export async function parseTemplateFromBuffer(buffer: Buffer, fileName: string):
   const layoutFiles = zip.file(/ppt\/slideLayouts\/slideLayout\d+\.xml/i);
 
   for (const layoutFile of layoutFiles) {
-    const layoutXml = await layoutFile.async("string");
-    const name = extractLayoutName(layoutXml);
-    const placeholders = extractPlaceholders(layoutXml);
-    const type = classifyLayout(name, placeholders);
-    const background = extractBackground(layoutXml, colors);
-    const decorativeShapes = extractDecorativeShapes(layoutXml, colors);
-    layouts.push({ name, type, placeholders, background, decorativeShapes });
+    try {
+      const layoutXml = await layoutFile.async("string");
+      const name = extractLayoutName(layoutXml);
+      const placeholders = extractPlaceholders(layoutXml);
+      const type = classifyLayout(name, placeholders);
+      const background = extractBackground(layoutXml, colors);
+      const decorativeShapes = extractDecorativeShapes(layoutXml, colors);
+      layouts.push({ name, type, placeholders, background, decorativeShapes });
+    } catch (e) {
+      console.warn(`Warning: could not parse layout ${layoutFile.name}, skipping`);
+    }
   }
 
   layouts.sort((a, b) => {
