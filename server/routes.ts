@@ -12,6 +12,7 @@ import fs from "fs";
 import path from "path";
 import { z } from "zod";
 import crypto from "crypto";
+import { execSync } from "child_process";
 import { OUTCOME_JOURNEY_TEMPLATES, type SolutionPatternId } from "@shared/value-frameworks";
 
 // Track in-flight success story generations per project (prevents concurrent requests)
