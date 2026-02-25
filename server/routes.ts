@@ -13,6 +13,7 @@ import path from "path";
 import { z } from "zod";
 import crypto from "crypto";
 import { execSync } from "child_process";
+import { exportToGitHub } from "./services/github.service";
 import { OUTCOME_JOURNEY_TEMPLATES, type SolutionPatternId } from "@shared/value-frameworks";
 
 // Track in-flight success story generations per project (prevents concurrent requests)
@@ -20049,6 +20050,21 @@ CRITICAL RULES:
       res.json(topics);
     } catch (error: any) {
       console.error("Error fetching presentation topics:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/export/github", async (req, res) => {
+    try {
+      const { repoName, isPrivate } = req.body;
+      if (!repoName || typeof repoName !== 'string') {
+        return res.status(400).json({ error: "Repository name is required" });
+      }
+      const sanitized = repoName.replace(/[^a-zA-Z0-9._-]/g, '-');
+      const result = await exportToGitHub(sanitized, isPrivate !== false);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error exporting to GitHub:", error);
       res.status(500).json({ error: error.message });
     }
   });

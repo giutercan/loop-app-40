@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { GitHubExportDialog } from "@/components/github-export-dialog";
 import {
   Dialog,
   DialogContent,
@@ -322,7 +323,8 @@ export default function AccountsDashboard() {
               </div>
             </Link>
             
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 flex-wrap">
+              <GitHubExportDialog />
               <Link href="/integrations">
                 <Button variant="ghost" size="icon" data-testid="button-integrations">
                   <Settings className="w-5 h-5" />

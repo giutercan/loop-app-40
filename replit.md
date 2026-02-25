@@ -52,3 +52,4 @@ The AI strategy prioritizes strategic and actionable insights, with data sorted 
 - **Clearout API**: Provides real-time company name autocomplete with logos.
 - **Salesforce CRM**: Two-way integration for syncing accounts and opportunities, supporting OAuth 2.0, account and opportunity sync, sync logs, and manual sync.
 - **Perplexity API**: (llama-3.1-sonar-small-128k-online model) used by Growth Accelerator for real-time competitive intelligence in battle card generation.
+- **GitHub API**: (@octokit/rest) Connected via Replit integration for exporting project code to GitHub repositories. Export button available on the Accounts Dashboard header. Service file: `server/services/github.service.ts`.
