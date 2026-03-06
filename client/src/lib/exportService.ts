@@ -21,6 +21,49 @@ const FONTS = {
   body: "Arial",
 };
 
+const KF_LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 50">
+  <rect width="260" height="50" fill="none"/>
+  <circle cx="20" cy="25" r="12" fill="#0891B2" opacity="0.9"/>
+  <circle cx="20" cy="25" r="7" fill="#00338D"/>
+  <circle cx="20" cy="25" r="3" fill="#FF6B35"/>
+  <text x="42" y="22" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="18" fill="#00338D" letter-spacing="3">KORN FERRY</text>
+  <text x="42" y="38" font-family="Arial,Helvetica,sans-serif" font-weight="400" font-size="11" fill="#0891B2" letter-spacing="5">LOOP</text>
+</svg>`;
+
+const KF_LOGO_WHITE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 50">
+  <rect width="260" height="50" fill="none"/>
+  <circle cx="20" cy="25" r="12" fill="#0891B2" opacity="0.9"/>
+  <circle cx="20" cy="25" r="7" fill="#FFFFFF" opacity="0.3"/>
+  <circle cx="20" cy="25" r="3" fill="#FF6B35"/>
+  <text x="42" y="22" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="18" fill="#FFFFFF" letter-spacing="3">KORN FERRY</text>
+  <text x="42" y="38" font-family="Arial,Helvetica,sans-serif" font-weight="400" font-size="11" fill="#0891B2" letter-spacing="5">LOOP</text>
+</svg>`;
+
+function svgToBase64(svg: string): string {
+  return "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg)));
+}
+
+function svgToPngBase64(svg: string, width: number, height: number): Promise<string> {
+  return new Promise((resolve) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = width * 2;
+    canvas.height = height * 2;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      resolve("");
+      return;
+    }
+    ctx.scale(2, 2);
+    const img = new Image();
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = () => resolve("");
+    img.src = svgToBase64(svg);
+  });
+}
+
 // Export Options Interface
 export interface ExportOptions {
   includeTheme: boolean;
@@ -269,6 +312,19 @@ function addGradientHeader(slide: pptxgen.Slide, title: string, subtitle?: strin
   });
 }
 
+function addLogoToSlide(slide: pptxgen.Slide, logoPng: string, position: "header" | "footer" = "header") {
+  if (!logoPng) return;
+  if (position === "header") {
+    slide.addImage({
+      data: logoPng, x: 7.8, y: 0.12, w: 1.7, h: 0.33,
+    });
+  } else {
+    slide.addImage({
+      data: logoPng, x: 8, y: 5.15, w: 1.3, h: 0.25,
+    });
+  }
+}
+
 function addCardContainer(slide: pptxgen.Slide, x: number, y: number, w: number, h: number, accentColor?: string) {
   slide.addShape("rect", {
     x,
@@ -314,139 +370,102 @@ function addKFHeader(pres: pptxgen, slide: pptxgen.Slide, title: string) {
   addGradientHeader(slide, title);
 }
 
-function addKFFooter(slide: pptxgen.Slide, pageNum: number) {
-  slide.addText(`Page ${pageNum}`, {
-    x: 4.5,
-    y: 5.3,
-    w: 1,
-    h: 0.2,
-    fontSize: 8,
-    fontFace: FONTS.body,
-    color: KORN_FERRY_COLORS.muted.replace("#", ""),
-    align: "center",
+function addKFFooter(slide: pptxgen.Slide, pageNum: number, logoPng?: string) {
+  slide.addShape("rect", {
+    x: 0, y: 5.2, w: "100%", h: 0.01,
+    fill: { color: "E2E8F0" },
   });
-
-  slide.addText("Confidential", {
-    x: 8.5,
-    y: 5.3,
-    w: 1,
-    h: 0.2,
-    fontSize: 8,
-    fontFace: FONTS.body,
+  slide.addText("Korn Ferry | Confidential", {
+    x: 0.5, y: 5.25, w: 3, h: 0.2,
+    fontSize: 7, fontFace: FONTS.body,
     color: KORN_FERRY_COLORS.muted.replace("#", ""),
-    align: "right",
   });
+  slide.addText(`${pageNum}`, {
+    x: 4.5, y: 5.25, w: 1, h: 0.2,
+    fontSize: 8, fontFace: FONTS.body,
+    color: KORN_FERRY_COLORS.muted.replace("#", ""), align: "center",
+  });
+  if (logoPng) {
+    addLogoToSlide(slide, logoPng, "footer");
+  }
 }
 
-export function generateIntelligencePPT(data: IntelligenceExportData, options: ExportOptions = DEFAULT_EXPORT_OPTIONS): void {
+export async function generateIntelligencePPT(data: IntelligenceExportData, options: ExportOptions = DEFAULT_EXPORT_OPTIONS): Promise<void> {
   const pres = new pptxgen();
   pres.title = `${data.companyName} - Discovery Report`;
   pres.author = "Korn Ferry Loop";
   pres.layout = "LAYOUT_WIDE";
 
+  const logoPngWhite = await svgToPngBase64(KF_LOGO_WHITE_SVG, 260, 50);
+  const logoPngDark = await svgToPngBase64(KF_LOGO_SVG, 260, 50);
+
   let pageNum = 1;
 
-  // Enhanced Title Slide with gradient and visual elements
   const titleSlide = pres.addSlide();
-  // Background gradient effect
   titleSlide.addShape("rect", {
-    x: 0,
-    y: 0,
-    w: "100%",
-    h: "100%",
+    x: 0, y: 0, w: "100%", h: "100%",
     fill: { color: KORN_FERRY_COLORS.primary.replace("#", "") },
   });
-  // Accent stripe
   titleSlide.addShape("rect", {
-    x: 0,
-    y: 4.2,
-    w: "100%",
-    h: 0.15,
+    x: 0, y: 0, w: 0.12, h: "100%",
     fill: { color: KORN_FERRY_COLORS.teal.replace("#", "") },
   });
-  // Secondary accent
   titleSlide.addShape("rect", {
-    x: 0,
-    y: 4.4,
-    w: "100%",
-    h: 0.08,
+    x: 0, y: 4.0, w: "100%", h: 0.04,
+    fill: { color: KORN_FERRY_COLORS.teal.replace("#", "") },
+  });
+  titleSlide.addShape("rect", {
+    x: 0, y: 4.15, w: "100%", h: 0.02,
     fill: { color: KORN_FERRY_COLORS.secondary.replace("#", "") },
   });
-  
+
+  if (logoPngWhite) {
+    titleSlide.addImage({
+      data: logoPngWhite, x: 0.5, y: 0.4, w: 2.6, h: 0.5,
+    });
+  }
+
   titleSlide.addText("DISCOVERY REPORT", {
-    x: 0.5,
-    y: 1.3,
-    w: 9,
-    h: 0.6,
-    fontSize: 38,
-    fontFace: FONTS.heading,
-    color: KORN_FERRY_COLORS.white.replace("#", ""),
-    bold: true,
+    x: 0.5, y: 1.5, w: 9, h: 0.6,
+    fontSize: 38, fontFace: FONTS.heading,
+    color: KORN_FERRY_COLORS.white.replace("#", ""), bold: true,
   });
   titleSlide.addText(data.companyName, {
-    x: 0.5,
-    y: 2.0,
-    w: 9,
-    h: 0.5,
-    fontSize: 28,
-    fontFace: FONTS.heading,
+    x: 0.5, y: 2.2, w: 9, h: 0.5,
+    fontSize: 28, fontFace: FONTS.heading,
     color: KORN_FERRY_COLORS.secondary.replace("#", ""),
   });
   if (data.industry) {
     titleSlide.addText(data.industry, {
-      x: 0.5,
-      y: 2.6,
-      w: 9,
-      h: 0.4,
-      fontSize: 18,
-      fontFace: FONTS.body,
+      x: 0.5, y: 2.8, w: 9, h: 0.4,
+      fontSize: 18, fontFace: FONTS.body,
       color: KORN_FERRY_COLORS.white.replace("#", ""),
     });
   }
   if (options.includeTheme && data.theme) {
     titleSlide.addText(`Theme: ${data.theme}`, {
-      x: 0.5,
-      y: 3.1,
-      w: 9,
-      h: 0.35,
-      fontSize: 14,
-      fontFace: FONTS.body,
-      color: KORN_FERRY_COLORS.teal.replace("#", ""),
-      italic: true,
+      x: 0.5, y: 3.3, w: 9, h: 0.35,
+      fontSize: 14, fontFace: FONTS.body,
+      color: KORN_FERRY_COLORS.teal.replace("#", ""), italic: true,
     });
   }
-  // Company website link if available
   if (data.companyWebsite) {
     titleSlide.addText(data.companyWebsite, {
-      x: 0.5,
-      y: 3.6,
-      w: 9,
-      h: 0.3,
-      fontSize: 11,
-      fontFace: FONTS.body,
+      x: 0.5, y: 3.7, w: 9, h: 0.3,
+      fontSize: 11, fontFace: FONTS.body,
       color: KORN_FERRY_COLORS.teal.replace("#", ""),
       hyperlink: { url: data.companyWebsite },
     });
   }
   titleSlide.addText(`Generated ${new Date().toLocaleDateString()}`, {
-    x: 0.5,
-    y: 4.7,
-    w: 9,
-    h: 0.3,
-    fontSize: 12,
-    fontFace: FONTS.body,
+    x: 0.5, y: 4.7, w: 4, h: 0.3,
+    fontSize: 12, fontFace: FONTS.body,
     color: KORN_FERRY_COLORS.muted.replace("#", ""),
   });
-  titleSlide.addText("KORN FERRY", {
-    x: 8,
-    y: 0.3,
-    w: 1.5,
-    h: 0.3,
-    fontSize: 12,
-    fontFace: FONTS.heading,
-    color: KORN_FERRY_COLORS.secondary.replace("#", ""),
-    align: "right",
-    bold: true,
+  titleSlide.addText("Confidential", {
+    x: 7, y: 4.7, w: 2.5, h: 0.3,
+    fontSize: 10, fontFace: FONTS.body,
+    color: KORN_FERRY_COLORS.muted.replace("#", ""), align: "right",
   });
 
   // ===== COMPANY PROFILE SLIDE =====
@@ -490,7 +509,7 @@ export function generateIntelligencePPT(data: IntelligenceExportData, options: E
         fontSize: 11, fontFace: FONTS.body, color: KORN_FERRY_COLORS.text.replace("#", ""), valign: "top",
       });
     }
-    addKFFooter(profileSlide, pageNum);
+    addKFFooter(profileSlide, pageNum, logoPngDark);
   }
 
   // ===== STRATEGIC INSIGHTS SLIDES (paginated) =====
@@ -527,7 +546,7 @@ export function generateIntelligencePPT(data: IntelligenceExportData, options: E
         }
         yPos += 1.0;
       });
-      addKFFooter(insightsSlide, pageNum);
+      addKFFooter(insightsSlide, pageNum, logoPngDark);
     }
   }
 
@@ -580,7 +599,7 @@ export function generateIntelligencePPT(data: IntelligenceExportData, options: E
         yPos += 0.3;
       });
     }
-    addKFFooter(themeSlide, pageNum);
+    addKFFooter(themeSlide, pageNum, logoPngDark);
   }
 
   // ===== RECENT NEWS SLIDE =====
@@ -607,7 +626,7 @@ export function generateIntelligencePPT(data: IntelligenceExportData, options: E
       });
       yPos += 0.7;
     });
-    addKFFooter(newsSlide, pageNum);
+    addKFFooter(newsSlide, pageNum, logoPngDark);
   }
 
   // ===== COMPETITIVE LANDSCAPE SLIDE =====
@@ -634,7 +653,7 @@ export function generateIntelligencePPT(data: IntelligenceExportData, options: E
       x: 0.5, y: 1.2, w: 9, colW: [2, 4, 3],
       border: { pt: 0.5, color: KORN_FERRY_COLORS.muted.replace("#", "") }, fontFace: FONTS.body,
     });
-    addKFFooter(compSlide, pageNum);
+    addKFFooter(compSlide, pageNum, logoPngDark);
   }
 
   // ===== KEY PEOPLE SLIDE =====
@@ -661,7 +680,7 @@ export function generateIntelligencePPT(data: IntelligenceExportData, options: E
       x: 0.5, y: 1.2, w: 9, colW: [2.5, 3, 3.5],
       border: { pt: 0.5, color: KORN_FERRY_COLORS.muted.replace("#", "") }, fontFace: FONTS.body,
     });
-    addKFFooter(peopleSlide, pageNum);
+    addKFFooter(peopleSlide, pageNum, logoPngDark);
   }
 
   // ===== ANNUAL REPORT SLIDE =====
@@ -751,7 +770,7 @@ export function generateIntelligencePPT(data: IntelligenceExportData, options: E
         hyperlink: { url: data.annualReportSummary.reportUrl },
       });
     }
-    addKFFooter(arSlide, pageNum);
+    addKFFooter(arSlide, pageNum, logoPngDark);
   }
 
   // ===== EARNINGS CALL SLIDE =====
@@ -818,10 +837,10 @@ export function generateIntelligencePPT(data: IntelligenceExportData, options: E
         });
         aqY += 0.4;
       });
-      addKFFooter(aqSlide, pageNum);
+      addKFFooter(aqSlide, pageNum, logoPngDark);
     }
 
-    addKFFooter(ecSlide, pageNum - (data.earningsCallHighlights.analystQuestions?.length ? 1 : 0));
+    addKFFooter(ecSlide, pageNum - (data.earningsCallHighlights.analystQuestions?.length ? 1 : 0), logoPngDark);
   }
 
   // Client Interaction Section (controlled by includeClientInteraction option)
@@ -858,7 +877,7 @@ export function generateIntelligencePPT(data: IntelligenceExportData, options: E
       border: { type: "solid", pt: 0.5, color: KORN_FERRY_COLORS.muted.replace("#", "") },
     });
 
-    addKFFooter(attendeesSlide, pageNum);
+    addKFFooter(attendeesSlide, pageNum, logoPngDark);
   }
 
   // Green Sheet / Call Planner slide
@@ -902,7 +921,7 @@ export function generateIntelligencePPT(data: IntelligenceExportData, options: E
       }
     });
 
-    addKFFooter(gsSlide, pageNum);
+    addKFFooter(gsSlide, pageNum, logoPngDark);
   }
 
   // Summary Section (controlled by includeSummary option)
@@ -952,7 +971,7 @@ export function generateIntelligencePPT(data: IntelligenceExportData, options: E
       yPos += 0.2;
     });
 
-    addKFFooter(questionsSlide, pageNum);
+    addKFFooter(questionsSlide, pageNum, logoPngDark);
   }
 
   // Story Coaching slide
@@ -1024,7 +1043,7 @@ export function generateIntelligencePPT(data: IntelligenceExportData, options: E
       });
     }
 
-    addKFFooter(storySlide, pageNum);
+    addKFFooter(storySlide, pageNum, logoPngDark);
   }
 
   // ===== NARRATIVE CANVAS SLIDE =====
@@ -1067,7 +1086,7 @@ export function generateIntelligencePPT(data: IntelligenceExportData, options: E
         yPos += 0.3;
       });
     }
-    addKFFooter(ncSlide, pageNum);
+    addKFFooter(ncSlide, pageNum, logoPngDark);
   }
 
   // ===== DISCOVERY NOTES SLIDE =====
@@ -1103,7 +1122,7 @@ export function generateIntelligencePPT(data: IntelligenceExportData, options: E
         fontSize: 10, fontFace: FONTS.body, color: KORN_FERRY_COLORS.text.replace("#", ""), valign: "top",
       });
     }
-    addKFFooter(dnSlide, pageNum);
+    addKFFooter(dnSlide, pageNum, logoPngDark);
   }
 
   // ===== VALUE CASES SLIDE =====
@@ -1133,7 +1152,7 @@ export function generateIntelligencePPT(data: IntelligenceExportData, options: E
       x: 0.5, y: 1.2, w: 9, colW: [4, 2, 1.5, 1.5],
       border: { pt: 0.5, color: KORN_FERRY_COLORS.muted.replace("#", "") }, fontFace: FONTS.body,
     });
-    addKFFooter(vcSlide, pageNum);
+    addKFFooter(vcSlide, pageNum, logoPngDark);
   }
 
   // ===== PROBE RESEARCH SLIDE =====
@@ -1160,7 +1179,7 @@ export function generateIntelligencePPT(data: IntelligenceExportData, options: E
       }
       yPos += 0.9;
     }
-    addKFFooter(probeSlide, pageNum);
+    addKFFooter(probeSlide, pageNum, logoPngDark);
   }
 
   // ===== PROJECT NOTES SLIDE =====
@@ -1179,7 +1198,7 @@ export function generateIntelligencePPT(data: IntelligenceExportData, options: E
       });
       yPos += 0.45;
     });
-    addKFFooter(notesSlide, pageNum);
+    addKFFooter(notesSlide, pageNum, logoPngDark);
   }
 
   // ===== DATA POINTS SLIDE =====
@@ -1206,7 +1225,7 @@ export function generateIntelligencePPT(data: IntelligenceExportData, options: E
       x: 0.5, y: 1.2, w: 9, colW: [3, 4, 2],
       border: { pt: 0.5, color: KORN_FERRY_COLORS.muted.replace("#", "") }, fontFace: FONTS.body,
     });
-    addKFFooter(dpSlide, pageNum);
+    addKFFooter(dpSlide, pageNum, logoPngDark);
   }
 
   // External Links slide (if any links provided)
@@ -1243,13 +1262,13 @@ export function generateIntelligencePPT(data: IntelligenceExportData, options: E
       }
     });
 
-    addKFFooter(linksSlide, pageNum);
+    addKFFooter(linksSlide, pageNum, logoPngDark);
   }
 
   pres.writeFile({ fileName: `${data.companyName}_Discovery_Report.pptx` });
 }
 
-export function generateIntelligencePDF(data: IntelligenceExportData, options: ExportOptions = DEFAULT_EXPORT_OPTIONS): void {
+export async function generateIntelligencePDF(data: IntelligenceExportData, options: ExportOptions = DEFAULT_EXPORT_OPTIONS): Promise<void> {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -1257,8 +1276,24 @@ export function generateIntelligencePDF(data: IntelligenceExportData, options: E
   const contentWidth = pageWidth - margin * 2;
   let yPos = 20;
 
+  const logoPngWhite = await svgToPngBase64(KF_LOGO_WHITE_SVG, 260, 50);
+  const logoPngDark = await svgToPngBase64(KF_LOGO_SVG, 260, 50);
+
+  function addPdfPageFooter() {
+    const pg = (doc as any).internal.getNumberOfPages();
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 116, 139);
+    doc.text("Korn Ferry | Confidential", margin, pageHeight - 8);
+    doc.text(`${pg}`, pageWidth / 2, pageHeight - 8, { align: "center" });
+    doc.text("KORN FERRY LOOP", pageWidth - margin, pageHeight - 8, { align: "right" });
+    doc.setDrawColor(226, 232, 240);
+    doc.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
+  }
+
   function checkPageBreak(needed: number) {
-    if (yPos + needed > pageHeight - 15) {
+    if (yPos + needed > pageHeight - 18) {
+      addPdfPageFooter();
       doc.addPage();
       yPos = 20;
     }
@@ -1266,18 +1301,21 @@ export function generateIntelligencePDF(data: IntelligenceExportData, options: E
 
   function addPdfSectionHeader(title: string) {
     checkPageBreak(20);
+    doc.setDrawColor(8, 145, 178);
+    doc.setLineWidth(0.5);
+    doc.line(margin, yPos - 2, margin + 40, yPos - 2);
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(10, 34, 64);
-    doc.text(title, margin, yPos);
-    yPos += 10;
+    doc.setTextColor(0, 51, 141);
+    doc.text(title, margin, yPos + 5);
+    yPos += 12;
   }
 
   function addPdfSubHeader(title: string, color?: [number, number, number]) {
     checkPageBreak(15);
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(...(color || [10, 34, 64]));
+    doc.setTextColor(...(color || [0, 51, 141]));
     doc.text(title, margin, yPos);
     yPos += 7;
   }
@@ -1310,25 +1348,39 @@ export function generateIntelligencePDF(data: IntelligenceExportData, options: E
   }
 
   doc.setFillColor(0, 51, 141);
-  doc.rect(0, 0, pageWidth, 35, "F");
+  doc.rect(0, 0, pageWidth, 45, "F");
   doc.setFillColor(8, 145, 178);
-  doc.rect(0, 35, pageWidth, 8, "F");
+  doc.rect(0, 0, pageWidth, 3, "F");
+  doc.setFillColor(255, 107, 53);
+  doc.rect(0, 45, pageWidth, 1.5, "F");
+
+  if (logoPngWhite) {
+    try {
+      doc.addImage(logoPngWhite, "PNG", margin, 8, 40, 7.7);
+    } catch (e) {}
+  }
 
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(24);
+  doc.setFontSize(22);
   doc.setFont("helvetica", "bold");
-  doc.text("DISCOVERY REPORT", margin, 22);
+  doc.text("DISCOVERY REPORT", margin, 28);
 
-  doc.setFontSize(14);
+  doc.setFontSize(13);
   doc.setTextColor(255, 107, 53);
-  doc.text(data.companyName, margin, 32);
+  doc.text(data.companyName, margin, 36);
 
-  yPos = 52;
+  if (data.industry) {
+    doc.setFontSize(10);
+    doc.setTextColor(200, 220, 255);
+    doc.text(data.industry, margin, 42);
+  }
+
+  yPos = 55;
   if (options.includeTheme && data.theme) {
     doc.setFontSize(11);
     doc.setTextColor(8, 145, 178);
-    doc.text(`Theme: ${data.theme}`, margin, 48);
-    yPos = 58;
+    doc.text(`Theme: ${data.theme}`, margin, 52);
+    yPos = 62;
   }
 
   doc.setTextColor(30, 41, 59);
@@ -1366,6 +1418,7 @@ export function generateIntelligencePDF(data: IntelligenceExportData, options: E
 
   // ===== STRATEGIC INSIGHTS =====
   if (options.includeIntelligence && data.insights.length > 0) {
+    addPdfPageFooter();
     doc.addPage();
     yPos = 20;
     addPdfSectionHeader("Strategic Insights");
@@ -1434,6 +1487,7 @@ export function generateIntelligencePDF(data: IntelligenceExportData, options: E
 
   // ===== RECENT NEWS =====
   if (options.includeIntelligence && data.recentNews && data.recentNews.length > 0) {
+    addPdfPageFooter();
     doc.addPage();
     yPos = 20;
     addPdfSectionHeader(`Recent News & Developments (${data.recentNews.length} items)`);
@@ -1506,6 +1560,7 @@ export function generateIntelligencePDF(data: IntelligenceExportData, options: E
 
   // ===== ANNUAL REPORT =====
   if (options.includeIntelligence && data.annualReportSummary) {
+    addPdfPageFooter();
     doc.addPage();
     yPos = 20;
     addPdfSectionHeader(`Annual Report - ${data.annualReportSummary.fiscalYear}`);
@@ -1574,6 +1629,7 @@ export function generateIntelligencePDF(data: IntelligenceExportData, options: E
 
   // ===== MEETING ATTENDEES =====
   if (options.includeClientInteraction && data.meetingAttendees && data.meetingAttendees.length > 0) {
+    addPdfPageFooter();
     doc.addPage();
     yPos = 20;
     addPdfSectionHeader("Meeting Attendees");
@@ -1619,6 +1675,7 @@ export function generateIntelligencePDF(data: IntelligenceExportData, options: E
 
   // ===== DISCOVERY QUESTIONS =====
   if (options.includeSummary && data.discoveryQuestions && data.discoveryQuestions.length > 0) {
+    addPdfPageFooter();
     doc.addPage();
     yPos = 20;
     addPdfSectionHeader("Discovery Questions & Responses");
@@ -1730,6 +1787,7 @@ export function generateIntelligencePDF(data: IntelligenceExportData, options: E
 
   // ===== VALUE CASES =====
   if (options.includeSummary && data.valueCases && data.valueCases.length > 0) {
+    addPdfPageFooter();
     doc.addPage();
     yPos = 20;
     const totalValue = data.valueCases.reduce((sum, vc) => sum + (vc.estimatedValue || 0), 0);
@@ -1811,9 +1869,7 @@ export function generateIntelligencePDF(data: IntelligenceExportData, options: E
     });
   }
 
-  doc.setFontSize(8);
-  doc.setTextColor(100, 116, 139);
-  doc.text("Confidential - Korn Ferry", pageWidth - margin - 40, pageHeight - 10);
+  addPdfPageFooter();
 
   doc.save(`${data.companyName}_Discovery_Report.pdf`);
 }

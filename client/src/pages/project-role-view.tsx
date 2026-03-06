@@ -8065,9 +8065,9 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                             ].filter(Boolean) as Array<{label: string; url: string}>
                           };
                           if (format === "ppt") {
-                            generateIntelligencePPT(exportData, options);
+                            generateIntelligencePPT(exportData, options).catch(console.error);
                           } else {
-                            generateIntelligencePDF(exportData, options);
+                            generateIntelligencePDF(exportData, options).catch(console.error);
                           }
                         }}
                       />
