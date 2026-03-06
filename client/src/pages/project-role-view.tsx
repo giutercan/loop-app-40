@@ -3668,6 +3668,11 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
     enabled: projectId > 0
   });
 
+  const { data: discoveryNotesForExport } = useQuery<any>({
+    queryKey: ["/api/projects", projectId, "discovery-notes"],
+    enabled: projectId > 0
+  });
+
   // Commitments for workflow progress tracking
   const { data: commitments = [] } = useQuery<any[]>({
     queryKey: ["/api/projects", projectId, "commitments"],
@@ -7938,26 +7943,63 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                             industry: liveIntelligence.companyOverview?.industry,
                             theme: selectedDiscoveryTheme || undefined,
                             executiveSummary: liveIntelligence.companyOverview?.description,
+                            companyWebsite: liveIntelligence.companyOverview?.website,
+                            companyDetails: {
+                              headquarters: liveIntelligence.companyOverview?.headquarters,
+                              employeeCount: liveIntelligence.companyOverview?.employeeCount,
+                              revenue: liveIntelligence.companyOverview?.revenue,
+                              founded: liveIntelligence.companyOverview?.founded,
+                            },
                             insights: liveIntelligence.strategicInsights?.map((insight: any) => ({
                               title: insight.title || insight.category || "Insight",
                               value: insight.insight || insight.description || "",
                               category: insight.category,
-                              priority: insight.priority
+                              priority: insight.priority,
+                              kfOpportunity: insight.kfOpportunity,
+                              potentialValue: insight.potentialValue,
+                              relevantCapability: insight.relevantCapability,
                             })) || [],
+                            recentNews: liveIntelligence.recentNews?.map((news: any) => ({
+                              date: news.date,
+                              headline: news.headline,
+                              source: news.source,
+                              summary: news.summary,
+                              relevance: news.relevance,
+                              opportunityType: news.opportunityType,
+                            })),
+                            competitors: liveIntelligence.competitors?.map((comp: any) => ({
+                              name: comp.name,
+                              description: comp.description,
+                              competitivePosition: comp.competitivePosition,
+                            })),
+                            keyPeople: liveIntelligence.keyPeople?.map((person: any) => ({
+                              name: person.name,
+                              title: person.title,
+                              relevance: person.relevance,
+                            })),
+                            themeSpecificInsights: liveIntelligence.themeSpecificInsights ? {
+                              opportunitySignal: liveIntelligence.themeSpecificInsights.opportunitySignal,
+                              howWeHelp: liveIntelligence.themeSpecificInsights.howWeHelp,
+                              potentialValue: liveIntelligence.themeSpecificInsights.potentialValue,
+                              keyQuestions: liveIntelligence.themeSpecificInsights.keyQuestions,
+                            } : undefined,
                             annualReportSummary: liveIntelligence.annualReportSummary ? {
                               ...liveIntelligence.annualReportSummary,
-                              reportUrl: liveIntelligence.annualReportSummary.source
+                              reportUrl: liveIntelligence.annualReportSummary.source,
+                              peopleMetrics: liveIntelligence.annualReportSummary.peopleMetrics,
                             } : undefined,
                             earningsCallHighlights: liveIntelligence.earningsCallHighlights ? {
                               ...liveIntelligence.earningsCallHighlights,
-                              transcriptUrl: liveIntelligence.earningsCallHighlights.source
+                              transcriptUrl: liveIntelligence.earningsCallHighlights.source,
+                              analystQuestions: liveIntelligence.earningsCallHighlights.analystQuestions,
                             } : undefined,
                             meetingAttendees: meetingAttendees.map(a => ({
                               name: a.name,
                               title: a.title,
                               role: a.role,
                               influence: a.influence,
-                              affiliation: a.affiliation
+                              affiliation: a.affiliation,
+                              linkedInUrl: a.linkedInUrl,
                             })),
                             greenSheet: {
                               objective: greenSheetEdits.objective,
@@ -7982,10 +8024,40 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                                 methodology: q.methodology
                               }))
                             } : undefined,
-                            companyWebsite: liveIntelligence.companyOverview?.website,
-                            reportUrl: liveIntelligence.annualReportSummary?.source,
-                            transcriptUrl: liveIntelligence.earningsCallHighlights?.source,
-                            linkedInUrl: meetingAttendees.find(a => a.linkedInUrl)?.linkedInUrl,
+                            narrativeCanvas: (narrativeCanvas.opener || narrativeCanvas.keyMessage) ? {
+                              opener: narrativeCanvas.opener,
+                              keyMessage: narrativeCanvas.keyMessage,
+                              proofPoint: narrativeCanvas.proofPoint,
+                              keyQuestions: narrativeCanvas.keyQuestions,
+                              callToAction: narrativeCanvas.callToAction,
+                            } : undefined,
+                            probeHistory: probeHistory.length > 0 ? probeHistory.map(p => ({
+                              role: p.role,
+                              content: p.content,
+                            })) : undefined,
+                            discoveryNotes: discoveryNotesForExport ? {
+                              freeformNotes: discoveryNotesForExport.freeformNotes,
+                              topChallenges: discoveryNotesForExport.topChallenges,
+                              keyStakeholder: discoveryNotesForExport.keyStakeholder,
+                            } : undefined,
+                            valueCases: valueCases.length > 0 ? valueCases.map((vc: any) => ({
+                              title: vc.title,
+                              description: vc.description,
+                              valuePillar: vc.valuePillar,
+                              estimatedValue: vc.estimatedValue,
+                              status: vc.status,
+                            })) : undefined,
+                            notes: notes.length > 0 ? notes.map((n: any) => ({
+                              content: n.content,
+                              category: n.category,
+                              createdAt: n.createdAt,
+                            })) : undefined,
+                            dataPoints: insights.length > 0 ? insights.map((dp: any) => ({
+                              title: dp.title || dp.dataPoint || "Data Point",
+                              value: dp.value || dp.insight || "",
+                              category: dp.category,
+                              priority: dp.priority,
+                            })) : undefined,
                             externalLinks: [
                               liveIntelligence.companyOverview?.website ? { label: "Company Website", url: liveIntelligence.companyOverview.website } : null,
                               liveIntelligence.annualReportSummary?.source ? { label: "Annual Report", url: liveIntelligence.annualReportSummary.source } : null,
