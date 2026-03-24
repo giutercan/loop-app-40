@@ -793,21 +793,25 @@ export default function PresentationStudioPage() {
       setCoachResult(data);
       if (data.purpose) setPurpose(data.purpose);
       if (data.audience) setAudience(data.audience);
+      let autoSelectedCount = 0;
       if (data.suggestedTopics?.length) {
-        const availableIds = topicsData ? Object.entries(topicsData as Record<string, any>)
-          .filter(([, val]) => val?.available)
-          .map(([key]) => key) : [];
+        const validTopicIds = TOPIC_DEFINITIONS.map(t => t.id) as string[];
         const mustInclude = data.suggestedTopics
           .filter((t: any) => t.priority === 'must_include' || t.priority === 'recommended')
-          .map((t: any) => t.topic)
-          .filter((t: string) => availableIds.length === 0 || availableIds.includes(t));
+          .map((t: any) => t.topic as string)
+          .filter((t: string) => validTopicIds.includes(t)) as TopicCategory[];
         if (mustInclude.length > 0) {
           setSelectedTopics(mustInclude);
+          autoSelectedCount = mustInclude.length;
         }
+      }
+      const customCount = data.customTopics?.length || 0;
+      if (customCount > 0) {
+        setSelectedCustomTopics(data.customTopics.map((ct: any) => ct.id));
       }
       if (data.template) setTemplateOverride(data.template);
       if (data.suggestedTitle) setCustomTitle(data.suggestedTitle);
-      toast({ title: 'AI Coach Ready', description: 'Recommendations applied. Review and adjust before generating.' });
+      toast({ title: 'AI Coach Ready', description: `Recommendations applied. ${autoSelectedCount} topics selected${customCount > 0 ? `, ${customCount} custom topics added` : ''}. Review and adjust before generating.` });
     },
     onError: () => {
       toast({ title: 'Coach Error', description: 'Could not generate recommendations. Please configure manually.', variant: 'destructive' });

@@ -17978,11 +17978,13 @@ Return JSON:
         return res.status(400).json({ error: "File appears to be empty or corrupted. Please upload a valid .pptx file." });
       }
       const parsed = await uploadTemplate(req.file.originalname, req.file.buffer);
-      res.json(parsed);
+      // Strip rawFileBase64 from the response — it's stored server-side but doesn't need to be sent to the client
+      const { rawFileBase64: _omit, ...safeResponse } = parsed;
+      res.json(safeResponse);
     } catch (error: any) {
       console.error("Error uploading template:", error);
       const msg = error.message || "Unknown error";
-      if (msg.includes("Corrupted zip") || msg.includes("End of data")) {
+      if (msg.includes("Corrupted zip") || msg.includes("End of data") || msg.includes("not a valid .pptx")) {
         return res.status(400).json({ error: "The file could not be read as a valid PowerPoint (.pptx) file. Please make sure it is a genuine .pptx file and not corrupted." });
       }
       res.status(500).json({ error: msg });
@@ -19114,7 +19116,7 @@ CRITICAL RULES:
 
           case "section_divider": {
             {
-              const secImgPath = slideData.imageCategory ? getImagePath(slideData.imageCategory) : null;
+              const secImgPath = getImagePath(slideData.imageCategory || 'leadership');
               if (secImgPath) {
                 try {
                   slide.addImage({
@@ -19464,7 +19466,7 @@ CRITICAL RULES:
 
           case "image_feature": {
             {
-              const imgPath = slideData.imageCategory ? getImagePath(slideData.imageCategory) : null;
+              const imgPath = getImagePath(slideData.imageCategory || 'professional');
               if (imgPath) {
                 try {
                   slide.addImage({
@@ -19634,11 +19636,13 @@ CRITICAL RULES:
         if (isTitle) {
           doc.rect(0, 0, slideW, slideH).fill(`#${config.bg}`);
 
-          const hasSlideImage = (slideData.slideType === 'image_feature' || slideData.slideType === 'section_divider') && slideData.imageCategory;
+          const slideImageCategory = (slideData.slideType === 'image_feature' || slideData.slideType === 'section_divider')
+            ? (slideData.imageCategory || (slideData.slideType === 'image_feature' ? 'professional' : 'leadership'))
+            : null;
           let imageEmbedded = false;
-          if (hasSlideImage) {
+          if (slideImageCategory) {
             const imgDir = path.join(process.cwd(), 'public', 'images', 'presentation-library');
-            const imgFile = `${slideData.imageCategory}-1.jpg`;
+            const imgFile = `${slideImageCategory}-1.jpg`;
             const imgFullPath = path.join(imgDir, imgFile);
             if (fs.existsSync(imgFullPath)) {
               try {

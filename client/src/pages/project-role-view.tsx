@@ -6364,6 +6364,28 @@ Leadership Values Score: ${storyBuilderData.storyTest.leadershipValuesScore ?? "
                     Submit for Review
                   </Button>
                 )}
+                {allItems.length > 0 && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(`/api/evidence-packs/${pack.id}/export/pdf`, '_blank')}
+                      data-testid="button-export-pdf"
+                    >
+                      <Download className="w-4 h-4 mr-1" />
+                      Export PDF
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(`/api/evidence-packs/${pack.id}/export/html`, '_blank')}
+                      data-testid="button-export-html"
+                    >
+                      <Download className="w-4 h-4 mr-1" />
+                      Export HTML
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
             
