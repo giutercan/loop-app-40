@@ -561,7 +561,7 @@ export function EvidencePackPanel({
                       </AlertDialog>
                     )}
 
-                    {(pack.status === "approved" || pack.status === "shared") && (
+                    {items.length > 0 && (
                       <>
                         <Button 
                           size="sm" 
@@ -581,29 +581,32 @@ export function EvidencePackPanel({
                           <Download className="w-4 h-4 mr-1" />
                           Export HTML
                         </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => {
-                            if (pack.shareToken) {
-                              const url = `${window.location.origin}/evidence/${pack.shareToken}`;
-                              setShareUrl(url);
-                              setShowShareDialog(true);
-                            } else {
-                              sharePackMutation.mutate();
-                            }
-                          }}
-                          disabled={sharePackMutation.isPending}
-                          data-testid="button-share-pack"
-                        >
-                          {sharePackMutation.isPending ? (
-                            <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                          ) : (
-                            <ExternalLink className="w-4 h-4 mr-1" />
-                          )}
-                          Share with Buyer
-                        </Button>
                       </>
+                    )}
+
+                    {(pack.status === "approved" || pack.status === "shared") && (
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => {
+                          if (pack.shareToken) {
+                            const url = `${window.location.origin}/evidence/${pack.shareToken}`;
+                            setShareUrl(url);
+                            setShowShareDialog(true);
+                          } else {
+                            sharePackMutation.mutate();
+                          }
+                        }}
+                        disabled={sharePackMutation.isPending}
+                        data-testid="button-share-pack"
+                      >
+                        {sharePackMutation.isPending ? (
+                          <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                        ) : (
+                          <ExternalLink className="w-4 h-4 mr-1" />
+                        )}
+                        Share with Buyer
+                      </Button>
                     )}
                   </div>
                 </CardContent>
