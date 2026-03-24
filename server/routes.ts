@@ -13430,6 +13430,33 @@ Provide a JSON response with:
     }
   });
 
+  // GET /api/evidence-packs/:packId/export/html - Generate HTML export
+  app.get("/api/evidence-packs/:packId/export/html", async (req, res) => {
+    try {
+      const packId = parseInt(req.params.packId);
+      const pack = await storage.getEvidencePack(packId);
+
+      if (!pack) {
+        return res.status(404).json({ error: "Evidence pack not found" });
+      }
+
+      const items = await storage.getEvidencePackItems(packId);
+      const project = await storage.getProject(pack.projectId);
+
+      const { generateEvidencePackHTML } = await import("./htmlExport");
+      const html = generateEvidencePackHTML(pack, items, project?.companyName);
+
+      const filename = `${pack.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-evidence-pack-${new Date().toISOString().split('T')[0]}.html`;
+
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(html);
+    } catch (error: any) {
+      console.error("HTML export error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ============================================================================
   // LEADER WORKSPACE - Aggregated views
   // ============================================================================

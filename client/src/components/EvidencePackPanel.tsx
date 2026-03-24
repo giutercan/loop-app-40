@@ -574,6 +574,15 @@ export function EvidencePackPanel({
                         </Button>
                         <Button 
                           size="sm" 
+                          variant="outline"
+                          onClick={() => window.open(`/api/evidence-packs/${pack.id}/export/html`, '_blank')}
+                          data-testid="button-export-html"
+                        >
+                          <Download className="w-4 h-4 mr-1" />
+                          Export HTML
+                        </Button>
+                        <Button 
+                          size="sm" 
                           variant="outline" 
                           onClick={() => {
                             if (pack.shareToken) {
