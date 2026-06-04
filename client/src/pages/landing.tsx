@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Zap, Sparkles } from "lucide-react";
 import { Link } from "wouter";
 import heroImage from "@assets/Picture6_1763994371580.jpg";
+import { GitHubExportDialog } from "@/components/github-export-dialog";
 
 export default function Landing() {
   return (
@@ -15,6 +16,7 @@ export default function Landing() {
               <span className="text-sm font-semibold text-[#009B77]">Loop</span>
             </div>
             <div className="flex items-center gap-3">
+              <GitHubExportDialog />
               <Link href="/presentation">
                 <Button 
                   variant="ghost" 
