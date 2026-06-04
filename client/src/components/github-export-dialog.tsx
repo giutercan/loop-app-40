@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Github, Loader2, ExternalLink, Check } from "lucide-react";
+import { Github, Loader2, ExternalLink, Check, Download } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 export function GitHubExportDialog() {
@@ -13,6 +13,7 @@ export function GitHubExportDialog() {
   const [repoName, setRepoName] = useState("korn-ferry-loop");
   const [isPrivate, setIsPrivate] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [result, setResult] = useState<{ repoUrl: string; filesCommitted: number } | null>(null);
   const { toast } = useToast();
 
@@ -35,6 +36,28 @@ export function GitHubExportDialog() {
     }
   };
 
+  const handleDownloadZip = async () => {
+    setIsDownloading(true);
+    try {
+      const res = await fetch("/api/export/zip");
+      if (!res.ok) throw new Error("Failed to generate zip");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "korn-ferry-loop.zip";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: "Download started", description: "korn-ferry-loop.zip is downloading." });
+    } catch (error: any) {
+      toast({ title: "Download failed", description: error.message, variant: "destructive" });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setResult(null); }}>
       <DialogTrigger asChild>
@@ -45,8 +68,8 @@ export function GitHubExportDialog() {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Export to GitHub</DialogTitle>
-          <DialogDescription>Push the entire project codebase to a GitHub repository.</DialogDescription>
+          <DialogTitle>Export Project</DialogTitle>
+          <DialogDescription>Download as a ZIP file or push directly to a GitHub repository.</DialogDescription>
         </DialogHeader>
 
         {result ? (
@@ -63,45 +86,79 @@ export function GitHubExportDialog() {
             </a>
           </div>
         ) : (
-          <div className="flex flex-col gap-4 py-2">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="repo-name">Repository Name</Label>
-              <Input
-                id="repo-name"
-                data-testid="input-repo-name"
-                value={repoName}
-                onChange={(e) => setRepoName(e.target.value)}
-                placeholder="my-project"
-                disabled={isExporting}
-              />
+          <div className="flex flex-col gap-5 py-2">
+            {/* ZIP Download — primary option */}
+            <div className="flex flex-col gap-2 p-4 rounded-md bg-muted/50 border">
+              <p className="text-sm font-medium">Download as ZIP</p>
+              <p className="text-xs text-muted-foreground">Get the full codebase as a zip file. You can then upload it to GitHub manually.</p>
+              <Button
+                onClick={handleDownloadZip}
+                disabled={isDownloading}
+                data-testid="button-download-zip"
+              >
+                {isDownloading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Preparing ZIP...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 mr-2" />
+                    Download ZIP
+                  </>
+                )}
+              </Button>
             </div>
-            <div className="flex items-center justify-between gap-2">
-              <Label htmlFor="private-toggle">Private repository</Label>
-              <Switch
-                id="private-toggle"
-                data-testid="switch-private-repo"
-                checked={isPrivate}
-                onCheckedChange={setIsPrivate}
-                disabled={isExporting}
-              />
+
+            {/* Divider */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-xs text-muted-foreground">or push directly</span>
+              <div className="flex-1 h-px bg-border" />
             </div>
-            <Button
-              onClick={handleExport}
-              disabled={isExporting || !repoName.trim()}
-              data-testid="button-confirm-export"
-            >
-              {isExporting ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Exporting...
-                </>
-              ) : (
-                <>
-                  <Github className="w-4 h-4 mr-2" />
-                  Export
-                </>
-              )}
-            </Button>
+
+            {/* GitHub push */}
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="repo-name">Repository Name</Label>
+                <Input
+                  id="repo-name"
+                  data-testid="input-repo-name"
+                  value={repoName}
+                  onChange={(e) => setRepoName(e.target.value)}
+                  placeholder="my-project"
+                  disabled={isExporting}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="private-toggle">Private repository</Label>
+                <Switch
+                  id="private-toggle"
+                  data-testid="switch-private-repo"
+                  checked={isPrivate}
+                  onCheckedChange={setIsPrivate}
+                  disabled={isExporting}
+                />
+              </div>
+              <Button
+                variant="outline"
+                onClick={handleExport}
+                disabled={isExporting || !repoName.trim()}
+                data-testid="button-confirm-export"
+              >
+                {isExporting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Pushing to GitHub...
+                  </>
+                ) : (
+                  <>
+                    <Github className="w-4 h-4 mr-2" />
+                    Push to GitHub
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         )}
       </DialogContent>

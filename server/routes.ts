@@ -20099,4 +20099,51 @@ CRITICAL RULES:
       res.status(500).json({ error: error.message });
     }
   });
+
+  app.get("/api/export/zip", async (req, res) => {
+    try {
+      const archiver = (await import('archiver')).default;
+      const path = await import('path');
+      const projectDir = path.resolve(process.cwd());
+
+      const EXCLUDED = new Set([
+        'node_modules', '.git', '.local', '.cache', '.config', '.upm',
+        'dist', 'attached_assets', '.nix-store'
+      ]);
+
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', 'attachment; filename="korn-ferry-loop.zip"');
+
+      const archive = archiver('zip', { zlib: { level: 6 } });
+      archive.on('error', (err: Error) => { throw err; });
+      archive.pipe(res);
+
+      function addDir(dir: string, zipPath: string) {
+        const fs = require('fs');
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          if (EXCLUDED.has(entry.name)) continue;
+          if (entry.name.startsWith('.') && entry.name !== '.gitignore' && entry.name !== '.env.example') continue;
+          const fullPath = path.join(dir, entry.name);
+          const entryZipPath = zipPath ? `${zipPath}/${entry.name}` : entry.name;
+          if (entry.isDirectory()) {
+            addDir(fullPath, entryZipPath);
+          } else {
+            const stat = fs.statSync(fullPath);
+            if (stat.size <= 10 * 1024 * 1024) {
+              archive.file(fullPath, { name: entryZipPath });
+            }
+          }
+        }
+      }
+
+      addDir(projectDir, '');
+      await archive.finalize();
+    } catch (error: any) {
+      console.error("Error creating zip:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: error.message });
+      }
+    }
+  });
 }
