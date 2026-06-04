@@ -132,7 +132,8 @@ export async function exportToGitHub(repoName: string, isPrivate: boolean = true
     baseSha = ref.object.sha;
   }
 
-  const BATCH_SIZE = 50;
+  const BATCH_SIZE = 5;
+  const BATCH_DELAY_MS = 1500;
   const treeItems: any[] = [];
 
   for (let i = 0; i < files.length; i += BATCH_SIZE) {
@@ -156,6 +157,9 @@ export async function exportToGitHub(repoName: string, isPrivate: boolean = true
     });
     const batchResults = await Promise.all(blobPromises);
     treeItems.push(...batchResults);
+    if (i + BATCH_SIZE < files.length) {
+      await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
+    }
   }
 
   const { data: tree } = await octokit.git.createTree({
