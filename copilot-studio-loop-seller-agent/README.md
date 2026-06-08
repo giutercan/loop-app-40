@@ -37,6 +37,8 @@ overwrites, and scores moving only on validated evidence. Full mapping in
 | `03-topics-and-conversation-starters.md` | Conversation starters + the few deterministic topics. |
 | `04-model-recommendation.md` | Which model to run it on (verified against current Copilot Studio options). |
 | `05-method-scaffold-bluesheet-greensheet.md` | **Blue Sheet (SSWP) + Green Sheet (CSWP)** method folded into the Loop surfaces. Upload as a knowledge source. |
+| `06-artifact-generation-power-automate.md` | **No-Azure** pipeline to render Blue/Green Sheet workbooks, PDFs & coaching docs via Power Automate. |
+| `power-automate/create-meeting-cycle.osts.ts` | Office Script (Power Automate) that creates dated PRE/POST tabs — replaces the bundled Python script. |
 | `loop-seller-flow.html` | **Front-end stage visualizer** — open in a browser to *see* the seller flow. |
 
 ## Build it in ~6 steps
@@ -64,10 +66,11 @@ overwrites, and scores moving only on validated evidence. Full mapping in
    the model choice.)
 3. **Where sellers live:** Teams, the Copilot Studio web chat, or **embedded in
    Salesforce**? (Changes the channel + auth setup.)
-4. **Blue/Green Sheet depth:** the skills are now folded in as the reasoning
-   scaffold (`05-…`). Tell me whether full Blue/Green Sheet **workbook + PDF
-   generation** should be in scope for the seller agent, and share your **One KF
-   custom scorecard** weights so score-impact suggestions match your standard.
+4. **Blue/Green Sheet depth:** the skills are folded in as the reasoning scaffold
+   (`05-…`) and the artifact pipeline is designed for **Power Automate, no Azure**
+   (`06-…` + the Office Script). Share your **One KF custom scorecard** weights so
+   score-impact suggestions match your standard, and confirm whether you want full
+   workbook/PDF rendering in v1 or just the spine first.
 5. **A sample opportunity** (sanitised) to tune the readiness check and NBA logic.
 6. **Confirm scope:** seller-only now, with manager + delivery as later phases
    on the same spine — yes?
