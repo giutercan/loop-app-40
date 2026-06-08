@@ -38,6 +38,7 @@ overwrites, and scores moving only on validated evidence. Full mapping in
 | `04-model-recommendation.md` | Which model to run it on (verified against current Copilot Studio options). |
 | `05-method-scaffold-bluesheet-greensheet.md` | **Blue Sheet (SSWP) + Green Sheet (CSWP)** method folded into the Loop surfaces. Upload as a knowledge source. |
 | `06-artifact-generation-power-automate.md` | **No-Azure** pipeline to render Blue/Green Sheet workbooks, PDFs & coaching docs via Power Automate. |
+| `07-v1-quickstart.md` | **Start here** — easiest build: conversation-first agent with live Salesforce read + write. |
 | `power-automate/create-meeting-cycle.osts.ts` | Office Script (Power Automate) that creates dated PRE/POST tabs — replaces the bundled Python script. |
 | `loop-seller-flow.html` | **Front-end stage visualizer** — open in a browser to *see* the seller flow. |
 
