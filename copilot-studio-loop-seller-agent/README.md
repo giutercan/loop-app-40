@@ -32,13 +32,15 @@ overwrites, and scores moving only on validated evidence. Full mapping in
 ## Files in this kit
 | File | What it is |
 |---|---|
+| `00-BUILD-RUNBOOK.md` | **Start here to build.** The full, ordered, phase-by-phase build (0→12). |
 | `01-agent-instructions.md` | **Paste-ready** agent instructions (6.3k chars, < 8k limit). The heart of the agent. |
 | `02-salesforce-and-tools.md` | Salesforce connector tools the agent calls + how to store the Success Frame. |
 | `03-topics-and-conversation-starters.md` | Conversation starters + the few deterministic topics. |
 | `04-model-recommendation.md` | Which model to run it on (verified against current Copilot Studio options). |
 | `05-method-scaffold-bluesheet-greensheet.md` | **Blue Sheet (SSWP) + Green Sheet (CSWP)** method folded into the Loop surfaces. Upload as a knowledge source. |
 | `06-artifact-generation-power-automate.md` | **No-Azure** pipeline to render Blue/Green Sheet workbooks, PDFs & coaching docs via Power Automate. |
-| `07-v1-quickstart.md` | **Start here** — easiest build: conversation-first agent with live Salesforce read + write. |
+| `07-v1-quickstart.md` | The minimal milestone (= Phases 0–6 of the runbook): conversation-first agent, live read + write. |
+| `08-dataverse-spine-schema.md` | The 3 Dataverse tables for the persistent Living Evidence Spine + confidence scoring. |
 | `power-automate/create-meeting-cycle.osts.ts` | Office Script (Power Automate) that creates dated PRE/POST tabs — replaces the bundled Python script. |
 | `loop-seller-flow.html` | **Front-end stage visualizer** — open in a browser to *see* the seller flow. |
 
