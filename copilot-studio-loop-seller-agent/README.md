@@ -19,6 +19,16 @@ personas reuse the same Evidence Spine later.)
 - **Discipline:** never invent facts · select, don't write · 2–3 options not
   commands · always label confidence · event-triggered, no admin.
 
+### Folded in: Blue Sheet & Green Sheet (your skills)
+The **Blue Sheet (Strategic Selling, SSWP)** and **Green Sheet (Conceptual
+Selling, CSWP)** skills are used as the agent's *reasoning scaffold* — buying
+influences, win-results, basic issues, pre-call plans, commitments, providing
+perspective — surfaced as plain seller guidance, **never as "go fill in a Blue
+Sheet."** They fit because they already share the Loop's discipline: evidence
+tagged explicit/inferred/unknown, approval gates before finalizing, no silent
+overwrites, and scores moving only on validated evidence. Full mapping in
+`05-method-scaffold-bluesheet-greensheet.md`.
+
 ## Files in this kit
 | File | What it is |
 |---|---|
@@ -26,6 +36,7 @@ personas reuse the same Evidence Spine later.)
 | `02-salesforce-and-tools.md` | Salesforce connector tools the agent calls + how to store the Success Frame. |
 | `03-topics-and-conversation-starters.md` | Conversation starters + the few deterministic topics. |
 | `04-model-recommendation.md` | Which model to run it on (verified against current Copilot Studio options). |
+| `05-method-scaffold-bluesheet-greensheet.md` | **Blue Sheet (SSWP) + Green Sheet (CSWP)** method folded into the Loop surfaces. Upload as a knowledge source. |
 | `loop-seller-flow.html` | **Front-end stage visualizer** — open in a browser to *see* the seller flow. |
 
 ## Build it in ~6 steps
@@ -53,9 +64,10 @@ personas reuse the same Evidence Spine later.)
    the model choice.)
 3. **Where sellers live:** Teams, the Copilot Studio web chat, or **embedded in
    Salesforce**? (Changes the channel + auth setup.)
-4. **Your methodology skills/docs:** you mentioned skills covering the
-   methodology — share them and I'll fold the exact KF levers, KPI library, and
-   behavioural-condition picklists into the instructions and tool schemas.
+4. **Blue/Green Sheet depth:** the skills are now folded in as the reasoning
+   scaffold (`05-…`). Tell me whether full Blue/Green Sheet **workbook + PDF
+   generation** should be in scope for the seller agent, and share your **One KF
+   custom scorecard** weights so score-impact suggestions match your standard.
 5. **A sample opportunity** (sanitised) to tune the readiness check and NBA logic.
 6. **Confirm scope:** seller-only now, with manager + delivery as later phases
    on the same spine — yes?
