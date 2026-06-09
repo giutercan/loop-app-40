@@ -42,6 +42,7 @@ overwrites, and scores moving only on validated evidence. Full mapping in
 | `07-v1-quickstart.md` | The minimal milestone (= Phases 0–6 of the runbook): conversation-first agent, live read + write. |
 | `08-dataverse-spine-schema.md` | The 3 Dataverse tables for the persistent Living Evidence Spine + confidence scoring. |
 | `09-power-automate-flows-build.md` | **Flows-first build** (for Power-Automate-premium tenants): the 8 flows + worked example + spine upsert/confidence logic. |
+| `10-check-copilot-studio-tier.md` | How to confirm whether you have generative orchestration vs the Teams plan + how to unblock with a trial. |
 | `power-automate/create-meeting-cycle.osts.ts` | Office Script (Power Automate) that creates dated PRE/POST tabs — replaces the bundled Python script. |
 | `loop-seller-flow.html` | **Front-end stage visualizer** — open in a browser to *see* the seller flow. |
 
