@@ -8,7 +8,14 @@ ahead — later phases assume the names and tables created earlier exist.
 
 Reference files: `01` instructions · `02` Salesforce tools · `03` starters ·
 `04` model · `05` method knowledge · `06` artifacts · `07` v1 quickstart ·
-`08` Dataverse schema.
+`08` Dataverse schema · `09` Power Automate flows build.
+
+> **Licensing pivot (your tenant: Power Automate premium, Copilot Studio base).**
+> Premium connectors (Salesforce, Dataverse) are wrapped in **Power Automate
+> flows** that the agent calls — see `09-…`. So Phases 4, 6, 7 build *flows*, not
+> direct connector tools; the tool names are unchanged. Generative orchestration
+> (Phase 3) needs standalone Copilot Studio; if you're on the free/Teams plan
+> we'll use classic topics instead.
 
 ---
 

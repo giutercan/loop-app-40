@@ -41,6 +41,7 @@ overwrites, and scores moving only on validated evidence. Full mapping in
 | `06-artifact-generation-power-automate.md` | **No-Azure** pipeline to render Blue/Green Sheet workbooks, PDFs & coaching docs via Power Automate. |
 | `07-v1-quickstart.md` | The minimal milestone (= Phases 0–6 of the runbook): conversation-first agent, live read + write. |
 | `08-dataverse-spine-schema.md` | The 3 Dataverse tables for the persistent Living Evidence Spine + confidence scoring. |
+| `09-power-automate-flows-build.md` | **Flows-first build** (for Power-Automate-premium tenants): the 8 flows + worked example + spine upsert/confidence logic. |
 | `power-automate/create-meeting-cycle.osts.ts` | Office Script (Power Automate) that creates dated PRE/POST tabs — replaces the bundled Python script. |
 | `loop-seller-flow.html` | **Front-end stage visualizer** — open in a browser to *see* the seller flow. |
 
