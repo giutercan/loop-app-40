@@ -32,7 +32,8 @@ overwrites, and scores moving only on validated evidence. Full mapping in
 ## Files in this kit
 | File | What it is |
 |---|---|
-| `00-BUILD-RUNBOOK.md` | **Start here to build.** The full, ordered, phase-by-phase build (0→12). |
+| `11-SIMPLE-PILOT.md` | **⭐ Current build path.** The deliberately simplified pilot: 1 agent + 3 flows, with deferral triggers for everything else. |
+| `00-BUILD-RUNBOOK.md` | The full long-term map (0→12). Use `11-…` first; come back here on pull. |
 | `01-agent-instructions.md` | **Paste-ready** agent instructions (6.3k chars, < 8k limit). The heart of the agent. |
 | `02-salesforce-and-tools.md` | Salesforce connector tools the agent calls + how to store the Success Frame. |
 | `03-topics-and-conversation-starters.md` | Conversation starters + the few deterministic topics. |
